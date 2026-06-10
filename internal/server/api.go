@@ -13,15 +13,9 @@ import (
 
 	"github.com/google/uuid"
 	"loop/internal/agent"
+	"loop/internal/model"
+	"loop/internal/store"
 )
-
-type Project struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	WorkingDir string `json:"workingDir"`
-	AgentType  string `json:"agentType"`
-	CreatedAt  string `json:"createdAt"`
-}
 
 type AgentType struct {
 	ID    string `json:"id"`
@@ -33,13 +27,6 @@ var agentTypes = []AgentType{
 	{ID: "data-analysis", Label: "Data Analysis"},
 }
 
-type ChatMessage struct {
-	ID        string `json:"id"`
-	Role      string `json:"role"`
-	Content   string `json:"content"`
-	CreatedAt string `json:"createdAt"`
-}
-
 type AppConfig struct {
 	CopilotKitPublicApiKey string `json:"copilotKitPublicApiKey"`
 	CopilotKitRuntimeURL   string `json:"copilotKitRuntimeUrl"`
@@ -49,24 +36,47 @@ var claudeAgent agent.Agent = &agent.ClaudeCodeAgent{}
 
 var (
 	mu              sync.RWMutex
-	projects        []Project
-	projectMessages = map[string][]ChatMessage{}
+	projects        []model.Project
+	projectMessages = map[string][]model.ChatMessage{}
 	projectSessions = map[string]string{} // project ID → claude session ID
 )
+
+func initStore() error {
+	data, err := store.LoadData()
+	if err != nil {
+		return err
+	}
+	mu.Lock()
+	projects = data.Projects
+	projectSessions = data.Sessions
+	mu.Unlock()
+	return nil
+}
+
+// snapshotData must be called with mu held.
+func snapshotData() store.Data {
+	ps := make([]model.Project, len(projects))
+	copy(ps, projects)
+	ss := make(map[string]string, len(projectSessions))
+	for k, v := range projectSessions {
+		ss[k] = v
+	}
+	return store.Data{Projects: ps, Sessions: ss}
+}
 
 func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/projects", handleProjects)
 	mux.HandleFunc("/api/projects/", handleProject)
 	mux.HandleFunc("/api/agent-types", handleAgentTypes)
 	mux.HandleFunc("/api/config", handleConfig)
+	mux.HandleFunc("/api/settings", handleSettings)
 }
-
 
 func handleProjects(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		mu.RLock()
-		list := make([]Project, len(projects))
+		list := make([]model.Project, len(projects))
 		copy(list, projects)
 		mu.RUnlock()
 		writeJSON(w, http.StatusOK, list)
@@ -85,7 +95,7 @@ func handleProjects(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "name and agentType are required", http.StatusBadRequest)
 			return
 		}
-		p := Project{
+		p := model.Project{
 			ID:         uuid.NewString(),
 			Name:       req.Name,
 			WorkingDir: req.WorkingDir,
@@ -94,7 +104,11 @@ func handleProjects(w http.ResponseWriter, r *http.Request) {
 		}
 		mu.Lock()
 		projects = append(projects, p)
+		snapshot := snapshotData()
 		mu.Unlock()
+		if err := store.SaveData(snapshot); err != nil {
+			fmt.Fprintf(os.Stderr, "warn: save data after create: %v\n", err)
+		}
 		writeJSON(w, http.StatusCreated, p)
 
 	default:
@@ -110,13 +124,13 @@ func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, agentTypes)
 }
 
-func findProject(id string) (Project, bool) {
+func findProject(id string) (model.Project, bool) {
 	for _, p := range projects {
 		if p.ID == id {
 			return p, true
 		}
 	}
-	return Project{}, false
+	return model.Project{}, false
 }
 
 func deleteProject(id string) bool {
@@ -145,6 +159,8 @@ func handleProject(w http.ResponseWriter, r *http.Request) {
 			handleProjectMessages(w, r, id)
 		case "chat":
 			handleProjectChat(w, r, id)
+		case "history":
+			handleProjectHistory(w, r, id)
 		default:
 			http.NotFound(w, r)
 		}
@@ -166,10 +182,17 @@ func handleProject(w http.ResponseWriter, r *http.Request) {
 	case http.MethodDelete:
 		mu.Lock()
 		removed := deleteProject(id)
+		var snapshot store.Data
+		if removed {
+			snapshot = snapshotData()
+		}
 		mu.Unlock()
 		if !removed {
 			http.NotFound(w, r)
 			return
+		}
+		if err := store.SaveData(snapshot); err != nil {
+			fmt.Fprintf(os.Stderr, "warn: save data after delete: %v\n", err)
 		}
 		w.WriteHeader(http.StatusNoContent)
 
@@ -184,13 +207,13 @@ func handleProjectMessages(w http.ResponseWriter, r *http.Request, projectID str
 		mu.RLock()
 		msgs := projectMessages[projectID]
 		if msgs == nil {
-			msgs = []ChatMessage{}
+			msgs = []model.ChatMessage{}
 		}
 		mu.RUnlock()
 		writeJSON(w, http.StatusOK, msgs)
 
 	case http.MethodPut:
-		var msgs []ChatMessage
+		var msgs []model.ChatMessage
 		if err := json.NewDecoder(r.Body).Decode(&msgs); err != nil {
 			http.Error(w, "invalid request body", http.StatusBadRequest)
 			return
@@ -217,6 +240,41 @@ func handleConfig(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, cfg)
 }
 
+func handleSettings(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		s, err := store.LoadSettings()
+		if err != nil {
+			http.Error(w, "failed to load settings", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, s)
+
+	case http.MethodPut:
+		current, err := store.LoadSettings()
+		if err != nil {
+			http.Error(w, "failed to load settings", http.StatusInternalServerError)
+			return
+		}
+		if err := json.NewDecoder(r.Body).Decode(&current); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+		if current.Theme != "light" && current.Theme != "dark" {
+			http.Error(w, "theme must be 'light' or 'dark'", http.StatusBadRequest)
+			return
+		}
+		if err := store.SaveSettings(current); err != nil {
+			http.Error(w, "failed to save settings", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, current)
+
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
 func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -240,7 +298,7 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 		return
 	}
 
-	userMsg := ChatMessage{
+	userMsg := model.ChatMessage{
 		ID:        uuid.NewString(),
 		Role:      "user",
 		Content:   req.Message,
@@ -292,7 +350,7 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 	}
 
 	if assistantContent.Len() > 0 {
-		assistantMsg := ChatMessage{
+		assistantMsg := model.ChatMessage{
 			ID:        uuid.NewString(),
 			Role:      "assistant",
 			Content:   assistantContent.String(),
@@ -303,8 +361,35 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 		if newSessionID != "" {
 			projectSessions[projectID] = newSessionID
 		}
+		snapshot := snapshotData()
 		mu.Unlock()
+		if newSessionID != "" {
+			if err := store.SaveData(snapshot); err != nil {
+				fmt.Fprintf(os.Stderr, "warn: save session: %v\n", err)
+			}
+		}
 	}
+}
+
+func handleProjectHistory(w http.ResponseWriter, r *http.Request, projectID string) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	mu.RLock()
+	project, ok := findProject(projectID)
+	sessionID := projectSessions[projectID]
+	mu.RUnlock()
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	msgs, err := store.LoadClaudeHistory(project.WorkingDir, sessionID)
+	if err != nil {
+		http.Error(w, "failed to load history", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, msgs)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -312,4 +397,3 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(v)
 }
-

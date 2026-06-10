@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, AppConfig, ChatMessage, CreateProjectRequest, Project } from './types'
+import type { AgentType, AppConfig, ChatMessage, CreateProjectRequest, Project, Settings } from './types'
 
 const BASE = '/api'
 
@@ -50,8 +50,24 @@ export const api = {
       }),
   },
 
+  history: {
+    get: (projectId: string): Promise<ChatMessage[]> =>
+      request(`/projects/${projectId}/history`),
+  },
+
   config: {
     get: (): Promise<AppConfig> =>
       request('/config'),
+  },
+
+  settings: {
+    get: (): Promise<Settings> =>
+      request('/settings'),
+
+    update: (patch: Partial<Settings>): Promise<Settings> =>
+      request('/settings', {
+        method: 'PUT',
+        body: JSON.stringify(patch),
+      }),
   },
 }

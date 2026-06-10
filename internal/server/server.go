@@ -17,6 +17,10 @@ func Start(port int, uiFiles fs.FS) error {
 	}
 	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(assetsFS))))
 
+	if err := initStore(); err != nil {
+		return fmt.Errorf("loading store: %w", err)
+	}
+
 	registerAPIRoutes(mux)
 
 	mux.HandleFunc("/health", handleHealth)

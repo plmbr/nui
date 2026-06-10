@@ -30,3 +30,7 @@ export interface AppConfig {
   copilotKitPublicApiKey: string
   copilotKitRuntimeUrl: string
 }
+
+export interface Settings {
+  theme: 'light' | 'dark'
+}

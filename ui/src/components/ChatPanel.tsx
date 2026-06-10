@@ -30,7 +30,7 @@ export function ChatPanel({ project }: Props) {
 
   useEffect(() => {
     setMessages([])
-    api.messages.list(project.id).then(setMessages).catch(() => {})
+    api.history.get(project.id).then(setMessages).catch(() => {})
   }, [project.id])
 
   useEffect(() => {
@@ -115,7 +115,7 @@ export function ChatPanel({ project }: Props) {
 
   return (
     <div className="flex flex-col h-full">
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="p-4 space-y-4">
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground text-sm py-12">
