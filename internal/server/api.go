@@ -1,0 +1,315 @@
+// Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
+
+package server
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/google/uuid"
+	"loop/internal/agent"
+)
+
+type Project struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	WorkingDir string `json:"workingDir"`
+	AgentType  string `json:"agentType"`
+	CreatedAt  string `json:"createdAt"`
+}
+
+type AgentType struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
+
+var agentTypes = []AgentType{
+	{ID: "coding", Label: "Coding"},
+	{ID: "data-analysis", Label: "Data Analysis"},
+}
+
+type ChatMessage struct {
+	ID        string `json:"id"`
+	Role      string `json:"role"`
+	Content   string `json:"content"`
+	CreatedAt string `json:"createdAt"`
+}
+
+type AppConfig struct {
+	CopilotKitPublicApiKey string `json:"copilotKitPublicApiKey"`
+	CopilotKitRuntimeURL   string `json:"copilotKitRuntimeUrl"`
+}
+
+var claudeAgent agent.Agent = &agent.ClaudeCodeAgent{}
+
+var (
+	mu              sync.RWMutex
+	projects        []Project
+	projectMessages = map[string][]ChatMessage{}
+	projectSessions = map[string]string{} // project ID → claude session ID
+)
+
+func registerAPIRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/api/projects", handleProjects)
+	mux.HandleFunc("/api/projects/", handleProject)
+	mux.HandleFunc("/api/agent-types", handleAgentTypes)
+	mux.HandleFunc("/api/config", handleConfig)
+}
+
+
+func handleProjects(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		mu.RLock()
+		list := make([]Project, len(projects))
+		copy(list, projects)
+		mu.RUnlock()
+		writeJSON(w, http.StatusOK, list)
+
+	case http.MethodPost:
+		var req struct {
+			Name       string `json:"name"`
+			WorkingDir string `json:"workingDir"`
+			AgentType  string `json:"agentType"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+		if req.Name == "" || req.AgentType == "" {
+			http.Error(w, "name and agentType are required", http.StatusBadRequest)
+			return
+		}
+		p := Project{
+			ID:         uuid.NewString(),
+			Name:       req.Name,
+			WorkingDir: req.WorkingDir,
+			AgentType:  req.AgentType,
+			CreatedAt:  time.Now().UTC().Format(time.RFC3339),
+		}
+		mu.Lock()
+		projects = append(projects, p)
+		mu.Unlock()
+		writeJSON(w, http.StatusCreated, p)
+
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	writeJSON(w, http.StatusOK, agentTypes)
+}
+
+func findProject(id string) (Project, bool) {
+	for _, p := range projects {
+		if p.ID == id {
+			return p, true
+		}
+	}
+	return Project{}, false
+}
+
+func deleteProject(id string) bool {
+	for i, p := range projects {
+		if p.ID == id {
+			projects = append(projects[:i], projects[i+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+func handleProject(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/projects/")
+	if path == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Route /api/projects/:id/<sub>
+	if idx := strings.Index(path, "/"); idx != -1 {
+		id := path[:idx]
+		rest := path[idx+1:]
+		switch rest {
+		case "messages":
+			handleProjectMessages(w, r, id)
+		case "chat":
+			handleProjectChat(w, r, id)
+		default:
+			http.NotFound(w, r)
+		}
+		return
+	}
+
+	id := path
+	switch r.Method {
+	case http.MethodGet:
+		mu.RLock()
+		p, ok := findProject(id)
+		mu.RUnlock()
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		writeJSON(w, http.StatusOK, p)
+
+	case http.MethodDelete:
+		mu.Lock()
+		removed := deleteProject(id)
+		mu.Unlock()
+		if !removed {
+			http.NotFound(w, r)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func handleProjectMessages(w http.ResponseWriter, r *http.Request, projectID string) {
+	switch r.Method {
+	case http.MethodGet:
+		mu.RLock()
+		msgs := projectMessages[projectID]
+		if msgs == nil {
+			msgs = []ChatMessage{}
+		}
+		mu.RUnlock()
+		writeJSON(w, http.StatusOK, msgs)
+
+	case http.MethodPut:
+		var msgs []ChatMessage
+		if err := json.NewDecoder(r.Body).Decode(&msgs); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+		mu.Lock()
+		projectMessages[projectID] = msgs
+		mu.Unlock()
+		w.WriteHeader(http.StatusNoContent)
+
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func handleConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	cfg := AppConfig{
+		CopilotKitPublicApiKey: os.Getenv("COPILOTKIT_PUBLIC_API_KEY"),
+		CopilotKitRuntimeURL:   os.Getenv("COPILOTKIT_RUNTIME_URL"),
+	}
+	writeJSON(w, http.StatusOK, cfg)
+}
+
+func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || strings.TrimSpace(req.Message) == "" {
+		http.Error(w, "message is required", http.StatusBadRequest)
+		return
+	}
+
+	mu.RLock()
+	project, ok := findProject(projectID)
+	sessionID := projectSessions[projectID]
+	mu.RUnlock()
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+
+	userMsg := ChatMessage{
+		ID:        uuid.NewString(),
+		Role:      "user",
+		Content:   req.Message,
+		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+	}
+	mu.Lock()
+	projectMessages[projectID] = append(projectMessages[projectID], userMsg)
+	mu.Unlock()
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	events := make(chan agent.Event, 64)
+
+	go func() {
+		defer close(events)
+		err := claudeAgent.Run(r.Context(), agent.RunRequest{
+			SessionID:  sessionID,
+			WorkingDir: project.WorkingDir,
+			Message:    req.Message,
+		}, events)
+		if err != nil && r.Context().Err() == nil {
+			events <- agent.Event{Type: agent.EventError, Error: err.Error()}
+		}
+	}()
+
+	var assistantContent strings.Builder
+	var newSessionID string
+
+	for ev := range events {
+		data, _ := json.Marshal(ev)
+		fmt.Fprintf(w, "data: %s\n\n", data)
+		flusher.Flush()
+
+		switch ev.Type {
+		case agent.EventText:
+			assistantContent.WriteString(ev.Content)
+		case agent.EventDone:
+			newSessionID = ev.SessionID
+		}
+	}
+
+	if assistantContent.Len() > 0 {
+		assistantMsg := ChatMessage{
+			ID:        uuid.NewString(),
+			Role:      "assistant",
+			Content:   assistantContent.String(),
+			CreatedAt: time.Now().UTC().Format(time.RFC3339),
+		}
+		mu.Lock()
+		projectMessages[projectID] = append(projectMessages[projectID], assistantMsg)
+		if newSessionID != "" {
+			projectSessions[projectID] = newSessionID
+		}
+		mu.Unlock()
+	}
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(v)
+}
+
