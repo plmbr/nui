@@ -13,6 +13,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const text = await res.text()
     throw new Error(text || res.statusText)
   }
+  if (res.status === 204) {
+    return undefined as T
+  }
   return res.json() as Promise<T>
 }
 
@@ -28,6 +31,12 @@ export const api = {
       request('/projects', {
         method: 'POST',
         body: JSON.stringify(data),
+      }),
+
+    rename: (id: string, name: string): Promise<Project> =>
+      request(`/projects/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name }),
       }),
 
     delete: (id: string): Promise<void> =>

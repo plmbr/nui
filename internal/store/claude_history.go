@@ -115,6 +115,31 @@ func LoadClaudeHistory(workingDir, sessionID string) ([]model.ChatMessage, error
 	return msgs, nil
 }
 
+// DeleteClaudeSession removes the .jsonl file for the given session.
+func DeleteClaudeSession(workingDir, sessionID string) error {
+	if sessionID == "" {
+		return nil
+	}
+	if workingDir == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return nil
+		}
+		workingDir = cwd
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	dirHash := strings.ReplaceAll(workingDir, "/", "-")
+	filePath := filepath.Join(home, ".claude", "projects", dirHash, sessionID+".jsonl")
+	err = os.Remove(filePath)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return err
+}
+
 func extractContent(m *claudeMessage) string {
 	raw := strings.TrimSpace(string(m.Content))
 	if raw == "" {

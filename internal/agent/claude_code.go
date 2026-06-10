@@ -6,6 +6,8 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
 	"os/exec"
 )
 
@@ -48,12 +50,14 @@ func (a *ClaudeCodeAgent) Run(ctx context.Context, req RunRequest, events chan<-
 	}
 
 	if err := cmd.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "[claude] start error: %v\n", err)
 		return err
 	}
 
 	go func() {
 		s := bufio.NewScanner(stderr)
 		for s.Scan() {
+			fmt.Fprintf(os.Stderr, "[claude stderr] %s\n", s.Text())
 		}
 	}()
 
@@ -75,6 +79,7 @@ func (a *ClaudeCodeAgent) Run(ctx context.Context, req RunRequest, events chan<-
 			ErrMsg    string          `json:"error"`
 		}
 		if err := json.Unmarshal(line, &envelope); err != nil {
+			fmt.Fprintf(os.Stderr, "[claude stdout] %s\n", line)
 			continue
 		}
 
@@ -103,5 +108,13 @@ func (a *ClaudeCodeAgent) Run(ctx context.Context, req RunRequest, events chan<-
 		}
 	}
 
-	return cmd.Wait()
+	err = cmd.Wait()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			fmt.Fprintf(os.Stderr, "[claude] exit code %d: %v\n", exitErr.ExitCode(), exitErr)
+		} else {
+			fmt.Fprintf(os.Stderr, "[claude] exit error: %v\n", err)
+		}
+	}
+	return err
 }

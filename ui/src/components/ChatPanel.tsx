@@ -10,6 +10,13 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { api } from '@/api'
 import type { ChatMessage, Project } from '@/types'
 
+function randomId(): string {
+  const b = crypto.getRandomValues(new Uint8Array(16))
+  b[6] = (b[6] & 0x0f) | 0x40
+  b[8] = (b[8] & 0x3f) | 0x80
+  return [...b].map((v, i) => ([4, 6, 8, 10].includes(i) ? '-' : '') + v.toString(16).padStart(2, '0')).join('')
+}
+
 interface StreamEvent {
   type: 'text' | 'done' | 'error'
   content?: string
@@ -27,10 +34,12 @@ export function ChatPanel({ project }: Props) {
   const [streaming, setStreaming] = useState(false)
   const streamingIdRef = useRef<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     setMessages([])
     api.history.get(project.id).then(setMessages).catch(() => {})
+    inputRef.current?.focus()
   }, [project.id])
 
   useEffect(() => {
@@ -44,12 +53,12 @@ export function ChatPanel({ project }: Props) {
     setStreaming(true)
 
     const userMsg: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: randomId(),
       role: 'user',
       content: message,
       createdAt: new Date().toISOString(),
     }
-    const assistantId = crypto.randomUUID()
+    const assistantId = randomId()
     streamingIdRef.current = assistantId
     setMessages((prev) => [
       ...prev,
@@ -146,6 +155,7 @@ export function ChatPanel({ project }: Props) {
       </ScrollArea>
       <div className="border-t p-4 flex gap-2 items-end shrink-0">
         <Textarea
+          ref={inputRef}
           className="flex-1 min-h-[60px] max-h-[160px] resize-none"
           placeholder="Ask your agent anything…"
           value={input}

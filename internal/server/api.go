@@ -143,6 +143,16 @@ func deleteProject(id string) bool {
 	return false
 }
 
+func renameProject(id, name string) bool {
+	for i, p := range projects {
+		if p.ID == id {
+			projects[i].Name = name
+			return true
+		}
+	}
+	return false
+}
+
 func handleProject(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/projects/")
 	if path == "" {
@@ -179,9 +189,49 @@ func handleProject(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusOK, p)
 
+	case http.MethodPatch:
+		var req struct {
+			Name string `json:"name"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+		name := strings.TrimSpace(req.Name)
+		if name == "" {
+			http.Error(w, "name is required", http.StatusBadRequest)
+			return
+		}
+		mu.Lock()
+		found := renameProject(id, name)
+		var updated model.Project
+		var snapshot store.Data
+		if found {
+			updated, _ = findProject(id)
+			snapshot = snapshotData()
+		}
+		mu.Unlock()
+		if !found {
+			http.NotFound(w, r)
+			return
+		}
+		if err := store.SaveData(snapshot); err != nil {
+			fmt.Fprintf(os.Stderr, "warn: save data after rename: %v\n", err)
+		}
+		writeJSON(w, http.StatusOK, updated)
+
 	case http.MethodDelete:
 		mu.Lock()
+		var sessionID, workingDir string
+		if p, ok := findProject(id); ok {
+			sessionID = projectSessions[id]
+			workingDir = p.WorkingDir
+		}
 		removed := deleteProject(id)
+		if removed {
+			delete(projectSessions, id)
+			delete(projectMessages, id)
+		}
 		var snapshot store.Data
 		if removed {
 			snapshot = snapshotData()
@@ -193,6 +243,11 @@ func handleProject(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := store.SaveData(snapshot); err != nil {
 			fmt.Fprintf(os.Stderr, "warn: save data after delete: %v\n", err)
+		}
+		if sessionID != "" {
+			if err := store.DeleteClaudeSession(workingDir, sessionID); err != nil {
+				fmt.Fprintf(os.Stderr, "warn: delete session file: %v\n", err)
+			}
 		}
 		w.WriteHeader(http.StatusNoContent)
 

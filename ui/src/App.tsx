@@ -29,6 +29,19 @@ export default function App() {
 
   const selected = projects.find((p) => p.id === selectedId) ?? null
 
+  const handleDeleteProject = useCallback(async () => {
+    if (!selectedId) return
+    await api.projects.delete(selectedId)
+    setSelectedId(null)
+    await loadProjects()
+  }, [selectedId, loadProjects])
+
+  const handleRenameProject = useCallback(async (newName: string) => {
+    if (!selectedId) return
+    await api.projects.rename(selectedId, newName)
+    await loadProjects()
+  }, [selectedId, loadProjects])
+
   return (
     <ThemeProvider>
     <TooltipProvider>
@@ -54,7 +67,11 @@ export default function App() {
             {selected ? (
               <div className="flex h-full overflow-hidden">
                 <div className="w-72 shrink-0 border-r overflow-auto">
-                  <ProjectDetails project={selected} />
+                  <ProjectDetails
+                    project={selected}
+                    onRename={handleRenameProject}
+                    onDelete={handleDeleteProject}
+                  />
                 </div>
                 <div className="flex-1 overflow-hidden" key={selected.id}>
                   <ConversationPanel project={selected} />
