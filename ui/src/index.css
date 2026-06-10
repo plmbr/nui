@@ -1,6 +1,7 @@
 /* Copyright (c) Mehmet Bektas <mbektasgh@outlook.com> */
 
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @import "tw-animate-css";
 

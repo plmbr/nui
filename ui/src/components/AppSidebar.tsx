@@ -7,12 +7,14 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { NewProjectDialog } from '@/components/NewProjectDialog'
+import { SettingsSheet } from '@/components/SettingsSheet'
 import type { Project } from '@/types'
 
 interface Props {
@@ -61,6 +63,9 @@ export function AppSidebar({ projects, selectedId, onSelect, onRefresh }: Props)
             </SidebarMenu>
           </ScrollArea>
         </SidebarContent>
+        <SidebarFooter className="p-2">
+          <SettingsSheet />
+        </SidebarFooter>
       </Sidebar>
 
       <NewProjectDialog

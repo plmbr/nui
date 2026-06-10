@@ -1,6 +1,9 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useEffect, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import rehypeHighlight from 'rehype-highlight'
+import 'highlight.js/styles/github-dark.css'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -122,13 +125,19 @@ export function ChatPanel({ project }: Props) {
           {messages.map((m) => (
             <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div
-                className={`max-w-[80%] rounded-lg px-4 py-2.5 text-sm whitespace-pre-wrap break-words ${
+                className={`max-w-[80%] rounded-lg px-4 py-2.5 text-sm break-words ${
                   m.role === 'user'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-foreground'
+                    ? 'bg-primary text-primary-foreground whitespace-pre-wrap'
+                    : 'bg-muted text-foreground prose prose-sm dark:prose-invert max-w-none'
                 }`}
               >
-                {m.content || (streaming && m.id === streamingIdRef.current ? '▋' : '')}
+                {m.role === 'user' ? (
+                  m.content || (streaming && m.id === streamingIdRef.current ? '▋' : '')
+                ) : (
+                  <ReactMarkdown rehypePlugins={[rehypeHighlight]}>
+                    {m.content || (streaming && m.id === streamingIdRef.current ? '▋' : '')}
+                  </ReactMarkdown>
+                )}
               </div>
             </div>
           ))}

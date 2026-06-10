@@ -1,12 +1,12 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useCallback, useEffect, useState } from 'react'
-import logoUrl from '@/assets/loop-sml2.png'
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppSidebar } from '@/components/AppSidebar'
 import { ProjectDetails } from '@/components/ProjectDetails'
 import { ConversationPanel } from '@/components/ConversationPanel'
+import { ThemeProvider } from '@/contexts/theme'
 import { api } from '@/api'
 import type { Project } from '@/types'
 
@@ -30,12 +30,12 @@ export default function App() {
   const selected = projects.find((p) => p.id === selectedId) ?? null
 
   return (
+    <ThemeProvider>
     <TooltipProvider>
       <SidebarProvider>
         <header className="fixed top-0 left-0 right-0 h-12 z-50 flex items-center px-4 border-b bg-background gap-3 shrink-0">
           <SidebarTrigger />
-          <img src={logoUrl} alt="Loop" className="h-6 w-auto" />
-          <span className="font-semibold text-sm">The Loop</span>
+<span className="font-semibold text-sm">The Loop</span>
           {selected && (
             <>
               <span className="text-muted-foreground text-sm">/</span>
@@ -69,5 +69,6 @@ export default function App() {
         </div>
       </SidebarProvider>
     </TooltipProvider>
+    </ThemeProvider>
   )
 }
