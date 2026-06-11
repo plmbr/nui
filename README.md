@@ -6,6 +6,11 @@ Loop is a UI for interactive and autonomous agents.
 
 ## Development
 
+[Development Plan](dev/dev.md)
+
+[Extension Design](dev/extension-design.md)
+
+
 ### Prerequisites
 
 - Go 1.22+

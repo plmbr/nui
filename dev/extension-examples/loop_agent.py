@@ -1,0 +1,167 @@
+"""
+Loop extension framework.
+
+Subclass LoopAgent, override `run()`, call `serve()`. Everything else
+(TCP socket, connection file, JSON-RPC dispatch, streaming) is handled here.
+
+Example:
+
+    from loop_agent import LoopAgent
+
+    class MyAgent(LoopAgent):
+        name = "my-agent"
+        version = "0.1.0"
+
+        def run(self, message: str, run_id: str):
+            yield "Thinking..."
+            yield f"\\n\\nYou said: {message}\\n"
+
+    if __name__ == "__main__":
+        MyAgent().serve()
+"""
+
+import json
+import os
+import socket
+import sys
+import threading
+import uuid
+from pathlib import Path
+from typing import Generator
+
+
+class LoopAgent:
+    name: str = "loop-agent"
+    version: str = "0.1.0"
+
+    # ── Override this ────────────────────────────────────────────────────────
+
+    def run(self, message: str, run_id: str) -> Generator[str, None, None]:
+        """Yield text chunks to stream back to Loop. Override in subclass."""
+        raise NotImplementedError
+
+    # ── Optional hooks ───────────────────────────────────────────────────────
+
+    def on_start(self, port: int) -> None:
+        """Called once after the server is bound and the connection file written."""
+        _ = port
+
+    def on_cancel(self, run_id: str) -> None:
+        """Called when Loop sends harness.cancel for a running run_id."""
+        _ = run_id
+
+    # ── Internals ────────────────────────────────────────────────────────────
+
+    def serve(self):
+        """Start the TCP server. Blocks until KeyboardInterrupt."""
+        session_id = str(uuid.uuid4())
+
+        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        srv.bind(("127.0.0.1", 0))
+        srv.listen(5)
+        port = srv.getsockname()[1]
+
+        conn_file = self._write_connection_file(port, session_id)
+        self._log(f"listening on 127.0.0.1:{port}")
+        self._log(f"connection file: {conn_file}")
+        self.on_start(port)
+
+        try:
+            while True:
+                conn, addr = srv.accept()
+                threading.Thread(
+                    target=self._client_loop, args=(conn, addr), daemon=True
+                ).start()
+        except KeyboardInterrupt:
+            self._log("shutting down")
+        finally:
+            conn_file.unlink(missing_ok=True)
+            srv.close()
+
+    # ── Private ──────────────────────────────────────────────────────────────
+
+    def _write_connection_file(self, port: int, session_id: str) -> Path:
+        path = Path.home() / ".loop" / "extensions" / f"{self.name}.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({
+            "host": "127.0.0.1",
+            "port": port,
+            "session_id": session_id,
+            "pid": os.getpid(),
+        }))
+        return path
+
+    def _send(self, conn: socket.socket, msg: dict):
+        conn.sendall((json.dumps(msg) + "\n").encode())
+
+    def _dispatch(self, conn: socket.socket, req: dict):
+        method = req.get("method", "")
+        params = req.get("params") or {}
+        rid = req.get("id")
+
+        if method == "harness.info":
+            self._send(conn, {
+                "jsonrpc": "2.0", "id": rid,
+                "result": {
+                    "name": self.name,
+                    "version": self.version,
+                    "capabilities": ["run", "cancel"],
+                },
+            })
+
+        elif method == "harness.run":
+            message = params.get("message", "")
+            run_id = params.get("runId") or str(uuid.uuid4())
+            try:
+                for chunk in self.run(message, run_id):
+                    self._send(conn, {
+                        "jsonrpc": "2.0", "method": "harness.event",
+                        "params": {"runId": run_id, "type": "text", "content": chunk},
+                    })
+            except Exception as e:
+                self._send(conn, {
+                    "jsonrpc": "2.0", "method": "harness.event",
+                    "params": {"runId": run_id, "type": "error", "error": str(e)},
+                })
+            self._send(conn, {
+                "jsonrpc": "2.0", "method": "harness.event",
+                "params": {"runId": run_id, "type": "done"},
+            })
+            self._send(conn, {"jsonrpc": "2.0", "id": rid, "result": {"runId": run_id}})
+
+        elif method == "harness.cancel":
+            run_id = params.get("runId", "")
+            self.on_cancel(run_id)
+            self._send(conn, {"jsonrpc": "2.0", "id": rid, "result": {"ok": True}})
+
+        else:
+            self._send(conn, {
+                "jsonrpc": "2.0", "id": rid,
+                "error": {"code": -32601, "message": f"method not found: {method}"},
+            })
+
+    def _client_loop(self, conn: socket.socket, addr):
+        self._log(f"client connected: {addr}")
+        buf = ""
+        try:
+            while True:
+                chunk = conn.recv(4096).decode()
+                if not chunk:
+                    break
+                buf += chunk
+                while "\n" in buf:
+                    line, buf = buf.split("\n", 1)
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        self._dispatch(conn, json.loads(line))
+                    except Exception as e:
+                        self._log(f"dispatch error: {e}")
+        finally:
+            conn.close()
+            self._log(f"client disconnected: {addr}")
+
+    def _log(self, msg: str):
+        print(f"[{self.name}] {msg}", file=sys.stderr, flush=True)
