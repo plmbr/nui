@@ -1,0 +1,84 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Commands
+
+### Backend (Go)
+```sh
+go build ./...          # compile
+go run . ui             # build + run server on :8080
+go run . ui --port 3000 # custom port
+```
+
+### Frontend (run from `ui/`)
+```sh
+npm install
+npm run dev     # Vite dev server with HMR (proxies /api to Go server)
+npm run build   # compile to ui/dist (required before go build)
+npm run lint    # ESLint
+```
+
+### Full production build
+```sh
+cd ui && npm run build && cd .. && go build -o loop_bin . && ./loop_bin ui
+```
+
+> `ui/dist` must exist before `go build` — it is embedded into the binary at compile time via `//go:embed ui/dist`.
+
+## Architecture
+
+### Request flow
+```
+Browser → Go HTTP server (:8080)
+         ├── /assets/*         — embedded static files from ui/dist
+         ├── /api/*            — JSON REST + SSE (internal/server/api.go)
+         ├── /health           — health check
+         └── /                 — serves ui/dist/index.html (SPA fallback)
+```
+
+In development, Vite's dev server (`:5173`) proxies `/api` to the Go server so HMR works without rebuilding.
+
+### Go packages
+
+| Package | Role |
+|---|---|
+| `cmd/` | Cobra CLI (`loop ui [--port]`); wires embedded `ui/dist` FS into `server.Start()` |
+| `internal/server/` | HTTP mux, API handlers, SSE streaming, in-memory state with `sync.RWMutex` |
+| `internal/model/` | Shared `Project` and `ChatMessage` structs (avoids import cycles) |
+| `internal/store/` | JSON persistence to `~/.loop/data.json` (projects + session IDs) and `~/.loop/settings.json` (theme). Atomic writes: `os.CreateTemp` → write → `os.Rename`. Also reads/deletes Claude Code session files. |
+| `internal/agent/` | `Agent` interface + `ClaudeCodeAgent` implementation |
+
+### Agent interface
+```go
+type Agent interface {
+    Name() string
+    Run(ctx context.Context, req RunRequest, events chan<- Event) error
+}
+```
+`ClaudeCodeAgent.Run` launches `claude -p <msg> --output-format stream-json --verbose --dangerously-skip-permissions --include-partial-messages [--resume <sessionID>]` and streams parsed SSE events (`EventText`, `EventDone`, `EventError`) back over a channel. The channel is consumed by `handleProjectChat`, which forwards events to the browser as `text/event-stream`.
+
+### Persistence
+- `~/.loop/data.json` — projects array + `sessions` map (project ID → Claude session ID). Loaded on startup via `initStore()`, saved after create/delete/rename and after a new session ID arrives.
+- `~/.loop/settings.json` — `{"theme": "light"|"dark"}`. Read/written on every settings GET/PUT.
+- Claude Code session files live at `~/.claude/projects/<dirHash>/<sessionID>.jsonl` where `dirHash = strings.ReplaceAll(workingDir, "/", "-")`. History is loaded by `store.LoadClaudeHistory` and deleted by `store.DeleteClaudeSession`.
+- When `workingDir` is empty, both the agent runner and the history loader fall back to `os.Getwd()` (the server's working directory).
+
+### API routes
+All routes are registered in `internal/server/api.go`:
+- `GET/POST /api/projects` — list / create
+- `GET/PATCH/DELETE /api/projects/:id` — get / rename / delete (delete also removes the Claude session file)
+- `POST /api/projects/:id/chat` — SSE stream; runs the agent, saves new session ID
+- `GET /api/projects/:id/history` — load chat history from Claude's JSONL file
+- `GET /api/agent-types` — static list
+- `GET/PUT /api/settings` — theme setting
+
+### Frontend structure
+- `App.tsx` — root; owns `projects` and `selectedId` state, passes handlers down
+- `api.ts` — all fetch calls in one place; `request<T>()` handles errors and 204 No Content
+- `types.ts` — shared TypeScript interfaces mirroring Go model structs
+- `contexts/theme.tsx` — `ThemeProvider`; `localStorage` as first-paint cache, `/api/settings` as source of truth
+- Components: `AppSidebar` (project list + new project + settings trigger), `ProjectDetails` (rename inline, delete with confirmation dialog), `ChatPanel` (SSE streaming, markdown rendering, history load on project select)
+
+### UI stack
+Tailwind CSS v4 (CSS-based config in `index.css`), shadcn/ui components built on Base UI (`@base-ui/react`), `react-markdown` + `rehype-highlight` for assistant message rendering, `@tailwindcss/typography` (`prose prose-sm dark:prose-invert`) on assistant bubbles.

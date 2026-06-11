@@ -1,6 +1,8 @@
 # loop
 the loop
 
+<img src="media/loop-logo.png" alt="Loop Logo" width="400">
+
 ## Development
 
 ### Prerequisites
