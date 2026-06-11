@@ -1,5 +1,6 @@
-# loop
-the loop
+# The Loop
+
+Loop is a UI for interactive and autonomous agents.
 
 <img src="media/loop-logo.png" alt="Loop Logo" width="400">
 
