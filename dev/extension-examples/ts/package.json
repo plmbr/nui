@@ -1,0 +1,13 @@
+{
+  "name": "loop-extension-examples-ts",
+  "private": true,
+  "scripts": {
+    "echo-agent": "ts-node echo_agent.ts",
+    "client": "ts-node client.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
+  }
+}
