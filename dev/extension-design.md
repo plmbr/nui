@@ -1,5 +1,7 @@
 # Extension Process Protocol for Loop [AI generated]
 
+[Extension Examples](extension-examples)
+
 ## Recommendation: JSON-RPC 2.0 over stdio + local TCP for reconnect
 
 The research strongly converges on a two-phase transport — the same pattern used by LSP, DAP, and Jupyter:
