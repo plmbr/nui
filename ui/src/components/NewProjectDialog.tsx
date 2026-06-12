@@ -38,14 +38,14 @@ export function NewProjectDialog({ open, onOpenChange, onCreated }: Props) {
   useEffect(() => {
     api.agentTypes.list().then((types) => {
       setAgentTypes(types)
-      setAgentType('coding')
+      if (types.length > 0) setAgentType(types[0].id)
     }).catch(() => {})
   }, [])
 
   function reset() {
     setName('')
     setWorkingDir('')
-    setAgentType('coding')
+    setAgentType(agentTypes[0]?.id ?? '')
     setError('')
   }
 

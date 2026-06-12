@@ -3,12 +3,19 @@
 package server
 
 import (
+	"embed"
 	"fmt"
 	"io/fs"
 	"net/http"
+	"os"
+	"path/filepath"
+
+	"loop/internal/agent"
 )
 
-func Start(port int, uiFiles fs.FS) error {
+var extensionManager *agent.Manager
+
+func Start(port int, uiFiles fs.FS, extFiles embed.FS) error {
 	mux := http.NewServeMux()
 
 	assetsFS, err := fs.Sub(uiFiles, "assets")
@@ -20,6 +27,13 @@ func Start(port int, uiFiles fs.FS) error {
 	if err := initStore(); err != nil {
 		return fmt.Errorf("loading store: %w", err)
 	}
+
+	extDir, err := extractExtensions(extFiles)
+	if err != nil {
+		return fmt.Errorf("extracting extensions: %w", err)
+	}
+	extensionManager = agent.NewManager(extDir)
+	extensionManager.Prewarm()
 
 	registerAPIRoutes(mux)
 
@@ -42,6 +56,34 @@ func Start(port int, uiFiles fs.FS) error {
 	addr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Listening on http://localhost%s\n", addr)
 	return http.ListenAndServe(addr, mux)
+}
+
+func extractExtensions(extFiles embed.FS) (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("get home dir: %w", err)
+	}
+	dest := filepath.Join(home, ".loop", "bin", "extensions")
+	if err := os.MkdirAll(dest, 0755); err != nil {
+		return "", fmt.Errorf("create extensions dir: %w", err)
+	}
+	entries, err := extFiles.ReadDir("extensions")
+	if err != nil {
+		return "", fmt.Errorf("read embedded extensions: %w", err)
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		data, err := extFiles.ReadFile("extensions/" + e.Name())
+		if err != nil {
+			return "", fmt.Errorf("read extension %s: %w", e.Name(), err)
+		}
+		if err := os.WriteFile(filepath.Join(dest, e.Name()), data, 0755); err != nil {
+			return "", fmt.Errorf("write extension %s: %w", e.Name(), err)
+		}
+	}
+	return dest, nil
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {

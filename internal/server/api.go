@@ -23,8 +23,8 @@ type AgentType struct {
 }
 
 var agentTypes = []AgentType{
-	{ID: "coding", Label: "Coding"},
-	{ID: "data-analysis", Label: "Data Analysis"},
+	{ID: "claude-code", Label: "Claude Code"},
+	{ID: "pi", Label: "Pi"},
 }
 
 type AppConfig struct {
@@ -32,7 +32,6 @@ type AppConfig struct {
 	CopilotKitRuntimeURL   string `json:"copilotKitRuntimeUrl"`
 }
 
-var claudeAgent agent.Agent = &agent.ClaudeCodeAgent{}
 
 var (
 	mu              sync.RWMutex
@@ -374,11 +373,17 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 		return
 	}
 
+	ag, err := extensionManager.GetAgent(project.AgentType)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("agent unavailable: %v", err), http.StatusServiceUnavailable)
+		return
+	}
+
 	events := make(chan agent.Event, 64)
 
 	go func() {
 		defer close(events)
-		err := claudeAgent.Run(r.Context(), agent.RunRequest{
+		err := ag.Run(r.Context(), agent.RunRequest{
 			SessionID:  sessionID,
 			WorkingDir: project.WorkingDir,
 			Message:    req.Message,
