@@ -25,6 +25,8 @@ type AgentType struct {
 var agentTypes = []AgentType{
 	{ID: "claude-code", Label: "Claude Code"},
 	{ID: "pi", Label: "Pi"},
+	{ID: "docker", Label: "Docker"},
+	{ID: "remote", Label: "Remote"},
 }
 
 type AppConfig struct {
@@ -82,9 +84,10 @@ func handleProjects(w http.ResponseWriter, r *http.Request) {
 
 	case http.MethodPost:
 		var req struct {
-			Name       string `json:"name"`
-			WorkingDir string `json:"workingDir"`
-			AgentType  string `json:"agentType"`
+			Name        string         `json:"name"`
+			WorkingDir  string         `json:"workingDir"`
+			AgentType   string         `json:"agentType"`
+			AgentConfig map[string]any `json:"agentConfig"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "invalid request body", http.StatusBadRequest)
@@ -95,11 +98,12 @@ func handleProjects(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		p := model.Project{
-			ID:         uuid.NewString(),
-			Name:       req.Name,
-			WorkingDir: req.WorkingDir,
-			AgentType:  req.AgentType,
-			CreatedAt:  time.Now().UTC().Format(time.RFC3339),
+			ID:          uuid.NewString(),
+			Name:        req.Name,
+			WorkingDir:  req.WorkingDir,
+			AgentType:   req.AgentType,
+			AgentConfig: req.AgentConfig,
+			CreatedAt:   time.Now().UTC().Format(time.RFC3339),
 		}
 		mu.Lock()
 		projects = append(projects, p)
@@ -381,7 +385,7 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 		return
 	}
 
-	ag, err := extensionManager.GetAgent(project.ID, project.AgentType)
+	ag, err := extensionManager.GetAgent(project.ID, project.AgentType, project.AgentConfig)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("agent unavailable: %v", err), http.StatusServiceUnavailable)
 		return

@@ -5,6 +5,7 @@ export interface Project {
   name: string
   workingDir: string
   agentType: string
+  agentConfig?: Record<string, unknown>
   createdAt: string
 }
 
@@ -12,6 +13,7 @@ export interface CreateProjectRequest {
   name: string
   workingDir: string
   agentType: string
+  agentConfig?: Record<string, unknown>
 }
 
 export interface AgentType {

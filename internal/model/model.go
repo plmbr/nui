@@ -3,11 +3,12 @@
 package model
 
 type Project struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	WorkingDir string `json:"workingDir"`
-	AgentType  string `json:"agentType"`
-	CreatedAt  string `json:"createdAt"`
+	ID          string         `json:"id"`
+	Name        string         `json:"name"`
+	WorkingDir  string         `json:"workingDir"`
+	AgentType   string         `json:"agentType"`
+	AgentConfig map[string]any `json:"agentConfig,omitempty"`
+	CreatedAt   string         `json:"createdAt"`
 }
 
 type ChatMessage struct {

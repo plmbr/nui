@@ -5,9 +5,12 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -19,56 +22,71 @@ var builtinExtensions = map[string]string{
 	"pi":          "pi.py",
 }
 
-// Manager launches and reconnects to extension processes.
+// Manager launches and reconnects to extension processes, Docker containers, and remote agents.
 type Manager struct {
 	extensionsDir string
-	mu            sync.Mutex        // protects processes
-	agentMu       sync.Map          // map[agentType]*sync.Mutex — serialises per-agent launch
+	mu            sync.Mutex  // protects processes
+	containerMu   sync.Mutex  // protects containers
+	agentMu       sync.Map    // map[projectID]*sync.Mutex — serialises per-project launch
 	processes     map[string]*os.Process
+	containers    map[string]string // projectID → containerID
 }
 
 func NewManager(extensionsDir string) *Manager {
 	return &Manager{
 		extensionsDir: extensionsDir,
 		processes:     make(map[string]*os.Process),
+		containers:    make(map[string]string),
 	}
 }
 
-// GetAgent returns an ExtensionAgent for the given project, starting the extension if needed.
-func (m *Manager) GetAgent(projectID, agentType string) (Agent, error) {
-	script, ok := builtinExtensions[agentType]
-	if !ok {
-		return nil, fmt.Errorf("unknown agent type: %q", agentType)
+// GetAgent returns an Agent for the given project, starting or connecting as needed.
+func (m *Manager) GetAgent(projectID, agentType string, config map[string]any) (Agent, error) {
+	switch agentType {
+	case "docker":
+		conn, err := m.ensureDockerRunning(projectID, config)
+		if err != nil {
+			return nil, err
+		}
+		return NewExtensionAgent(agentType, conn), nil
+	case "remote":
+		conn, err := m.connectRemote(config)
+		if err != nil {
+			return nil, err
+		}
+		return NewExtensionAgent(agentType, conn), nil
+	default:
+		script, ok := builtinExtensions[agentType]
+		if !ok {
+			return nil, fmt.Errorf("unknown agent type: %q", agentType)
+		}
+		conn, err := m.ensureRunning(projectID, script)
+		if err != nil {
+			return nil, err
+		}
+		return NewExtensionAgent(agentType, conn), nil
 	}
-	conn, err := m.ensureRunning(projectID, script)
-	if err != nil {
-		return nil, err
-	}
-	return NewExtensionAgent(agentType, conn), nil
 }
 
-// PrewarmProjects starts extension processes for each project in the background.
+// PrewarmProjects starts or connects to agents for each project in the background.
 func (m *Manager) PrewarmProjects(projects []PrewarmEntry) {
 	for _, p := range projects {
-		go func(projectID, agentType string) {
-			script, ok := builtinExtensions[agentType]
-			if !ok {
-				return
+		go func(e PrewarmEntry) {
+			if _, err := m.GetAgent(e.ProjectID, e.AgentType, e.AgentConfig); err != nil {
+				fmt.Fprintf(os.Stderr, "warn: prewarm project %s: %v\n", e.ProjectID, err)
 			}
-			if _, err := m.ensureRunning(projectID, script); err != nil {
-				fmt.Fprintf(os.Stderr, "warn: prewarm project %s: %v\n", projectID, err)
-			}
-		}(p.ProjectID, p.AgentType)
+		}(p)
 	}
 }
 
-// PrewarmEntry holds the project ID and agent type for prewarming.
+// PrewarmEntry holds the project ID, agent type, and config for prewarming.
 type PrewarmEntry struct {
-	ProjectID string
-	AgentType string
+	ProjectID   string
+	AgentType   string
+	AgentConfig map[string]any
 }
 
-// Stop sends SIGTERM to the extension process for a specific project.
+// Stop terminates the extension process or Docker container for a specific project.
 func (m *Manager) Stop(projectID string) {
 	m.mu.Lock()
 	proc, ok := m.processes[projectID]
@@ -76,10 +94,21 @@ func (m *Manager) Stop(projectID string) {
 	if ok {
 		proc.Signal(syscall.SIGTERM)
 	}
+
+	m.containerMu.Lock()
+	containerID, hasContainer := m.containers[projectID]
+	if hasContainer {
+		delete(m.containers, projectID)
+	}
+	m.containerMu.Unlock()
+	if hasContainer {
+		exec.Command("docker", "stop", containerID).Run()
+	}
+
 	m.deleteConnectionFile(projectID)
 }
 
-// StopAll sends SIGTERM to all managed extension processes and removes their connection files.
+// StopAll terminates all managed extension processes and Docker containers.
 func (m *Manager) StopAll() {
 	m.mu.Lock()
 	ids := make([]string, 0, len(m.processes))
@@ -88,26 +117,31 @@ func (m *Manager) StopAll() {
 		ids = append(ids, id)
 	}
 	m.mu.Unlock()
+
+	m.containerMu.Lock()
+	for id, containerID := range m.containers {
+		go exec.Command("docker", "stop", containerID).Run()
+		delete(m.containers, id)
+	}
+	m.containerMu.Unlock()
+
 	for _, id := range ids {
 		m.deleteConnectionFile(id)
 	}
 }
 
-// ensureRunning returns a live connection, launching the extension if needed.
-// A per-project mutex prevents concurrent launches for the same project.
+// ── Python extension ─────────────────────────────────────────────────────────
+
 func (m *Manager) ensureRunning(projectID, script string) (ConnectionInfo, error) {
-	// Fast path without the per-project lock.
 	if conn, err := m.readConnectionFile(projectID); err == nil && isAlive(conn.PID) {
 		return conn, nil
 	}
 
-	// Acquire the per-project launch lock to serialise launch attempts.
 	v, _ := m.agentMu.LoadOrStore(projectID, &sync.Mutex{})
 	agLock := v.(*sync.Mutex)
 	agLock.Lock()
 	defer agLock.Unlock()
 
-	// Re-check now that we hold the lock; another goroutine may have launched it.
 	if conn, err := m.readConnectionFile(projectID); err == nil && isAlive(conn.PID) {
 		return conn, nil
 	}
@@ -115,14 +149,11 @@ func (m *Manager) ensureRunning(projectID, script string) (ConnectionInfo, error
 }
 
 func (m *Manager) launch(projectID, script string) (ConnectionInfo, error) {
-	// Remove a stale connection file so waitForConnection cannot return it.
 	m.deleteConnectionFile(projectID)
 
 	scriptPath := filepath.Join(m.extensionsDir, script)
 	cmd := exec.Command("python3", scriptPath, "--project-id", projectID)
 	cmd.Stderr = os.Stderr
-	// Run the extension in its own session so terminal signals (SIGINT, SIGHUP)
-	// do not propagate from the Go server's process group to the extension.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 
 	if err := cmd.Start(); err != nil {
@@ -160,6 +191,123 @@ func (m *Manager) waitForConnection(projectID string, timeout time.Duration) (Co
 	return ConnectionInfo{}, fmt.Errorf("timed out waiting for extension for project %s to start", projectID)
 }
 
+// ── Docker agent ─────────────────────────────────────────────────────────────
+
+func (m *Manager) ensureDockerRunning(projectID string, config map[string]any) (ConnectionInfo, error) {
+	if conn, err := m.readConnectionFile(projectID); err == nil && isTCPAlive(conn.Host, conn.Port) {
+		return conn, nil
+	}
+
+	v, _ := m.agentMu.LoadOrStore(projectID, &sync.Mutex{})
+	agLock := v.(*sync.Mutex)
+	agLock.Lock()
+	defer agLock.Unlock()
+
+	if conn, err := m.readConnectionFile(projectID); err == nil && isTCPAlive(conn.Host, conn.Port) {
+		return conn, nil
+	}
+	return m.launchDocker(projectID, config)
+}
+
+func (m *Manager) launchDocker(projectID string, config map[string]any) (ConnectionInfo, error) {
+	image, _ := config["image"].(string)
+	if image == "" {
+		return ConnectionInfo{}, fmt.Errorf("docker agent config missing 'image'")
+	}
+	containerPortF, _ := config["containerPort"].(float64)
+	containerPort := int(containerPortF)
+	if containerPort == 0 {
+		return ConnectionInfo{}, fmt.Errorf("docker agent config missing 'containerPort'")
+	}
+
+	// Stop any running container for this project first.
+	m.containerMu.Lock()
+	if oldID, ok := m.containers[projectID]; ok {
+		go exec.Command("docker", "stop", oldID).Run()
+		delete(m.containers, projectID)
+	}
+	m.containerMu.Unlock()
+
+	out, err := exec.Command("docker", "run", "-d",
+		"-p", fmt.Sprintf("127.0.0.1::%d", containerPort),
+		image,
+	).Output()
+	if err != nil {
+		return ConnectionInfo{}, fmt.Errorf("docker run: %w", err)
+	}
+	containerID := strings.TrimSpace(string(out))
+
+	m.containerMu.Lock()
+	m.containers[projectID] = containerID
+	m.containerMu.Unlock()
+
+	portOut, err := exec.Command("docker", "port", containerID, strconv.Itoa(containerPort)).Output()
+	if err != nil {
+		exec.Command("docker", "stop", containerID).Run()
+		return ConnectionInfo{}, fmt.Errorf("docker port: %w", err)
+	}
+
+	hostPort, err := parseDockerPort(strings.TrimSpace(string(portOut)))
+	if err != nil {
+		exec.Command("docker", "stop", containerID).Run()
+		return ConnectionInfo{}, err
+	}
+
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		if isTCPAlive("127.0.0.1", hostPort) {
+			break
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	if !isTCPAlive("127.0.0.1", hostPort) {
+		exec.Command("docker", "stop", containerID).Run()
+		return ConnectionInfo{}, fmt.Errorf("docker container for project %s timed out waiting for port %d", projectID, hostPort)
+	}
+
+	conn := ConnectionInfo{Host: "127.0.0.1", Port: hostPort}
+	if err := m.writeConnectionFile(projectID, conn); err != nil {
+		fmt.Fprintf(os.Stderr, "warn: write docker connection file: %v\n", err)
+	}
+	return conn, nil
+}
+
+func parseDockerPort(s string) (int, error) {
+	// docker port outputs lines like "0.0.0.0:32768" or "127.0.0.1:32768".
+	// Take the last line (IPv4/IPv6 may produce two lines).
+	lines := strings.Split(s, "\n")
+	last := strings.TrimSpace(lines[len(lines)-1])
+	if last == "" && len(lines) > 1 {
+		last = strings.TrimSpace(lines[len(lines)-2])
+	}
+	idx := strings.LastIndex(last, ":")
+	if idx < 0 {
+		return 0, fmt.Errorf("unexpected docker port output: %q", s)
+	}
+	port, err := strconv.Atoi(last[idx+1:])
+	if err != nil {
+		return 0, fmt.Errorf("parse docker port %q: %w", s, err)
+	}
+	return port, nil
+}
+
+// ── Remote agent ─────────────────────────────────────────────────────────────
+
+func (m *Manager) connectRemote(config map[string]any) (ConnectionInfo, error) {
+	host, _ := config["host"].(string)
+	portF, _ := config["port"].(float64)
+	port := int(portF)
+	if host == "" || port == 0 {
+		return ConnectionInfo{}, fmt.Errorf("remote agent config requires 'host' and 'port'")
+	}
+	if !isTCPAlive(host, port) {
+		return ConnectionInfo{}, fmt.Errorf("remote agent at %s:%d is not reachable", host, port)
+	}
+	return ConnectionInfo{Host: host, Port: port}, nil
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 func (m *Manager) readConnectionFile(projectID string) (ConnectionInfo, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -171,6 +319,22 @@ func (m *Manager) readConnectionFile(projectID string) (ConnectionInfo, error) {
 	}
 	var conn ConnectionInfo
 	return conn, json.Unmarshal(data, &conn)
+}
+
+func (m *Manager) writeConnectionFile(projectID string, conn ConnectionInfo) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("get home dir: %w", err)
+	}
+	dir := filepath.Join(home, ".loop", "extensions")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	data, err := json.Marshal(conn)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(dir, projectID+".json"), data, 0644)
 }
 
 func (m *Manager) deleteConnectionFile(projectID string) {
@@ -190,4 +354,13 @@ func isAlive(pid int) bool {
 		return false
 	}
 	return proc.Signal(syscall.Signal(0)) == nil
+}
+
+func isTCPAlive(host string, port int) bool {
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), time.Second)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
 }

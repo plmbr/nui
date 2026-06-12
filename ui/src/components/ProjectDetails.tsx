@@ -1,7 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useState } from 'react'
-import { FolderOpen, Bot, Calendar, Pencil, Trash2 } from 'lucide-react'
+import { FolderOpen, Bot, Calendar, Pencil, Trash2, Container, Globe } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -97,6 +97,20 @@ export function ProjectDetails({ project, onRename, onDelete }: Props) {
           label="Agent Type"
           value={formatAgentType(project.agentType)}
         />
+        {project.agentType === 'docker' && project.agentConfig && (
+          <Field
+            icon={<Container className="size-4" />}
+            label="Docker Image"
+            value={`${project.agentConfig.image as string} (port ${project.agentConfig.containerPort as number})`}
+          />
+        )}
+        {project.agentType === 'remote' && project.agentConfig && (
+          <Field
+            icon={<Globe className="size-4" />}
+            label="Remote Address"
+            value={`${project.agentConfig.host as string}:${project.agentConfig.port as number}`}
+          />
+        )}
         <Field
           icon={<Calendar className="size-4" />}
           label="Created"
