@@ -237,3 +237,14 @@
     @apply font-sans;
     }
 }
+
+/* Prose inline code: remove typography plugin's backtick pseudo-elements, add pill background */
+.prose :where(code):not(:where([class~="not-prose"],[class~="not-prose"] *))::before,
+.prose :where(code):not(:where([class~="not-prose"],[class~="not-prose"] *))::after {
+  content: none !important;
+}
+.prose :where(code):not(:where([class~="not-prose"],[class~="not-prose"] *)) {
+  background-color: color-mix(in srgb, currentColor 12%, transparent);
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+}

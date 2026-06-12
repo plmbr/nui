@@ -23,3 +23,6 @@ __pycache__/
 .idea/
 *.swp
 *.swo
+
+# Playwright
+.playwright-mcp/
