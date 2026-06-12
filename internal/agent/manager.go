@@ -79,12 +79,17 @@ func (m *Manager) Stop(projectID string) {
 	m.deleteConnectionFile(projectID)
 }
 
-// StopAll sends SIGTERM to all managed extension processes.
+// StopAll sends SIGTERM to all managed extension processes and removes their connection files.
 func (m *Manager) StopAll() {
 	m.mu.Lock()
-	defer m.mu.Unlock()
-	for _, proc := range m.processes {
+	ids := make([]string, 0, len(m.processes))
+	for id, proc := range m.processes {
 		proc.Signal(syscall.SIGTERM)
+		ids = append(ids, id)
+	}
+	m.mu.Unlock()
+	for _, id := range ids {
+		m.deleteConnectionFile(id)
 	}
 }
 

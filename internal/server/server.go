@@ -3,12 +3,16 @@
 package server
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"loop/internal/agent"
 )
@@ -61,7 +65,25 @@ func Start(port int, uiFiles fs.FS, extFiles embed.FS) error {
 
 	addr := fmt.Sprintf(":%d", port)
 	fmt.Printf("Listening on http://localhost%s\n", addr)
-	return http.ListenAndServe(addr, mux)
+
+	srv := &http.Server{Addr: addr, Handler: mux}
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-quit
+		fmt.Fprintln(os.Stderr, "shutting down: terminating extension processes...")
+		extensionManager.StopAll()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		srv.Shutdown(ctx)
+	}()
+
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return err
+	}
+	return nil
 }
 
 func extractExtensions(extFiles embed.FS) (string, error) {
