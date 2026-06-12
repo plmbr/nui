@@ -1,19 +1,20 @@
 # Docker Agent Example
 
-A Loop extension that runs inside a Docker container. The agent binds to a
-fixed port inside the container; Loop maps it to a random host port at runtime.
+A Loop extension that runs inside a Docker container. The agent exposes an
+HTTP/SSE server on a fixed container port; Loop maps it to a random host port
+at runtime.
 
 ## Files
 
 - `echo_agent.py` — the agent implementation (subclasses `LoopAgent`)
-- `loop_agent.py` — server-mode framework (supports `--port` and `0.0.0.0` binding)
+- `loop_agent.py` — HTTP server framework (`GET /info`, `POST /run`, `POST /cancel`)
 - `Dockerfile` — builds the container image
 
 ## Setup
 
 ```sh
 # Build the image — this is the only manual step required
-docker build -t loop-echo-agent dev/extension-examples/docker
+docker build -t loop-echo-agent .
 ```
 
 ## Connecting via Loop UI
@@ -30,35 +31,42 @@ manual `docker run` needed.
 ## Smoke-testing without Loop
 
 ```sh
-docker run --rm -p 127.0.0.1::9090 loop-echo-agent &
-# docker port <id> 9090  →  127.0.0.1:<hostPort>
-echo '{"jsonrpc":"2.0","id":1,"method":"harness.info","params":{}}' \
-  | nc 127.0.0.1 <hostPort>
+# Run the container manually
+docker run --rm -p 127.0.0.1:9090:9090 loop-echo-agent
+
+# In another terminal — check info
+curl http://127.0.0.1:9090/info
+
+# Stream a response
+curl -N -X POST http://127.0.0.1:9090/run \
+  -H "Content-Type: application/json" \
+  -d '{"message": "hello"}'
 ```
 
 ## How it works
 
-### Why `--port` and `0.0.0.0`?
+### HTTP/SSE protocol
 
-Standard Loop extensions (`py/echo_agent.py`) bind to `127.0.0.1` on a random
-port and write a connection file so the Go server can find them. Docker agents
-can't use that mechanism — the container has its own filesystem and its own
-loopback interface.
+| Endpoint | Description |
+|---|---|
+| `GET /info` | Returns `{"name", "version", "capabilities"}` — also used as a health check |
+| `POST /run` | Body: `{"message", "sessionId"?, "workingDir"?}`; response: `text/event-stream` |
+| `POST /cancel` | Body: `{"runId"}`; stops the current run best-effort |
 
-Instead:
+SSE events are JSON-encoded `data:` lines:
 
-1. The Dockerfile `CMD` passes `--port 9090` to the agent.
-2. `loop_agent.py` detects the flag and binds to `0.0.0.0:9090` (reachable
-   through Docker's port mapping).
-3. No connection file is written; Loop discovers the host port externally via
-   `docker port`.
+```
+data: {"type":"text","content":"..."}
+data: {"type":"done","sessionId":"..."}
+data: {"type":"error","error":"..."}
+```
 
 ### Lifecycle
 
 | Event | What Loop does |
 |---|---|
 | Project created | `docker run -d -p 127.0.0.1::<containerPort> <image>` |
-| Chat message sent | TCP connect → `harness.run` RPC → stream events |
+| Chat message sent | `POST /run` → SSE stream |
 | Project deleted | `docker stop <containerID>` |
 | Server shutdown | `docker stop` all managed containers |
 
@@ -74,7 +82,7 @@ class MyAgent(LoopAgent):
     name = "my-agent"
     version = "0.1.0"
 
-    def run(self, message: str, run_id: str, **kwargs):
+    def run(self, message: str, **kwargs):
         # workingDir and sessionId are passed as kwargs when present
         yield "Thinking...\n"
         result = subprocess.run(["my-tool", message], capture_output=True, text=True)

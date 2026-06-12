@@ -1,13 +1,13 @@
 # Remote Agent Example
 
-A Loop extension that runs as a standalone process — on the same machine or
-a remote host. Loop connects to it using a stored host:port; there is no
-process lifecycle management (Loop doesn't start or stop it).
+A Loop extension that runs as a standalone HTTP/SSE server — on the same
+machine or a remote host. Loop connects to it using a stored host:port; there
+is no process lifecycle management (Loop doesn't start or stop it).
 
 ## Files
 
 - `echo_agent.py` — the agent implementation (subclasses `LoopAgent`)
-- `loop_agent.py` — server-mode framework (supports `--port` and `0.0.0.0` binding)
+- `loop_agent.py` — HTTP server framework (`GET /info`, `POST /run`, `POST /cancel`)
 
 ## Running
 
@@ -15,9 +15,12 @@ process lifecycle management (Loop doesn't start or stop it).
 # Start the agent on port 9090
 python3 dev/extension-examples/remote/echo_agent.py --port 9090
 
-# Smoke-test it manually (optional)
-echo '{"jsonrpc":"2.0","id":1,"method":"harness.info","params":{}}' \
-  | nc 127.0.0.1 9090
+# Smoke-test it manually
+curl http://127.0.0.1:9090/info
+
+curl -N -X POST http://127.0.0.1:9090/run \
+  -H "Content-Type: application/json" \
+  -d '{"message": "hello"}'
 ```
 
 ## Connecting via Loop UI
@@ -28,32 +31,36 @@ echo '{"jsonrpc":"2.0","id":1,"method":"harness.info","params":{}}' \
 4. Set **Port** to `9090`.
 5. Click **Create**.
 
-Loop verifies TCP reachability on create, then connects for each chat message.
+Loop checks reachability via `GET /info` on create, then calls `POST /run` for
+each chat message.
 
 ## How it works
 
-### Why `--port` and `0.0.0.0`?
+### HTTP/SSE protocol
 
-Standard Loop extensions bind to `127.0.0.1` on a random port and write a
-connection file. Remote agents skip both steps:
+| Endpoint | Description |
+|---|---|
+| `GET /info` | Returns `{"name", "version", "capabilities"}` — also used as a health/reachability check |
+| `POST /run` | Body: `{"message", "sessionId"?, "workingDir"?}`; response: `text/event-stream` |
+| `POST /cancel` | Body: `{"runId"}`; stops the current run best-effort |
 
-- `--port` makes the listening port predictable so you can configure it in Loop.
-- Binding to `0.0.0.0` makes the agent reachable from other hosts (not just
-  loopback). When running locally for testing, this is equivalent to
-  `127.0.0.1` from the client's perspective.
-- No connection file is written; Loop uses the host:port stored in the project
-  config instead.
+SSE events are JSON-encoded `data:` lines:
+
+```
+data: {"type":"text","content":"..."}
+data: {"type":"done","sessionId":"..."}
+data: {"type":"error","error":"..."}
+```
 
 ### Lifecycle
 
 Loop owns no process or container for a remote agent. You are responsible for
-starting, restarting, and stopping the process. Loop will surface an error when
-the agent is unreachable.
+starting, restarting, and stopping the process.
 
 | Event | What Loop does |
 |---|---|
-| Project created | TCP connect check (fails fast if unreachable) |
-| Chat message sent | TCP connect → `harness.run` RPC → stream events |
+| Project created | `GET /info` reachability check |
+| Chat message sent | `POST /run` → SSE stream |
 | Project deleted | Nothing (process keeps running) |
 | Server shutdown | Nothing |
 
@@ -68,9 +75,10 @@ python3 echo_agent.py --port 9090
 #   Port: 9090
 ```
 
-For production use you would want to run the agent under a process supervisor
-(systemd, supervisord, etc.) and secure the port (firewall, TLS proxy, SSH
-tunnel) as needed.
+For production use, run the agent under a process supervisor (systemd,
+supervisord, etc.) and secure the endpoint (TLS terminating proxy, SSH tunnel,
+firewall rules) as needed. Because the protocol is plain HTTP, any standard
+reverse proxy (nginx, Caddy, Traefik) can add TLS without changes to the agent.
 
 ## Writing your own remote agent
 
@@ -81,7 +89,7 @@ class MyAgent(LoopAgent):
     name = "my-agent"
     version = "0.1.0"
 
-    def run(self, message: str, run_id: str, **kwargs):
+    def run(self, message: str, **kwargs):
         # workingDir and sessionId are passed as kwargs when present
         yield "Working...\n"
         yield call_my_backend(message)

@@ -4,11 +4,16 @@ package agent
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
+	"strings"
 	"sync/atomic"
+	"time"
 )
 
 // ConnectionInfo mirrors the JSON written by extensions to ~/.loop/extensions/<name>.json.
@@ -128,4 +133,87 @@ func (a *ExtensionAgent) Run(ctx context.Context, req RunRequest, events chan<- 
 			return fmt.Errorf("extension %s: connection closed unexpectedly", a.agentName)
 		}
 	}
+}
+
+// httpAgentClient has no overall timeout so SSE streams can run indefinitely,
+// but it times out on the response headers to catch dead servers quickly.
+var httpAgentClient = &http.Client{
+	Transport: &http.Transport{
+		ResponseHeaderTimeout: 10 * time.Second,
+	},
+}
+
+// HTTPExtensionAgent implements Agent using HTTP POST /run with SSE streaming.
+// Used for Docker and remote agents.
+type HTTPExtensionAgent struct {
+	agentName string
+	baseURL   string
+}
+
+func NewHTTPExtensionAgent(name, baseURL string) *HTTPExtensionAgent {
+	return &HTTPExtensionAgent{agentName: name, baseURL: baseURL}
+}
+
+func (a *HTTPExtensionAgent) Name() string { return a.agentName }
+
+func (a *HTTPExtensionAgent) Run(ctx context.Context, req RunRequest, events chan<- Event) error {
+	params := map[string]any{"message": req.Message}
+	if req.SessionID != "" {
+		params["sessionId"] = req.SessionID
+	}
+	if req.WorkingDir != "" {
+		params["workingDir"] = req.WorkingDir
+	}
+
+	body, _ := json.Marshal(params)
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", a.baseURL+"/run", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "text/event-stream")
+
+	resp, err := httpAgentClient.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("HTTP agent %s: %w", a.agentName, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		msg, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("HTTP agent %s: status %d: %s", a.agentName, resp.StatusCode, bytes.TrimSpace(msg))
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 4*1024*1024), 4*1024*1024)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+		var ev struct {
+			Type      string `json:"type"`
+			Content   string `json:"content"`
+			Error     string `json:"error"`
+			SessionID string `json:"sessionId"`
+		}
+		if err := json.Unmarshal([]byte(line[6:]), &ev); err != nil {
+			continue
+		}
+		switch ev.Type {
+		case "text":
+			events <- Event{Type: EventText, Content: ev.Content}
+		case "error":
+			events <- Event{Type: EventError, Error: ev.Error}
+			return nil
+		case "done":
+			events <- Event{Type: EventDone, SessionID: ev.SessionID}
+			return nil
+		}
+	}
+	if err := scanner.Err(); err != nil && ctx.Err() == nil {
+		return fmt.Errorf("HTTP agent %s: %w", a.agentName, err)
+	}
+	return nil
 }

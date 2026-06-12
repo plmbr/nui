@@ -21,7 +21,7 @@ class EchoAgent(LoopAgent):
     name = "echo-agent"
     version = "0.1.0"
 
-    def run(self, message: str, run_id: str, **kwargs):
+    def run(self, message: str, **kwargs):
         yield f"Echo: {message}\n"
 
 

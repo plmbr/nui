@@ -5,7 +5,7 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
-	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,10 +26,11 @@ var builtinExtensions = map[string]string{
 type Manager struct {
 	extensionsDir string
 	mu            sync.Mutex  // protects processes
-	containerMu   sync.Mutex  // protects containers
+	containerMu   sync.Mutex  // protects containers and dockerURLs
 	agentMu       sync.Map    // map[projectID]*sync.Mutex — serialises per-project launch
 	processes     map[string]*os.Process
 	containers    map[string]string // projectID → containerID
+	dockerURLs    map[string]string // projectID → http base URL
 }
 
 func NewManager(extensionsDir string) *Manager {
@@ -37,6 +38,7 @@ func NewManager(extensionsDir string) *Manager {
 		extensionsDir: extensionsDir,
 		processes:     make(map[string]*os.Process),
 		containers:    make(map[string]string),
+		dockerURLs:    make(map[string]string),
 	}
 }
 
@@ -44,17 +46,17 @@ func NewManager(extensionsDir string) *Manager {
 func (m *Manager) GetAgent(projectID, agentType string, config map[string]any) (Agent, error) {
 	switch agentType {
 	case "docker":
-		conn, err := m.ensureDockerRunning(projectID, config)
+		baseURL, err := m.ensureDockerRunning(projectID, config)
 		if err != nil {
 			return nil, err
 		}
-		return NewExtensionAgent(agentType, conn), nil
+		return NewHTTPExtensionAgent(agentType, baseURL), nil
 	case "remote":
-		conn, err := m.connectRemote(config)
+		baseURL, err := m.connectRemote(config)
 		if err != nil {
 			return nil, err
 		}
-		return NewExtensionAgent(agentType, conn), nil
+		return NewHTTPExtensionAgent(agentType, baseURL), nil
 	default:
 		script, ok := builtinExtensions[agentType]
 		if !ok {
@@ -193,9 +195,12 @@ func (m *Manager) waitForConnection(projectID string, timeout time.Duration) (Co
 
 // ── Docker agent ─────────────────────────────────────────────────────────────
 
-func (m *Manager) ensureDockerRunning(projectID string, config map[string]any) (ConnectionInfo, error) {
-	if conn, err := m.readConnectionFile(projectID); err == nil && isTCPAlive(conn.Host, conn.Port) {
-		return conn, nil
+func (m *Manager) ensureDockerRunning(projectID string, config map[string]any) (string, error) {
+	m.containerMu.Lock()
+	baseURL, exists := m.dockerURLs[projectID]
+	m.containerMu.Unlock()
+	if exists && isHTTPAlive(baseURL) {
+		return baseURL, nil
 	}
 
 	v, _ := m.agentMu.LoadOrStore(projectID, &sync.Mutex{})
@@ -203,21 +208,24 @@ func (m *Manager) ensureDockerRunning(projectID string, config map[string]any) (
 	agLock.Lock()
 	defer agLock.Unlock()
 
-	if conn, err := m.readConnectionFile(projectID); err == nil && isTCPAlive(conn.Host, conn.Port) {
-		return conn, nil
+	m.containerMu.Lock()
+	baseURL, exists = m.dockerURLs[projectID]
+	m.containerMu.Unlock()
+	if exists && isHTTPAlive(baseURL) {
+		return baseURL, nil
 	}
 	return m.launchDocker(projectID, config)
 }
 
-func (m *Manager) launchDocker(projectID string, config map[string]any) (ConnectionInfo, error) {
+func (m *Manager) launchDocker(projectID string, config map[string]any) (string, error) {
 	image, _ := config["image"].(string)
 	if image == "" {
-		return ConnectionInfo{}, fmt.Errorf("docker agent config missing 'image'")
+		return "", fmt.Errorf("docker agent config missing 'image'")
 	}
 	containerPortF, _ := config["containerPort"].(float64)
 	containerPort := int(containerPortF)
 	if containerPort == 0 {
-		return ConnectionInfo{}, fmt.Errorf("docker agent config missing 'containerPort'")
+		return "", fmt.Errorf("docker agent config missing 'containerPort'")
 	}
 
 	// Stop any running container for this project first.
@@ -226,6 +234,7 @@ func (m *Manager) launchDocker(projectID string, config map[string]any) (Connect
 		go exec.Command("docker", "stop", oldID).Run()
 		delete(m.containers, projectID)
 	}
+	delete(m.dockerURLs, projectID)
 	m.containerMu.Unlock()
 
 	out, err := exec.Command("docker", "run", "-d",
@@ -233,7 +242,7 @@ func (m *Manager) launchDocker(projectID string, config map[string]any) (Connect
 		image,
 	).Output()
 	if err != nil {
-		return ConnectionInfo{}, fmt.Errorf("docker run: %w", err)
+		return "", fmt.Errorf("docker run: %w", err)
 	}
 	containerID := strings.TrimSpace(string(out))
 
@@ -244,32 +253,32 @@ func (m *Manager) launchDocker(projectID string, config map[string]any) (Connect
 	portOut, err := exec.Command("docker", "port", containerID, strconv.Itoa(containerPort)).Output()
 	if err != nil {
 		exec.Command("docker", "stop", containerID).Run()
-		return ConnectionInfo{}, fmt.Errorf("docker port: %w", err)
+		return "", fmt.Errorf("docker port: %w", err)
 	}
 
 	hostPort, err := parseDockerPort(strings.TrimSpace(string(portOut)))
 	if err != nil {
 		exec.Command("docker", "stop", containerID).Run()
-		return ConnectionInfo{}, err
+		return "", err
 	}
 
+	baseURL := fmt.Sprintf("http://127.0.0.1:%d", hostPort)
 	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
-		if isTCPAlive("127.0.0.1", hostPort) {
+		if isHTTPAlive(baseURL) {
 			break
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
-	if !isTCPAlive("127.0.0.1", hostPort) {
+	if !isHTTPAlive(baseURL) {
 		exec.Command("docker", "stop", containerID).Run()
-		return ConnectionInfo{}, fmt.Errorf("docker container for project %s timed out waiting for port %d", projectID, hostPort)
+		return "", fmt.Errorf("docker container for project %s timed out waiting on %s", projectID, baseURL)
 	}
 
-	conn := ConnectionInfo{Host: "127.0.0.1", Port: hostPort}
-	if err := m.writeConnectionFile(projectID, conn); err != nil {
-		fmt.Fprintf(os.Stderr, "warn: write docker connection file: %v\n", err)
-	}
-	return conn, nil
+	m.containerMu.Lock()
+	m.dockerURLs[projectID] = baseURL
+	m.containerMu.Unlock()
+	return baseURL, nil
 }
 
 func parseDockerPort(s string) (int, error) {
@@ -293,17 +302,18 @@ func parseDockerPort(s string) (int, error) {
 
 // ── Remote agent ─────────────────────────────────────────────────────────────
 
-func (m *Manager) connectRemote(config map[string]any) (ConnectionInfo, error) {
+func (m *Manager) connectRemote(config map[string]any) (string, error) {
 	host, _ := config["host"].(string)
 	portF, _ := config["port"].(float64)
 	port := int(portF)
 	if host == "" || port == 0 {
-		return ConnectionInfo{}, fmt.Errorf("remote agent config requires 'host' and 'port'")
+		return "", fmt.Errorf("remote agent config requires 'host' and 'port'")
 	}
-	if !isTCPAlive(host, port) {
-		return ConnectionInfo{}, fmt.Errorf("remote agent at %s:%d is not reachable", host, port)
+	baseURL := fmt.Sprintf("http://%s:%d", host, port)
+	if !isHTTPAlive(baseURL) {
+		return "", fmt.Errorf("remote agent at %s is not reachable", baseURL)
 	}
-	return ConnectionInfo{Host: host, Port: port}, nil
+	return baseURL, nil
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -356,11 +366,12 @@ func isAlive(pid int) bool {
 	return proc.Signal(syscall.Signal(0)) == nil
 }
 
-func isTCPAlive(host string, port int) bool {
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", host, port), time.Second)
+func isHTTPAlive(baseURL string) bool {
+	cl := &http.Client{Timeout: time.Second}
+	resp, err := cl.Get(baseURL + "/info")
 	if err != nil {
 		return false
 	}
-	conn.Close()
-	return true
+	resp.Body.Close()
+	return resp.StatusCode < 500
 }
