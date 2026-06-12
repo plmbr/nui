@@ -59,6 +59,8 @@ class LoopAgent:
 
     def serve(self):
         """Start the TCP server. Blocks until KeyboardInterrupt."""
+        # --project-id <id> is passed by the Go manager to scope this process to one project.
+        self._project_id = self._parse_project_id()
         session_id = str(uuid.uuid4())
 
         srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -86,8 +88,15 @@ class LoopAgent:
 
     # ── Private ──────────────────────────────────────────────────────────────
 
+    def _parse_project_id(self) -> str:
+        args = sys.argv[1:]
+        for i, a in enumerate(args):
+            if a == "--project-id" and i + 1 < len(args):
+                return args[i + 1]
+        return self.name
+
     def _write_connection_file(self, port: int, session_id: str) -> Path:
-        path = Path.home() / ".loop" / "extensions" / f"{self.name}.json"
+        path = Path.home() / ".loop" / "extensions" / f"{self._project_id}.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({
             "host": "127.0.0.1",

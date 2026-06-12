@@ -34,28 +34,49 @@ func NewManager(extensionsDir string) *Manager {
 	}
 }
 
-// GetAgent returns an ExtensionAgent for the given agent type, starting the extension if needed.
-func (m *Manager) GetAgent(agentType string) (Agent, error) {
+// GetAgent returns an ExtensionAgent for the given project, starting the extension if needed.
+func (m *Manager) GetAgent(projectID, agentType string) (Agent, error) {
 	script, ok := builtinExtensions[agentType]
 	if !ok {
 		return nil, fmt.Errorf("unknown agent type: %q", agentType)
 	}
-	conn, err := m.ensureRunning(agentType, script)
+	conn, err := m.ensureRunning(projectID, script)
 	if err != nil {
 		return nil, err
 	}
 	return NewExtensionAgent(agentType, conn), nil
 }
 
-// Prewarm starts all built-in extensions in the background.
-func (m *Manager) Prewarm() {
-	for agentType, script := range builtinExtensions {
-		go func(t, s string) {
-			if _, err := m.ensureRunning(t, s); err != nil {
-				fmt.Fprintf(os.Stderr, "warn: prewarm extension %s: %v\n", t, err)
+// PrewarmProjects starts extension processes for each project in the background.
+func (m *Manager) PrewarmProjects(projects []PrewarmEntry) {
+	for _, p := range projects {
+		go func(projectID, agentType string) {
+			script, ok := builtinExtensions[agentType]
+			if !ok {
+				return
 			}
-		}(agentType, script)
+			if _, err := m.ensureRunning(projectID, script); err != nil {
+				fmt.Fprintf(os.Stderr, "warn: prewarm project %s: %v\n", projectID, err)
+			}
+		}(p.ProjectID, p.AgentType)
 	}
+}
+
+// PrewarmEntry holds the project ID and agent type for prewarming.
+type PrewarmEntry struct {
+	ProjectID string
+	AgentType string
+}
+
+// Stop sends SIGTERM to the extension process for a specific project.
+func (m *Manager) Stop(projectID string) {
+	m.mu.Lock()
+	proc, ok := m.processes[projectID]
+	m.mu.Unlock()
+	if ok {
+		proc.Signal(syscall.SIGTERM)
+	}
+	m.deleteConnectionFile(projectID)
 }
 
 // StopAll sends SIGTERM to all managed extension processes.
@@ -68,78 +89,78 @@ func (m *Manager) StopAll() {
 }
 
 // ensureRunning returns a live connection, launching the extension if needed.
-// A per-agent mutex prevents concurrent launches of the same agent type.
-func (m *Manager) ensureRunning(agentType, script string) (ConnectionInfo, error) {
-	// Fast path without the per-agent lock.
-	if conn, err := m.readConnectionFile(agentType); err == nil && isAlive(conn.PID) {
+// A per-project mutex prevents concurrent launches for the same project.
+func (m *Manager) ensureRunning(projectID, script string) (ConnectionInfo, error) {
+	// Fast path without the per-project lock.
+	if conn, err := m.readConnectionFile(projectID); err == nil && isAlive(conn.PID) {
 		return conn, nil
 	}
 
-	// Acquire the per-agent launch lock to serialise launch attempts.
-	v, _ := m.agentMu.LoadOrStore(agentType, &sync.Mutex{})
+	// Acquire the per-project launch lock to serialise launch attempts.
+	v, _ := m.agentMu.LoadOrStore(projectID, &sync.Mutex{})
 	agLock := v.(*sync.Mutex)
 	agLock.Lock()
 	defer agLock.Unlock()
 
 	// Re-check now that we hold the lock; another goroutine may have launched it.
-	if conn, err := m.readConnectionFile(agentType); err == nil && isAlive(conn.PID) {
+	if conn, err := m.readConnectionFile(projectID); err == nil && isAlive(conn.PID) {
 		return conn, nil
 	}
-	return m.launch(agentType, script)
+	return m.launch(projectID, script)
 }
 
-func (m *Manager) launch(agentType, script string) (ConnectionInfo, error) {
+func (m *Manager) launch(projectID, script string) (ConnectionInfo, error) {
 	// Remove a stale connection file so waitForConnection cannot return it.
-	m.deleteConnectionFile(agentType)
+	m.deleteConnectionFile(projectID)
 
 	scriptPath := filepath.Join(m.extensionsDir, script)
-	cmd := exec.Command("python3", scriptPath)
+	cmd := exec.Command("python3", scriptPath, "--project-id", projectID)
 	cmd.Stderr = os.Stderr
 	// Run the extension in its own session so terminal signals (SIGINT, SIGHUP)
 	// do not propagate from the Go server's process group to the extension.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 
 	if err := cmd.Start(); err != nil {
-		return ConnectionInfo{}, fmt.Errorf("launch extension %s: %w", agentType, err)
+		return ConnectionInfo{}, fmt.Errorf("launch extension for project %s: %w", projectID, err)
 	}
 
 	m.mu.Lock()
-	m.processes[agentType] = cmd.Process
+	m.processes[projectID] = cmd.Process
 	m.mu.Unlock()
 
-	conn, err := m.waitForConnection(agentType, 15*time.Second)
+	conn, err := m.waitForConnection(projectID, 15*time.Second)
 	if err != nil {
 		cmd.Process.Kill()
-		return ConnectionInfo{}, fmt.Errorf("extension %s failed to start: %w", agentType, err)
+		return ConnectionInfo{}, fmt.Errorf("extension for project %s failed to start: %w", projectID, err)
 	}
 
 	go func() {
 		cmd.Wait()
 		m.mu.Lock()
-		delete(m.processes, agentType)
+		delete(m.processes, projectID)
 		m.mu.Unlock()
 	}()
 
 	return conn, nil
 }
 
-func (m *Manager) waitForConnection(agentType string, timeout time.Duration) (ConnectionInfo, error) {
+func (m *Manager) waitForConnection(projectID string, timeout time.Duration) (ConnectionInfo, error) {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		if conn, err := m.readConnectionFile(agentType); err == nil {
+		if conn, err := m.readConnectionFile(projectID); err == nil {
 			return conn, nil
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
-	return ConnectionInfo{}, fmt.Errorf("timed out waiting for extension %s to start", agentType)
+	return ConnectionInfo{}, fmt.Errorf("timed out waiting for extension for project %s to start", projectID)
 }
 
-func (m *Manager) readConnectionFile(agentType string) (ConnectionInfo, error) {
+func (m *Manager) readConnectionFile(projectID string) (ConnectionInfo, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ConnectionInfo{}, fmt.Errorf("get home dir: %w", err)
 	}
-	data, err := os.ReadFile(filepath.Join(home, ".loop", "extensions", agentType+".json"))
+	data, err := os.ReadFile(filepath.Join(home, ".loop", "extensions", projectID+".json"))
 	if err != nil {
 		return ConnectionInfo{}, err
 	}
@@ -147,12 +168,12 @@ func (m *Manager) readConnectionFile(agentType string) (ConnectionInfo, error) {
 	return conn, json.Unmarshal(data, &conn)
 }
 
-func (m *Manager) deleteConnectionFile(agentType string) {
+func (m *Manager) deleteConnectionFile(projectID string) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return
 	}
-	os.Remove(filepath.Join(home, ".loop", "extensions", agentType+".json"))
+	os.Remove(filepath.Join(home, ".loop", "extensions", projectID+".json"))
 }
 
 func isAlive(pid int) bool {

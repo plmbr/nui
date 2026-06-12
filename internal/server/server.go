@@ -33,7 +33,13 @@ func Start(port int, uiFiles fs.FS, extFiles embed.FS) error {
 		return fmt.Errorf("extracting extensions: %w", err)
 	}
 	extensionManager = agent.NewManager(extDir)
-	extensionManager.Prewarm()
+	mu.RLock()
+	entries := make([]agent.PrewarmEntry, 0, len(projects))
+	for _, p := range projects {
+		entries = append(entries, agent.PrewarmEntry{ProjectID: p.ID, AgentType: p.AgentType})
+	}
+	mu.RUnlock()
+	extensionManager.PrewarmProjects(entries)
 
 	registerAPIRoutes(mux)
 

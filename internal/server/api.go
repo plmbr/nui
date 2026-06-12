@@ -244,6 +244,7 @@ func handleProject(w http.ResponseWriter, r *http.Request) {
 		if err := store.SaveData(snapshot); err != nil {
 			fmt.Fprintf(os.Stderr, "warn: save data after delete: %v\n", err)
 		}
+		extensionManager.Stop(id)
 		if sessionID != "" {
 			var delErr error
 			if agentType == "pi" {
@@ -380,7 +381,7 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 		return
 	}
 
-	ag, err := extensionManager.GetAgent(project.AgentType)
+	ag, err := extensionManager.GetAgent(project.ID, project.AgentType)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("agent unavailable: %v", err), http.StatusServiceUnavailable)
 		return
