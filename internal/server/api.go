@@ -221,10 +221,11 @@ func handleProject(w http.ResponseWriter, r *http.Request) {
 
 	case http.MethodDelete:
 		mu.Lock()
-		var sessionID, workingDir string
+		var sessionID, workingDir, agentType string
 		if p, ok := findProject(id); ok {
 			sessionID = projectSessions[id]
 			workingDir = p.WorkingDir
+			agentType = p.AgentType
 		}
 		removed := deleteProject(id)
 		if removed {
@@ -244,8 +245,14 @@ func handleProject(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(os.Stderr, "warn: save data after delete: %v\n", err)
 		}
 		if sessionID != "" {
-			if err := store.DeleteClaudeSession(workingDir, sessionID); err != nil {
-				fmt.Fprintf(os.Stderr, "warn: delete session file: %v\n", err)
+			var delErr error
+			if agentType == "pi" {
+				delErr = store.DeletePiSession(workingDir, sessionID)
+			} else {
+				delErr = store.DeleteClaudeSession(workingDir, sessionID)
+			}
+			if delErr != nil {
+				fmt.Fprintf(os.Stderr, "warn: delete session file: %v\n", delErr)
 			}
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -444,7 +451,13 @@ func handleProjectHistory(w http.ResponseWriter, r *http.Request, projectID stri
 		http.NotFound(w, r)
 		return
 	}
-	msgs, err := store.LoadClaudeHistory(project.WorkingDir, sessionID)
+	var msgs []model.ChatMessage
+	var err error
+	if project.AgentType == "pi" {
+		msgs, err = store.LoadPiHistory(project.WorkingDir, sessionID)
+	} else {
+		msgs, err = store.LoadClaudeHistory(project.WorkingDir, sessionID)
+	}
 	if err != nil {
 		http.Error(w, "failed to load history", http.StatusInternalServerError)
 		return
