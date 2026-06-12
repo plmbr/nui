@@ -35,9 +35,11 @@ class ClaudeCodeAgent(LoopAgent):
 
         proc = subprocess.Popen(
             args,
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             cwd=working_dir,
+            start_new_session=True,
         )
 
         def drain_stderr():

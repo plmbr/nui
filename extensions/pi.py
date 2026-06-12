@@ -11,7 +11,7 @@ import os
 import subprocess
 import sys
 import threading
-from subprocess import PIPE
+from subprocess import PIPE, DEVNULL
 
 sys.path.insert(0, os.path.dirname(__file__))
 from loop_agent import LoopAgent
@@ -33,7 +33,10 @@ class PiAgent(LoopAgent):
         if session_id:
             args += ["--session", session_id]
 
-        proc = subprocess.Popen(args, stdout=PIPE, stderr=PIPE, cwd=working_dir)
+        proc = subprocess.Popen(
+            args, stdin=DEVNULL, stdout=PIPE, stderr=PIPE,
+            cwd=working_dir, start_new_session=True,
+        )
 
         for raw in proc.stdout:
             line = raw.decode(errors="replace").strip()

@@ -22,7 +22,8 @@ var builtinExtensions = map[string]string{
 // Manager launches and reconnects to extension processes.
 type Manager struct {
 	extensionsDir string
-	mu            sync.Mutex
+	mu            sync.Mutex        // protects processes
+	agentMu       sync.Map          // map[agentType]*sync.Mutex — serialises per-agent launch
 	processes     map[string]*os.Process
 }
 
@@ -66,7 +67,21 @@ func (m *Manager) StopAll() {
 	}
 }
 
+// ensureRunning returns a live connection, launching the extension if needed.
+// A per-agent mutex prevents concurrent launches of the same agent type.
 func (m *Manager) ensureRunning(agentType, script string) (ConnectionInfo, error) {
+	// Fast path without the per-agent lock.
+	if conn, err := m.readConnectionFile(agentType); err == nil && isAlive(conn.PID) {
+		return conn, nil
+	}
+
+	// Acquire the per-agent launch lock to serialise launch attempts.
+	v, _ := m.agentMu.LoadOrStore(agentType, &sync.Mutex{})
+	agLock := v.(*sync.Mutex)
+	agLock.Lock()
+	defer agLock.Unlock()
+
+	// Re-check now that we hold the lock; another goroutine may have launched it.
 	if conn, err := m.readConnectionFile(agentType); err == nil && isAlive(conn.PID) {
 		return conn, nil
 	}
@@ -74,9 +89,16 @@ func (m *Manager) ensureRunning(agentType, script string) (ConnectionInfo, error
 }
 
 func (m *Manager) launch(agentType, script string) (ConnectionInfo, error) {
+	// Remove a stale connection file so waitForConnection cannot return it.
+	m.deleteConnectionFile(agentType)
+
 	scriptPath := filepath.Join(m.extensionsDir, script)
 	cmd := exec.Command("python3", scriptPath)
 	cmd.Stderr = os.Stderr
+	// Run the extension in its own session so terminal signals (SIGINT, SIGHUP)
+	// do not propagate from the Go server's process group to the extension.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+
 	if err := cmd.Start(); err != nil {
 		return ConnectionInfo{}, fmt.Errorf("launch extension %s: %w", agentType, err)
 	}
@@ -123,6 +145,14 @@ func (m *Manager) readConnectionFile(agentType string) (ConnectionInfo, error) {
 	}
 	var conn ConnectionInfo
 	return conn, json.Unmarshal(data, &conn)
+}
+
+func (m *Manager) deleteConnectionFile(agentType string) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	os.Remove(filepath.Join(home, ".loop", "extensions", agentType+".json"))
 }
 
 func isAlive(pid int) bool {
