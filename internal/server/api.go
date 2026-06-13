@@ -124,7 +124,18 @@ func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	writeJSON(w, http.StatusOK, agentTypes)
+	all := make([]AgentType, len(agentTypes))
+	copy(all, agentTypes)
+
+	defs, err := store.LoadADLDefinitions()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warn: load ADL definitions: %v\n", err)
+	}
+	for _, def := range defs {
+		all = append(all, AgentType{ID: "adl:" + def.Name, Label: def.Name})
+	}
+
+	writeJSON(w, http.StatusOK, all)
 }
 
 func findProject(id string) (model.Project, bool) {
@@ -385,21 +396,48 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 		return
 	}
 
-	ag, err := extensionManager.GetAgent(project.ID, project.AgentType, project.AgentConfig)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("agent unavailable: %v", err), http.StatusServiceUnavailable)
-		return
+	var ag agent.Agent
+	if strings.HasPrefix(project.AgentType, "adl:") {
+		defName := strings.TrimPrefix(project.AgentType, "adl:")
+		defs, loadErr := store.LoadADLDefinitions()
+		if loadErr != nil {
+			http.Error(w, fmt.Sprintf("failed to load ADL definitions: %v", loadErr), http.StatusInternalServerError)
+			return
+		}
+		var found bool
+		for _, def := range defs {
+			if def.Name == defName {
+				ag = agent.NewADLAgent(def, project.ID, extensionManager)
+				found = true
+				break
+			}
+		}
+		if !found {
+			http.Error(w, fmt.Sprintf("ADL definition %q not found", defName), http.StatusNotFound)
+			return
+		}
+	} else {
+		var err error
+		ag, err = extensionManager.GetAgent(project.ID, project.AgentType, project.AgentConfig)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("agent unavailable: %v", err), http.StatusServiceUnavailable)
+			return
+		}
 	}
 
+	isADL := strings.HasPrefix(project.AgentType, "adl:")
 	events := make(chan agent.Event, 64)
 
 	go func() {
 		defer close(events)
-		err := ag.Run(r.Context(), agent.RunRequest{
-			SessionID:  sessionID,
+		runReq := agent.RunRequest{
 			WorkingDir: project.WorkingDir,
 			Message:    req.Message,
-		}, events)
+		}
+		if !isADL {
+			runReq.SessionID = sessionID
+		}
+		err := ag.Run(r.Context(), runReq, events)
 		if err != nil && r.Context().Err() == nil {
 			events <- agent.Event{Type: agent.EventError, Error: err.Error()}
 		}
@@ -430,12 +468,12 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 		}
 		mu.Lock()
 		projectMessages[projectID] = append(projectMessages[projectID], assistantMsg)
-		if newSessionID != "" {
+		if newSessionID != "" && !isADL {
 			projectSessions[projectID] = newSessionID
 		}
 		snapshot := snapshotData()
 		mu.Unlock()
-		if newSessionID != "" {
+		if newSessionID != "" && !isADL {
 			if err := store.SaveData(snapshot); err != nil {
 				fmt.Fprintf(os.Stderr, "warn: save session: %v\n", err)
 			}
@@ -454,6 +492,10 @@ func handleProjectHistory(w http.ResponseWriter, r *http.Request, projectID stri
 	mu.RUnlock()
 	if !ok {
 		http.NotFound(w, r)
+		return
+	}
+	if strings.HasPrefix(project.AgentType, "adl:") {
+		writeJSON(w, http.StatusOK, []model.ChatMessage{})
 		return
 	}
 	var msgs []model.ChatMessage

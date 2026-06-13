@@ -14,6 +14,8 @@ import (
 type ClaudeCodeAgent struct {
 	// BinaryPath overrides the claude binary location; defaults to "claude" on PATH.
 	BinaryPath string
+	// Model overrides the default model (e.g. "claude-opus-4-8").
+	Model string
 }
 
 func (a *ClaudeCodeAgent) Name() string { return "claude-code" }
@@ -24,15 +26,24 @@ func (a *ClaudeCodeAgent) Run(ctx context.Context, req RunRequest, events chan<-
 		bin = "claude"
 	}
 
+	model := a.Model
+	if model == "" {
+		model = "claude-sonnet-4-6"
+	}
+
 	args := []string{
 		"-p", req.Message,
 		"--output-format", "stream-json",
 		"--verbose",
 		"--dangerously-skip-permissions",
 		"--include-partial-messages",
+		"--model", model,
 	}
 	if req.SessionID != "" {
 		args = append(args, "--resume", req.SessionID)
+	}
+	if req.SystemPrompt != "" {
+		args = append(args, "--system-prompt", req.SystemPrompt)
 	}
 
 	cmd := exec.CommandContext(ctx, bin, args...)

@@ -164,6 +164,9 @@ func (a *HTTPExtensionAgent) Run(ctx context.Context, req RunRequest, events cha
 	if req.WorkingDir != "" {
 		params["workingDir"] = req.WorkingDir
 	}
+	if req.SystemPrompt != "" {
+		params["systemPrompt"] = req.SystemPrompt
+	}
 
 	body, _ := json.Marshal(params)
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", a.baseURL+"/run", bytes.NewReader(body))

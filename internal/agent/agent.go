@@ -20,9 +20,10 @@ type Event struct {
 }
 
 type RunRequest struct {
-	SessionID  string
-	WorkingDir string
-	Message    string
+	SessionID    string
+	WorkingDir   string
+	Message      string
+	SystemPrompt string
 }
 
 type Agent interface {

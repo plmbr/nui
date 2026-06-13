@@ -40,11 +40,12 @@ export function NewProjectDialog({ open, onOpenChange, onCreated }: Props) {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (!open) return
     api.agentTypes.list().then((types) => {
       setAgentTypes(types)
       if (types.length > 0) setAgentType(types[0].id)
     }).catch(() => {})
-  }, [])
+  }, [open])
 
   function reset() {
     setName('')

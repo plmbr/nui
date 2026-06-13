@@ -74,6 +74,10 @@ func (m *Manager) GetAgent(projectID, agentType string, config map[string]any) (
 func (m *Manager) PrewarmProjects(projects []PrewarmEntry) {
 	for _, p := range projects {
 		go func(e PrewarmEntry) {
+			// ADL projects are not managed by the extension manager — skip silently.
+			if strings.HasPrefix(e.AgentType, "adl:") {
+				return
+			}
 			if _, err := m.GetAgent(e.ProjectID, e.AgentType, e.AgentConfig); err != nil {
 				fmt.Fprintf(os.Stderr, "warn: prewarm project %s: %v\n", e.ProjectID, err)
 			}

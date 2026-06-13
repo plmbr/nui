@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"gopkg.in/yaml.v3"
 	"loop/internal/model"
 )
 
@@ -86,6 +87,48 @@ func LoadData() (Data, error) {
 
 func SaveData(d Data) error {
 	return saveJSON("data.json", d)
+}
+
+func AgentsDir() (string, error) {
+	dir, err := Dir()
+	if err != nil {
+		return "", err
+	}
+	agentsDir := filepath.Join(dir, "agents")
+	if err := os.MkdirAll(agentsDir, 0700); err != nil {
+		return "", err
+	}
+	return agentsDir, nil
+}
+
+func LoadADLDefinitions() ([]model.ADLDefinition, error) {
+	dir, err := AgentsDir()
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var defs []model.ADLDefinition
+	for _, e := range entries {
+		if e.IsDir() || filepath.Ext(e.Name()) != ".yaml" {
+			continue
+		}
+		raw, err := os.ReadFile(filepath.Join(dir, e.Name()))
+		if err != nil {
+			continue
+		}
+		var def model.ADLDefinition
+		if err := yaml.Unmarshal(raw, &def); err != nil {
+			continue
+		}
+		if def.Name == "" {
+			continue
+		}
+		defs = append(defs, def)
+	}
+	return defs, nil
 }
 
 func saveJSON(filename string, v any) error {
