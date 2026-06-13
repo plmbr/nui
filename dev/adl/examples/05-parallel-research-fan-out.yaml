@@ -1,0 +1,77 @@
+adl: "1.0"
+
+# Three research angles run in parallel; an aggregator step waits for all
+# three and synthesizes a final report.
+#
+# Execution graph:
+#
+#   ┌─ research-technical ─┐
+#   ├─ research-business  ─┼─→ synthesize
+#   └─ research-risks     ─┘
+#
+# Demonstrates: parallel policy, fan-in via dependsOn list, multiple inputs.
+
+name: parallel-market-research
+description: Researches a topic from three angles in parallel then synthesizes findings.
+version: 0.1.0
+
+harness:
+  type: claude-code
+  model: claude-sonnet-4-6
+
+constraints:
+  maxTokens: 100000
+  timeout: 15m
+
+steps:
+  - name: research-technical
+    policy: react
+    systemPrompt: |
+      You are a technical analyst. Investigate the technical aspects of the
+      user's topic: architecture, implementation complexity, technical risks,
+      and relevant existing solutions. Return a concise technical brief.
+    outputs:
+      - name: brief
+        type: text
+
+  - name: research-business
+    policy: react
+    systemPrompt: |
+      You are a business analyst. Investigate the business aspects of the
+      user's topic: market size, competitive landscape, monetization models,
+      and key business risks. Return a concise business brief.
+    outputs:
+      - name: brief
+        type: text
+
+  - name: research-risks
+    policy: react
+    systemPrompt: |
+      You are a risk analyst. Investigate the risk profile of the user's
+      topic: regulatory concerns, security implications, ethical considerations,
+      and mitigation strategies. Return a concise risk brief.
+    outputs:
+      - name: brief
+        type: text
+
+  - name: synthesize
+    policy: react
+    dependsOn:
+      - research-technical
+      - research-business
+      - research-risks
+    inputs:
+      - from: research-technical.brief
+        as: technicalBrief
+      - from: research-business.brief
+        as: businessBrief
+      - from: research-risks.brief
+        as: riskBrief
+    systemPrompt: |
+      You are a strategic advisor. You will receive three research briefs —
+      technical, business, and risk. Synthesize them into a single executive
+      summary with three sections: Opportunity, Challenges, and Recommendation.
+      Be concise and decisive.
+    outputs:
+      - name: report
+        type: text

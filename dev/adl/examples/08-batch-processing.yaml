@@ -1,0 +1,57 @@
+adl: "1.0"
+
+# Batch agent: applies the same step to each item in an input list in parallel
+# (up to maxConcurrency at a time), then aggregates all results.
+#
+# Execution graph:
+#
+#   parse-input → [batch: translate × N items in parallel] → summarize-results
+#
+# Demonstrates: batch policy, maxConcurrency, per-item parallelism.
+
+name: batch-translator
+description: Translates a list of texts into a target language in parallel.
+version: 0.1.0
+
+harness:
+  type: claude-code
+  model: claude-haiku-4-5-20251001    # fast/cheap model for batch work
+
+constraints:
+  maxTokens: 200000
+  timeout: 30m
+  maxConcurrency: 5    # at most 5 batch items running simultaneously
+
+steps:
+  - name: parse-input
+    policy: react
+    systemPrompt: |
+      The user will provide a list of texts to translate and a target language.
+      Parse the input and output a JSON array of objects:
+        [{"id": 1, "text": "..."}, {"id": 2, "text": "..."}, ...]
+      Output only the JSON — no other text.
+    outputs:
+      - name: items
+        type: json
+
+  - name: translate
+    policy: batch
+    dependsOn: [parse-input]
+    inputs:
+      - from: parse-input.items    # the batch runner maps over this array
+    systemPrompt: |
+      Translate the provided text into the target language requested by the user.
+      Output only the translated text — no labels, no commentary.
+    outputs:
+      - name: translated
+        type: text
+
+  - name: compile-results
+    policy: react
+    dependsOn: [translate]
+    inputs:
+      - from: translate.translated    # array of all batch outputs
+    systemPrompt: |
+      You receive all translated texts. Format them as a numbered list
+      matching the original order. Then print a one-line summary:
+      "Translated <N> items to <language>."

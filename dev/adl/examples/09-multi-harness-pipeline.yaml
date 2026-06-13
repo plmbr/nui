@@ -1,0 +1,110 @@
+adl: "1.0"
+
+# Each step runs on a different harness and model.
+# Demonstrates that Loop resolves the harness per-step and routes accordingly.
+#
+# Execution graph:
+#
+#   plan (claude-code, opus)
+#     → execute (docker, sandboxed runner)
+#     → review (claude-code, sonnet)
+#     → [approval gate]
+#     → deploy (remote, CI server)
+#
+# Real-world analogy: AI pair programmer — plans in Claude, runs in a sandbox,
+# reviews the output, gets human sign-off, then triggers a remote CI deploy.
+
+name: ai-dev-pipeline
+description: Plan → sandbox execute → review → approve → remote deploy.
+version: 0.1.0
+
+# Top-level harness is the default for steps that don't override it.
+harness:
+  type: claude-code
+  model: claude-sonnet-4-6
+
+constraints:
+  maxTokens: 150000
+  timeout: 45m
+
+steps:
+  - name: plan
+    policy: react
+    harness:
+      type: claude-code
+      model: claude-opus-4-8    # best model for planning
+    systemPrompt: |
+      You are a senior software engineer. The user will describe a feature or bug fix.
+      Produce a step-by-step implementation plan:
+        1. Files to create or modify
+        2. Exact code changes (show diffs)
+        3. Test commands to verify the change
+      Be precise — a code runner will execute your instructions literally.
+    outputs:
+      - name: plan
+        type: text
+
+  - name: execute
+    policy: react
+    harness:
+      type: docker
+      image: loop-dev-sandbox:latest    # pre-built image with the project code
+      containerPort: 9090
+    dependsOn: [plan]
+    inputs:
+      - from: plan.plan
+    systemPrompt: |
+      Apply the implementation plan to the codebase in this sandbox.
+      Run the test commands from the plan and report results.
+      Output: pass/fail per test, stdout, and any errors.
+    outputs:
+      - name: testResults
+        type: text
+
+  - name: review
+    policy: react
+    harness:
+      type: claude-code
+      model: claude-sonnet-4-6
+    dependsOn: [plan, execute]
+    inputs:
+      - from: plan.plan
+        as: implementationPlan
+      - from: execute.testResults
+        as: testResults
+    systemPrompt: |
+      Review the implementation plan and test results.
+      Assess: Did all tests pass? Are there any concerns?
+      Output a short review: PASS or FAIL, with a one-paragraph justification.
+    outputs:
+      - name: verdict
+        type: text
+
+  - name: human-signoff
+    policy: react
+    dependsOn: [review]
+    inputs:
+      - from: review.verdict
+    approval: required
+    approvalTimeout: 60m
+    systemPrompt: |
+      Present the automated review verdict to the human.
+      Ask: "The automated review says <verdict>. Approve deployment? APPROVE or REJECT."
+
+  - name: deploy
+    policy: react
+    harness:
+      type: remote
+      host: ci.internal
+      port: 9090    # CI server running the Loop HTTP/SSE extension protocol
+    dependsOn: [human-signoff]
+    inputs:
+      - from: human-signoff.approvalDecision
+      - from: execute.testResults
+    systemPrompt: |
+      Trigger a deployment using the test-validated build artifact.
+      Report the deployment job URL and status.
+    tools:
+      mcp:
+        - url: http://ci.internal:3020
+          name: ci-runner

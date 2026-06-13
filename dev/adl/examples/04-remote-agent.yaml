@@ -1,0 +1,24 @@
+adl: "1.0"
+
+# Agent that delegates to a remote HTTP/SSE server.
+# Loop connects to the server at the configured host:port on project create
+# (GET /info reachability check) and calls POST /run for each message.
+# The remote process is not managed by Loop — you must start/stop it yourself.
+#
+# Typical use cases:
+#   - An agent running on a GPU server
+#   - A production model endpoint behind a TLS reverse proxy
+#   - A shared team agent on an internal network
+
+name: remote-llm
+description: Forwards requests to a remotely hosted LLM agent server.
+version: 0.1.0
+
+harness:
+  type: remote
+  host: 10.0.1.42        # IP or hostname of the remote machine
+  port: 9090             # must match the port the agent server is listening on
+
+steps:
+  - name: infer
+    policy: react

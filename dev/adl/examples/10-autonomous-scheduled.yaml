@@ -1,0 +1,70 @@
+adl: "1.0"
+
+# Autonomous agent that runs on a cron schedule with no human interaction.
+# Monitors a data source, generates a digest, and posts it to a Slack channel.
+#
+# Demonstrates: autonomous mode, schedule, external tools via MCP, no HITL.
+
+name: daily-digest
+description: Every morning, summarize overnight GitHub activity and post to Slack.
+version: 0.1.0
+
+harness:
+  type: claude-code
+  model: claude-haiku-4-5-20251001
+
+schedule:
+  cron: "0 9 * * 1-5"    # 09:00 Mon–Fri
+  timezone: America/Los_Angeles
+
+tools:
+  mcp:
+    - url: http://localhost:3030
+      name: github
+    - url: http://localhost:3031
+      name: slack
+
+constraints:
+  maxTokens: 20000
+  timeout: 5m
+  retries: 2
+
+steps:
+  - name: fetch-activity
+    policy: react
+    systemPrompt: |
+      Use the github MCP tool to fetch:
+        - PRs opened or merged in the last 24 hours
+        - Issues opened or closed in the last 24 hours
+        - Any CI failures on the main branch
+      For each item include: title, author, URL, and status.
+      Output a structured JSON summary.
+    outputs:
+      - name: activity
+        type: json
+
+  - name: write-digest
+    policy: react
+    dependsOn: [fetch-activity]
+    inputs:
+      - from: fetch-activity.activity
+    systemPrompt: |
+      You are a technical writer producing a daily engineering digest.
+      Format the activity data as a Slack message using mrkdwn:
+        *Daily Digest — <date>*
+        *PRs:* <bullet list>
+        *Issues:* <bullet list>
+        *CI:* <status>
+      Keep it under 40 lines. Use emoji sparingly.
+    outputs:
+      - name: message
+        type: text
+
+  - name: post-to-slack
+    policy: react
+    dependsOn: [write-digest]
+    inputs:
+      - from: write-digest.message
+    systemPrompt: |
+      Post the digest message to the #engineering-digest Slack channel
+      using the slack MCP tool.

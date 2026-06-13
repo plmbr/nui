@@ -1,0 +1,25 @@
+adl: "1.0"
+
+# Single-step agent running inside a Docker container.
+# The container image implements the Loop HTTP/SSE extension protocol:
+#   GET  /info  → {"name","version","capabilities"}
+#   POST /run   → text/event-stream
+#   POST /cancel
+#
+# Loop launches the container automatically on first use and stops it on delete.
+
+name: code-runner
+description: Executes code snippets in an isolated Docker sandbox and returns the output.
+version: 0.1.0
+
+harness:
+  type: docker
+  image: loop-code-runner:latest    # must be built locally: docker build -t loop-code-runner .
+  containerPort: 9090
+
+steps:
+  - name: execute
+    policy: react
+    systemPrompt: |
+      You are a code execution sandbox. The user will send you a code snippet.
+      Run it and return stdout, stderr, and the exit code. Never modify the code.
