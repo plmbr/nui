@@ -126,21 +126,13 @@ export function ChatPanel({ project }: Props) {
   return (
     <div className="flex flex-col h-full">
       <ScrollArea className="flex-1 min-h-0">
-        <div className="p-4 space-y-4">
+        <div className="chat-message-list">
           {messages.length === 0 && (
-            <div className="text-center text-muted-foreground text-sm py-12">
-              No messages yet. Start a conversation.
-            </div>
+            <div className="chat-empty">No messages yet. Start a conversation.</div>
           )}
           {messages.map((m) => (
-            <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div
-                className={`rounded-lg px-4 py-2.5 text-sm break-words ${
-                  m.role === 'user'
-                    ? 'max-w-[80%] bg-primary text-primary-foreground whitespace-pre-wrap'
-                    : 'w-full bg-muted text-foreground prose prose-sm dark:prose-invert max-w-none'
-                }`}
-              >
+            <div key={m.id} className="chat-message-row" data-role={m.role}>
+              <div className="chat-bubble" data-role={m.role}>
                 {m.role === 'user' ? (
                   m.content || (streaming && m.id === streamingIdRef.current ? '▋' : '')
                 ) : (
@@ -154,10 +146,10 @@ export function ChatPanel({ project }: Props) {
           <div ref={bottomRef} />
         </div>
       </ScrollArea>
-      <div className="border-t p-4 flex gap-2 items-end shrink-0">
+      <div className="chat-input-bar">
         <Textarea
           ref={inputRef}
-          className="flex-1 min-h-[60px] max-h-[160px] resize-none"
+          className="chat-input"
           placeholder="Ask your agent anything…"
           value={input}
           onChange={(e) => setInput(e.target.value)}

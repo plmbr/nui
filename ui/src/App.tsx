@@ -46,9 +46,9 @@ export default function App() {
     <ThemeProvider>
     <TooltipProvider>
       <SidebarProvider>
-        <header className="fixed top-0 left-0 right-0 h-12 z-50 flex items-center px-4 border-b bg-background gap-3 shrink-0">
+        <header className="app-header">
           <SidebarTrigger />
-<span className="font-semibold text-sm">The Loop</span>
+          <span className="font-semibold text-sm">The Loop</span>
           {selected && (
             <>
               <span className="text-muted-foreground text-sm">/</span>
@@ -56,7 +56,7 @@ export default function App() {
             </>
           )}
         </header>
-        <div className="flex h-screen w-full overflow-hidden pt-12">
+        <div className="app-body">
           <AppSidebar
             projects={projects}
             selectedId={selectedId}
@@ -65,20 +65,20 @@ export default function App() {
           />
           <main className="flex-1 overflow-hidden">
             {selected ? (
-              <div className="flex h-full overflow-hidden">
-                <div className="w-72 shrink-0 border-r overflow-auto">
+              <div className="project-layout">
+                <div className="project-details-panel">
                   <ProjectDetails
                     project={selected}
                     onRename={handleRenameProject}
                     onDelete={handleDeleteProject}
                   />
                 </div>
-                <div className="flex-1 overflow-hidden" key={selected.id}>
+                <div className="project-chat-panel" key={selected.id}>
                   <ConversationPanel project={selected} />
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+              <div className="empty-state">
                 Select a project or create a new one.
               </div>
             )}

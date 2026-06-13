@@ -32,21 +32,15 @@ export function SettingsSheet() {
             <div className="flex gap-2">
               <button
                 onClick={() => setTheme('light')}
-                className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${
-                  theme === 'light'
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border hover:bg-muted'
-                }`}
+                className="theme-btn"
+                data-active={theme === 'light'}
               >
                 Light
               </button>
               <button
                 onClick={() => setTheme('dark')}
-                className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${
-                  theme === 'dark'
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border hover:bg-muted'
-                }`}
+                className="theme-btn"
+                data-active={theme === 'dark'}
               >
                 Dark
               </button>

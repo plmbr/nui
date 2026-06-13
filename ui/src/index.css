@@ -250,3 +250,117 @@
   padding: 0.1em 0.35em;
   border-radius: 0.25rem;
 }
+
+@layer components {
+  /* ─── App shell ──────────────────────────────────────────────── */
+  .app-header {
+    @apply fixed top-0 left-0 right-0 z-50 flex h-12 shrink-0 items-center gap-3 border-b bg-background px-4;
+  }
+
+  .app-body {
+    @apply flex h-screen w-full overflow-hidden pt-12;
+  }
+
+  .project-layout {
+    @apply flex h-full overflow-hidden;
+  }
+
+  .project-details-panel {
+    @apply w-72 shrink-0 overflow-auto border-r;
+  }
+
+  .project-chat-panel {
+    @apply flex-1 overflow-hidden;
+  }
+
+  .empty-state {
+    @apply flex h-full items-center justify-center text-sm text-muted-foreground;
+  }
+
+  /* ─── Chat panel ─────────────────────────────────────────────── */
+  .chat-message-list {
+    @apply space-y-4 p-4;
+  }
+
+  .chat-empty {
+    @apply py-12 text-center text-sm text-muted-foreground;
+  }
+
+  .chat-message-row {
+    @apply flex;
+
+    &[data-role="user"] { @apply justify-end; }
+    &[data-role="assistant"] { @apply justify-start; }
+  }
+
+  .chat-bubble {
+    @apply break-words rounded-lg px-4 py-2.5 text-sm;
+
+    &[data-role="user"] {
+      max-width: 80%;
+      @apply bg-primary text-primary-foreground whitespace-pre-wrap;
+    }
+
+    &[data-role="assistant"] {
+      @apply prose prose-sm w-full max-w-none bg-muted text-foreground;
+      .dark & { @apply prose-invert; }
+    }
+  }
+
+  .chat-input-bar {
+    @apply flex shrink-0 items-end gap-2 border-t p-4;
+  }
+
+  .chat-input {
+    @apply flex-1 resize-none;
+    min-height: 60px;
+    max-height: 160px;
+  }
+
+  /* ─── Project details ────────────────────────────────────────── */
+  .project-details {
+    @apply flex max-w-xl flex-col gap-6 p-6;
+  }
+
+  .project-name-row {
+    @apply flex items-center gap-2;
+
+    &:hover .rename-btn {
+      opacity: 1;
+      color: var(--foreground);
+    }
+  }
+
+  .rename-btn {
+    @apply text-muted-foreground transition-opacity;
+    opacity: 0;
+  }
+
+  .project-field {
+    @apply flex items-start gap-3;
+  }
+
+  .project-field-icon {
+    @apply mt-0.5 text-muted-foreground;
+  }
+
+  .project-field-label {
+    @apply text-xs text-muted-foreground;
+  }
+
+  .project-field-value {
+    @apply break-all text-sm font-medium;
+  }
+
+  /* ─── Settings sheet ─────────────────────────────────────────── */
+  .theme-btn {
+    @apply flex-1 rounded-lg border border-border px-4 py-3 text-sm font-medium transition-colors;
+
+    &:hover { @apply bg-muted; }
+
+    &[data-active="true"] {
+      @apply border-primary text-primary;
+      background-color: color-mix(in oklch, var(--primary) 10%, transparent);
+    }
+  }
+}

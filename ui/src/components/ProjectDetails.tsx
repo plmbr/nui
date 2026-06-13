@@ -27,11 +27,11 @@ interface Props {
 
 function Field({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-start gap-3">
-      <div className="mt-0.5 text-muted-foreground">{icon}</div>
+    <div className="project-field">
+      <div className="project-field-icon">{icon}</div>
       <div>
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm font-medium break-all">{value}</p>
+        <p className="project-field-label">{label}</p>
+        <p className="project-field-value">{value}</p>
       </div>
     </div>
   )
@@ -57,7 +57,7 @@ export function ProjectDetails({ project, onRename, onDelete }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6 max-w-xl">
+    <div className="project-details">
       <div>
         {editingName ? (
           <Input
@@ -72,10 +72,10 @@ export function ProjectDetails({ project, onRename, onDelete }: Props) {
             onBlur={saveName}
           />
         ) : (
-          <div className="flex items-center gap-2 group">
+          <div className="project-name-row">
             <h2 className="text-xl font-semibold">{project.name}</h2>
             <button
-              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground transition-opacity"
+              className="rename-btn"
               onClick={startEdit}
               aria-label="Rename project"
             >
