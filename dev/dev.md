@@ -51,9 +51,16 @@ harness:
   model: string                     # e.g. "claude-sonnet-4-6"
   workingDir: string                # optional; defaults to server CWD
   # docker-only:
-  image: string                     # base image; Loop injects its action API
+  image: string                     # container image
+  containerPort: 9090               # port the container listens on
   # remote-only:
-  url: string                       # A2A / OpenAI-compatible endpoint
+  host: string                      # hostname or IP of the remote agent
+  port: 9090                        # port of the remote agent
+
+# ── Schedule (autonomous mode) ────────────────────────────────────────────────
+schedule:
+  cron: "0 9 * * 1-5"              # standard cron expression
+  timezone: America/Los_Angeles     # IANA timezone; defaults to UTC
 
 # ── System prompt ─────────────────────────────────────────────────────────────
 systemPrompt: |
@@ -70,27 +77,38 @@ tools:
   skills: []                        # sub-agent skills (SKILL.md references)
 
 # ── Steps ─────────────────────────────────────────────────────────────────────
-# Steps are composable; each can override harness.model and tools.
+# Each step can override the top-level harness, model, and tools.
 steps:
   - name: research
     policy: react                   # react | sequential | parallel | loop | batch | conditional
+    harness:                        # optional per-step override
+      type: claude-code
+      model: claude-opus-4-8
     systemPrompt: |                 # overrides top-level for this step
       Focus only on research.
     tools:
       mcp:
         - url: "http://localhost:3002"
+    outputs:
+      - name: report                # named output referenced by downstream steps
+        type: text                  # text | json
     approval: none                  # none | required | reversibility-based (future)
 
   - name: write
     policy: sequential
     dependsOn: [research]
+    inputs:
+      - from: research.report       # <stepName>.<outputName>
+        as: researchReport          # optional alias injected into the prompt context
     approval: required              # pause and ask human before executing
+    approvalTimeout: "30m"          # deny on timeout (safest default for irreversible actions)
 
 # ── Constraints ───────────────────────────────────────────────────────────────
 constraints:
   maxTokens: 100000
   timeout: "30m"
   retries: 3
+  maxConcurrency: 4                 # max parallel steps (applies to parallel/batch policies)
 ```
 
 ### Execution policies
@@ -225,7 +243,7 @@ Each approval request gets a stable `approvalURL` that can be opened outside the
 1. **ADL versioning**: how should the system handle a step's tool or model requirements changing between runs of a long-running autonomous agent? Schema version + migration plan needed.
 2. **HITL boundary in ADL**: should approval gates be a field on each step (`approval: required`), a separate top-level `approvalPolicy` block, or inferred from action reversibility? Current draft uses per-step field.
 3. **SSE vs WebSocket at HITL scale**: SSE is sufficient for token streaming, but bidirectional HITL (Slack relay pushing approval responses back) may require a WebSocket or long-poll upgrade path.
-4. **Approval timeout default**: deny-on-timeout is the safest default for irreversible actions; no verified standard exists for what the default should be.
+4. ~~**Approval timeout default**~~ — resolved: deny-on-timeout confirmed as the standard across LangGraph, Temporal, Dapr, and Microsoft Agent Framework. `approvalTimeout` with deny-on-expiry is the ADL default.
 5. **Docker harness security**: Docker alone is insufficient for untrusted agents (namespace escapes); gVisor or Firecracker micro-VMs should be evaluated for the sandboxing layer.
 
 ---
@@ -242,14 +260,16 @@ Each approval request gets a stable `approvalURL` that can be opened outside the
 - [x] Remote harness (user-configured host:port + HTTP/SSE protocol)
 
 ### Phase 2
-- [ ] ADL file format (v1 schema above, single-step only)
+- [ ] ADL file format (v1 schema above)
+- [ ] Multi-step DAG execution (`dependsOn`, `parallel`, `sequential` policies)
+- [ ] Named outputs / typed inputs between steps
+- [ ] HITL approval gates in chat UI (`approval: required`, `approvalTimeout`)
 - [ ] Step-level durable run log (`~/.loop/runs/`)
 - [ ] SSE reconnection with `Last-Event-ID` replay
-- [ ] HITL approval gates in chat UI
 
 ### Phase 3
-- [ ] Autonomous mode: cron + event triggers
-- [ ] Multi-step ADL with execution policies
+- [ ] Autonomous mode: cron + event triggers (`schedule.cron`)
+- [ ] `loop` and `batch` execution policies
 
 ### Phase 4
 - [ ] External HITL channels (Slack, webhook)
