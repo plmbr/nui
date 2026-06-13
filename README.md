@@ -20,12 +20,17 @@ Loop is a UI for interactive and autonomous agents.
 
 ```
 loop/
-├── main.go                 # entrypoint
-├── embed.go                # embeds ui/dist into the binary
-├── cmd/                    # cobra CLI commands
-├── internal/server/        # HTTP server
-└── ui/                     # Vite + React frontend
-    └── dist/               # built output (generated, not committed)
+├── main.go                   # entrypoint
+├── embed.go                  # embeds ui/dist into the binary
+├── cmd/                      # cobra CLI commands
+├── internal/
+│   ├── model/                # shared Project and ChatMessage structs
+│   ├── agent/                # Agent interface, ClaudeCodeAgent, ExtensionAgent,
+│   │                         # HTTPExtensionAgent, Manager (process/container lifecycle)
+│   ├── server/               # HTTP mux, API handlers, SSE streaming
+│   └── store/                # JSON persistence (~/.loop/data.json, settings.json)
+└── ui/                       # Vite + React frontend
+    └── dist/                 # built output (generated, not committed)
 ```
 
 ### Running in development
@@ -63,8 +68,26 @@ loop ui -p 3000      # shorthand
 
 ### Available endpoints
 
-| Path       | Description          |
-|------------|----------------------|
-| `/`        | React app            |
-| `/assets/` | Static assets        |
-| `/health`  | JSON health check    |
+| Path | Description |
+|---|---|
+| `/` | React SPA |
+| `/assets/*` | Static assets (embedded from `ui/dist`) |
+| `/health` | JSON health check |
+| `GET/POST /api/projects` | List / create projects |
+| `GET/PATCH/DELETE /api/projects/:id` | Get / rename / delete a project |
+| `POST /api/projects/:id/chat` | SSE stream — runs the agent |
+| `GET /api/projects/:id/history` | Load chat history from Claude session file |
+| `GET /api/agent-types` | List available agent types |
+| `GET/PUT /api/settings` | Read / write theme setting |
+
+### Agent types
+
+| Type | How Loop connects |
+|---|---|
+| `claude-code` | Shells out to `claude` CLI with `--output-format stream-json` |
+| `pi` | TCP JSON-RPC 2.0 to a managed Python extension process |
+| `docker` | Launches a container (`docker run`), connects via HTTP/SSE (`POST /run`) |
+| `remote` | Connects to a user-specified host:port via HTTP/SSE (`POST /run`) |
+
+Docker and remote agents implement the HTTP/SSE extension protocol:
+`GET /info` (health + metadata), `POST /run` (SSE stream), `POST /cancel`.

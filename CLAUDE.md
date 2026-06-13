@@ -47,7 +47,7 @@ In development, Vite's dev server (`:5173`) proxies `/api` to the Go server so H
 | `internal/server/` | HTTP mux, API handlers, SSE streaming, in-memory state with `sync.RWMutex` |
 | `internal/model/` | Shared `Project` and `ChatMessage` structs (avoids import cycles) |
 | `internal/store/` | JSON persistence to `~/.loop/data.json` (projects + session IDs) and `~/.loop/settings.json` (theme). Atomic writes: `os.CreateTemp` → write → `os.Rename`. Also reads/deletes Claude Code session files. |
-| `internal/agent/` | `Agent` interface + `ClaudeCodeAgent` implementation |
+| `internal/agent/` | `Agent` interface, `ClaudeCodeAgent`, `ExtensionAgent` (TCP JSON-RPC), `HTTPExtensionAgent` (HTTP/SSE), and `Manager` (process + container lifecycle) |
 
 ### Agent interface
 ```go
@@ -57,6 +57,12 @@ type Agent interface {
 }
 ```
 `ClaudeCodeAgent.Run` launches `claude -p <msg> --output-format stream-json --verbose --dangerously-skip-permissions --include-partial-messages [--resume <sessionID>]` and streams parsed SSE events (`EventText`, `EventDone`, `EventError`) back over a channel. The channel is consumed by `handleProjectChat`, which forwards events to the browser as `text/event-stream`.
+
+`ExtensionAgent` speaks JSON-RPC 2.0 over TCP to a managed Python/TS extension process (built-in `pi` type). `HTTPExtensionAgent` talks to Docker and remote agents via HTTP/SSE (`POST /run` → `text/event-stream`; `GET /info` for health checks).
+
+`Manager` handles the full lifecycle: launching Python extension processes (writing/reading `~/.loop/extensions/<projectID>.json` connection files), starting Docker containers (`docker run -d -p 127.0.0.1::<port>`), resolving mapped ports via `docker port`, waiting for HTTP readiness, and stopping everything on delete/shutdown. Docker container URLs are cached in-process; remote agents are stateless (Loop just stores the configured host:port).
+
+`Project.AgentConfig` (`map[string]any`) carries agent-type-specific settings: `{image, containerPort}` for Docker, `{host, port}` for remote.
 
 ### Persistence
 - `~/.loop/data.json` — projects array + `sessions` map (project ID → Claude session ID). Loaded on startup via `initStore()`, saved after create/delete/rename and after a new session ID arrives.

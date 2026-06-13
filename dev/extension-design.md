@@ -1,4 +1,11 @@
-# Extension Process Protocol for Loop [AI generated]
+# Extension Process Protocol for Loop [AI generated — historical design doc]
+
+> **What was actually built:** Built-in extension types (`pi`) use TCP JSON-RPC 2.0
+> (the approach described below). Docker and remote agent types use a simpler
+> HTTP/SSE protocol instead — `GET /info`, `POST /run`, `POST /cancel` — which
+> works transparently with TLS reverse proxies and standard tooling. See
+> `dev/extension-examples/docker/` and `dev/extension-examples/remote/` for
+> runnable examples, and `dev/dev.md` for the authoritative design description.
 
 [Extension Examples](extension-examples)
 

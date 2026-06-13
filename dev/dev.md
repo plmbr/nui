@@ -124,27 +124,41 @@ type Agent interface {
 | Harness | Implementation |
 |---|---|
 | `claude-code` | Shells out to `claude` CLI; streams `stream-json` output |
-| `pi` | TBD |
-| `docker` | See below |
-| `remote` | HTTP/SSE forward; see below |
+| `pi` | TCP JSON-RPC 2.0 to a managed Python extension process |
+| `docker` | Launches container via `docker run`; communicates over HTTP/SSE |
+| `remote` | Connects to a user-configured host:port via HTTP/SSE |
 
-### Docker harness (sidecar-injection pattern)
+### Docker harness
 
-Based on the OpenHands model (ICLR 2025): Loop builds a new runtime image on top of the user's base image, injecting a thin REST action-execution API. The harness communicates with the container exclusively over that API.
+Loop manages the full container lifecycle. On first use, `Manager.launchDocker` runs:
 
 ```
-User base image
-  └── + Loop action-execution API (injected at build time)
-        └── Loop Docker harness ←→ REST API ←→ agent process
+docker run -d -p 127.0.0.1::<containerPort> <image>
+docker port <containerID> <containerPort>   # → resolve random host port
+GET http://127.0.0.1:<hostPort>/info        # wait for HTTP readiness
 ```
 
-- Per-project custom OS/software stack without touching the host
-- Container lifecycle: start on first message, stop on timeout/completion
-- Action API endpoints: `POST /exec`, `GET /fs/read`, `POST /fs/write`, `GET /status`
+Each chat message calls `POST /run` on the container and reads the SSE stream. On project delete or server shutdown, Loop calls `docker stop <containerID>`.
+
+The container image must implement the HTTP/SSE extension protocol — see `dev/extension-examples/docker/`.
 
 ### Remote harness
 
-Forwards `Run()` calls over HTTP/SSE to a remote A2A endpoint or OpenAI-compatible API. Capability discovery via Agent Card at `/.well-known/agent-card.json`. Authentication via OAuth 2.1.
+Stores the user-configured `host:port` in `Project.AgentConfig`. On project create, Loop calls `GET http://<host>:<port>/info` to verify reachability. Each chat message calls `POST /run` and reads the SSE stream. Loop owns no process or container.
+
+The remote server must implement the HTTP/SSE extension protocol — see `dev/extension-examples/remote/`.
+
+### HTTP/SSE extension protocol
+
+Both docker and remote harnesses use the same three endpoints:
+
+| Endpoint | Description |
+|---|---|
+| `GET /info` | `{"name","version","capabilities"}` — used as health check |
+| `POST /run` | Body: `{"message","sessionId"?,"workingDir"?}`; response: `text/event-stream` |
+| `POST /cancel` | Body: `{"runId"}`; stop current run best-effort |
+
+SSE events: `data: {"type":"text","content":"..."}`, `data: {"type":"done","sessionId":"..."}`, `data: {"type":"error","error":"..."}`
 
 
 ## UI/Backend Decoupling & Reconnection
@@ -220,9 +234,12 @@ Each approval request gets a stable `approvalURL` that can be opened outside the
 
 ### Phase 1 (current)
 - [x] Interactive chat with Claude Code harness
-- [x] Project CRUD with persistence
+- [x] Project CRUD with persistence (`~/.loop/data.json`)
 - [x] Chat history from Claude session files
-- [x] Theme settings
+- [x] Theme settings (`~/.loop/settings.json`)
+- [x] Extension agent framework (TCP JSON-RPC for built-in types)
+- [x] Docker harness (container lifecycle + HTTP/SSE protocol)
+- [x] Remote harness (user-configured host:port + HTTP/SSE protocol)
 
 ### Phase 2
 - [ ] ADL file format (v1 schema above, single-step only)
@@ -232,8 +249,6 @@ Each approval request gets a stable `approvalURL` that can be opened outside the
 
 ### Phase 3
 - [ ] Autonomous mode: cron + event triggers
-- [ ] Docker harness (sidecar-injection)
-- [ ] Remote harness (A2A / OpenAI-compatible)
 - [ ] Multi-step ADL with execution policies
 
 ### Phase 4
