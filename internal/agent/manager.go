@@ -43,10 +43,30 @@ func NewManager(extensionsDir string) *Manager {
 }
 
 // GetAgent returns an Agent for the given project, starting or connecting as needed.
-func (m *Manager) GetAgent(projectID, agentType string, config map[string]any) (Agent, error) {
+func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[string]any) (Agent, error) {
 	switch agentType {
 	case "docker":
 		baseURL, err := m.ensureDockerRunning(projectID, config)
+		if err != nil {
+			return nil, err
+		}
+		return NewHTTPExtensionAgent(agentType, baseURL), nil
+	case "docker-claude":
+		image, _ := config["image"].(string)
+		if image == "" {
+			image = "loop-claude-code:latest"
+		}
+		baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, ".claude")
+		if err != nil {
+			return nil, err
+		}
+		return NewHTTPExtensionAgent(agentType, baseURL), nil
+	case "docker-pi":
+		image, _ := config["image"].(string)
+		if image == "" {
+			image = "loop-pi:latest"
+		}
+		baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "")
 		if err != nil {
 			return nil, err
 		}
@@ -78,17 +98,18 @@ func (m *Manager) PrewarmProjects(projects []PrewarmEntry) {
 			if strings.HasPrefix(e.AgentType, "adl:") {
 				return
 			}
-			if _, err := m.GetAgent(e.ProjectID, e.AgentType, e.AgentConfig); err != nil {
+			if _, err := m.GetAgent(e.ProjectID, e.AgentType, e.WorkingDir, e.AgentConfig); err != nil {
 				fmt.Fprintf(os.Stderr, "warn: prewarm project %s: %v\n", e.ProjectID, err)
 			}
 		}(p)
 	}
 }
 
-// PrewarmEntry holds the project ID, agent type, and config for prewarming.
+// PrewarmEntry holds the project ID, agent type, working dir, and config for prewarming.
 type PrewarmEntry struct {
 	ProjectID   string
 	AgentType   string
+	WorkingDir  string
 	AgentConfig map[string]any
 }
 
@@ -203,6 +224,110 @@ func (m *Manager) waitForConnection(projectID string, timeout time.Duration) (Co
 }
 
 // ── Docker agent ─────────────────────────────────────────────────────────────
+
+// ── Builtin Docker agents (docker-claude, docker-pi) ─────────────────────────
+
+const builtinContainerPort = 8090
+
+func (m *Manager) ensureBuiltinDockerRunning(projectID, image, workingDir, agentConfigDir string) (string, error) {
+	m.containerMu.Lock()
+	baseURL, exists := m.dockerURLs[projectID]
+	m.containerMu.Unlock()
+	if exists && isHTTPAlive(baseURL) {
+		return baseURL, nil
+	}
+
+	v, _ := m.agentMu.LoadOrStore(projectID, &sync.Mutex{})
+	agLock := v.(*sync.Mutex)
+	agLock.Lock()
+	defer agLock.Unlock()
+
+	m.containerMu.Lock()
+	baseURL, exists = m.dockerURLs[projectID]
+	m.containerMu.Unlock()
+	if exists && isHTTPAlive(baseURL) {
+		return baseURL, nil
+	}
+	return m.launchBuiltinDocker(projectID, image, workingDir, agentConfigDir)
+}
+
+func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, agentConfigDir string) (string, error) {
+	m.containerMu.Lock()
+	if oldID, ok := m.containers[projectID]; ok {
+		go exec.Command("docker", "stop", oldID).Run()
+		delete(m.containers, projectID)
+	}
+	delete(m.dockerURLs, projectID)
+	m.containerMu.Unlock()
+
+	home, _ := os.UserHomeDir()
+	containerHome := "/home/loop"
+
+	args := []string{"run", "-d",
+		"-p", fmt.Sprintf("127.0.0.1::%d", builtinContainerPort),
+	}
+	for _, envKey := range []string{"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_BASE_URL"} {
+		if val := os.Getenv(envKey); val != "" {
+			args = append(args, "-e", envKey+"="+val)
+		}
+	}
+	if workingDir != "" {
+		args = append(args, "-v", workingDir+":"+workingDir)
+	}
+	if agentConfigDir != "" {
+		hostConfigDir := filepath.Join(home, agentConfigDir)
+		os.MkdirAll(hostConfigDir, 0700) //nolint:errcheck
+		args = append(args, "-v", hostConfigDir+":"+containerHome+"/"+agentConfigDir)
+		// Mount the top-level config JSON file (e.g. ~/.claude.json) if it exists.
+		hostConfigJSON := filepath.Join(home, agentConfigDir+".json")
+		if _, statErr := os.Stat(hostConfigJSON); statErr == nil {
+			args = append(args, "-v", hostConfigJSON+":"+containerHome+"/"+agentConfigDir+".json")
+		}
+	}
+	args = append(args, image)
+
+	out, err := exec.Command("docker", args...).Output()
+	if err != nil {
+		return "", fmt.Errorf("docker run %s: %w", image, err)
+	}
+	containerID := strings.TrimSpace(string(out))
+
+	m.containerMu.Lock()
+	m.containers[projectID] = containerID
+	m.containerMu.Unlock()
+
+	portOut, err := exec.Command("docker", "port", containerID, strconv.Itoa(builtinContainerPort)).Output()
+	if err != nil {
+		exec.Command("docker", "stop", containerID).Run()
+		return "", fmt.Errorf("docker port: %w", err)
+	}
+
+	hostPort, err := parseDockerPort(strings.TrimSpace(string(portOut)))
+	if err != nil {
+		exec.Command("docker", "stop", containerID).Run()
+		return "", err
+	}
+
+	baseURL := fmt.Sprintf("http://127.0.0.1:%d", hostPort)
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		if isHTTPAlive(baseURL) {
+			break
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	if !isHTTPAlive(baseURL) {
+		exec.Command("docker", "stop", containerID).Run()
+		return "", fmt.Errorf("container %s for project %s did not become ready on %s", image, projectID, baseURL)
+	}
+
+	m.containerMu.Lock()
+	m.dockerURLs[projectID] = baseURL
+	m.containerMu.Unlock()
+	return baseURL, nil
+}
+
+// ── User-configured Docker agent ─────────────────────────────────────────────
 
 func (m *Manager) ensureDockerRunning(projectID string, config map[string]any) (string, error) {
 	m.containerMu.Lock()

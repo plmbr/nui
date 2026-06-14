@@ -86,7 +86,7 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 		return ag.Run(ctx, req, events)
 
 	case "docker", "remote":
-		ag, err := a.manager.GetAgent(a.projectID, harness.Type, map[string]any{
+		ag, err := a.manager.GetAgent(a.projectID, harness.Type, req.WorkingDir, map[string]any{
 			"image":         harness.Image,
 			"containerPort": harness.ContainerPort,
 			"host":          harness.Host,
@@ -98,7 +98,7 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 		return ag.Run(ctx, req, events)
 
 	case "pi":
-		ag, err := a.manager.GetAgent(a.projectID, "pi", nil)
+		ag, err := a.manager.GetAgent(a.projectID, "pi", req.WorkingDir, nil)
 		if err != nil {
 			return fmt.Errorf("ADL step harness pi: %w", err)
 		}

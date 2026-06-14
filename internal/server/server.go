@@ -40,7 +40,7 @@ func Start(port int, uiFiles fs.FS, extFiles embed.FS) error {
 	mu.RLock()
 	entries := make([]agent.PrewarmEntry, 0, len(projects))
 	for _, p := range projects {
-		entries = append(entries, agent.PrewarmEntry{ProjectID: p.ID, AgentType: p.AgentType, AgentConfig: p.AgentConfig})
+		entries = append(entries, agent.PrewarmEntry{ProjectID: p.ID, AgentType: p.AgentType, WorkingDir: p.WorkingDir, AgentConfig: p.AgentConfig})
 	}
 	mu.RUnlock()
 	extensionManager.PrewarmProjects(entries)

@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Built-in Pi agent extension for Loop.
+"""Pi agent for Loop Docker container.
 
-Wraps the `pi` CLI (AI coding assistant) exactly the way claude_code.py
-wraps the `claude` CLI — subprocess with --mode json, streaming text deltas,
-session resume via --session <uuid>.
+Same logic as extensions/pi.py but speaks HTTP/SSE (HttpLoopAgent)
+instead of TCP JSON-RPC. Auth credentials are provided via the ~/.pi volume mount.
 """
 
 import json
@@ -11,13 +10,13 @@ import os
 import subprocess
 import sys
 import threading
-from subprocess import PIPE, DEVNULL
+from subprocess import DEVNULL, PIPE
 
-sys.path.insert(0, os.path.dirname(__file__))
-from loop_agent import LoopAgent
+sys.path.insert(0, "/app")
+from http_loop_agent import HttpLoopAgent
 
 
-class PiAgent(LoopAgent):
+class PiAgent(HttpLoopAgent):
     name = "pi"
     version = "0.1.0"
 
@@ -53,13 +52,11 @@ class PiAgent(LoopAgent):
                 continue
 
             t = obj.get("type", "")
-
             if t == "session":
                 sid = obj.get("id", "")
                 if sid:
                     with self._lock:
                         self._sessions[run_id] = sid
-
             elif t == "message_update":
                 ev = obj.get("assistantMessageEvent", {})
                 if ev.get("type") == "text_delta":

@@ -27,6 +27,8 @@ var agentTypes = []AgentType{
 	{ID: "pi", Label: "Pi"},
 	{ID: "docker", Label: "Docker"},
 	{ID: "remote", Label: "Remote"},
+	{ID: "docker-claude", Label: "Docker Claude Code"},
+	{ID: "docker-pi", Label: "Docker Pi"},
 }
 
 type AppConfig struct {
@@ -427,7 +429,7 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 		}
 	} else {
 		var err error
-		ag, err = extensionManager.GetAgent(project.ID, project.AgentType, project.AgentConfig)
+		ag, err = extensionManager.GetAgent(project.ID, project.AgentType, project.WorkingDir, project.AgentConfig)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("agent unavailable: %v", err), http.StatusServiceUnavailable)
 			return
