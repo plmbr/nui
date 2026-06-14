@@ -2,7 +2,8 @@
 """Pi agent for Loop Docker container.
 
 Same logic as extensions/pi.py but speaks HTTP/SSE (HttpLoopAgent)
-instead of TCP JSON-RPC. Auth credentials are provided via the ~/.pi volume mount.
+instead of TCP JSON-RPC. Auth credentials must be supplied via ANTHROPIC_API_KEY
+(forwarded by Loop from the host environment).
 """
 
 import json
