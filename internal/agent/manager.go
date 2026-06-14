@@ -5,7 +5,9 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -251,6 +253,29 @@ func (m *Manager) ensureBuiltinDockerRunning(projectID, image, workingDir, agent
 	return m.launchBuiltinDocker(projectID, image, workingDir, agentConfigDir)
 }
 
+// loopbackAddHostArgs returns --add-host flags for any hostname in baseURL that
+// resolves to a loopback address, so containers can reach host-local proxies.
+func loopbackAddHostArgs(baseURL string) []string {
+	if baseURL == "" {
+		return nil
+	}
+	u, err := url.Parse(baseURL)
+	if err != nil || u.Hostname() == "" {
+		return nil
+	}
+	hostname := u.Hostname()
+	addrs, err := net.LookupHost(hostname)
+	if err != nil {
+		return nil
+	}
+	for _, addr := range addrs {
+		if ip := net.ParseIP(addr); ip != nil && ip.IsLoopback() {
+			return []string{"--add-host", hostname + ":host-gateway"}
+		}
+	}
+	return nil
+}
+
 func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, agentConfigDir string) (string, error) {
 	m.containerMu.Lock()
 	if oldID, ok := m.containers[projectID]; ok {
@@ -271,6 +296,10 @@ func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, agentConfigD
 			args = append(args, "-e", envKey+"="+val)
 		}
 	}
+	// If ANTHROPIC_BASE_URL points to a loopback hostname, route it to the host machine.
+	if extraHosts := loopbackAddHostArgs(os.Getenv("ANTHROPIC_BASE_URL")); len(extraHosts) > 0 {
+		args = append(args, extraHosts...)
+	}
 	if workingDir != "" {
 		args = append(args, "-v", workingDir+":"+workingDir)
 	}
@@ -282,6 +311,13 @@ func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, agentConfigD
 		hostConfigJSON := filepath.Join(home, agentConfigDir+".json")
 		if _, statErr := os.Stat(hostConfigJSON); statErr == nil {
 			args = append(args, "-v", hostConfigJSON+":"+containerHome+"/"+agentConfigDir+".json")
+		}
+		// Shadow the host's settings.json with an empty one so that host-specific
+		// env overrides (e.g. ANTHROPIC_BASE_URL pointing to localhost) do not
+		// break network connectivity inside the container.
+		overridePath := filepath.Join(home, ".loop", agentConfigDir+"-settings-override.json")
+		if writeErr := os.WriteFile(overridePath, []byte("{}"), 0644); writeErr == nil {
+			args = append(args, "-v", overridePath+":"+containerHome+"/"+agentConfigDir+"/settings.json:ro")
 		}
 	}
 	args = append(args, image)

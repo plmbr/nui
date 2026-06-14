@@ -33,7 +33,7 @@ docker build -f claude-code/Dockerfile -t loop-claude-code:latest .
 docker build -f pi/Dockerfile         -t loop-pi:latest           .
 ```
 
-`docker-claude` and `docker-pi` agent types require `ANTHROPIC_API_KEY` to be set in the host environment — Loop forwards it automatically into the container.
+`docker-claude` and `docker-pi` agent types require `ANTHROPIC_API_KEY` to be set in the host environment — Loop forwards it automatically into the container. If `ANTHROPIC_BASE_URL` points to a hostname that resolves to loopback (e.g. a local proxy), Loop automatically adds `--add-host=<hostname>:host-gateway` so the container can reach it.
 
 ## Architecture
 
@@ -75,7 +75,7 @@ type Agent interface {
 
 #### Builtin Docker agents (`docker-claude`, `docker-pi`)
 
-Both run an HTTP/SSE server (port 8090) inside a Docker container using a non-root `loop` user (uid 1001). Loop forwards `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_OAUTH_TOKEN`, and `ANTHROPIC_BASE_URL` from the host environment. The working directory is bind-mounted read-write.
+Both run an HTTP/SSE server (port 8090) inside a Docker container using a non-root `loop` user (uid 1001). Loop forwards `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_OAUTH_TOKEN`, and `ANTHROPIC_BASE_URL` from the host environment. The working directory is bind-mounted read-write. If `ANTHROPIC_BASE_URL` resolves to a loopback address on the host (e.g. a local dev proxy), Loop automatically adds `--add-host=<hostname>:host-gateway` so the container can reach it via the original hostname.
 
 - `docker-claude`: additionally mounts `~/.claude/` and `~/.claude.json` into the container so Claude Code can resume sessions and use existing auth.
 - `docker-pi`: does **not** mount `~/.pi` — Pi fetches its own config on first run inside the container. `ANTHROPIC_API_KEY` is required (OAuth via `apiKeyHelper` does not work in containers).
