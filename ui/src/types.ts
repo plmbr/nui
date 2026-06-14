@@ -36,3 +36,15 @@ export interface AppConfig {
 export interface Settings {
   theme: 'light' | 'dark'
 }
+
+export interface BwrapStatus {
+  available: boolean
+  path?: string
+  error?: string
+}
+
+export interface Capabilities {
+  sandbox: {
+    bwrap: BwrapStatus
+  }
+}

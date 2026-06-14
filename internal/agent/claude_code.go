@@ -46,9 +46,15 @@ func (a *ClaudeCodeAgent) Run(ctx context.Context, req RunRequest, events chan<-
 		args = append(args, "--system-prompt", req.SystemPrompt)
 	}
 
-	cmd := exec.CommandContext(ctx, bin, args...)
-	if req.WorkingDir != "" {
-		cmd.Dir = req.WorkingDir
+	var cmd *exec.Cmd
+	if bwrap := GetBwrapStatus(); bwrap.Available {
+		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, req.WorkingDir)
+		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
+	} else {
+		cmd = exec.CommandContext(ctx, bin, args...)
+		if req.WorkingDir != "" {
+			cmd.Dir = req.WorkingDir
+		}
 	}
 
 	stdout, err := cmd.StdoutPipe()

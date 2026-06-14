@@ -161,6 +161,11 @@ func (m *Manager) launch(projectID, script string) (ConnectionInfo, error) {
 	cmd := exec.Command("python3", scriptPath, "--project-id", projectID)
 	cmd.Stderr = os.Stderr
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	env := os.Environ()
+	if s := GetBwrapStatus(); s.Available {
+		env = append(env, "LOOP_BWRAP_PATH="+s.Path)
+	}
+	cmd.Env = env
 
 	if err := cmd.Start(); err != nil {
 		return ConnectionInfo{}, fmt.Errorf("launch extension for project %s: %w", projectID, err)

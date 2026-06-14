@@ -363,4 +363,12 @@
       background-color: color-mix(in oklch, var(--primary) 10%, transparent);
     }
   }
+
+  .sandbox-warning {
+    @apply flex gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-700;
+
+    :root[class~="dark"] & {
+      @apply text-amber-400;
+    }
+  }
 }

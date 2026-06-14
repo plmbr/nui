@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, AppConfig, ChatMessage, CreateProjectRequest, Project, Settings } from './types'
+import type { AgentType, AppConfig, Capabilities, ChatMessage, CreateProjectRequest, Project, Settings } from './types'
 
 const BASE = '/api'
 
@@ -78,5 +78,10 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(patch),
       }),
+  },
+
+  capabilities: {
+    get: (): Promise<Capabilities> =>
+      request('/capabilities'),
   },
 }

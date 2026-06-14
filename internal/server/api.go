@@ -34,6 +34,14 @@ type AppConfig struct {
 	CopilotKitRuntimeURL   string `json:"copilotKitRuntimeUrl"`
 }
 
+type SandboxCapabilities struct {
+	Bwrap agent.BwrapStatus `json:"bwrap"`
+}
+
+type Capabilities struct {
+	Sandbox SandboxCapabilities `json:"sandbox"`
+}
+
 
 var (
 	mu              sync.RWMutex
@@ -71,6 +79,7 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/agent-types", handleAgentTypes)
 	mux.HandleFunc("/api/config", handleConfig)
 	mux.HandleFunc("/api/settings", handleSettings)
+	mux.HandleFunc("/api/capabilities", handleCapabilities)
 }
 
 func handleProjects(w http.ResponseWriter, r *http.Request) {
@@ -510,6 +519,19 @@ func handleProjectHistory(w http.ResponseWriter, r *http.Request, projectID stri
 		return
 	}
 	writeJSON(w, http.StatusOK, msgs)
+}
+
+func handleCapabilities(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	caps := Capabilities{
+		Sandbox: SandboxCapabilities{
+			Bwrap: agent.GetBwrapStatus(),
+		},
+	}
+	writeJSON(w, http.StatusOK, caps)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
