@@ -24,24 +24,62 @@ var builtinExtensions = map[string]string{
 	"pi":          "pi.py",
 }
 
+const containerIdleTimeout = 30 * time.Minute
+
 // Manager launches and reconnects to extension processes, Docker containers, and remote agents.
 type Manager struct {
 	extensionsDir string
 	mu            sync.Mutex  // protects processes
-	containerMu   sync.Mutex  // protects containers and dockerURLs
+	containerMu   sync.Mutex  // protects containers, dockerURLs, and lastActivity
 	agentMu       sync.Map    // map[projectID]*sync.Mutex — serialises per-project launch
 	processes     map[string]*os.Process
 	containers    map[string]string // projectID → containerID
 	dockerURLs    map[string]string // projectID → http base URL
+	lastActivity  map[string]time.Time
 }
 
 func NewManager(extensionsDir string) *Manager {
-	return &Manager{
+	m := &Manager{
 		extensionsDir: extensionsDir,
 		processes:     make(map[string]*os.Process),
 		containers:    make(map[string]string),
 		dockerURLs:    make(map[string]string),
+		lastActivity:  make(map[string]time.Time),
 	}
+	go m.idleReaper()
+	return m
+}
+
+// idleReaper periodically stops Docker containers that have been idle too long.
+func (m *Manager) idleReaper() {
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		m.containerMu.Lock()
+		var toStop []struct{ projectID, containerID string }
+		for projectID, t := range m.lastActivity {
+			if time.Since(t) > containerIdleTimeout {
+				if cid, ok := m.containers[projectID]; ok {
+					toStop = append(toStop, struct{ projectID, containerID string }{projectID, cid})
+					delete(m.containers, projectID)
+					delete(m.dockerURLs, projectID)
+					delete(m.lastActivity, projectID)
+				}
+			}
+		}
+		m.containerMu.Unlock()
+		for _, entry := range toStop {
+			fmt.Fprintf(os.Stderr, "info: stopping idle container for project %s\n", entry.projectID)
+			exec.Command("docker", "stop", entry.containerID).Run()
+		}
+	}
+}
+
+// touchActivity records the current time as the last activity for a docker project.
+func (m *Manager) touchActivity(projectID string) {
+	m.containerMu.Lock()
+	m.lastActivity[projectID] = time.Now()
+	m.containerMu.Unlock()
 }
 
 // GetAgent returns an Agent for the given project, starting or connecting as needed.
@@ -52,6 +90,7 @@ func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[s
 		if err != nil {
 			return nil, err
 		}
+		m.touchActivity(projectID)
 		return NewHTTPExtensionAgent(agentType, baseURL), nil
 	case "docker-claude":
 		image, _ := config["image"].(string)
@@ -62,6 +101,7 @@ func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[s
 		if err != nil {
 			return nil, err
 		}
+		m.touchActivity(projectID)
 		return NewHTTPExtensionAgent(agentType, baseURL), nil
 	case "docker-pi":
 		image, _ := config["image"].(string)
@@ -72,6 +112,7 @@ func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[s
 		if err != nil {
 			return nil, err
 		}
+		m.touchActivity(projectID)
 		return NewHTTPExtensionAgent(agentType, baseURL), nil
 	case "remote":
 		baseURL, err := m.connectRemote(config)
@@ -92,12 +133,21 @@ func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[s
 	}
 }
 
-// PrewarmProjects starts or connects to agents for each project in the background.
+// isDockerOrRemote returns true for agent types that are launched lazily on first use.
+func isDockerOrRemote(agentType string) bool {
+	switch agentType {
+	case "docker", "docker-claude", "docker-pi", "remote":
+		return true
+	}
+	return false
+}
+
+// PrewarmProjects eagerly starts local extension processes. Docker and remote
+// agents are skipped — they start lazily when a project is first used.
 func (m *Manager) PrewarmProjects(projects []PrewarmEntry) {
 	for _, p := range projects {
 		go func(e PrewarmEntry) {
-			// ADL projects are not managed by the extension manager — skip silently.
-			if strings.HasPrefix(e.AgentType, "adl:") {
+			if strings.HasPrefix(e.AgentType, "adl:") || isDockerOrRemote(e.AgentType) {
 				return
 			}
 			m.GetAgent(e.ProjectID, e.AgentType, e.WorkingDir, e.AgentConfig) //nolint:errcheck
@@ -136,6 +186,7 @@ func (m *Manager) Stop(projectID string) {
 }
 
 // StopAll terminates all managed extension processes and Docker containers.
+// It waits for all containers to stop before returning.
 func (m *Manager) StopAll() {
 	m.mu.Lock()
 	ids := make([]string, 0, len(m.processes))
@@ -146,11 +197,22 @@ func (m *Manager) StopAll() {
 	m.mu.Unlock()
 
 	m.containerMu.Lock()
+	containerIDs := make([]string, 0, len(m.containers))
 	for id, containerID := range m.containers {
-		go exec.Command("docker", "stop", containerID).Run()
+		containerIDs = append(containerIDs, containerID)
 		delete(m.containers, id)
 	}
 	m.containerMu.Unlock()
+
+	var wg sync.WaitGroup
+	for _, cid := range containerIDs {
+		wg.Add(1)
+		go func(id string) {
+			defer wg.Done()
+			exec.Command("docker", "stop", id).Run()
+		}(cid)
+	}
+	wg.Wait()
 
 	for _, id := range ids {
 		m.deleteConnectionFile(id)
@@ -286,7 +348,7 @@ func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, agentConfigD
 	home, _ := os.UserHomeDir()
 	containerHome := "/home/loop"
 
-	args := []string{"run", "-d",
+	args := []string{"run", "-d", "--rm",
 		"-p", fmt.Sprintf("127.0.0.1::%d", builtinContainerPort),
 	}
 	for _, envKey := range []string{"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_BASE_URL"} {
@@ -405,7 +467,7 @@ func (m *Manager) launchDocker(projectID string, config map[string]any) (string,
 	delete(m.dockerURLs, projectID)
 	m.containerMu.Unlock()
 
-	out, err := exec.Command("docker", "run", "-d",
+	out, err := exec.Command("docker", "run", "-d", "--rm",
 		"-p", fmt.Sprintf("127.0.0.1::%d", containerPort),
 		image,
 	).Output()
