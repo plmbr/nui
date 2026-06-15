@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```sh
 go build ./...          # compile
 go run . ui             # build + run server on :8080
-go run . ui --port 3000 # custom port
+go run . ui --port 3000 # custom port (use this for development)
 ```
 
 ### Frontend (run from `ui/`)

@@ -29,9 +29,9 @@ const containerIdleTimeout = 30 * time.Minute
 // Manager launches and reconnects to extension processes, Docker containers, and remote agents.
 type Manager struct {
 	extensionsDir string
-	mu            sync.Mutex  // protects processes
-	containerMu   sync.Mutex  // protects containers, dockerURLs, and lastActivity
-	agentMu       sync.Map    // map[projectID]*sync.Mutex — serialises per-project launch
+	mu            sync.Mutex // protects processes
+	containerMu   sync.Mutex // protects containers, dockerURLs, and lastActivity
+	agentMu       sync.Map   // map[projectID]*sync.Mutex — serialises per-project launch
 	processes     map[string]*os.Process
 	containers    map[string]string // projectID → containerID
 	dockerURLs    map[string]string // projectID → http base URL
@@ -349,6 +349,24 @@ func (m *Manager) ensureBuiltinDockerRunning(projectID, image, workingDir, agent
 	return m.launchBuiltinDocker(projectID, image, workingDir, agentConfigDir, shadowSettings, extraVolumes...)
 }
 
+// snapshotJSONFile copies src to <dir>/<name>, validates it is valid JSON, and returns
+// the snapshot path. Returns "" if the copy fails or the JSON is malformed (caller falls
+// back to the live bind mount). This prevents mounting a partially-written file.
+func snapshotJSONFile(src, dir, name string) string {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return ""
+	}
+	if !json.Valid(data) {
+		return ""
+	}
+	dst := filepath.Join(dir, name)
+	if err := os.WriteFile(dst, data, 0644); err != nil {
+		return ""
+	}
+	return dst
+}
+
 // loopbackAddHostArgs returns --add-host flags for any hostname in baseURL that
 // resolves to a loopback address, so containers can reach host-local proxies.
 func loopbackAddHostArgs(baseURL string) []string {
@@ -404,14 +422,22 @@ func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, agentConfigD
 		os.MkdirAll(hostConfigDir, 0700) //nolint:errcheck
 		args = append(args, "-v", hostConfigDir+":"+containerHome+"/"+agentConfigDir)
 		// Mount the top-level config JSON file (e.g. ~/.claude.json) if it exists.
+		// Use a snapshot copy to avoid reading a partially-written file (the host process
+		// may be actively updating it via atomic rename or in-place writes).
 		hostConfigJSON := filepath.Join(home, agentConfigDir+".json")
 		if _, statErr := os.Stat(hostConfigJSON); statErr == nil {
-			args = append(args, "-v", hostConfigJSON+":"+containerHome+"/"+agentConfigDir+".json")
+			snapshotPath := snapshotJSONFile(hostConfigJSON, filepath.Join(home, ".loop"), agentConfigDir+"-snapshot.json")
+			if snapshotPath != "" {
+				args = append(args, "-v", snapshotPath+":"+containerHome+"/"+agentConfigDir+".json:ro")
+			} else {
+				args = append(args, "-v", hostConfigJSON+":"+containerHome+"/"+agentConfigDir+".json")
+			}
 		}
 		if shadowSettings {
 			// Shadow the host's settings.json with an empty one so that host-specific
-			// env overrides (e.g. ANTHROPIC_BASE_URL pointing to localhost) do not
-			// break network connectivity inside the container.
+			// hooks, env overrides, and apiKeyHelper (which may depend on host-side
+			// mTLS certificates not available in the container) do not interfere.
+			// Docker containers authenticate via ANTHROPIC_API_KEY forwarded from the host env.
 			overridePath := filepath.Join(home, ".loop", agentConfigDir+"-settings-override.json")
 			if writeErr := os.WriteFile(overridePath, []byte("{}"), 0644); writeErr == nil {
 				args = append(args, "-v", overridePath+":"+containerHome+"/"+agentConfigDir+"/settings.json:ro")

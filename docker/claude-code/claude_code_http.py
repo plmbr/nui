@@ -54,6 +54,7 @@ class ClaudeCodeAgent(HttpLoopAgent):
                 print(f"[claude stderr] {line.decode().rstrip()}", file=sys.stderr, flush=True)
         threading.Thread(target=drain_stderr, daemon=True).start()
 
+        emitted_via_stream = False
         for raw in proc.stdout:
             line = raw.decode().strip()
             if not line:
@@ -69,7 +70,16 @@ class ClaudeCodeAgent(HttpLoopAgent):
                 if ev.get("type") == "content_block_delta":
                     delta = ev.get("delta", {})
                     if delta.get("type") == "text_delta" and delta.get("text"):
+                        emitted_via_stream = True
                         yield delta["text"]
+            elif t == "assistant":
+                # Fallback: emit text blocks from the assistant message event.
+                # This covers cases where stream_event deltas aren't produced
+                # (e.g. auth errors, very short responses on older CLI versions).
+                if not emitted_via_stream:
+                    for block in envelope.get("message", {}).get("content", []):
+                        if block.get("type") == "text" and block.get("text"):
+                            yield block["text"]
             elif t == "result":
                 if not envelope.get("is_error"):
                     with self._lock:
