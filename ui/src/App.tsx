@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppSidebar } from '@/components/AppSidebar'
-import { SessionDetails } from '@/components/SessionDetails'
 import { ConversationPanel } from '@/components/ConversationPanel'
 import { ThemeProvider } from '@/contexts/theme'
 import { api } from '@/api'
@@ -48,13 +47,7 @@ export default function App() {
       <SidebarProvider>
         <header className="app-header">
           <SidebarTrigger />
-          <span className="font-semibold text-sm">The Loop</span>
-          {selected && (
-            <>
-              <span className="text-muted-foreground text-sm">/</span>
-              <span className="text-sm">{selected.name}</span>
-            </>
-          )}
+          <span className="font-semibold text-sm shrink-0">The Loop</span>
         </header>
         <div className="app-body">
           <AppSidebar
@@ -63,20 +56,14 @@ export default function App() {
             onSelect={setSelectedId}
             onRefresh={loadSessions}
           />
-          <main className="flex-1 overflow-hidden">
+          <main className="flex flex-1 overflow-hidden">
             {selected ? (
-              <div className="project-layout">
-                <div className="project-details-panel">
-                  <SessionDetails
-                    session={selected}
-                    onRename={handleRenameSession}
-                    onDelete={handleDeleteSession}
-                  />
-                </div>
-                <div className="project-chat-panel" key={selected.id}>
-                  <ConversationPanel session={selected} />
-                </div>
-              </div>
+              <ConversationPanel
+                session={selected}
+                key={selected.id}
+                onRename={handleRenameSession}
+                onDelete={handleDeleteSession}
+              />
             ) : (
               <div className="empty-state">
                 Select a session or create a new one.

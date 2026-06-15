@@ -7,15 +7,13 @@
 
 @import "shadcn/tailwind.css";
 
-@import "@fontsource-variable/geist";
-
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
 
     --font-heading: var(--font-sans);
 
-    --font-sans: 'Geist Variable', sans-serif;
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
 
     --color-sidebar-ring: var(--sidebar-ring);
 
@@ -261,20 +259,13 @@
     @apply flex h-screen w-full overflow-hidden pt-12;
   }
 
-  .project-layout {
-    @apply flex h-full overflow-hidden;
-  }
-
-  .project-details-panel {
-    @apply w-72 shrink-0 overflow-auto border-r;
-  }
-
-  .project-chat-panel {
-    @apply flex-1 overflow-hidden;
-  }
-
   .empty-state {
     @apply flex h-full items-center justify-center text-sm text-muted-foreground;
+  }
+
+  /* ─── Conversation header ────────────────────────────────────── */
+  .conversation-header {
+    @apply flex shrink-0 items-center gap-2 border-b bg-background/80 px-4 py-2 backdrop-blur supports-backdrop-filter:bg-background/60;
   }
 
   /* ─── Chat panel ─────────────────────────────────────────────── */
@@ -315,41 +306,6 @@
     @apply flex-1 resize-none;
     min-height: 60px;
     max-height: 160px;
-  }
-
-  /* ─── Project details ────────────────────────────────────────── */
-  .project-details {
-    @apply flex max-w-xl flex-col gap-6 p-6;
-  }
-
-  .project-name-row {
-    @apply flex items-center gap-2;
-
-    &:hover .rename-btn {
-      opacity: 1;
-      color: var(--foreground);
-    }
-  }
-
-  .rename-btn {
-    @apply text-muted-foreground transition-opacity;
-    opacity: 0;
-  }
-
-  .project-field {
-    @apply flex items-start gap-3;
-  }
-
-  .project-field-icon {
-    @apply mt-0.5 text-muted-foreground;
-  }
-
-  .project-field-label {
-    @apply text-xs text-muted-foreground;
-  }
-
-  .project-field-value {
-    @apply break-all text-sm font-medium;
   }
 
   /* ─── Settings sheet ─────────────────────────────────────────── */

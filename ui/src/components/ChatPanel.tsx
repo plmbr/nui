@@ -124,7 +124,7 @@ export function ChatPanel({ session }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0">
       <ScrollArea className="flex-1 min-h-0">
         <div className="chat-message-list">
           {messages.length === 0 && (
