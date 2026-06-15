@@ -20,8 +20,12 @@ type ChatMessage struct {
 
 // ── ADL (Agent Definition Language) ─────────────────────────────────────────
 
+// ADLDefinition describes a single agent or multi-step workflow.
+// Kind "agent" (default) is selectable at session creation time.
+// Kind "workflow" is an orchestration plan that sequences multiple steps.
 type ADLDefinition struct {
 	ADL          string         `yaml:"adl"          json:"adl"`
+	Kind         string         `yaml:"kind"         json:"kind,omitempty"` // "agent" | "workflow"; defaults to "agent"
 	Name         string         `yaml:"name"         json:"name"`
 	Description  string         `yaml:"description"  json:"description,omitempty"`
 	Version      string         `yaml:"version"      json:"version,omitempty"`
@@ -34,14 +38,27 @@ type ADLDefinition struct {
 	Schedule     *ADLSchedule   `yaml:"schedule"     json:"schedule,omitempty"`
 }
 
+// ADLHarness specifies how a step executes.
+//
+// Harness types:
+//   - "claude-code" — runs the claude CLI as a host subprocess
+//   - "pi"          — runs the pi CLI as a host subprocess
+//   - "docker"      — connects to an HTTP/SSE agent in a Docker container
+//   - "remote"      — connects to a pre-running HTTP/SSE agent over the network
+//
+// Sandbox (only applies to "claude-code" and "pi" harnesses):
+//   - "none"        — run directly on the host (default)
+//   - "bubblewrap"  — wrap the subprocess in a bubblewrap sandbox (Linux)
+//   - "docker"      — run the subprocess agent inside a Docker container
 type ADLHarness struct {
 	Type          string `yaml:"type"          json:"type"`
 	Model         string `yaml:"model"         json:"model,omitempty"`
+	Sandbox       string `yaml:"sandbox"       json:"sandbox,omitempty"`       // "none" | "bubblewrap" | "docker"
 	WorkingDir    string `yaml:"workingDir"    json:"workingDir,omitempty"`
-	Image         string `yaml:"image"         json:"image,omitempty"`
-	ContainerPort int    `yaml:"containerPort" json:"containerPort,omitempty"`
-	Host          string `yaml:"host"          json:"host,omitempty"`
-	Port          int    `yaml:"port"          json:"port,omitempty"`
+	Image         string `yaml:"image"         json:"image,omitempty"`          // Docker image (sandbox=docker or harness type=docker)
+	ContainerPort int    `yaml:"containerPort" json:"containerPort,omitempty"` // harness type=docker only
+	Host          string `yaml:"host"          json:"host,omitempty"`           // harness type=remote only
+	Port          int    `yaml:"port"          json:"port,omitempty"`           // harness type=remote only
 }
 
 type ADLTools struct {

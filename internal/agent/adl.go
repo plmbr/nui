@@ -82,30 +82,68 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 
 	switch harness.Type {
 	case "claude-code", "":
-		ag := &ClaudeCodeAgent{Model: harness.Model}
-		return ag.Run(ctx, req, events)
+		switch harness.Sandbox {
+		case "docker":
+			ag, err := a.manager.GetClaudeCodeDocker(a.projectID, harness.Image, req.WorkingDir)
+			if err != nil {
+				return fmt.Errorf("claude-code docker harness: %w", err)
+			}
+			return ag.Run(ctx, req, events)
+		default:
+			// "none", "bubblewrap", or "" (auto-detect legacy)
+			ag := &ClaudeCodeAgent{Model: harness.Model, Sandbox: harness.Sandbox}
+			return ag.Run(ctx, req, events)
+		}
 
-	case "docker", "remote":
-		ag, err := a.manager.GetAgent(a.projectID, harness.Type, req.WorkingDir, map[string]any{
+	case "pi":
+		switch harness.Sandbox {
+		case "docker":
+			ag, err := a.manager.GetPiDocker(a.projectID, harness.Image, req.WorkingDir)
+			if err != nil {
+				return fmt.Errorf("pi docker harness: %w", err)
+			}
+			return ag.Run(ctx, req, events)
+		case "bubblewrap":
+			bwrap := GetBwrapStatus()
+			if !bwrap.Available {
+				return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
+			}
+			ag, err := a.manager.GetAgent(a.projectID, "pi", req.WorkingDir, nil)
+			if err != nil {
+				return fmt.Errorf("pi bubblewrap harness: %w", err)
+			}
+			return ag.Run(ctx, req, events)
+		default:
+			ag, err := a.manager.GetAgent(a.projectID, "pi", req.WorkingDir, nil)
+			if err != nil {
+				return fmt.Errorf("pi harness: %w", err)
+			}
+			return ag.Run(ctx, req, events)
+		}
+
+	case "docker":
+		// External HTTP/SSE agent in a user-managed Docker container.
+		ag, err := a.manager.GetAgent(a.projectID, "docker", req.WorkingDir, map[string]any{
 			"image":         harness.Image,
 			"containerPort": harness.ContainerPort,
-			"host":          harness.Host,
-			"port":          harness.Port,
 		})
 		if err != nil {
-			return fmt.Errorf("ADL step harness %s: %w", harness.Type, err)
+			return fmt.Errorf("docker harness: %w", err)
 		}
 		return ag.Run(ctx, req, events)
 
-	case "pi":
-		ag, err := a.manager.GetAgent(a.projectID, "pi", req.WorkingDir, nil)
+	case "remote":
+		ag, err := a.manager.GetAgent(a.projectID, "remote", req.WorkingDir, map[string]any{
+			"host": harness.Host,
+			"port": harness.Port,
+		})
 		if err != nil {
-			return fmt.Errorf("ADL step harness pi: %w", err)
+			return fmt.Errorf("remote harness: %w", err)
 		}
 		return ag.Run(ctx, req, events)
 
 	default:
-		return fmt.Errorf("unknown harness type: %s", harness.Type)
+		return fmt.Errorf("unknown harness type: %q", harness.Type)
 	}
 }
 

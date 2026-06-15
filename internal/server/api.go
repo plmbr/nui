@@ -17,18 +17,58 @@ import (
 	"loop/internal/store"
 )
 
-type AgentType struct {
-	ID    string `json:"id"`
-	Label string `json:"label"`
+// AgentTypeInfo is the API shape returned by GET /api/agent-types.
+// ID equals the ADL definition name and is stored in Session.AgentType.
+type AgentTypeInfo struct {
+	ID          string `json:"id"`
+	Label       string `json:"label"`
+	Description string `json:"description,omitempty"`
+	Harness     string `json:"harness"`         // claude-code | pi | docker | remote
+	Sandbox     string `json:"sandbox,omitempty"` // none | bubblewrap | docker
+	IsBuiltin   bool   `json:"isBuiltin"`
 }
 
-var agentTypes = []AgentType{
-	{ID: "claude-code", Label: "Claude Code"},
-	{ID: "pi", Label: "Pi"},
-	{ID: "docker", Label: "Docker"},
-	{ID: "remote", Label: "Remote"},
-	{ID: "docker-claude", Label: "Docker Claude Code"},
-	{ID: "docker-pi", Label: "Docker Pi"},
+// builtinAgentDefs are the compiled-in ADL definitions shipped with Loop.
+// They are expressed in the same ADL format as user-defined agents in ~/.loop/agents/*.yaml.
+var builtinAgentDefs = []model.ADLDefinition{
+	{
+		Name:        "Claude Code",
+		Description: "Claude Code running as a local subprocess",
+		Harness:     model.ADLHarness{Type: "claude-code", Sandbox: "none"},
+	},
+	{
+		Name:        "Claude Code · Bubblewrap",
+		Description: "Claude Code sandboxed with bubblewrap (Linux only)",
+		Harness:     model.ADLHarness{Type: "claude-code", Sandbox: "bubblewrap"},
+	},
+	{
+		Name:        "Claude Code · Docker",
+		Description: "Claude Code running inside a Docker container with auth mount",
+		Harness:     model.ADLHarness{Type: "claude-code", Sandbox: "docker", Image: "loop-claude-code:latest"},
+	},
+	{
+		Name:        "Pi",
+		Description: "Pi running as a local subprocess",
+		Harness:     model.ADLHarness{Type: "pi", Sandbox: "none"},
+	},
+	{
+		Name:        "Pi · Bubblewrap",
+		Description: "Pi sandboxed with bubblewrap (Linux only)",
+		Harness:     model.ADLHarness{Type: "pi", Sandbox: "bubblewrap"},
+	},
+	{
+		Name:        "Pi · Docker",
+		Description: "Pi running inside a Docker container",
+		Harness:     model.ADLHarness{Type: "pi", Sandbox: "docker", Image: "loop-pi:latest"},
+	},
+}
+
+// legacyAgentTypeNames maps old Session.AgentType strings to the new ADL definition name.
+var legacyAgentTypeNames = map[string]string{
+	"claude-code":   "Claude Code",
+	"pi":            "Pi",
+	"docker-claude": "Claude Code · Docker",
+	"docker-pi":     "Pi · Docker",
 }
 
 type AppConfig struct {
@@ -135,18 +175,74 @@ func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	all := make([]AgentType, len(agentTypes))
-	copy(all, agentTypes)
 
-	defs, err := store.LoadADLDefinitions()
+	var all []AgentTypeInfo
+	for _, def := range builtinAgentDefs {
+		all = append(all, AgentTypeInfo{
+			ID:          def.Name,
+			Label:       def.Name,
+			Description: def.Description,
+			Harness:     def.Harness.Type,
+			Sandbox:     def.Harness.Sandbox,
+			IsBuiltin:   true,
+		})
+	}
+
+	userDefs, err := store.LoadADLDefinitions()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warn: load ADL definitions: %v\n", err)
 	}
-	for _, def := range defs {
-		all = append(all, AgentType{ID: "adl:" + def.Name, Label: def.Name})
+	for _, def := range userDefs {
+		if def.Kind == "workflow" {
+			continue // workflows are not selectable as session agent types
+		}
+		all = append(all, AgentTypeInfo{
+			ID:          def.Name,
+			Label:       def.Name,
+			Description: def.Description,
+			Harness:     def.Harness.Type,
+			Sandbox:     def.Harness.Sandbox,
+			IsBuiltin:   false,
+		})
 	}
 
 	writeJSON(w, http.StatusOK, all)
+}
+
+// findADLDef looks up an ADL definition by name from builtins and user-defined definitions.
+// It also handles legacy Session.AgentType strings (e.g. "claude-code", "adl:name").
+func findADLDef(agentType string) (model.ADLDefinition, bool) {
+	// Map legacy type strings to their ADL definition name.
+	if mapped, ok := legacyAgentTypeNames[agentType]; ok {
+		agentType = mapped
+	}
+	// Strip legacy "adl:" prefix used by old sessions.
+	agentType = strings.TrimPrefix(agentType, "adl:")
+
+	for _, def := range builtinAgentDefs {
+		if def.Name == agentType {
+			return def, true
+		}
+	}
+	userDefs, _ := store.LoadADLDefinitions()
+	for _, def := range userDefs {
+		if def.Name == agentType {
+			return def, true
+		}
+	}
+	return model.ADLDefinition{}, false
+}
+
+// sessionHarnessType returns the harness type for a session, used for history and cleanup.
+func sessionHarnessType(session model.Session) string {
+	if def, ok := findADLDef(session.AgentType); ok {
+		return def.Harness.Type
+	}
+	// Legacy fallback.
+	if session.AgentType == "pi" || session.AgentType == "docker-pi" {
+		return "pi"
+	}
+	return "claude-code"
 }
 
 func findSession(id string) (model.Session, bool) {
@@ -273,7 +369,7 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 		extensionManager.Stop(id)
 		if agentSessionID != "" {
 			var delErr error
-			if agentType == "pi" {
+			if sessionHarnessType(model.Session{AgentType: agentType, WorkingDir: workingDir}) == "pi" {
 				delErr = store.DeletePiSession(workingDir, agentSessionID)
 			} else {
 				delErr = store.DeleteClaudeSession(workingDir, agentSessionID)
@@ -408,26 +504,13 @@ func handleSessionChat(w http.ResponseWriter, r *http.Request, sessionID string)
 	}
 
 	var ag agent.Agent
-	if strings.HasPrefix(session.AgentType, "adl:") {
-		defName := strings.TrimPrefix(session.AgentType, "adl:")
-		defs, loadErr := store.LoadADLDefinitions()
-		if loadErr != nil {
-			http.Error(w, fmt.Sprintf("failed to load ADL definitions: %v", loadErr), http.StatusInternalServerError)
-			return
-		}
-		var found bool
-		for _, def := range defs {
-			if def.Name == defName {
-				ag = agent.NewADLAgent(def, session.ID, extensionManager)
-				found = true
-				break
-			}
-		}
-		if !found {
-			http.Error(w, fmt.Sprintf("ADL definition %q not found", defName), http.StatusNotFound)
-			return
-		}
+	var isADL bool
+	if def, found := findADLDef(session.AgentType); found {
+		ag = agent.NewADLAgent(def, session.ID, extensionManager)
+		// Multi-step workflow definitions don't have a resumable agent session.
+		isADL = len(def.Steps) > 0 || def.Kind == "workflow"
 	} else {
+		// Legacy fallback for "docker" and "remote" sessions that predate the ADL model.
 		var err error
 		ag, err = extensionManager.GetAgent(session.ID, session.AgentType, session.WorkingDir, session.AgentConfig)
 		if err != nil {
@@ -435,8 +518,6 @@ func handleSessionChat(w http.ResponseWriter, r *http.Request, sessionID string)
 			return
 		}
 	}
-
-	isADL := strings.HasPrefix(session.AgentType, "adl:")
 	events := make(chan agent.Event, 64)
 
 	go func() {
@@ -505,13 +586,14 @@ func handleSessionHistory(w http.ResponseWriter, r *http.Request, sessionID stri
 		http.NotFound(w, r)
 		return
 	}
-	if strings.HasPrefix(session.AgentType, "adl:") {
+	// Multi-step workflow sessions don't have a single agent history file.
+	if def, ok := findADLDef(session.AgentType); ok && (len(def.Steps) > 0 || def.Kind == "workflow") {
 		writeJSON(w, http.StatusOK, []model.ChatMessage{})
 		return
 	}
 	var msgs []model.ChatMessage
 	var err error
-	if session.AgentType == "pi" {
+	if sessionHarnessType(session) == "pi" {
 		msgs, err = store.LoadPiHistory(session.WorkingDir, agentSessionID)
 	} else {
 		msgs, err = store.LoadClaudeHistory(session.WorkingDir, agentSessionID)

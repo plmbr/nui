@@ -1,6 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useEffect, useState } from 'react'
+import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -11,13 +12,6 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { api } from '@/api'
 import type { AgentType, CreateSessionRequest, Session } from '@/types'
 
@@ -27,15 +21,17 @@ interface Props {
   onCreated: (session: Session) => void
 }
 
+function harnessLabel(harness: string, sandbox?: string): string {
+  if (sandbox === 'docker') return `${harness} · docker`
+  if (sandbox === 'bubblewrap') return `${harness} · bwrap`
+  return harness
+}
+
 export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
   const [name, setName] = useState('')
   const [workingDir, setWorkingDir] = useState('')
-  const [agentType, setAgentType] = useState('')
+  const [selectedId, setSelectedId] = useState('')
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([])
-  const [dockerImage, setDockerImage] = useState('')
-  const [dockerContainerPort, setDockerContainerPort] = useState('')
-  const [remoteHost, setRemoteHost] = useState('')
-  const [remotePort, setRemotePort] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -43,47 +39,36 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
     if (!open) return
     api.agentTypes.list().then((types) => {
       setAgentTypes(types)
-      if (types.length > 0) setAgentType(types[0].id)
+      if (types.length > 0 && !selectedId) {
+        setSelectedId(types[0].id)
+      }
     }).catch(() => {})
   }, [open])
 
   function reset() {
     setName('')
     setWorkingDir('')
-    setAgentType(agentTypes[0]?.id ?? '')
-    setDockerImage('')
-    setDockerContainerPort('')
-    setRemoteHost('')
-    setRemotePort('')
     setError('')
+    // Keep selectedId so the user's last pick persists across opens.
   }
+
+  const selected = agentTypes.find((a) => a.id === selectedId)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !agentType) {
-      setError('Name and agent type are required.')
+    if (!selectedId) {
+      setError('Select an agent type.')
       return
     }
-    if (agentType === 'docker' && (!dockerImage.trim() || !dockerContainerPort.trim())) {
-      setError('Docker agent requires an image and container port.')
-      return
-    }
-    if (agentType === 'remote' && (!remoteHost.trim() || !remotePort.trim())) {
-      setError('Remote agent requires a host and port.')
-      return
-    }
-
-    let agentConfig: Record<string, unknown> | undefined
-    if (agentType === 'docker') {
-      agentConfig = { image: dockerImage.trim(), containerPort: Number(dockerContainerPort) }
-    } else if (agentType === 'remote') {
-      agentConfig = { host: remoteHost.trim(), port: Number(remotePort) }
-    }
-
+    const sessionName = name.trim() || (selected?.label ?? selectedId)
     setLoading(true)
     setError('')
     try {
-      const req: CreateSessionRequest = { name: name.trim(), workingDir: workingDir.trim(), agentType, agentConfig }
+      const req: CreateSessionRequest = {
+        name: sessionName,
+        workingDir: workingDir.trim(),
+        agentType: selectedId,
+      }
       const session = await api.sessions.create(req)
       reset()
       onOpenChange(false)
@@ -95,106 +80,124 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
     }
   }
 
+  const builtins = agentTypes.filter((a) => a.isBuiltin)
+  const userDefined = agentTypes.filter((a) => !a.isBuiltin)
+
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o) }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>New Session</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-2">
+        <form onSubmit={handleSubmit} className="space-y-5 py-1">
+
+          {/* ── Agent picker ─────────────────────────────────────────── */}
+          <div className="space-y-2">
+            <Label>Agent</Label>
+            <div className="grid grid-cols-1 gap-1.5">
+              {builtins.map((a) => (
+                <AgentCard
+                  key={a.id}
+                  agent={a}
+                  selected={selectedId === a.id}
+                  onSelect={() => setSelectedId(a.id)}
+                />
+              ))}
+              {userDefined.length > 0 && (
+                <>
+                  <p className="pt-1 text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+                    User-defined
+                  </p>
+                  {userDefined.map((a) => (
+                    <AgentCard
+                      key={a.id}
+                      agent={a}
+                      selected={selectedId === a.id}
+                      onSelect={() => setSelectedId(a.id)}
+                    />
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* ── Session name ─────────────────────────────────────────── */}
           <div className="space-y-1.5">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">
+              Name <span className="text-muted-foreground font-normal">(optional)</span>
+            </Label>
             <Input
               id="name"
-              placeholder="my-session"
+              placeholder={selected?.label ?? 'my-session'}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
           </div>
+
+          {/* ── Working directory ─────────────────────────────────────── */}
           <div className="space-y-1.5">
-            <Label htmlFor="workingDir">Working Directory</Label>
+            <Label htmlFor="workingDir">
+              Working Directory <span className="text-muted-foreground font-normal">(optional)</span>
+            </Label>
             <Input
               id="workingDir"
-              placeholder="/path/to/project (optional)"
+              placeholder="/path/to/project"
               value={workingDir}
               onChange={(e) => setWorkingDir(e.target.value)}
             />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="agentType">Agent Type</Label>
-            <Select value={agentType} onValueChange={setAgentType}>
-              <SelectTrigger id="agentType" className="w-full">
-                <SelectValue placeholder="Select agent type" />
-              </SelectTrigger>
-              <SelectContent>
-                {agentTypes.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {agentType === 'docker' && (
-            <>
-              <div className="space-y-1.5">
-                <Label htmlFor="dockerImage">Docker Image</Label>
-                <Input
-                  id="dockerImage"
-                  placeholder="my-agent:latest"
-                  value={dockerImage}
-                  onChange={(e) => setDockerImage(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="dockerContainerPort">Container Port</Label>
-                <Input
-                  id="dockerContainerPort"
-                  type="number"
-                  placeholder="9090"
-                  value={dockerContainerPort}
-                  onChange={(e) => setDockerContainerPort(e.target.value)}
-                />
-              </div>
-            </>
-          )}
-
-          {agentType === 'remote' && (
-            <div className="flex gap-3">
-              <div className="flex-1 space-y-1.5">
-                <Label htmlFor="remoteHost">Host</Label>
-                <Input
-                  id="remoteHost"
-                  placeholder="127.0.0.1"
-                  value={remoteHost}
-                  onChange={(e) => setRemoteHost(e.target.value)}
-                />
-              </div>
-              <div className="w-28 space-y-1.5">
-                <Label htmlFor="remotePort">Port</Label>
-                <Input
-                  id="remotePort"
-                  type="number"
-                  placeholder="9000"
-                  value={remotePort}
-                  onChange={(e) => setRemotePort(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
 
           {error && <p className="text-sm text-destructive">{error}</p>}
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => { reset(); onOpenChange(false) }}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || !selectedId}>
               {loading ? 'Creating…' : 'Create'}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+interface AgentCardProps {
+  agent: AgentType
+  selected: boolean
+  onSelect: () => void
+}
+
+function AgentCard({ agent, selected, onSelect }: AgentCardProps) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={[
+        'flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
+        selected
+          ? 'border-primary bg-primary/5 text-foreground'
+          : 'border-border bg-background hover:bg-muted/60',
+      ].join(' ')}
+    >
+      <span className={[
+        'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border',
+        selected ? 'border-primary bg-primary' : 'border-muted-foreground/40',
+      ].join(' ')}>
+        {selected && <Check className="size-2.5 text-primary-foreground stroke-[3]" />}
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-medium leading-tight">{agent.label}</span>
+        {agent.description && (
+          <span className="block text-xs text-muted-foreground mt-0.5 leading-snug">
+            {agent.description}
+          </span>
+        )}
+      </span>
+      <span className="mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground bg-muted">
+        {harnessLabel(agent.harness, agent.sandbox)}
+      </span>
+    </button>
   )
 }

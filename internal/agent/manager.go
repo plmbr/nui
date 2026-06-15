@@ -82,6 +82,38 @@ func (m *Manager) touchActivity(projectID string) {
 	m.containerMu.Unlock()
 }
 
+// GetClaudeCodeDocker launches (or reuses) a Docker container running the claude-code HTTP agent.
+// The ~/.claude directory and working dir are mounted read-write; the host settings.json is shadowed.
+func (m *Manager) GetClaudeCodeDocker(projectID, image, workingDir string) (Agent, error) {
+	if image == "" {
+		image = "loop-claude-code:latest"
+	}
+	baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, ".claude", true)
+	if err != nil {
+		return nil, err
+	}
+	m.touchActivity(projectID)
+	return NewHTTPExtensionAgent("claude-code-docker", baseURL), nil
+}
+
+// GetPiDocker launches (or reuses) a Docker container running the pi HTTP agent.
+// The working dir and ~/.pi/agent/sessions are mounted.
+func (m *Manager) GetPiDocker(projectID, image, workingDir string) (Agent, error) {
+	if image == "" {
+		image = "loop-pi:latest"
+	}
+	home, _ := os.UserHomeDir()
+	piSessions := filepath.Join(home, ".pi", "agent", "sessions")
+	os.MkdirAll(piSessions, 0755) //nolint:errcheck
+	baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "", false,
+		piSessions+":/home/loop/.pi/agent/sessions")
+	if err != nil {
+		return nil, err
+	}
+	m.touchActivity(projectID)
+	return NewHTTPExtensionAgent("pi-docker", baseURL), nil
+}
+
 // GetAgent returns an Agent for the given project, starting or connecting as needed.
 func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[string]any) (Agent, error) {
 	switch agentType {

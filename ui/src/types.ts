@@ -19,6 +19,10 @@ export interface CreateSessionRequest {
 export interface AgentType {
   id: string
   label: string
+  description?: string
+  harness: 'claude-code' | 'pi' | 'docker' | 'remote'
+  sandbox?: 'none' | 'bubblewrap' | 'docker'
+  isBuiltin: boolean
 }
 
 export interface ChatMessage {

@@ -16,6 +16,9 @@ type ClaudeCodeAgent struct {
 	BinaryPath string
 	// Model overrides the default model (e.g. "claude-opus-4-8").
 	Model string
+	// Sandbox controls sandboxing: "none" disables bwrap, "bubblewrap" forces it,
+	// "" auto-detects (uses bwrap if available — legacy behaviour).
+	Sandbox string
 }
 
 func (a *ClaudeCodeAgent) Name() string { return "claude-code" }
@@ -47,7 +50,23 @@ func (a *ClaudeCodeAgent) Run(ctx context.Context, req RunRequest, events chan<-
 	}
 
 	var cmd *exec.Cmd
-	if bwrap := GetBwrapStatus(); bwrap.Available {
+	useBwrap := false
+	switch a.Sandbox {
+	case "bubblewrap":
+		bwrap := GetBwrapStatus()
+		if !bwrap.Available {
+			return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
+		}
+		useBwrap = true
+	case "none":
+		useBwrap = false
+	default:
+		// Legacy auto-detect: use bwrap when available on the host.
+		useBwrap = GetBwrapStatus().Available
+	}
+
+	if useBwrap {
+		bwrap := GetBwrapStatus()
 		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, req.WorkingDir)
 		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
 	} else {

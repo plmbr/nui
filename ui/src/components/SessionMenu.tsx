@@ -21,9 +21,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import type { Session } from '@/types'
 
-function formatAgentType(id: string) {
-  return id.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-}
 
 interface Props {
   session: Session
@@ -98,7 +95,7 @@ export function SessionMenu({ session, onRename, onDelete }: Props) {
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5">Agent</p>
-              <p className="text-xs">{formatAgentType(session.agentType)}</p>
+              <p className="text-xs">{session.agentType}</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5">Created</p>
