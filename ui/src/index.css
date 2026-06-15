@@ -65,6 +65,10 @@
 
     --color-primary: var(--primary);
 
+    --color-user-bubble-foreground: var(--user-bubble-foreground);
+
+    --color-user-bubble: var(--user-bubble);
+
     --color-popover-foreground: var(--popover-foreground);
 
     --color-popover: var(--popover);
@@ -142,6 +146,9 @@
     --chart-5: oklch(0.26 0 0);
 
     --radius: 0.625rem;
+
+    --user-bubble: oklch(0.80 0.018 280);
+    --user-bubble-foreground: oklch(0.13 0.008 280);
 
     --sidebar: oklch(0.968 0.008 280);
 
@@ -224,6 +231,9 @@
     --sidebar-border: oklch(1 0 0 / 7%);
 
     --sidebar-ring: oklch(0.50 0.010 280);
+
+    --user-bubble: oklch(0.30 0.022 280);
+    --user-bubble-foreground: oklch(0.91 0.006 280);
 }
 
 @layer base {
@@ -289,7 +299,7 @@
 
     &[data-role="user"] {
       max-width: 80%;
-      @apply bg-primary text-primary-foreground whitespace-pre-wrap;
+      @apply bg-user-bubble text-user-bubble-foreground whitespace-pre-wrap;
     }
 
     &[data-role="assistant"] {
