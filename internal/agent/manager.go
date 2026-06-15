@@ -100,9 +100,7 @@ func (m *Manager) PrewarmProjects(projects []PrewarmEntry) {
 			if strings.HasPrefix(e.AgentType, "adl:") {
 				return
 			}
-			if _, err := m.GetAgent(e.ProjectID, e.AgentType, e.WorkingDir, e.AgentConfig); err != nil {
-				fmt.Fprintf(os.Stderr, "warn: prewarm project %s: %v\n", e.ProjectID, err)
-			}
+			m.GetAgent(e.ProjectID, e.AgentType, e.WorkingDir, e.AgentConfig) //nolint:errcheck
 		}(p)
 	}
 }
