@@ -54,8 +54,8 @@ go run .  ui            # or: go build -o loop_bin . && ./loop_bin ui
 The Go binary embeds `ui/dist` at compile time, so rebuild after UI changes:
 
 ```sh
-cd ui && npm run build && cd .. && go build -o loop_bin .
-./loop_bin ui
+cd ui && npm run build && cd .. && go build -o loop_bin . --port 3000
+./loop_bin ui --port 3000
 ```
 
 ### CLI usage

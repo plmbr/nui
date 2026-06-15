@@ -260,7 +260,7 @@
   }
 
   .empty-state {
-    @apply flex h-full items-center justify-center text-sm text-muted-foreground;
+    @apply flex flex-1 items-center justify-center text-sm text-muted-foreground;
   }
 
   /* ─── Conversation header ────────────────────────────────────── */
