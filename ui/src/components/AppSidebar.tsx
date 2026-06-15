@@ -32,6 +32,7 @@ export function AppSidebar({ sessions, selectedId, onSelect, onRefresh }: Props)
       <Sidebar collapsible="icon" className="pt-12">
         <SidebarHeader className="p-3">
           <Button
+            variant="secondary"
             size="sm"
             className="w-full justify-start gap-2"
             onClick={() => setDialogOpen(true)}
