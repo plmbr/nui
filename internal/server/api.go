@@ -47,9 +47,9 @@ type Capabilities struct {
 
 var (
 	mu              sync.RWMutex
-	projects        []model.Project
-	projectMessages = map[string][]model.ChatMessage{}
-	projectSessions = map[string]string{} // project ID → claude session ID
+	sessions        []model.Session
+	sessionMessages = map[string][]model.ChatMessage{}
+	agentSessions   = map[string]string{} // session ID → agent session ID
 )
 
 func initStore() error {
@@ -58,38 +58,38 @@ func initStore() error {
 		return err
 	}
 	mu.Lock()
-	projects = data.Projects
-	projectSessions = data.Sessions
+	sessions = data.Sessions
+	agentSessions = data.AgentSessions
 	mu.Unlock()
 	return nil
 }
 
 // snapshotData must be called with mu held.
 func snapshotData() store.Data {
-	ps := make([]model.Project, len(projects))
-	copy(ps, projects)
-	ss := make(map[string]string, len(projectSessions))
-	for k, v := range projectSessions {
-		ss[k] = v
+	ss := make([]model.Session, len(sessions))
+	copy(ss, sessions)
+	as := make(map[string]string, len(agentSessions))
+	for k, v := range agentSessions {
+		as[k] = v
 	}
-	return store.Data{Projects: ps, Sessions: ss}
+	return store.Data{Sessions: ss, AgentSessions: as}
 }
 
 func registerAPIRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/api/projects", handleProjects)
-	mux.HandleFunc("/api/projects/", handleProject)
+	mux.HandleFunc("/api/sessions", handleSessions)
+	mux.HandleFunc("/api/sessions/", handleSession)
 	mux.HandleFunc("/api/agent-types", handleAgentTypes)
 	mux.HandleFunc("/api/config", handleConfig)
 	mux.HandleFunc("/api/settings", handleSettings)
 	mux.HandleFunc("/api/capabilities", handleCapabilities)
 }
 
-func handleProjects(w http.ResponseWriter, r *http.Request) {
+func handleSessions(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		mu.RLock()
-		list := make([]model.Project, len(projects))
-		copy(list, projects)
+		list := make([]model.Session, len(sessions))
+		copy(list, sessions)
 		mu.RUnlock()
 		writeJSON(w, http.StatusOK, list)
 
@@ -108,7 +108,7 @@ func handleProjects(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "name and agentType are required", http.StatusBadRequest)
 			return
 		}
-		p := model.Project{
+		s := model.Session{
 			ID:          uuid.NewString(),
 			Name:        req.Name,
 			WorkingDir:  req.WorkingDir,
@@ -117,13 +117,13 @@ func handleProjects(w http.ResponseWriter, r *http.Request) {
 			CreatedAt:   time.Now().UTC().Format(time.RFC3339),
 		}
 		mu.Lock()
-		projects = append(projects, p)
+		sessions = append(sessions, s)
 		snapshot := snapshotData()
 		mu.Unlock()
 		if err := store.SaveData(snapshot); err != nil {
 			fmt.Fprintf(os.Stderr, "warn: save data after create: %v\n", err)
 		}
-		writeJSON(w, http.StatusCreated, p)
+		writeJSON(w, http.StatusCreated, s)
 
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -149,53 +149,53 @@ func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, all)
 }
 
-func findProject(id string) (model.Project, bool) {
-	for _, p := range projects {
-		if p.ID == id {
-			return p, true
+func findSession(id string) (model.Session, bool) {
+	for _, s := range sessions {
+		if s.ID == id {
+			return s, true
 		}
 	}
-	return model.Project{}, false
+	return model.Session{}, false
 }
 
-func deleteProject(id string) bool {
-	for i, p := range projects {
-		if p.ID == id {
-			projects = append(projects[:i], projects[i+1:]...)
+func deleteSession(id string) bool {
+	for i, s := range sessions {
+		if s.ID == id {
+			sessions = append(sessions[:i], sessions[i+1:]...)
 			return true
 		}
 	}
 	return false
 }
 
-func renameProject(id, name string) bool {
-	for i, p := range projects {
-		if p.ID == id {
-			projects[i].Name = name
+func renameSession(id, name string) bool {
+	for i, s := range sessions {
+		if s.ID == id {
+			sessions[i].Name = name
 			return true
 		}
 	}
 	return false
 }
 
-func handleProject(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/api/projects/")
+func handleSession(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/sessions/")
 	if path == "" {
 		http.NotFound(w, r)
 		return
 	}
 
-	// Route /api/projects/:id/<sub>
+	// Route /api/sessions/:id/<sub>
 	if idx := strings.Index(path, "/"); idx != -1 {
 		id := path[:idx]
 		rest := path[idx+1:]
 		switch rest {
 		case "messages":
-			handleProjectMessages(w, r, id)
+			handleSessionMessages(w, r, id)
 		case "chat":
-			handleProjectChat(w, r, id)
+			handleSessionChat(w, r, id)
 		case "history":
-			handleProjectHistory(w, r, id)
+			handleSessionHistory(w, r, id)
 		default:
 			http.NotFound(w, r)
 		}
@@ -206,13 +206,13 @@ func handleProject(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		mu.RLock()
-		p, ok := findProject(id)
+		s, ok := findSession(id)
 		mu.RUnlock()
 		if !ok {
 			http.NotFound(w, r)
 			return
 		}
-		writeJSON(w, http.StatusOK, p)
+		writeJSON(w, http.StatusOK, s)
 
 	case http.MethodPatch:
 		var req struct {
@@ -228,11 +228,11 @@ func handleProject(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		mu.Lock()
-		found := renameProject(id, name)
-		var updated model.Project
+		found := renameSession(id, name)
+		var updated model.Session
 		var snapshot store.Data
 		if found {
-			updated, _ = findProject(id)
+			updated, _ = findSession(id)
 			snapshot = snapshotData()
 		}
 		mu.Unlock()
@@ -247,16 +247,16 @@ func handleProject(w http.ResponseWriter, r *http.Request) {
 
 	case http.MethodDelete:
 		mu.Lock()
-		var sessionID, workingDir, agentType string
-		if p, ok := findProject(id); ok {
-			sessionID = projectSessions[id]
-			workingDir = p.WorkingDir
-			agentType = p.AgentType
+		var agentSessionID, workingDir, agentType string
+		if s, ok := findSession(id); ok {
+			agentSessionID = agentSessions[id]
+			workingDir = s.WorkingDir
+			agentType = s.AgentType
 		}
-		removed := deleteProject(id)
+		removed := deleteSession(id)
 		if removed {
-			delete(projectSessions, id)
-			delete(projectMessages, id)
+			delete(agentSessions, id)
+			delete(sessionMessages, id)
 		}
 		var snapshot store.Data
 		if removed {
@@ -271,12 +271,12 @@ func handleProject(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(os.Stderr, "warn: save data after delete: %v\n", err)
 		}
 		extensionManager.Stop(id)
-		if sessionID != "" {
+		if agentSessionID != "" {
 			var delErr error
 			if agentType == "pi" {
-				delErr = store.DeletePiSession(workingDir, sessionID)
+				delErr = store.DeletePiSession(workingDir, agentSessionID)
 			} else {
-				delErr = store.DeleteClaudeSession(workingDir, sessionID)
+				delErr = store.DeleteClaudeSession(workingDir, agentSessionID)
 			}
 			if delErr != nil {
 				fmt.Fprintf(os.Stderr, "warn: delete session file: %v\n", delErr)
@@ -289,11 +289,11 @@ func handleProject(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleProjectMessages(w http.ResponseWriter, r *http.Request, projectID string) {
+func handleSessionMessages(w http.ResponseWriter, r *http.Request, sessionID string) {
 	switch r.Method {
 	case http.MethodGet:
 		mu.RLock()
-		msgs := projectMessages[projectID]
+		msgs := sessionMessages[sessionID]
 		if msgs == nil {
 			msgs = []model.ChatMessage{}
 		}
@@ -307,7 +307,7 @@ func handleProjectMessages(w http.ResponseWriter, r *http.Request, projectID str
 			return
 		}
 		mu.Lock()
-		projectMessages[projectID] = msgs
+		sessionMessages[sessionID] = msgs
 		mu.Unlock()
 		w.WriteHeader(http.StatusNoContent)
 
@@ -363,7 +363,7 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string) {
+func handleSessionChat(w http.ResponseWriter, r *http.Request, sessionID string) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -378,8 +378,8 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 	}
 
 	mu.RLock()
-	project, ok := findProject(projectID)
-	sessionID := projectSessions[projectID]
+	session, ok := findSession(sessionID)
+	agentSessionID := agentSessions[sessionID]
 	mu.RUnlock()
 	if !ok {
 		http.NotFound(w, r)
@@ -393,7 +393,7 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 		CreatedAt: time.Now().UTC().Format(time.RFC3339),
 	}
 	mu.Lock()
-	projectMessages[projectID] = append(projectMessages[projectID], userMsg)
+	sessionMessages[sessionID] = append(sessionMessages[sessionID], userMsg)
 	mu.Unlock()
 
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -408,8 +408,8 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 	}
 
 	var ag agent.Agent
-	if strings.HasPrefix(project.AgentType, "adl:") {
-		defName := strings.TrimPrefix(project.AgentType, "adl:")
+	if strings.HasPrefix(session.AgentType, "adl:") {
+		defName := strings.TrimPrefix(session.AgentType, "adl:")
 		defs, loadErr := store.LoadADLDefinitions()
 		if loadErr != nil {
 			http.Error(w, fmt.Sprintf("failed to load ADL definitions: %v", loadErr), http.StatusInternalServerError)
@@ -418,7 +418,7 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 		var found bool
 		for _, def := range defs {
 			if def.Name == defName {
-				ag = agent.NewADLAgent(def, project.ID, extensionManager)
+				ag = agent.NewADLAgent(def, session.ID, extensionManager)
 				found = true
 				break
 			}
@@ -429,24 +429,24 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 		}
 	} else {
 		var err error
-		ag, err = extensionManager.GetAgent(project.ID, project.AgentType, project.WorkingDir, project.AgentConfig)
+		ag, err = extensionManager.GetAgent(session.ID, session.AgentType, session.WorkingDir, session.AgentConfig)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("agent unavailable: %v", err), http.StatusServiceUnavailable)
 			return
 		}
 	}
 
-	isADL := strings.HasPrefix(project.AgentType, "adl:")
+	isADL := strings.HasPrefix(session.AgentType, "adl:")
 	events := make(chan agent.Event, 64)
 
 	go func() {
 		defer close(events)
 		runReq := agent.RunRequest{
-			WorkingDir: project.WorkingDir,
+			WorkingDir: session.WorkingDir,
 			Message:    req.Message,
 		}
 		if !isADL {
-			runReq.SessionID = sessionID
+			runReq.SessionID = agentSessionID
 		}
 		err := ag.Run(r.Context(), runReq, events)
 		if err != nil && r.Context().Err() == nil {
@@ -455,7 +455,7 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 	}()
 
 	var assistantContent strings.Builder
-	var newSessionID string
+	var newAgentSessionID string
 
 	for ev := range events {
 		data, _ := json.Marshal(ev)
@@ -466,7 +466,7 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 		case agent.EventText:
 			assistantContent.WriteString(ev.Content)
 		case agent.EventDone:
-			newSessionID = ev.SessionID
+			newAgentSessionID = ev.SessionID
 		}
 	}
 
@@ -478,13 +478,13 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),
 		}
 		mu.Lock()
-		projectMessages[projectID] = append(projectMessages[projectID], assistantMsg)
-		if newSessionID != "" && !isADL {
-			projectSessions[projectID] = newSessionID
+		sessionMessages[sessionID] = append(sessionMessages[sessionID], assistantMsg)
+		if newAgentSessionID != "" && !isADL {
+			agentSessions[sessionID] = newAgentSessionID
 		}
 		snapshot := snapshotData()
 		mu.Unlock()
-		if newSessionID != "" && !isADL {
+		if newAgentSessionID != "" && !isADL {
 			if err := store.SaveData(snapshot); err != nil {
 				fmt.Fprintf(os.Stderr, "warn: save session: %v\n", err)
 			}
@@ -492,29 +492,29 @@ func handleProjectChat(w http.ResponseWriter, r *http.Request, projectID string)
 	}
 }
 
-func handleProjectHistory(w http.ResponseWriter, r *http.Request, projectID string) {
+func handleSessionHistory(w http.ResponseWriter, r *http.Request, sessionID string) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 	mu.RLock()
-	project, ok := findProject(projectID)
-	sessionID := projectSessions[projectID]
+	session, ok := findSession(sessionID)
+	agentSessionID := agentSessions[sessionID]
 	mu.RUnlock()
 	if !ok {
 		http.NotFound(w, r)
 		return
 	}
-	if strings.HasPrefix(project.AgentType, "adl:") {
+	if strings.HasPrefix(session.AgentType, "adl:") {
 		writeJSON(w, http.StatusOK, []model.ChatMessage{})
 		return
 	}
 	var msgs []model.ChatMessage
 	var err error
-	if project.AgentType == "pi" {
-		msgs, err = store.LoadPiHistory(project.WorkingDir, sessionID)
+	if session.AgentType == "pi" {
+		msgs, err = store.LoadPiHistory(session.WorkingDir, agentSessionID)
 	} else {
-		msgs, err = store.LoadClaudeHistory(project.WorkingDir, sessionID)
+		msgs, err = store.LoadClaudeHistory(session.WorkingDir, agentSessionID)
 	}
 	if err != nil {
 		http.Error(w, "failed to load history", http.StatusInternalServerError)

@@ -19,15 +19,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { api } from '@/api'
-import type { AgentType, CreateProjectRequest, Project } from '@/types'
+import type { AgentType, CreateSessionRequest, Session } from '@/types'
 
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onCreated: (project: Project) => void
+  onCreated: (session: Session) => void
 }
 
-export function NewProjectDialog({ open, onOpenChange, onCreated }: Props) {
+export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
   const [name, setName] = useState('')
   const [workingDir, setWorkingDir] = useState('')
   const [agentType, setAgentType] = useState('')
@@ -83,13 +83,13 @@ export function NewProjectDialog({ open, onOpenChange, onCreated }: Props) {
     setLoading(true)
     setError('')
     try {
-      const req: CreateProjectRequest = { name: name.trim(), workingDir: workingDir.trim(), agentType, agentConfig }
-      const project = await api.projects.create(req)
+      const req: CreateSessionRequest = { name: name.trim(), workingDir: workingDir.trim(), agentType, agentConfig }
+      const session = await api.sessions.create(req)
       reset()
       onOpenChange(false)
-      onCreated(project)
+      onCreated(session)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create project.')
+      setError(err instanceof Error ? err.message : 'Failed to create session.')
     } finally {
       setLoading(false)
     }
@@ -99,14 +99,14 @@ export function NewProjectDialog({ open, onOpenChange, onCreated }: Props) {
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o) }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New Project</DialogTitle>
+          <DialogTitle>New Session</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="space-y-1.5">
             <Label htmlFor="name">Name</Label>
             <Input
               id="name"
-              placeholder="my-project"
+              placeholder="my-session"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />

@@ -13,14 +13,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { Project } from '@/types'
+import type { Session } from '@/types'
 
 function formatAgentType(id: string) {
   return id.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
 
 interface Props {
-  project: Project
+  session: Session
   onRename: (newName: string) => Promise<void>
   onDelete: () => Promise<void>
 }
@@ -37,21 +37,21 @@ function Field({ icon, label, value }: { icon: React.ReactNode; label: string; v
   )
 }
 
-export function ProjectDetails({ project, onRename, onDelete }: Props) {
+export function SessionDetails({ session, onRename, onDelete }: Props) {
   const [editingName, setEditingName] = useState(false)
-  const [nameValue, setNameValue] = useState(project.name)
+  const [nameValue, setNameValue] = useState(session.name)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const created = new Date(project.createdAt).toLocaleString()
+  const created = new Date(session.createdAt).toLocaleString()
 
   function startEdit() {
-    setNameValue(project.name)
+    setNameValue(session.name)
     setEditingName(true)
   }
 
   async function saveName() {
     const trimmed = nameValue.trim()
     setEditingName(false)
-    if (trimmed && trimmed !== project.name) {
+    if (trimmed && trimmed !== session.name) {
       await onRename(trimmed)
     }
   }
@@ -73,42 +73,42 @@ export function ProjectDetails({ project, onRename, onDelete }: Props) {
           />
         ) : (
           <div className="project-name-row">
-            <h2 className="text-xl font-semibold">{project.name}</h2>
+            <h2 className="text-xl font-semibold">{session.name}</h2>
             <button
               className="rename-btn"
               onClick={startEdit}
-              aria-label="Rename project"
+              aria-label="Rename session"
             >
               <Pencil className="size-4" />
             </button>
           </div>
         )}
-        <p className="text-sm text-muted-foreground mt-1">Project details</p>
+        <p className="text-sm text-muted-foreground mt-1">Session details</p>
       </div>
       <Separator />
       <div className="flex flex-col gap-5">
         <Field
           icon={<FolderOpen className="size-4" />}
           label="Working Directory"
-          value={project.workingDir || '(server working directory)'}
+          value={session.workingDir || '(server working directory)'}
         />
         <Field
           icon={<Bot className="size-4" />}
           label="Agent Type"
-          value={formatAgentType(project.agentType)}
+          value={formatAgentType(session.agentType)}
         />
-        {project.agentType === 'docker' && project.agentConfig && (
+        {session.agentType === 'docker' && session.agentConfig && (
           <Field
             icon={<Container className="size-4" />}
             label="Docker Image"
-            value={`${project.agentConfig.image as string} (port ${project.agentConfig.containerPort as number})`}
+            value={`${session.agentConfig!.image as string} (port ${session.agentConfig!.containerPort as number})`}
           />
         )}
-        {project.agentType === 'remote' && project.agentConfig && (
+        {session.agentType === 'remote' && session.agentConfig && (
           <Field
             icon={<Globe className="size-4" />}
             label="Remote Address"
-            value={`${project.agentConfig.host as string}:${project.agentConfig.port as number}`}
+            value={`${session.agentConfig!.host as string}:${session.agentConfig!.port as number}`}
           />
         )}
         <Field
@@ -125,15 +125,15 @@ export function ProjectDetails({ project, onRename, onDelete }: Props) {
         onClick={() => setDeleteOpen(true)}
       >
         <Trash2 className="size-4 mr-2" />
-        Delete Project
+        Delete Session
       </Button>
 
       <Dialog open={deleteOpen} onOpenChange={(open) => setDeleteOpen(open)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete project?</DialogTitle>
+            <DialogTitle>Delete session?</DialogTitle>
             <DialogDescription>
-              This will permanently delete <strong>{project.name}</strong> and its associated chat
+              This will permanently delete <strong>{session.name}</strong> and its associated chat
               history. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { api } from '@/api'
-import type { ChatMessage, Project } from '@/types'
+import type { ChatMessage, Session } from '@/types'
 
 function randomId(): string {
   const b = crypto.getRandomValues(new Uint8Array(16))
@@ -26,10 +26,10 @@ interface StreamEvent {
 }
 
 interface Props {
-  project: Project
+  session: Session
 }
 
-export function ChatPanel({ project }: Props) {
+export function ChatPanel({ session }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
@@ -39,9 +39,9 @@ export function ChatPanel({ project }: Props) {
 
   useEffect(() => {
     setMessages([])
-    api.history.get(project.id).then(setMessages).catch(() => {})
+    api.history.get(session.id).then(setMessages).catch(() => {})
     inputRef.current?.focus()
-  }, [project.id])
+  }, [session.id])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -68,7 +68,7 @@ export function ChatPanel({ project }: Props) {
     ])
 
     try {
-      const res = await fetch(`/api/projects/${project.id}/chat`, {
+      const res = await fetch(`/api/sessions/${session.id}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message }),

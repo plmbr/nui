@@ -13,18 +13,18 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
-import { NewProjectDialog } from '@/components/NewProjectDialog'
+import { NewSessionDialog } from '@/components/NewSessionDialog'
 import { SettingsSheet } from '@/components/SettingsSheet'
-import type { Project } from '@/types'
+import type { Session } from '@/types'
 
 interface Props {
-  projects: Project[]
+  sessions: Session[]
   selectedId: string | null
   onSelect: (id: string) => void
   onRefresh: () => void
 }
 
-export function AppSidebar({ projects, selectedId, onSelect, onRefresh }: Props) {
+export function AppSidebar({ sessions, selectedId, onSelect, onRefresh }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false)
 
   return (
@@ -37,27 +37,27 @@ export function AppSidebar({ projects, selectedId, onSelect, onRefresh }: Props)
             onClick={() => setDialogOpen(true)}
           >
             <Plus className="size-4 shrink-0" />
-            <span className="group-data-[collapsible=icon]:hidden">New Project</span>
+            <span className="group-data-[collapsible=icon]:hidden">New Session</span>
           </Button>
         </SidebarHeader>
         <SidebarContent>
           <ScrollArea className="flex-1">
             <SidebarMenu className="px-2">
-              {projects.map((p) => (
-                <SidebarMenuItem key={p.id}>
+              {sessions.map((s) => (
+                <SidebarMenuItem key={s.id}>
                   <SidebarMenuButton
-                    isActive={p.id === selectedId}
-                    onClick={() => onSelect(p.id)}
-                    tooltip={p.name}
+                    isActive={s.id === selectedId}
+                    onClick={() => onSelect(s.id)}
+                    tooltip={s.name}
                   >
                     <FolderOpen className="size-4 shrink-0" />
-                    <span className="truncate">{p.name}</span>
+                    <span className="truncate">{s.name}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-              {projects.length === 0 && (
+              {sessions.length === 0 && (
                 <p className="px-2 py-4 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-                  No projects yet.
+                  No sessions yet.
                 </p>
               )}
             </SidebarMenu>
@@ -68,10 +68,10 @@ export function AppSidebar({ projects, selectedId, onSelect, onRefresh }: Props)
         </SidebarFooter>
       </Sidebar>
 
-      <NewProjectDialog
+      <NewSessionDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onCreated={(project) => { onRefresh(); onSelect(project.id) }}
+        onCreated={(session) => { onRefresh(); onSelect(session.id) }}
       />
     </>
   )

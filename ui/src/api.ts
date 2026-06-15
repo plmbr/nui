@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, AppConfig, Capabilities, ChatMessage, CreateProjectRequest, Project, Settings } from './types'
+import type { AgentType, AppConfig, Capabilities, ChatMessage, CreateSessionRequest, Session, Settings } from './types'
 
 const BASE = '/api'
 
@@ -20,27 +20,27 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  projects: {
-    list: (): Promise<Project[]> =>
-      request('/projects'),
+  sessions: {
+    list: (): Promise<Session[]> =>
+      request('/sessions'),
 
-    get: (id: string): Promise<Project> =>
-      request(`/projects/${id}`),
+    get: (id: string): Promise<Session> =>
+      request(`/sessions/${id}`),
 
-    create: (data: CreateProjectRequest): Promise<Project> =>
-      request('/projects', {
+    create: (data: CreateSessionRequest): Promise<Session> =>
+      request('/sessions', {
         method: 'POST',
         body: JSON.stringify(data),
       }),
 
-    rename: (id: string, name: string): Promise<Project> =>
-      request(`/projects/${id}`, {
+    rename: (id: string, name: string): Promise<Session> =>
+      request(`/sessions/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ name }),
       }),
 
     delete: (id: string): Promise<void> =>
-      request(`/projects/${id}`, { method: 'DELETE' }),
+      request(`/sessions/${id}`, { method: 'DELETE' }),
   },
 
   agentTypes: {
@@ -49,19 +49,19 @@ export const api = {
   },
 
   messages: {
-    list: (projectId: string): Promise<ChatMessage[]> =>
-      request(`/projects/${projectId}/messages`),
+    list: (sessionId: string): Promise<ChatMessage[]> =>
+      request(`/sessions/${sessionId}/messages`),
 
-    save: (projectId: string, messages: ChatMessage[]): Promise<void> =>
-      request(`/projects/${projectId}/messages`, {
+    save: (sessionId: string, messages: ChatMessage[]): Promise<void> =>
+      request(`/sessions/${sessionId}/messages`, {
         method: 'PUT',
         body: JSON.stringify(messages),
       }),
   },
 
   history: {
-    get: (projectId: string): Promise<ChatMessage[]> =>
-      request(`/projects/${projectId}/history`),
+    get: (sessionId: string): Promise<ChatMessage[]> =>
+      request(`/sessions/${sessionId}/history`),
   },
 
   config: {

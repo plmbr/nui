@@ -38,12 +38,12 @@ func Start(port int, uiFiles fs.FS, extFiles embed.FS) error {
 	}
 	extensionManager = agent.NewManager(extDir)
 	mu.RLock()
-	entries := make([]agent.PrewarmEntry, 0, len(projects))
-	for _, p := range projects {
-		entries = append(entries, agent.PrewarmEntry{ProjectID: p.ID, AgentType: p.AgentType, WorkingDir: p.WorkingDir, AgentConfig: p.AgentConfig})
+	entries := make([]agent.PrewarmEntry, 0, len(sessions))
+	for _, s := range sessions {
+		entries = append(entries, agent.PrewarmEntry{SessionID: s.ID, AgentType: s.AgentType, WorkingDir: s.WorkingDir, AgentConfig: s.AgentConfig})
 	}
 	mu.RUnlock()
-	extensionManager.PrewarmProjects(entries)
+	extensionManager.PrewarmSessions(entries)
 
 	registerAPIRoutes(mux)
 

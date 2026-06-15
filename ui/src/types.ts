@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-export interface Project {
+export interface Session {
   id: string
   name: string
   workingDir: string
@@ -9,7 +9,7 @@ export interface Project {
   createdAt: string
 }
 
-export interface CreateProjectRequest {
+export interface CreateSessionRequest {
   name: string
   workingDir: string
   agentType: string

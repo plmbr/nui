@@ -146,22 +146,22 @@ func isDockerOrRemote(agentType string) bool {
 	return false
 }
 
-// PrewarmProjects eagerly starts local extension processes. Docker and remote
-// agents are skipped — they start lazily when a project is first used.
-func (m *Manager) PrewarmProjects(projects []PrewarmEntry) {
-	for _, p := range projects {
+// PrewarmSessions eagerly starts local extension processes. Docker and remote
+// agents are skipped — they start lazily when a session is first used.
+func (m *Manager) PrewarmSessions(sessions []PrewarmEntry) {
+	for _, s := range sessions {
 		go func(e PrewarmEntry) {
 			if strings.HasPrefix(e.AgentType, "adl:") || isDockerOrRemote(e.AgentType) {
 				return
 			}
-			m.GetAgent(e.ProjectID, e.AgentType, e.WorkingDir, e.AgentConfig) //nolint:errcheck
-		}(p)
+			m.GetAgent(e.SessionID, e.AgentType, e.WorkingDir, e.AgentConfig) //nolint:errcheck
+		}(s)
 	}
 }
 
-// PrewarmEntry holds the project ID, agent type, working dir, and config for prewarming.
+// PrewarmEntry holds the session ID, agent type, working dir, and config for prewarming.
 type PrewarmEntry struct {
-	ProjectID   string
+	SessionID   string
 	AgentType   string
 	WorkingDir  string
 	AgentConfig map[string]any

@@ -17,8 +17,8 @@ type Settings struct {
 }
 
 type Data struct {
-	Projects []model.Project   `json:"projects"`
-	Sessions map[string]string `json:"sessions"`
+	Sessions      []model.Session   `json:"sessions"`
+	AgentSessions map[string]string `json:"agentSessions"`
 }
 
 func Dir() (string, error) {
@@ -60,7 +60,7 @@ func SaveSettings(s Settings) error {
 }
 
 func LoadData() (Data, error) {
-	empty := Data{Projects: []model.Project{}, Sessions: map[string]string{}}
+	empty := Data{Sessions: []model.Session{}, AgentSessions: map[string]string{}}
 	dir, err := Dir()
 	if err != nil {
 		return empty, err
@@ -72,15 +72,38 @@ func LoadData() (Data, error) {
 	if err != nil {
 		return empty, err
 	}
-	var d Data
-	if err := json.Unmarshal(raw, &d); err != nil {
+	// Parse into raw fields first to handle both old and new formats.
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &fields); err != nil {
 		return empty, err
 	}
-	if d.Projects == nil {
-		d.Projects = []model.Project{}
+	d := Data{Sessions: []model.Session{}, AgentSessions: map[string]string{}}
+
+	// New format: "sessions" is an array of Session objects.
+	if sessRaw, ok := fields["sessions"]; ok {
+		json.Unmarshal(sessRaw, &d.Sessions) //nolint:errcheck — falls back to legacy if wrong type
 	}
+	if asRaw, ok := fields["agentSessions"]; ok {
+		json.Unmarshal(asRaw, &d.AgentSessions) //nolint:errcheck
+	}
+
+	// Legacy migration: old format had "projects":[...] and "sessions":{map}.
+	if len(d.Sessions) == 0 {
+		if projRaw, ok := fields["projects"]; ok {
+			json.Unmarshal(projRaw, &d.Sessions) //nolint:errcheck
+		}
+		if len(d.AgentSessions) == 0 {
+			if sessRaw, ok := fields["sessions"]; ok {
+				json.Unmarshal(sessRaw, &d.AgentSessions) //nolint:errcheck
+			}
+		}
+	}
+
 	if d.Sessions == nil {
-		d.Sessions = map[string]string{}
+		d.Sessions = []model.Session{}
+	}
+	if d.AgentSessions == nil {
+		d.AgentSessions = map[string]string{}
 	}
 	return d, nil
 }

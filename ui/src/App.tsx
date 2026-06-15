@@ -4,43 +4,43 @@ import { useCallback, useEffect, useState } from 'react'
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppSidebar } from '@/components/AppSidebar'
-import { ProjectDetails } from '@/components/ProjectDetails'
+import { SessionDetails } from '@/components/SessionDetails'
 import { ConversationPanel } from '@/components/ConversationPanel'
 import { ThemeProvider } from '@/contexts/theme'
 import { api } from '@/api'
-import type { Project } from '@/types'
+import type { Session } from '@/types'
 
 export default function App() {
-  const [projects, setProjects] = useState<Project[]>([])
+  const [sessions, setSessions] = useState<Session[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const loadProjects = useCallback(async () => {
+  const loadSessions = useCallback(async () => {
     try {
-      const list = await api.projects.list()
-      setProjects(list)
+      const list = await api.sessions.list()
+      setSessions(list)
     } catch {
       // ignore — backend may not be up during dev
     }
   }, [])
 
   useEffect(() => {
-    loadProjects()
-  }, [loadProjects])
+    loadSessions()
+  }, [loadSessions])
 
-  const selected = projects.find((p) => p.id === selectedId) ?? null
+  const selected = sessions.find((s) => s.id === selectedId) ?? null
 
-  const handleDeleteProject = useCallback(async () => {
+  const handleDeleteSession = useCallback(async () => {
     if (!selectedId) return
-    await api.projects.delete(selectedId)
+    await api.sessions.delete(selectedId)
     setSelectedId(null)
-    await loadProjects()
-  }, [selectedId, loadProjects])
+    await loadSessions()
+  }, [selectedId, loadSessions])
 
-  const handleRenameProject = useCallback(async (newName: string) => {
+  const handleRenameSession = useCallback(async (newName: string) => {
     if (!selectedId) return
-    await api.projects.rename(selectedId, newName)
-    await loadProjects()
-  }, [selectedId, loadProjects])
+    await api.sessions.rename(selectedId, newName)
+    await loadSessions()
+  }, [selectedId, loadSessions])
 
   return (
     <ThemeProvider>
@@ -58,28 +58,28 @@ export default function App() {
         </header>
         <div className="app-body">
           <AppSidebar
-            projects={projects}
+            sessions={sessions}
             selectedId={selectedId}
             onSelect={setSelectedId}
-            onRefresh={loadProjects}
+            onRefresh={loadSessions}
           />
           <main className="flex-1 overflow-hidden">
             {selected ? (
               <div className="project-layout">
                 <div className="project-details-panel">
-                  <ProjectDetails
-                    project={selected}
-                    onRename={handleRenameProject}
-                    onDelete={handleDeleteProject}
+                  <SessionDetails
+                    session={selected}
+                    onRename={handleRenameSession}
+                    onDelete={handleDeleteSession}
                   />
                 </div>
                 <div className="project-chat-panel" key={selected.id}>
-                  <ConversationPanel project={selected} />
+                  <ConversationPanel session={selected} />
                 </div>
               </div>
             ) : (
               <div className="empty-state">
-                Select a project or create a new one.
+                Select a session or create a new one.
               </div>
             )}
           </main>

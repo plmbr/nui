@@ -1,16 +1,16 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { ChatPanel } from '@/components/ChatPanel'
-import type { Project } from '@/types'
+import type { Session } from '@/types'
 
 interface Props {
-  project: Project
+  session: Session
 }
 
-export function ConversationPanel({ project }: Props) {
+export function ConversationPanel({ session }: Props) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <ChatPanel project={project} />
+      <ChatPanel session={session} />
     </div>
   )
 }

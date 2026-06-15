@@ -2,7 +2,7 @@
 
 package model
 
-type Project struct {
+type Session struct {
 	ID          string         `json:"id"`
 	Name        string         `json:"name"`
 	WorkingDir  string         `json:"workingDir"`
