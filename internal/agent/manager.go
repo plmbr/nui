@@ -97,7 +97,7 @@ func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[s
 		if image == "" {
 			image = "loop-claude-code:latest"
 		}
-		baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, ".claude")
+		baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, ".claude", true)
 		if err != nil {
 			return nil, err
 		}
@@ -108,7 +108,11 @@ func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[s
 		if image == "" {
 			image = "loop-pi:latest"
 		}
-		baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "")
+		home, _ := os.UserHomeDir()
+		piSessions := filepath.Join(home, ".pi", "agent", "sessions")
+		os.MkdirAll(piSessions, 0755) //nolint:errcheck
+		baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "", false,
+			piSessions+":/home/loop/.pi/agent/sessions")
 		if err != nil {
 			return nil, err
 		}
@@ -291,7 +295,7 @@ func (m *Manager) waitForConnection(projectID string, timeout time.Duration) (Co
 
 const builtinContainerPort = 8090
 
-func (m *Manager) ensureBuiltinDockerRunning(projectID, image, workingDir, agentConfigDir string) (string, error) {
+func (m *Manager) ensureBuiltinDockerRunning(projectID, image, workingDir, agentConfigDir string, shadowSettings bool, extraVolumes ...string) (string, error) {
 	m.containerMu.Lock()
 	baseURL, exists := m.dockerURLs[projectID]
 	m.containerMu.Unlock()
@@ -310,7 +314,7 @@ func (m *Manager) ensureBuiltinDockerRunning(projectID, image, workingDir, agent
 	if exists && isHTTPAlive(baseURL) {
 		return baseURL, nil
 	}
-	return m.launchBuiltinDocker(projectID, image, workingDir, agentConfigDir)
+	return m.launchBuiltinDocker(projectID, image, workingDir, agentConfigDir, shadowSettings, extraVolumes...)
 }
 
 // loopbackAddHostArgs returns --add-host flags for any hostname in baseURL that
@@ -336,7 +340,7 @@ func loopbackAddHostArgs(baseURL string) []string {
 	return nil
 }
 
-func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, agentConfigDir string) (string, error) {
+func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, agentConfigDir string, shadowSettings bool, extraVolumes ...string) (string, error) {
 	m.containerMu.Lock()
 	if oldID, ok := m.containers[projectID]; ok {
 		go exec.Command("docker", "stop", oldID).Run()
@@ -372,18 +376,31 @@ func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, agentConfigD
 		if _, statErr := os.Stat(hostConfigJSON); statErr == nil {
 			args = append(args, "-v", hostConfigJSON+":"+containerHome+"/"+agentConfigDir+".json")
 		}
-		// Shadow the host's settings.json with an empty one so that host-specific
-		// env overrides (e.g. ANTHROPIC_BASE_URL pointing to localhost) do not
-		// break network connectivity inside the container.
-		overridePath := filepath.Join(home, ".loop", agentConfigDir+"-settings-override.json")
-		if writeErr := os.WriteFile(overridePath, []byte("{}"), 0644); writeErr == nil {
-			args = append(args, "-v", overridePath+":"+containerHome+"/"+agentConfigDir+"/settings.json:ro")
+		if shadowSettings {
+			// Shadow the host's settings.json with an empty one so that host-specific
+			// env overrides (e.g. ANTHROPIC_BASE_URL pointing to localhost) do not
+			// break network connectivity inside the container.
+			overridePath := filepath.Join(home, ".loop", agentConfigDir+"-settings-override.json")
+			if writeErr := os.WriteFile(overridePath, []byte("{}"), 0644); writeErr == nil {
+				args = append(args, "-v", overridePath+":"+containerHome+"/"+agentConfigDir+"/settings.json:ro")
+			}
 		}
+	}
+	for _, vol := range extraVolumes {
+		args = append(args, "-v", vol)
 	}
 	args = append(args, image)
 
-	out, err := exec.Command("docker", args...).Output()
+	cmd := exec.Command("docker", args...)
+	out, err := cmd.Output()
 	if err != nil {
+		var stderr string
+		if ee, ok := err.(*exec.ExitError); ok {
+			stderr = strings.TrimSpace(string(ee.Stderr))
+		}
+		if stderr != "" {
+			return "", fmt.Errorf("docker run %s: %w\n%s", image, err, stderr)
+		}
 		return "", fmt.Errorf("docker run %s: %w", image, err)
 	}
 	containerID := strings.TrimSpace(string(out))

@@ -90,10 +90,11 @@ def _write_models_json():
     base_url = os.environ.get("ANTHROPIC_BASE_URL", "")
     if not base_url:
         return
+    api_key = os.environ.get("ANTHROPIC_API_KEY") or "sk-dummy"
     agent_dir = os.path.expanduser("~/.pi/agent")
     os.makedirs(agent_dir, exist_ok=True)
     models_path = os.path.join(agent_dir, "models.json")
-    config = {"providers": {"anthropic": {"baseUrl": base_url}}}
+    config = {"providers": {"anthropic": {"baseUrl": base_url, "apiKey": api_key}}}
     with open(models_path, "w") as f:
         json.dump(config, f)
     print(f"[pi] set anthropic baseUrl -> {base_url}", file=sys.stderr, flush=True)
