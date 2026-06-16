@@ -33,7 +33,7 @@ docker build -f claude-code/Dockerfile -t loop-claude-code:latest .
 docker build -f pi/Dockerfile         -t loop-pi:latest           .
 ```
 
-`docker-claude` and `docker-pi` agent types require `ANTHROPIC_API_KEY` to be set in the host environment — Loop forwards it automatically into the container. If `ANTHROPIC_BASE_URL` points to a hostname that resolves to loopback (e.g. a local proxy), Loop automatically adds `--add-host=<hostname>:host-gateway` so the container can reach it.
+The `claude-code` docker sandbox image (`loop-claude-code:latest`) requires `ANTHROPIC_API_KEY` in the host environment — Loop forwards it automatically into the container. If `ANTHROPIC_BASE_URL` resolves to loopback, Loop adds `--add-host=<hostname>:host-gateway` automatically.
 
 ## Architecture
 
@@ -67,20 +67,28 @@ type Agent interface {
 ```
 `ClaudeCodeAgent.Run` launches `claude -p <msg> --output-format stream-json --verbose --dangerously-skip-permissions --include-partial-messages --model <model> [--resume <sessionID>] [--system-prompt <prompt>]` and streams parsed SSE events (`EventText`, `EventDone`, `EventError`) back over a channel. The channel is consumed by `handleProjectChat`, which forwards events to the browser as `text/event-stream`. On Linux, when `bwrap` is available, the `claude` process runs inside a bubblewrap sandbox (read-only rootfs; `workDir` and `~/.claude` bind-mounted read-write; network preserved).
 
-`ExtensionAgent` speaks JSON-RPC 2.0 over TCP to a managed Python/TS extension process (built-in `pi` and `claude-code` types). `HTTPExtensionAgent` talks to Docker and remote agents via HTTP/SSE (`POST /run` → `text/event-stream`; `GET /info` for health checks).
+`ExtensionAgent` speaks JSON-RPC 2.0 over TCP to a managed Python/TS extension process (`pi` and `claude-code` harness types). `HTTPExtensionAgent` talks to Docker and remote agents via HTTP/SSE (`POST /run` → `text/event-stream`; `GET /info` for health checks).
 
 `Manager` handles the full lifecycle: launching Python extension processes (writing/reading `~/.loop/extensions/<projectID>.json` connection files), starting Docker containers (`docker run -d -p 127.0.0.1::<port>`), resolving mapped ports via `docker port`, waiting for HTTP readiness, and stopping everything on delete/shutdown. Docker container URLs are cached in-process; remote agents are stateless (Loop just stores the configured host:port). Python extension processes receive `LOOP_BWRAP_PATH` when bwrap is available so they can sandbox their subprocesses.
 
-`Project.AgentConfig` (`map[string]any`) carries agent-type-specific settings: `{image, containerPort}` for `docker`, `{host, port}` for `remote`. `docker-claude` and `docker-pi` accept an optional `{image}` override (defaults: `loop-claude-code:latest` / `loop-pi:latest`).
+#### Agent types and step harness types
 
-#### Builtin Docker agents (`docker-claude`, `docker-pi`)
+There are five built-in agent types selectable at session creation, mapping directly to the five ADL step harness types:
 
-Both run an HTTP/SSE server (port 8090) inside a Docker container using a non-root `loop` user (uid 1001). Loop forwards `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_OAUTH_TOKEN`, and `ANTHROPIC_BASE_URL` from the host environment. The working directory is bind-mounted read-write. If `ANTHROPIC_BASE_URL` resolves to a loopback address on the host (e.g. a local dev proxy), Loop automatically adds `--add-host=<hostname>:host-gateway` so the container can reach it via the original hostname.
+| Agent type | Harness type | How it runs |
+|---|---|---|
+| Claude Code | `claude-code` | Runs `claude` CLI as a local subprocess |
+| pi | `pi` | Runs `pi` CLI as a local subprocess |
+| codex | `codex` | Runs `codex` CLI as a local subprocess |
+| docker | `docker` | Connects to an HTTP/SSE agent in a Docker container (`image`, `containerPort` required) |
+| remote | `remote` | Connects to a pre-running HTTP/SSE agent over the network (`host`, `port` required) |
 
-- `docker-claude`: additionally mounts `~/.claude/` and `~/.claude.json` into the container so Claude Code can resume sessions and use existing auth.
-- `docker-pi`: does **not** mount `~/.pi` — Pi fetches its own config on first run inside the container. `ANTHROPIC_API_KEY` is required (OAuth via `apiKeyHelper` does not work in containers).
+`claude-code`, `pi`, and `codex` harnesses support a `sandbox` field:
+- `none` — run directly on the host (default)
+- `bubblewrap` — bubblewrap sandbox (Linux only)
+- `docker` — runs inside a Docker container
 
-The `docker/` directory contains `http_loop_agent.py` (shared HTTP/SSE base class), `claude-code/claude_code_http.py` + `Dockerfile`, and `pi/pi_http.py` + `Dockerfile`.
+Sandbox variants and custom configurations are expressed via user-defined ADL in `~/.loop/agents/*.yaml` rather than as separate named built-in types. The `docker/` directory contains `http_loop_agent.py` (shared HTTP/SSE base class), `claude-code/claude_code_http.py` + `Dockerfile`, and `pi/pi_http.py` + `Dockerfile`.
 
 #### Sandbox (`sandbox.go`)
 

@@ -43,10 +43,11 @@ type ADLDefinition struct {
 // Step harness types (harness.type):
 //   - "claude-code" — runs the claude CLI as a host subprocess
 //   - "pi"          — runs the pi CLI as a host subprocess
+//   - "codex"       — runs the codex CLI as a host subprocess
 //   - "docker"      — connects to an HTTP/SSE agent in a Docker container (requires image + containerPort)
 //   - "remote"      — connects to a pre-running HTTP/SSE agent over the network (requires host + port)
 //
-// Sandbox options (harness.sandbox) — only for "claude-code" and "pi" harnesses:
+// Sandbox options (harness.sandbox) — applies to "claude-code", "pi", and "codex" harnesses:
 //   - "none"        — run directly on the host (default)
 //   - "bubblewrap"  — wrap the subprocess in a bubblewrap sandbox (Linux only)
 //   - "docker"      — run the subprocess agent inside a Docker container

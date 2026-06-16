@@ -121,6 +121,10 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 			return ag.Run(ctx, req, events)
 		}
 
+	case "codex":
+		ag := &CodexAgent{Model: harness.Model, Sandbox: harness.Sandbox}
+		return ag.Run(ctx, req, events)
+
 	case "docker":
 		// External HTTP/SSE agent in a user-managed Docker container.
 		ag, err := a.manager.GetAgent(a.projectID, "docker", req.WorkingDir, map[string]any{

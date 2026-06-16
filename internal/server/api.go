@@ -30,6 +30,8 @@ type AgentTypeInfo struct {
 
 // builtinAgentDefs are the compiled-in ADL definitions shipped with Loop.
 // They are expressed in the same ADL format as user-defined agents in ~/.loop/agents/*.yaml.
+// The three subprocess-based built-ins (claude-code, pi, codex) and two connector types (docker, remote)
+// correspond directly to the five step harness types. Sandbox variants live in user-defined ADL.
 var builtinAgentDefs = []model.ADLDefinition{
 	{
 		Name:        "Claude Code",
@@ -37,38 +39,33 @@ var builtinAgentDefs = []model.ADLDefinition{
 		Harness:     model.ADLHarness{Type: "claude-code", Sandbox: "none"},
 	},
 	{
-		Name:        "Claude Code · Bubblewrap",
-		Description: "Claude Code sandboxed with bubblewrap (Linux only)",
-		Harness:     model.ADLHarness{Type: "claude-code", Sandbox: "bubblewrap"},
-	},
-	{
-		Name:        "Claude Code · Docker",
-		Description: "Claude Code running inside a Docker container with auth mount",
-		Harness:     model.ADLHarness{Type: "claude-code", Sandbox: "docker", Image: "loop-claude-code:latest"},
-	},
-	{
-		Name:        "Pi",
+		Name:        "pi",
 		Description: "Pi running as a local subprocess",
 		Harness:     model.ADLHarness{Type: "pi", Sandbox: "none"},
 	},
 	{
-		Name:        "Pi · Bubblewrap",
-		Description: "Pi sandboxed with bubblewrap (Linux only)",
-		Harness:     model.ADLHarness{Type: "pi", Sandbox: "bubblewrap"},
+		Name:        "codex",
+		Description: "Codex running as a local subprocess",
+		Harness:     model.ADLHarness{Type: "codex", Sandbox: "none"},
 	},
 	{
-		Name:        "Pi · Docker",
-		Description: "Pi running inside a Docker container",
-		Harness:     model.ADLHarness{Type: "pi", Sandbox: "docker", Image: "loop-pi:latest"},
+		Name:        "docker",
+		Description: "HTTP/SSE agent running inside a Docker container (configure image and containerPort in ADL)",
+		Harness:     model.ADLHarness{Type: "docker"},
+	},
+	{
+		Name:        "remote",
+		Description: "HTTP/SSE agent running on a remote host (configure host and port in ADL)",
+		Harness:     model.ADLHarness{Type: "remote"},
 	},
 }
 
 // legacyAgentTypeNames maps old Session.AgentType strings to the new ADL definition name.
 var legacyAgentTypeNames = map[string]string{
 	"claude-code":   "Claude Code",
-	"pi":            "Pi",
-	"docker-claude": "Claude Code · Docker",
-	"docker-pi":     "Pi · Docker",
+	"pi":            "pi",
+	"docker-claude": "Claude Code",
+	"docker-pi":     "pi",
 }
 
 type AppConfig struct {
@@ -282,9 +279,7 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Route /api/sessions/:id/<sub>
-	if idx := strings.Index(path, "/"); idx != -1 {
-		id := path[:idx]
-		rest := path[idx+1:]
+	if id, rest, ok := strings.Cut(path, "/"); ok {
 		switch rest {
 		case "messages":
 			handleSessionMessages(w, r, id)
