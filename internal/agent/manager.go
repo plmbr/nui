@@ -114,6 +114,20 @@ func (m *Manager) GetPiDocker(projectID, image, workingDir string) (Agent, error
 	return NewHTTPExtensionAgent("pi-docker", baseURL), nil
 }
 
+// GetCodexDocker launches (or reuses) a Docker container running the codex HTTP agent.
+// Auth is forwarded via ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL from the host environment.
+func (m *Manager) GetCodexDocker(projectID, image, workingDir string) (Agent, error) {
+	if image == "" {
+		image = "loop-codex:latest"
+	}
+	baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "", false)
+	if err != nil {
+		return nil, err
+	}
+	m.touchActivity(projectID)
+	return NewHTTPExtensionAgent("codex-docker", baseURL), nil
+}
+
 // GetAgent returns an Agent for the given project, starting or connecting as needed.
 func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[string]any) (Agent, error) {
 	switch agentType {

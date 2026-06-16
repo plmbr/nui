@@ -28,12 +28,13 @@ cd ui && npm run build && cd .. && go build -o loop_bin . && ./loop_bin ui
 
 ### Docker images (run from `docker/`)
 ```sh
-# Build from the docker/ directory (both images share http_loop_agent.py)
+# Build from the docker/ directory (all images share http_loop_agent.py)
 docker build -f claude-code/Dockerfile -t loop-claude-code:latest .
-docker build -f pi/Dockerfile         -t loop-pi:latest           .
+docker build -f pi/Dockerfile          -t loop-pi:latest           .
+docker build -f codex/Dockerfile       -t loop-codex:latest        .
 ```
 
-The `claude-code` docker sandbox image (`loop-claude-code:latest`) requires `ANTHROPIC_API_KEY` in the host environment — Loop forwards it automatically into the container. If `ANTHROPIC_BASE_URL` resolves to loopback, Loop adds `--add-host=<hostname>:host-gateway` automatically.
+All docker sandbox images forward `ANTHROPIC_API_KEY` and `ANTHROPIC_BASE_URL` automatically from the host environment. If `ANTHROPIC_BASE_URL` resolves to loopback, Loop adds `--add-host=<hostname>:host-gateway` automatically.
 
 ## Architecture
 
@@ -88,7 +89,7 @@ There are five built-in agent types selectable at session creation, mapping dire
 - `bubblewrap` — bubblewrap sandbox (Linux only)
 - `docker` — runs inside a Docker container
 
-Sandbox variants and custom configurations are expressed via user-defined ADL in `~/.loop/agents/*.yaml` rather than as separate named built-in types. The `docker/` directory contains `http_loop_agent.py` (shared HTTP/SSE base class), `claude-code/claude_code_http.py` + `Dockerfile`, and `pi/pi_http.py` + `Dockerfile`.
+Sandbox variants and custom configurations are expressed via user-defined ADL in `~/.loop/agents/*.yaml` rather than as separate named built-in types. The `docker/` directory contains `http_loop_agent.py` (shared HTTP/SSE base class), `claude-code/claude_code_http.py` + `Dockerfile`, `pi/pi_http.py` + `Dockerfile`, and `codex/codex_http.py` + `Dockerfile`.
 
 #### Sandbox (`sandbox.go`)
 
