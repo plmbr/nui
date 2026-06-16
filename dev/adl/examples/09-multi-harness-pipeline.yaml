@@ -7,15 +7,17 @@ adl: "1.0"
 #
 #   plan (claude-code, opus)
 #     → execute (docker, sandboxed runner)
+#     → security-scan (codex, local)   ← parallel with review
 #     → review (claude-code, sonnet)
 #     → [approval gate]
 #     → deploy (remote, CI server)
 #
-# Real-world analogy: AI pair programmer — plans in Claude, runs in a sandbox,
-# reviews the output, gets human sign-off, then triggers a remote CI deploy.
+# Real-world analogy: AI pair programmer — plans in Claude, executes in a
+# sandbox, security-scans with Codex, reviews the output, gets human sign-off,
+# then triggers a remote CI deploy.
 
 name: ai-dev-pipeline
-description: Plan → sandbox execute → review → approve → remote deploy.
+description: Plan → sandbox execute → security-scan + review → approve → remote deploy.
 version: 0.1.0
 
 # Top-level harness is the default for steps that don't override it.
@@ -61,20 +63,39 @@ steps:
       - name: testResults
         type: text
 
+  - name: security-scan
+    policy: react
+    harness:
+      type: codex
+      model: claude-sonnet-4-6    # codex auto-detects model from env; explicit override here
+    dependsOn: [execute]
+    inputs:
+      - from: execute.testResults
+    systemPrompt: |
+      Review the code changes and test output for security issues.
+      Look for: injection vulnerabilities, hardcoded secrets, unsafe deserialization,
+      overly permissive file/network access, and dependency risks.
+      Output: CLEAN or RISKS FOUND, with specific findings and line numbers if applicable.
+    outputs:
+      - name: securityReport
+        type: text
+
   - name: review
     policy: react
     harness:
       type: claude-code
       model: claude-sonnet-4-6
-    dependsOn: [plan, execute]
+    dependsOn: [plan, execute, security-scan]
     inputs:
       - from: plan.plan
         as: implementationPlan
       - from: execute.testResults
         as: testResults
+      - from: security-scan.securityReport
+        as: securityReport
     systemPrompt: |
-      Review the implementation plan and test results.
-      Assess: Did all tests pass? Are there any concerns?
+      Review the implementation plan, test results, and security report.
+      Assess: Did all tests pass? Are there any security concerns? Is the change ready?
       Output a short review: PASS or FAIL, with a one-paragraph justification.
     outputs:
       - name: verdict

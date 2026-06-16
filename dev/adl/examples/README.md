@@ -16,9 +16,10 @@ runnable once the ADL executor is implemented.
 | `06-hitl-approval-gate.yaml` | Intermediate | `approval: required`, `approvalTimeout` |
 | `07-loop-policy.yaml` | Intermediate | `loop` policy, `maxIterations`, self-improvement |
 | `08-batch-processing.yaml` | Intermediate | `batch` policy, `maxConcurrency`, array inputs |
-| `09-multi-harness-pipeline.yaml` | Advanced | Per-step harness/model override, 4 harness types |
+| `09-multi-harness-pipeline.yaml` | Advanced | Per-step harness/model override, 5 harness types incl. codex |
 | `10-autonomous-scheduled.yaml` | Advanced | `schedule.cron`, MCP tools, no HITL |
 | `11-complex-research-pipeline.yaml` | Complex | All features: parallel fan-out, multi-harness, adversarial verify loop, HITL, batch, MCP |
+| `12-codex-sandbox-variants.yaml` | Basic | `codex` harness — local subprocess, bubblewrap, docker sandbox variants |
 
 ## Key ADL Concepts
 
@@ -61,6 +62,22 @@ steps:
 | `batch` | Map step over an array input with bounded concurrency |
 | `conditional` | Route based on a prior step's output (TBD) |
 
+### Sandbox variants (claude-code, pi, codex)
+```yaml
+harness:
+  type: codex
+  sandbox: none        # run directly on the host (default)
+
+harness:
+  type: codex
+  sandbox: bubblewrap  # Linux only; wraps the subprocess with bwrap
+
+harness:
+  type: codex
+  sandbox: docker      # runs inside a Loop-managed Docker container
+  image: loop-codex:latest
+```
+
 ### Approval gates
 ```yaml
 - name: review
@@ -74,13 +91,15 @@ on rejection or timeout the run ends.
 
 ## Implementation Notes
 
-These examples define the target state. The ADL executor (Phase 2) needs to:
+The ADL executor (`internal/agent/adl.go`) is implemented for core multi-step pipelines:
 
-1. Parse YAML into a `StepGraph` (nodes + `dependsOn` edges)
-2. Topologically schedule steps using `Azure/go-workflow` or equivalent
-3. Resolve harness per step, falling back to the top-level harness
-4. Forward the previous step's named outputs as inputs to dependents
-5. Implement `approval: required` as a persisted channel block
-6. Support `loop` and `batch` as special execution modes outside the DAG runner
+- [x] Parse YAML into `ADLDefinition` (model structs in `internal/model/`)
+- [x] Topological step scheduling (Kahn's algorithm in `topoSort`)
+- [x] Harness resolution per step, fallback to top-level harness
+- [x] Named outputs forwarded as inputs to dependents (`buildStepMessage`)
+- [x] All five harness types: `claude-code`, `pi`, `codex`, `docker`, `remote`
+- [ ] `approval: required` gates (blocked on chat UI approval card)
+- [ ] `loop` and `batch` execution policies
+- [ ] Durable run log (`~/.loop/runs/`) for resume after crash
 
 See `dev/adl/orchestration-research.md` for the research backing these decisions.

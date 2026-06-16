@@ -47,10 +47,12 @@ version: semver       # e.g. "1.0.0"
 
 # ── Harness ──────────────────────────────────────────────────────────────────
 harness:
-  type: claude-code | docker | remote | pi
+  type: claude-code | pi | codex | docker | remote
   model: string                     # e.g. "claude-sonnet-4-6"
   workingDir: string                # optional; defaults to server CWD
-  # docker-only:
+  # claude-code / pi / codex only:
+  sandbox: none | bubblewrap | docker   # default: none (bubblewrap: Linux only)
+  # docker-only (harness.type: docker, or sandbox: docker):
   image: string                     # container image
   containerPort: 9090               # port the container listens on
   # remote-only:
@@ -142,9 +144,12 @@ type Agent interface {
 | Harness | Implementation |
 |---|---|
 | `claude-code` | Shells out to `claude` CLI; streams `stream-json` output |
-| `pi` | TCP JSON-RPC 2.0 to a managed Python extension process |
-| `docker` | Launches container via `docker run`; communicates over HTTP/SSE |
+| `pi` | Manages a `pi` subprocess (local) or Docker container; HTTP/SSE |
+| `codex` | Manages a `codex` subprocess (local) or Docker container; HTTP/SSE |
+| `docker` | Launches a user-provided container via `docker run`; HTTP/SSE |
 | `remote` | Connects to a user-configured host:port via HTTP/SSE |
+
+All three subprocess harnesses (`claude-code`, `pi`, `codex`) support `sandbox: bubblewrap` (Linux, wraps the subprocess with `bwrap`) and `sandbox: docker` (runs the agent inside a Loop-managed Docker container).
 
 ### Docker harness
 
@@ -255,14 +260,18 @@ Each approval request gets a stable `approvalURL` that can be opened outside the
 - [x] Project CRUD with persistence (`~/.loop/data.json`)
 - [x] Chat history from Claude session files
 - [x] Theme settings (`~/.loop/settings.json`)
-- [x] Extension agent framework (TCP JSON-RPC for built-in types)
+- [x] Extension agent framework (HTTP/SSE protocol for built-in docker/remote types)
 - [x] Docker harness (container lifecycle + HTTP/SSE protocol)
 - [x] Remote harness (user-configured host:port + HTTP/SSE protocol)
+- [x] `pi` harness (local subprocess + docker variant)
+- [x] `codex` harness (local subprocess + docker variant; `--ignore-user-config` to avoid MCP conflicts)
+- [x] Bubblewrap sandbox for `claude-code`, `pi`, and `codex` (Linux only)
+- [x] User-defined ADL (`~/.loop/agents/*.yaml`, loaded on every `/api/agent-types` call)
 
 ### Phase 2
-- [ ] ADL file format (v1 schema above)
-- [ ] Multi-step DAG execution (`dependsOn`, `parallel`, `sequential` policies)
-- [ ] Named outputs / typed inputs between steps
+- [x] ADL file format (v1 schema above)
+- [x] Multi-step DAG execution (`dependsOn`, topological sort via Kahn's algorithm)
+- [x] Named outputs / typed inputs between steps (`outputs` + `inputs.from`)
 - [ ] HITL approval gates in chat UI (`approval: required`, `approvalTimeout`)
 - [ ] Step-level durable run log (`~/.loop/runs/`)
 - [ ] SSE reconnection with `Last-Event-ID` replay
