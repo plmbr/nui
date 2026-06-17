@@ -85,69 +85,71 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o) }}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg flex flex-col max-h-[85vh]">
         <DialogHeader>
           <DialogTitle>New Session</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-5 py-1">
+        <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+          <div className="flex flex-col gap-5 py-1 overflow-y-auto flex-1 px-0.5">
 
-          {/* ── Agent picker ─────────────────────────────────────────── */}
-          <div className="space-y-2">
-            <Label>Agent</Label>
-            <div className="grid grid-cols-1 gap-1.5">
-              {builtins.map((a) => (
-                <AgentCard
-                  key={a.id}
-                  agent={a}
-                  selected={selectedId === a.id}
-                  onSelect={() => setSelectedId(a.id)}
-                />
-              ))}
-              {userDefined.length > 0 && (
-                <>
-                  <p className="pt-1 text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
-                    User-defined
-                  </p>
-                  {userDefined.map((a) => (
-                    <AgentCard
-                      key={a.id}
-                      agent={a}
-                      selected={selectedId === a.id}
-                      onSelect={() => setSelectedId(a.id)}
-                    />
-                  ))}
-                </>
-              )}
+            {/* ── Agent picker ─────────────────────────────────────────── */}
+            <div className="space-y-2">
+              <Label>Agent</Label>
+              <div className="grid grid-cols-1 gap-1.5">
+                {builtins.map((a) => (
+                  <AgentCard
+                    key={a.id}
+                    agent={a}
+                    selected={selectedId === a.id}
+                    onSelect={() => setSelectedId(a.id)}
+                  />
+                ))}
+                {userDefined.length > 0 && (
+                  <>
+                    <p className="pt-1 text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+                      User-defined
+                    </p>
+                    {userDefined.map((a) => (
+                      <AgentCard
+                        key={a.id}
+                        agent={a}
+                        selected={selectedId === a.id}
+                        onSelect={() => setSelectedId(a.id)}
+                      />
+                    ))}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* ── Session name ─────────────────────────────────────────── */}
-          <div className="space-y-1.5">
-            <Label htmlFor="name">
-              Name <span className="text-muted-foreground font-normal">(optional)</span>
-            </Label>
-            <Input
-              id="name"
-              placeholder={selected?.label ?? 'my-session'}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
+            {/* ── Session name ─────────────────────────────────────────── */}
+            <div className="space-y-1.5">
+              <Label htmlFor="name">
+                Name <span className="text-muted-foreground font-normal">(optional)</span>
+              </Label>
+              <Input
+                id="name"
+                placeholder={selected?.label ?? 'my-session'}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
 
-          {/* ── Working directory ─────────────────────────────────────── */}
-          <div className="space-y-1.5">
-            <Label htmlFor="workingDir">
-              Working Directory <span className="text-muted-foreground font-normal">(optional)</span>
-            </Label>
-            <Input
-              id="workingDir"
-              placeholder="/path/to/project"
-              value={workingDir}
-              onChange={(e) => setWorkingDir(e.target.value)}
-            />
-          </div>
+            {/* ── Working directory ─────────────────────────────────────── */}
+            <div className="space-y-1.5">
+              <Label htmlFor="workingDir">
+                Working Directory <span className="text-muted-foreground font-normal">(optional)</span>
+              </Label>
+              <Input
+                id="workingDir"
+                placeholder="/path/to/project"
+                value={workingDir}
+                onChange={(e) => setWorkingDir(e.target.value)}
+              />
+            </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
+          </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => { reset(); onOpenChange(false) }}>
