@@ -419,14 +419,16 @@ func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, agentConfigD
 	args := []string{"run", "-d", "--rm",
 		"-p", fmt.Sprintf("127.0.0.1::%d", builtinContainerPort),
 	}
-	for _, envKey := range []string{"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_BASE_URL"} {
+	for _, envKey := range []string{"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_BASE_URL", "OPENAI_API_KEY", "OPENAI_BASE_URL"} {
 		if val := os.Getenv(envKey); val != "" {
 			args = append(args, "-e", envKey+"="+val)
 		}
 	}
-	// If ANTHROPIC_BASE_URL points to a loopback hostname, route it to the host machine.
-	if extraHosts := loopbackAddHostArgs(os.Getenv("ANTHROPIC_BASE_URL")); len(extraHosts) > 0 {
-		args = append(args, extraHosts...)
+	// If any base URL points to a loopback hostname, route it to the host machine.
+	for _, urlEnv := range []string{"ANTHROPIC_BASE_URL", "OPENAI_BASE_URL"} {
+		if extraHosts := loopbackAddHostArgs(os.Getenv(urlEnv)); len(extraHosts) > 0 {
+			args = append(args, extraHosts...)
+		}
 	}
 	if workingDir != "" {
 		args = append(args, "-v", workingDir+":"+workingDir)

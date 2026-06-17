@@ -34,7 +34,7 @@ docker build -f pi/Dockerfile          -t loop-pi:latest           .
 docker build -f codex/Dockerfile       -t loop-codex:latest        .
 ```
 
-All docker sandbox images forward `ANTHROPIC_API_KEY` and `ANTHROPIC_BASE_URL` automatically from the host environment. If `ANTHROPIC_BASE_URL` resolves to loopback, Loop adds `--add-host=<hostname>:host-gateway` automatically.
+All docker sandbox images forward `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `OPENAI_API_KEY`, and `OPENAI_BASE_URL` automatically from the host environment. If `ANTHROPIC_BASE_URL` or `OPENAI_BASE_URL` resolves to a loopback hostname, Loop adds `--add-host=<hostname>:host-gateway` automatically.
 
 ## Architecture
 
@@ -72,7 +72,7 @@ type Agent interface {
 
 `ExtensionAgent` speaks JSON-RPC 2.0 over TCP to a managed Python/TS extension process. `HTTPExtensionAgent` talks to Docker and remote agents via HTTP/SSE (`POST /run` → `text/event-stream`; `GET /info` for health checks).
 
-`Manager` handles the full lifecycle: launching Python extension processes (writing/reading `~/.loop/extensions/<projectID>.json` connection files), starting Docker containers (`docker run -d -p 127.0.0.1::<port>`), resolving mapped ports via `docker port`, waiting for HTTP readiness, and stopping everything on delete/shutdown. `GetClaudeCodeDocker`, `GetPiDocker`, and `GetCodexDocker` launch per-agent builtin containers (defaulting to `loop-claude-code:latest`, `loop-pi:latest`, `loop-codex:latest`). All builtin containers receive `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_OAUTH_TOKEN`, and `ANTHROPIC_BASE_URL` from the host environment; if `ANTHROPIC_BASE_URL` resolves to a loopback hostname, `--add-host` is injected automatically. Docker container URLs are cached in-process; remote agents are stateless (Loop just stores the configured host:port).
+`Manager` handles the full lifecycle: launching Python extension processes (writing/reading `~/.loop/extensions/<projectID>.json` connection files), starting Docker containers (`docker run -d -p 127.0.0.1::<port>`), resolving mapped ports via `docker port`, waiting for HTTP readiness, and stopping everything on delete/shutdown. `GetClaudeCodeDocker`, `GetPiDocker`, and `GetCodexDocker` launch per-agent builtin containers (defaulting to `loop-claude-code:latest`, `loop-pi:latest`, `loop-codex:latest`). All builtin containers receive `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_OAUTH_TOKEN`, `ANTHROPIC_BASE_URL`, `OPENAI_API_KEY`, and `OPENAI_BASE_URL` from the host environment; if `ANTHROPIC_BASE_URL` resolves to a loopback hostname, `--add-host` is injected automatically. Docker container URLs are cached in-process; remote agents are stateless (Loop just stores the configured host:port).
 
 #### Agent types and step harness types
 

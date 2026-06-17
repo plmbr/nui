@@ -29,24 +29,35 @@ class CodexAgent(HttpLoopAgent):
         session_id = kwargs.get("sessionId", "")
         working_dir = kwargs.get("workingDir", "") or os.getcwd()
 
-        if session_id:
-            args = ["codex", "exec", "resume", session_id, message]
-        else:
-            args = ["codex", "exec", message]
-
-        args += [
+        # Build flags first, then positional args — codex subcommands require
+        # options before [SESSION_ID] [PROMPT] positional args.
+        flags = [
             "--json",
             "--dangerously-bypass-approvals-and-sandbox",
             "--skip-git-repo-check",
             "--ignore-user-config",
         ]
 
+        base_url = os.environ.get("OPENAI_BASE_URL", "")
+        if base_url:
+            # Use a custom provider with WebSocket disabled — most OpenAI-compatible
+            # gateways don't support WebSocket upgrades.
+            # supports_websockets=false makes codex skip straight to HTTPS Responses API.
+            flags += [
+                "-c", 'model_provider="loop_gateway"',
+                "-c", f'model_providers.loop_gateway={{name="loop_gateway",env_key="OPENAI_API_KEY",base_url="{base_url}",supports_websockets=false}}',
+            ]
+
         model = kwargs.get("model", "")
         if model:
-            args += ["-m", model]
+            flags += ["-m", model]
 
-        if working_dir:
-            args += ["-C", working_dir]
+        # `codex exec resume` doesn't accept --cd/-C; set the subprocess cwd
+        # instead. The host workingDir is bind-mounted at the same path.
+        if session_id:
+            args = ["codex", "exec", "resume"] + flags + [session_id, message]
+        else:
+            args = ["codex", "exec"] + flags + [message]
 
         proc = subprocess.Popen(
             args,
@@ -54,6 +65,7 @@ class CodexAgent(HttpLoopAgent):
             stdout=PIPE,
             stderr=PIPE,
             start_new_session=True,
+            cwd=working_dir if working_dir and os.path.isdir(working_dir) else None,
         )
 
         def drain_stderr():

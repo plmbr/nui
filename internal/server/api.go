@@ -364,9 +364,12 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 		extensionManager.Stop(id)
 		if agentSessionID != "" {
 			var delErr error
-			if sessionHarnessType(model.Session{AgentType: agentType, WorkingDir: workingDir}) == "pi" {
+			switch sessionHarnessType(model.Session{AgentType: agentType, WorkingDir: workingDir}) {
+			case "pi":
 				delErr = store.DeletePiSession(workingDir, agentSessionID)
-			} else {
+			case "codex":
+				delErr = store.DeleteCodexSession(workingDir, agentSessionID)
+			default:
 				delErr = store.DeleteClaudeSession(workingDir, agentSessionID)
 			}
 			if delErr != nil {
@@ -588,9 +591,12 @@ func handleSessionHistory(w http.ResponseWriter, r *http.Request, sessionID stri
 	}
 	var msgs []model.ChatMessage
 	var err error
-	if sessionHarnessType(session) == "pi" {
+	switch sessionHarnessType(session) {
+	case "pi":
 		msgs, err = store.LoadPiHistory(session.WorkingDir, agentSessionID)
-	} else {
+	case "codex":
+		msgs, err = store.LoadCodexHistory(session.WorkingDir, agentSessionID)
+	default:
 		msgs, err = store.LoadClaudeHistory(session.WorkingDir, agentSessionID)
 	}
 	if err != nil {
