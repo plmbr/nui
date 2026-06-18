@@ -22,6 +22,7 @@ import (
 var builtinExtensions = map[string]string{
 	"claude-code": "claude_code.py",
 	"pi":          "pi.py",
+	"opencode":    "opencode.py",
 }
 
 const containerIdleTimeout = 30 * time.Minute
@@ -114,6 +115,23 @@ func (m *Manager) GetPiDocker(projectID, image, workingDir string) (Agent, error
 	return NewHTTPExtensionAgent("pi-docker", baseURL), nil
 }
 
+// GetOpenCodeDocker launches (or reuses) a Docker container running the opencode HTTP agent.
+func (m *Manager) GetOpenCodeDocker(projectID, image, workingDir string) (Agent, error) {
+	if image == "" {
+		image = "loop-opencode:latest"
+	}
+	home, _ := os.UserHomeDir()
+	ocSessions := filepath.Join(home, ".loop", "opencode-sessions")
+	os.MkdirAll(ocSessions, 0755) //nolint:errcheck
+	baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "", false,
+		ocSessions+":/home/loop/.local/share/opencode")
+	if err != nil {
+		return nil, err
+	}
+	m.touchActivity(projectID)
+	return NewHTTPExtensionAgent("opencode-docker", baseURL), nil
+}
+
 // GetCodexDocker launches (or reuses) a Docker container running the codex HTTP agent.
 // Auth is forwarded via ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL from the host environment.
 func (m *Manager) GetCodexDocker(projectID, image, workingDir string) (Agent, error) {
@@ -164,6 +182,21 @@ func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[s
 		}
 		m.touchActivity(projectID)
 		return NewHTTPExtensionAgent(agentType, baseURL), nil
+	case "docker-opencode":
+		image, _ := config["image"].(string)
+		if image == "" {
+			image = "loop-opencode:latest"
+		}
+		home, _ := os.UserHomeDir()
+		ocSessions := filepath.Join(home, ".loop", "opencode-sessions")
+		os.MkdirAll(ocSessions, 0755) //nolint:errcheck
+		baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "", false,
+			ocSessions+":/home/loop/.local/share/opencode")
+		if err != nil {
+			return nil, err
+		}
+		m.touchActivity(projectID)
+		return NewHTTPExtensionAgent(agentType, baseURL), nil
 	case "remote":
 		baseURL, err := m.connectRemote(config)
 		if err != nil {
@@ -186,7 +219,7 @@ func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[s
 // isDockerOrRemote returns true for agent types that are launched lazily on first use.
 func isDockerOrRemote(agentType string) bool {
 	switch agentType {
-	case "docker", "docker-claude", "docker-pi", "remote":
+	case "docker", "docker-claude", "docker-pi", "docker-opencode", "remote":
 		return true
 	}
 	return false

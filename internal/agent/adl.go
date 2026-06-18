@@ -134,6 +134,22 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 			return ag.Run(ctx, req, events)
 		}
 
+	case "opencode":
+		switch harness.Sandbox {
+		case "docker":
+			ag, err := a.manager.GetOpenCodeDocker(a.projectID, harness.Image, req.WorkingDir)
+			if err != nil {
+				return fmt.Errorf("opencode docker harness: %w", err)
+			}
+			return ag.Run(ctx, req, events)
+		default:
+			ag, err := a.manager.GetAgent(a.projectID, "opencode", req.WorkingDir, nil)
+			if err != nil {
+				return fmt.Errorf("opencode harness: %w", err)
+			}
+			return ag.Run(ctx, req, events)
+		}
+
 	case "docker":
 		// External HTTP/SSE agent in a user-managed Docker container.
 		ag, err := a.manager.GetAgent(a.projectID, "docker", req.WorkingDir, map[string]any{

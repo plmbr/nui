@@ -49,6 +49,11 @@ var builtinAgentDefs = []model.ADLDefinition{
 		Harness:     model.ADLHarness{Type: "codex", Sandbox: "none"},
 	},
 	{
+		Name:        "opencode",
+		Description: "opencode running as a local subprocess",
+		Harness:     model.ADLHarness{Type: "opencode", Sandbox: "none"},
+	},
+	{
 		Name:        "docker",
 		Description: "HTTP/SSE agent running inside a Docker container (configure image and containerPort in ADL)",
 		Harness:     model.ADLHarness{Type: "docker"},
@@ -62,10 +67,11 @@ var builtinAgentDefs = []model.ADLDefinition{
 
 // legacyAgentTypeNames maps old Session.AgentType strings to the new ADL definition name.
 var legacyAgentTypeNames = map[string]string{
-	"claude-code":   "Claude Code",
-	"pi":            "pi",
-	"docker-claude": "Claude Code",
-	"docker-pi":     "pi",
+	"claude-code":    "Claude Code",
+	"pi":             "pi",
+	"docker-claude":  "Claude Code",
+	"docker-pi":      "pi",
+	"docker-opencode": "opencode",
 }
 
 type AppConfig struct {
@@ -98,6 +104,9 @@ func initStore() error {
 	sessions = data.Sessions
 	agentSessions = data.AgentSessions
 	mu.Unlock()
+	if err := store.ProvisionDefaultAgents(); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: provisioning default agents: %v\n", err)
+	}
 	return nil
 }
 
@@ -236,8 +245,11 @@ func sessionHarnessType(session model.Session) string {
 		return def.Harness.Type
 	}
 	// Legacy fallback.
-	if session.AgentType == "pi" || session.AgentType == "docker-pi" {
+	switch session.AgentType {
+	case "pi", "docker-pi":
 		return "pi"
+	case "opencode", "docker-opencode":
+		return "opencode"
 	}
 	return "claude-code"
 }
@@ -369,6 +381,8 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 				delErr = store.DeletePiSession(workingDir, agentSessionID)
 			case "codex":
 				delErr = store.DeleteCodexSession(workingDir, agentSessionID)
+			case "opencode":
+				delErr = store.DeleteOpenCodeSession(workingDir, agentSessionID)
 			default:
 				delErr = store.DeleteClaudeSession(workingDir, agentSessionID)
 			}
@@ -596,6 +610,8 @@ func handleSessionHistory(w http.ResponseWriter, r *http.Request, sessionID stri
 		msgs, err = store.LoadPiHistory(session.WorkingDir, agentSessionID)
 	case "codex":
 		msgs, err = store.LoadCodexHistory(session.WorkingDir, agentSessionID)
+	case "opencode":
+		msgs, err = store.LoadOpenCodeHistory(session.WorkingDir, agentSessionID)
 	default:
 		msgs, err = store.LoadClaudeHistory(session.WorkingDir, agentSessionID)
 	}

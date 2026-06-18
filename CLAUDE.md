@@ -32,6 +32,7 @@ cd ui && npm run build && cd .. && go build -o loop_bin . && ./loop_bin ui
 docker build -f claude-code/Dockerfile -t loop-claude-code:latest .
 docker build -f pi/Dockerfile          -t loop-pi:latest           .
 docker build -f codex/Dockerfile       -t loop-codex:latest        .
+docker build -f opencode/Dockerfile    -t loop-opencode:latest     .
 ```
 
 All docker sandbox images forward `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `OPENAI_API_KEY`, and `OPENAI_BASE_URL` automatically from the host environment. If `ANTHROPIC_BASE_URL` or `OPENAI_BASE_URL` resolves to a loopback hostname, Loop adds `--add-host=<hostname>:host-gateway` automatically.
