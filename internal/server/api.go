@@ -53,16 +53,6 @@ var builtinAgentDefs = []model.ADLDefinition{
 		Description: "opencode running as a local subprocess",
 		Harness:     model.ADLHarness{Type: "opencode", Sandbox: "none"},
 	},
-	{
-		Name:        "docker",
-		Description: "HTTP/SSE agent running inside a Docker container (configure image and containerPort in ADL)",
-		Harness:     model.ADLHarness{Type: "docker"},
-	},
-	{
-		Name:        "remote",
-		Description: "HTTP/SSE agent running on a remote host (configure host and port in ADL)",
-		Harness:     model.ADLHarness{Type: "remote"},
-	},
 }
 
 // legacyAgentTypeNames maps old Session.AgentType strings to the new ADL definition name.

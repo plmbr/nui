@@ -21,6 +21,13 @@ interface Props {
   onCreated: (session: Session) => void
 }
 
+const HARNESS_LABELS: Record<string, string> = {
+  'claude-code': 'Claude Code',
+  'pi': 'Pi',
+  'codex': 'Codex',
+  'opencode': 'OpenCode',
+}
+
 function harnessLabel(harness: string, sandbox?: string): string {
   if (sandbox === 'docker') return `${harness} · docker`
   if (sandbox === 'bubblewrap') return `${harness} · bwrap`
@@ -53,6 +60,9 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
   }
 
   const selected = agentTypes.find((a) => a.id === selectedId)
+  const builtins = agentTypes.filter((a) => a.isBuiltin)
+  const userDefined = agentTypes.filter((a) => !a.isBuiltin)
+  const isBasicLoopSelected = builtins.some((a) => a.id === selectedId)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -60,7 +70,8 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
       setError('Select an agent type.')
       return
     }
-    const sessionName = name.trim() || (selected?.label ?? selectedId)
+    const displayLabel = HARNESS_LABELS[selected?.harness ?? ''] ?? selected?.label ?? selectedId
+    const sessionName = name.trim() || displayLabel
     setLoading(true)
     setError('')
     try {
@@ -80,12 +91,9 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
     }
   }
 
-  const builtins = agentTypes.filter((a) => a.isBuiltin)
-  const userDefined = agentTypes.filter((a) => !a.isBuiltin)
-
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o) }}>
-      <DialogContent className="sm:max-w-lg flex flex-col max-h-[85vh]">
+      <DialogContent className="sm:max-w-2xl flex flex-col max-h-[85vh]">
         <DialogHeader>
           <DialogTitle>New Session</DialogTitle>
         </DialogHeader>
@@ -94,29 +102,52 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
 
             {/* ── Agent picker ─────────────────────────────────────────── */}
             <div className="space-y-2">
-              <Label>Agent</Label>
+              <Label>Built-in Agents</Label>
               <div className="grid grid-cols-1 gap-1.5">
-                {builtins.map((a) => (
-                  <AgentCard
-                    key={a.id}
-                    agent={a}
-                    selected={selectedId === a.id}
-                    onSelect={() => setSelectedId(a.id)}
-                  />
-                ))}
+
+                {/* Basic Loop — single card with 4 harness pills */}
+                {builtins.length > 0 && (
+                  <div className={[
+                    'rounded-lg border px-3 py-2.5 transition-colors',
+                    isBasicLoopSelected
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border bg-background',
+                  ].join(' ')}>
+                    <span className="block text-sm font-medium leading-tight mb-2">Standard</span>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {builtins.map((a) => (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => setSelectedId(a.id)}
+                          className={[
+                            'rounded-md px-2.5 py-1 text-xs font-medium transition-colors border',
+                            selectedId === a.id
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border bg-background text-muted-foreground hover:bg-muted',
+                          ].join(' ')}
+                        >
+                          {HARNESS_LABELS[a.harness] ?? a.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Custom agents */}
                 {userDefined.length > 0 && (
                   <>
-                    <p className="pt-1 text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
-                      User-defined
-                    </p>
-                    {userDefined.map((a) => (
-                      <AgentCard
-                        key={a.id}
-                        agent={a}
-                        selected={selectedId === a.id}
-                        onSelect={() => setSelectedId(a.id)}
-                      />
-                    ))}
+                    <Label className="mt-2">Custom Agents</Label>
+                    <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto">
+                      {userDefined.map((a) => (
+                        <AgentCard
+                          key={a.id}
+                          agent={a}
+                          selected={selectedId === a.id}
+                          onSelect={() => setSelectedId(a.id)}
+                        />
+                      ))}
+                    </div>
                   </>
                 )}
               </div>
@@ -129,7 +160,7 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
               </Label>
               <Input
                 id="name"
-                placeholder={selected?.label ?? 'my-session'}
+                placeholder={HARNESS_LABELS[selected?.harness ?? ''] ?? selected?.label ?? 'my-session'}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
