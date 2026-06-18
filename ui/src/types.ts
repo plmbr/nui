@@ -20,9 +20,10 @@ export interface AgentType {
   id: string
   label: string
   description?: string
-  harness: 'claude-code' | 'pi' | 'docker' | 'remote'
+  harness: 'claude-code' | 'pi' | 'codex' | 'opencode' | 'docker' | 'remote'
   sandbox?: 'none' | 'bubblewrap' | 'docker'
   isBuiltin: boolean
+  available: boolean
 }
 
 export interface ChatMessage {

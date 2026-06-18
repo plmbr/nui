@@ -23,9 +23,10 @@ type AgentTypeInfo struct {
 	ID          string `json:"id"`
 	Label       string `json:"label"`
 	Description string `json:"description,omitempty"`
-	Harness     string `json:"harness"`         // claude-code | pi | docker | remote
+	Harness     string `json:"harness"`           // claude-code | pi | codex | opencode | docker | remote
 	Sandbox     string `json:"sandbox,omitempty"` // none | bubblewrap | docker
 	IsBuiltin   bool   `json:"isBuiltin"`
+	Available   bool   `json:"available"` // false when the required CLI is not installed
 }
 
 // builtinAgentDefs are the compiled-in ADL definitions shipped with Loop.
@@ -181,6 +182,7 @@ func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
 			Harness:     def.Harness.Type,
 			Sandbox:     def.Harness.Sandbox,
 			IsBuiltin:   true,
+			Available:   agent.CLIAvailable(def.Harness.Type),
 		})
 	}
 
@@ -199,6 +201,7 @@ func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
 			Harness:     def.Harness.Type,
 			Sandbox:     def.Harness.Sandbox,
 			IsBuiltin:   false,
+			Available:   true,
 		})
 	}
 

@@ -26,6 +26,30 @@ func findCodexBinary() string {
 	return codexBinaryPaths[0] // let exec fail with a clear error
 }
 
+// CLIAvailable reports whether the CLI required for harnessType is installed.
+func CLIAvailable(harnessType string) bool {
+	switch harnessType {
+	case "claude-code":
+		_, err := exec.LookPath("claude")
+		return err == nil
+	case "codex":
+		for _, p := range codexBinaryPaths {
+			if _, err := exec.LookPath(p); err == nil {
+				return true
+			}
+		}
+		return false
+	case "pi":
+		_, err := exec.LookPath("pi")
+		return err == nil
+	case "opencode":
+		_, err := exec.LookPath("opencode")
+		return err == nil
+	default:
+		return true
+	}
+}
+
 // CodexAgent runs the Codex CLI non-interactively and streams events back.
 type CodexAgent struct {
 	// BinaryPath overrides the codex binary location; auto-detected if empty.

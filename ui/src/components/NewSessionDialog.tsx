@@ -60,7 +60,7 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
   }
 
   const selected = agentTypes.find((a) => a.id === selectedId)
-  const builtins = agentTypes.filter((a) => a.isBuiltin)
+  const builtins = agentTypes.filter((a) => a.isBuiltin && a.available)
   const userDefined = agentTypes.filter((a) => !a.isBuiltin)
   const isBasicLoopSelected = builtins.some((a) => a.id === selectedId)
 
