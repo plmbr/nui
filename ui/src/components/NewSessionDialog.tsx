@@ -1,7 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useEffect, useState } from 'react'
-import { Check } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Check, Folder } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -41,6 +41,10 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [directorySuggestions, setDirectorySuggestions] = useState<string[]>([])
+  const [directoryInputFocused, setDirectoryInputFocused] = useState(false)
+  const [activeDirectoryIndex, setActiveDirectoryIndex] = useState(0)
+  const suppressDirectoryLookupForValue = useRef<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -52,10 +56,41 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
     }).catch(() => {})
   }, [open])
 
+  useEffect(() => {
+    if (!open || !directoryInputFocused || !workingDir.trim()) {
+      setDirectorySuggestions([])
+      return
+    }
+    if (suppressDirectoryLookupForValue.current === workingDir) {
+      suppressDirectoryLookupForValue.current = null
+      return
+    }
+    suppressDirectoryLookupForValue.current = null
+
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => {
+      api.directories.suggest(workingDir, controller.signal).then(({ directories }) => {
+        setDirectorySuggestions(directories)
+        setActiveDirectoryIndex(0)
+      }).catch((err) => {
+        if (!(err instanceof DOMException && err.name === 'AbortError')) {
+          setDirectorySuggestions([])
+        }
+      })
+    }, 150)
+
+    return () => {
+      window.clearTimeout(timeout)
+      controller.abort()
+    }
+  }, [directoryInputFocused, open, workingDir])
+
   function reset() {
     setName('')
     setWorkingDir('')
     setError('')
+    setDirectorySuggestions([])
+    setDirectoryInputFocused(false)
     // Keep selectedId so the user's last pick persists across opens.
   }
 
@@ -63,6 +98,31 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
   const builtins = agentTypes.filter((a) => a.isBuiltin && a.available)
   const userDefined = agentTypes.filter((a) => !a.isBuiltin)
   const isBasicLoopSelected = builtins.some((a) => a.id === selectedId)
+  const directoryListOpen = directoryInputFocused && directorySuggestions.length > 0
+
+  function selectDirectory(path: string) {
+    suppressDirectoryLookupForValue.current = path
+    setWorkingDir(path)
+    setDirectorySuggestions([])
+    setActiveDirectoryIndex(0)
+  }
+
+  function handleDirectoryKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!directoryListOpen) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveDirectoryIndex((current) => (current + 1) % directorySuggestions.length)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveDirectoryIndex((current) => (current - 1 + directorySuggestions.length) % directorySuggestions.length)
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault()
+      selectDirectory(directorySuggestions[activeDirectoryIndex])
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setDirectorySuggestions([])
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -175,8 +235,52 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
                 id="workingDir"
                 placeholder="/path/to/project"
                 value={workingDir}
-                onChange={(e) => setWorkingDir(e.target.value)}
+                onChange={(e) => {
+                  setWorkingDir(e.target.value)
+                  setActiveDirectoryIndex(0)
+                }}
+                onFocus={() => setDirectoryInputFocused(true)}
+                onBlur={() => {
+                  setDirectoryInputFocused(false)
+                  setDirectorySuggestions([])
+                }}
+                onKeyDown={handleDirectoryKeyDown}
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={directoryListOpen}
+                aria-controls="workingDir-suggestions"
+                aria-activedescendant={directoryListOpen ? `workingDir-option-${activeDirectoryIndex}` : undefined}
               />
+              {directoryListOpen && (
+                <div
+                  id="workingDir-suggestions"
+                  role="listbox"
+                  aria-label="Working directory suggestions"
+                  className="max-h-44 overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-md"
+                >
+                  {directorySuggestions.map((path, index) => (
+                    <div
+                      id={`workingDir-option-${index}`}
+                      key={path}
+                      role="option"
+                      aria-selected={index === activeDirectoryIndex}
+                      title={path}
+                      className={[
+                        'flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none',
+                        index === activeDirectoryIndex ? 'bg-accent text-accent-foreground' : '',
+                      ].join(' ')}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        selectDirectory(path)
+                      }}
+                      onMouseEnter={() => setActiveDirectoryIndex(index)}
+                    >
+                      <Folder className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate font-mono text-xs">{path}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}

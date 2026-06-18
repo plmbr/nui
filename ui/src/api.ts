@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, AppConfig, Capabilities, ChatMessage, CreateSessionRequest, Session, Settings } from './types'
+import type { AgentType, AppConfig, Capabilities, ChatMessage, CreateSessionRequest, DirectorySuggestions, Session, Settings } from './types'
 
 const BASE = '/api'
 
@@ -46,6 +46,11 @@ export const api = {
   agentTypes: {
     list: (): Promise<AgentType[]> =>
       request('/agent-types'),
+  },
+
+  directories: {
+    suggest: (path: string, signal?: AbortSignal): Promise<DirectorySuggestions> =>
+      request(`/directories?path=${encodeURIComponent(path)}`, { signal }),
   },
 
   messages: {

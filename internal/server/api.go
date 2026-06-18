@@ -4,9 +4,12 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -58,10 +61,10 @@ var builtinAgentDefs = []model.ADLDefinition{
 
 // legacyAgentTypeNames maps old Session.AgentType strings to the new ADL definition name.
 var legacyAgentTypeNames = map[string]string{
-	"claude-code":    "Claude Code",
-	"pi":             "pi",
-	"docker-claude":  "Claude Code",
-	"docker-pi":      "pi",
+	"claude-code":     "Claude Code",
+	"pi":              "pi",
+	"docker-claude":   "Claude Code",
+	"docker-pi":       "pi",
 	"docker-opencode": "opencode",
 }
 
@@ -77,7 +80,6 @@ type SandboxCapabilities struct {
 type Capabilities struct {
 	Sandbox SandboxCapabilities `json:"sandbox"`
 }
-
 
 var (
 	mu              sync.RWMutex
@@ -116,9 +118,138 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/sessions", handleSessions)
 	mux.HandleFunc("/api/sessions/", handleSession)
 	mux.HandleFunc("/api/agent-types", handleAgentTypes)
+	mux.HandleFunc("/api/directories", handleDirectories)
 	mux.HandleFunc("/api/config", handleConfig)
 	mux.HandleFunc("/api/settings", handleSettings)
 	mux.HandleFunc("/api/capabilities", handleCapabilities)
+}
+
+var errDirectoryOutsideHome = errors.New("directory is outside the home directory")
+
+func handleDirectories(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		http.Error(w, "unable to determine home directory", http.StatusInternalServerError)
+		return
+	}
+	handleDirectoriesForHome(w, r, home)
+}
+
+func handleDirectoriesForHome(w http.ResponseWriter, r *http.Request, home string) {
+	directories, err := suggestDirectories(home, r.URL.Query().Get("path"))
+	if errors.Is(err, errDirectoryOutsideHome) {
+		http.Error(w, "path must be inside the home directory", http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		// Missing and unreadable directories are normal while a path is being typed.
+		directories = []string{}
+	}
+	writeJSON(w, http.StatusOK, struct {
+		Directories []string `json:"directories"`
+	}{Directories: directories})
+}
+
+func suggestDirectories(home, query string) ([]string, error) {
+	home, err := filepath.Abs(home)
+	if err != nil {
+		return nil, err
+	}
+	resolvedHome, err := filepath.EvalSymlinks(home)
+	if err != nil {
+		return nil, err
+	}
+
+	query = strings.TrimSpace(query)
+	var expanded string
+	switch {
+	case query == "", query == "~":
+		expanded = home + string(filepath.Separator)
+	case strings.HasPrefix(query, "~/"):
+		expanded = home + string(filepath.Separator) + strings.TrimPrefix(query, "~/")
+	case filepath.IsAbs(query):
+		expanded = query
+	default:
+		return nil, errDirectoryOutsideHome
+	}
+
+	parent, prefix := expanded, ""
+	if !strings.HasSuffix(query, string(filepath.Separator)) && query != "" && query != "~" {
+		parent, prefix = filepath.Dir(expanded), filepath.Base(expanded)
+	}
+	parent = filepath.Clean(parent)
+	if !pathWithinHome(home, parent) {
+		if directories, isAncestor := suggestHomeAncestor(home, parent, prefix); isAncestor {
+			return directories, nil
+		}
+		return nil, errDirectoryOutsideHome
+	}
+	resolvedParent, err := filepath.EvalSymlinks(parent)
+	if err != nil {
+		return nil, err
+	}
+	if !pathWithinHome(resolvedHome, resolvedParent) {
+		return nil, errDirectoryOutsideHome
+	}
+
+	entries, err := os.ReadDir(resolvedParent)
+	if err != nil {
+		return nil, err
+	}
+	lowerPrefix := strings.ToLower(prefix)
+	showHidden := strings.HasPrefix(prefix, ".")
+	directories := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		name := entry.Name()
+		if (!showHidden && strings.HasPrefix(name, ".")) || !strings.HasPrefix(strings.ToLower(name), lowerPrefix) {
+			continue
+		}
+		candidate := filepath.Join(parent, name)
+		resolvedCandidate, resolveErr := filepath.EvalSymlinks(candidate)
+		if resolveErr != nil || !pathWithinHome(resolvedHome, resolvedCandidate) {
+			continue
+		}
+		info, statErr := os.Stat(candidate)
+		if statErr != nil || !info.IsDir() {
+			continue
+		}
+		directories = append(directories, candidate)
+	}
+	sort.Slice(directories, func(i, j int) bool {
+		left, right := strings.ToLower(filepath.Base(directories[i])), strings.ToLower(filepath.Base(directories[j]))
+		if left == right {
+			return directories[i] < directories[j]
+		}
+		return left < right
+	})
+	if len(directories) > 20 {
+		directories = directories[:20]
+	}
+	return directories, nil
+}
+
+// suggestHomeAncestor allows absolute-path completion to walk from the filesystem
+// root toward home without listing any sibling directories along the way.
+func suggestHomeAncestor(home, parent, prefix string) ([]string, bool) {
+	rel, err := filepath.Rel(parent, home)
+	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return nil, false
+	}
+	nextPart := strings.Split(rel, string(filepath.Separator))[0]
+	if !strings.HasPrefix(strings.ToLower(nextPart), strings.ToLower(prefix)) {
+		return []string{}, true
+	}
+	return []string{filepath.Join(parent, nextPart)}, true
+}
+
+func pathWithinHome(home, path string) bool {
+	rel, err := filepath.Rel(home, path)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 func handleSessions(w http.ResponseWriter, r *http.Request) {
