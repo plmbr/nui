@@ -23,7 +23,7 @@ function DropdownMenuContent({
 }) {
   return (
     <Menu.Portal>
-      <Menu.Positioner align={align} side="bottom" sideOffset={sideOffset}>
+      <Menu.Positioner align={align} side="bottom" sideOffset={sideOffset} className="z-50">
         <Menu.Popup
           className={cn(
             "z-50 min-w-[10rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md",

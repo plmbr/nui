@@ -28,18 +28,16 @@ export default function App() {
 
   const selected = sessions.find((s) => s.id === selectedId) ?? null
 
-  const handleDeleteSession = useCallback(async () => {
-    if (!selectedId) return
-    await api.sessions.delete(selectedId)
-    setSelectedId(null)
+  const handleDeleteSession = useCallback(async (id: string) => {
+    await api.sessions.delete(id)
+    if (selectedId === id) setSelectedId(null)
     await loadSessions()
   }, [selectedId, loadSessions])
 
-  const handleRenameSession = useCallback(async (newName: string) => {
-    if (!selectedId) return
-    await api.sessions.rename(selectedId, newName)
+  const handleRenameSession = useCallback(async (id: string, newName: string) => {
+    await api.sessions.rename(id, newName)
     await loadSessions()
-  }, [selectedId, loadSessions])
+  }, [loadSessions])
 
   return (
     <ThemeProvider>
@@ -55,14 +53,14 @@ export default function App() {
             selectedId={selectedId}
             onSelect={setSelectedId}
             onRefresh={loadSessions}
+            onRename={handleRenameSession}
+            onDelete={handleDeleteSession}
           />
           <main className="flex flex-1 overflow-hidden">
             {selected ? (
               <ConversationPanel
                 session={selected}
                 key={selected.id}
-                onRename={handleRenameSession}
-                onDelete={handleDeleteSession}
               />
             ) : (
               <div className="empty-state">
