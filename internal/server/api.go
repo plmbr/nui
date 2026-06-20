@@ -35,8 +35,8 @@ type AgentTypeInfo struct {
 
 // builtinAgentDefs are the compiled-in ADL definitions shipped with Loop.
 // They are expressed in the same ADL format as user-defined agents in ~/.loop/agents/*.yaml.
-// The three subprocess-based built-ins (claude-code, pi, codex) and two connector types (docker, remote)
-// correspond directly to the five step harness types. Sandbox variants live in user-defined ADL.
+// Four builtin CLI harnesses (claude-code, pi, codex, opencode).
+// Docker and remote harness types are configured via user ADL in ~/.loop/agents/*.yaml.
 var builtinAgentDefs = []model.ADLDefinition{
 	{
 		Name:        "Claude Code",

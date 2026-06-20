@@ -1,136 +1,173 @@
-# The Loop — Product & Technical Specification [AI generated]
+# The Loop — Product & Technical Specification
+
+> **Status:** This document describes the product vision and the architecture **as implemented today**, with a roadmap for planned features. The Go code is the source of truth; sections marked *planned* are not yet enforced at runtime.
 
 ## Vision
 
-The Loop is a self-hosted Go application with a bundled React web UI for creating and running AI agent projects. It supports interactive chat sessions, semi-autonomous agents (human-in-the-loop), and fully autonomous agents that run on a schedule or in response to events. The system is designed for extensibility: agent types are defined declaratively, AI harnesses are pluggable, and runtimes can be local processes, Docker containers, or remote agents.
+The Loop is a self-hosted Go application with a bundled React web UI for creating and running AI agent sessions. It supports interactive chat today, with semi-autonomous (HITL) and fully autonomous modes on the roadmap. Agent types are declared in ADL (Agent Definition Language); harnesses run as local subprocesses, Docker containers, or remote HTTP/SSE servers.
+
+---
+
+## Architecture (as built)
+
+```mermaid
+flowchart TB
+  subgraph browser [Browser]
+    UI[React UI]
+  end
+
+  subgraph loop_server [Loop Go server]
+    REST[REST API]
+    AGUI[AG-UI endpoint]
+    Store[(~/.loop/data.json)]
+    ADLExec[ADLAgent]
+    Mgr[Manager]
+  end
+
+  subgraph local [Local harnesses]
+    Claude[claude CLI]
+    Pi[pi CLI]
+    Codex[codex CLI]
+    OpenCode[opencode CLI]
+  end
+
+  subgraph http_agents [HTTP/SSE agents]
+    UserDocker[User Docker image]
+    RemoteSrv[Remote server]
+    BuiltinDocker[loop-* images :8090]
+  end
+
+  UI -->|REST| REST
+  UI -->|AG-UI SSE| AGUI
+  REST <--> Store
+  AGUI --> ADLExec
+  ADLExec --> Mgr
+  Mgr --> Claude & Pi & Codex & OpenCode
+  Mgr --> UserDocker & RemoteSrv & BuiltinDocker
+```
+
+### Key design decisions
+
+1. **Every session is an ADL agent.** Even the four built-in CLI harnesses are compiled-in ADL definitions (`builtinAgentDefs` in `api.go`). Selecting "Claude Code" in the UI stores `agentType: "Claude Code"`, which resolves to `harness.type: claude-code`.
+
+2. **Chat uses AG-UI, not raw SSE.** The UI (`useSessionChat.ts`) streams via `POST /api/sessions/:id/ag-ui` using the [AG-UI protocol](https://github.com/ag-ui-protocol/ag-ui). Tool calls, images, and MCP app frames are translated from agent `Event` types in `agui.go`. The legacy `POST /chat` endpoint still exists but the UI does not use it.
+
+3. **Two extension transports.**
+   - **Production path:** builtin harnesses are Go structs that manage CLI subprocesses; docker/remote use `HTTPExtensionAgent`.
+   - **Reference path:** TCP JSON-RPC 2.0 in `dev/extension-examples/py|ts/` and `ExtensionAgent` in Go — implemented but **not wired** to `Manager.GetAgent()`. For third-party custom agents.
+
+4. **Docker/remote via custom ADL.** There is no built-in "Docker" or "Remote" picker in the UI. Users select a custom ADL agent (e.g. `docker-echo` from `~/.loop/agents/docker-echo.yaml`). Loop validates the connector on session create.
 
 ---
 
 ## Project Modes
 
-| Mode | Description | HITL Required |
+| Mode | Description | Status |
 |---|---|---|
-| **Interactive** | Back-and-forth chat session with an agent | Always |
-| **Semi-autonomous** | Agent executes steps, pauses at designated approval gates | For flagged steps |
-| **Autonomous** | Agent runs unattended on a schedule or event trigger | No (optional notifications) |
-
-HITL channels (phased):
-- **v1**: Chat UI (inline approval cards in the conversation)
-- **v2**: Slack, webhook callbacks
-- **v3**: WhatsApp, Telegram, email
+| **Interactive** | Back-and-forth chat session | **Implemented** |
+| **Semi-autonomous** | Agent pauses at approval gates | *Planned* (ADL fields exist, not enforced) |
+| **Autonomous** | Runs on schedule or event trigger | *Planned* |
 
 ---
 
 ## Agent Definition Language (ADL)
 
-ADL is a YAML format for declaring an agent type. It is a **static definition**, not a runtime protocol — it describes *what* an agent is and *what it can do*, not *how* it executes.
+ADL is a YAML format for declaring an agent type or multi-step workflow. It is a **static definition** — it describes *what* an agent is, not *how* Loop executes it internally.
 
-### Design principles
-1. **Definition-time only**: every field must be settable at authoring time without knowing the runtime
-2. **Runtime-portable**: an ADL file should be runnable on any compliant harness
-3. **Describe WHAT, not HOW**: ADL is not code
+### Three-layer architecture
 
-### Three-layer architecture (do not collapse these)
-- **ADL** — agent identity, capabilities, steps, tool access, and schedule (*this layer*)
-- **MCP** — runtime tool protocol; ADL references MCP servers by URL, not by implementation
-- **SKILL.md** — agent behavior/persona; ADL may reference a skill file for the system prompt body
+- **ADL** — agent identity, steps, harness, schedule (*this layer*)
+- **MCP** — runtime tool protocol; MCP tool UI works for Claude tool events, but ADL `tools.mcp` is not yet wired
+- **SKILL.md** — agent persona file (*planned* reference support)
 
-### Schema (draft)
+### Schema
 
 ```yaml
 adl: "1.0"
 
-# ── Identity ─────────────────────────────────────────────────────────────────
-name: string          # ≤64 chars
-description: string   # ≤1024 chars
-version: semver       # e.g. "1.0.0"
+name: string
+description: string
+version: semver
+kind: agent | workflow          # workflow = multi-step; omitted defaults to agent
 
-# ── Harness ──────────────────────────────────────────────────────────────────
 harness:
-  type: claude-code | pi | codex | docker | remote
-  model: string                     # e.g. "claude-sonnet-4-6"
-  workingDir: string                # optional; defaults to server CWD
-  # claude-code / pi / codex only:
-  sandbox: none | bubblewrap | docker   # default: none (bubblewrap: Linux only)
-  # docker-only (harness.type: docker, or sandbox: docker):
-  image: string                     # container image
-  containerPort: 9090               # port the container listens on
-  # remote-only:
-  host: string                      # hostname or IP of the remote agent
-  port: 9090                        # port of the remote agent
+  type: claude-code | pi | codex | opencode | docker | remote
+  model: string
+  workingDir: string              # optional; defaults to server CWD
+  sandbox: none | bubblewrap | docker   # subprocess harnesses only; default: none
+  image: string                   # sandbox:docker or harness.type:docker
+  containerPort: 9090             # harness.type:docker (user images; builtin sandbox images use 8090)
+  host: string                    # harness.type:remote
+  port: 9090                      # harness.type:remote
 
-# ── Schedule (autonomous mode) ────────────────────────────────────────────────
-schedule:
-  cron: "0 9 * * 1-5"              # standard cron expression
-  timezone: America/Los_Angeles     # IANA timezone; defaults to UTC
-
-# ── System prompt ─────────────────────────────────────────────────────────────
 systemPrompt: |
   You are ...
-# OR reference a SKILL.md file:
-skill: ./skills/my-agent.md
 
-# ── Tools / dependencies ──────────────────────────────────────────────────────
-tools:
+schedule:                         # *planned — not enforced*
+  cron: "0 9 * * 1-5"
+  timezone: America/Los_Angeles
+
+tools:                            # *planned — not enforced*
   mcp:
-    - url: "http://localhost:3001"   # MCP server
+    - url: "http://localhost:3001"
       name: filesystem
-  plugins: []                       # future
-  skills: []                        # sub-agent skills (SKILL.md references)
 
-# ── Steps ─────────────────────────────────────────────────────────────────────
-# Each step can override the top-level harness, model, and tools.
-steps:
+steps:                            # omit for single-step agents
   - name: research
-    policy: react                   # react | sequential | parallel | loop | batch | conditional
-    harness:                        # optional per-step override
+    policy: react                 # *parsed, not enforced — all steps run sequentially*
+    harness:                      # optional per-step override
       type: claude-code
       model: claude-opus-4-8
-    systemPrompt: |                 # overrides top-level for this step
-      Focus only on research.
-    tools:
-      mcp:
-        - url: "http://localhost:3002"
+    dependsOn: []
     outputs:
-      - name: report                # named output referenced by downstream steps
-        type: text                  # text | json
-    approval: none                  # none | required | reversibility-based (future)
-
-  - name: write
-    policy: sequential
-    dependsOn: [research]
+      - name: report
+        type: text
     inputs:
-      - from: research.report       # <stepName>.<outputName>
-        as: researchReport          # optional alias injected into the prompt context
-    approval: required              # pause and ask human before executing
-    approvalTimeout: "30m"          # deny on timeout (safest default for irreversible actions)
+      - from: other.report
+        as: alias
+    approval: none                # *planned*
+    approvalTimeout: "30m"
 
-# ── Constraints ───────────────────────────────────────────────────────────────
-constraints:
+constraints:                      # *parsed, not enforced*
   maxTokens: 100000
   timeout: "30m"
   retries: 3
-  maxConcurrency: 4                 # max parallel steps (applies to parallel/batch policies)
+  maxConcurrency: 4
 ```
 
-### Execution policies
+### Harness types (implemented)
 
-| Policy | Semantics |
+| Harness | Local (`sandbox: none`) | Bubblewrap (`sandbox: bubblewrap`) | Docker (`sandbox: docker`) |
+|---|---|---|---|
+| `claude-code` | `ClaudeCodeAgent` → `claude` CLI | bwrap + `~/.claude` | `loop-claude-code:latest` :8090 |
+| `pi` | `PiAgent` → `pi --mode rpc` | bwrap + `~/.pi` | `loop-pi:latest` :8090 |
+| `codex` | `CodexAgent` → `codex exec` | bwrap + `~/.codex` | `loop-codex:latest` :8090 |
+| `opencode` | `OpenCodeAgent` → `opencode serve/run` | bwrap + `~/.local/share/opencode` | `loop-opencode:latest` :8090 |
+| `docker` | — | — | User image at ADL `containerPort` (e.g. 9090) |
+| `remote` | — | — | User `host:port` over HTTP/SSE |
+
+Sandbox config flows: ADL `harness.sandbox` → `harnessBuiltinConfig()` → `Manager.getBuiltinAgent()` → agent struct `Sandbox` field.
+
+### ADL executor (implemented vs planned)
+
+| Feature | Status |
 |---|---|
-| `react` | Think → Act → Observe loop until done (default for interactive) |
-| `sequential` | Steps A → B → C in order, output of each feeds next |
-| `parallel` | Fan-out all sub-steps, merge results |
-| `loop` | Repeat until a condition is met |
-| `batch` | Map agent over an array of inputs |
-| `conditional` | Route to a step based on a condition |
-
-Vendor extensions via `x-<vendor>.*` namespace (ignored by other runtimes).
+| YAML parse into `ADLDefinition` | Done |
+| Topological sort (`dependsOn`) | Done |
+| Per-step harness/model/systemPrompt | Done |
+| Named outputs → downstream inputs | Done |
+| All six harness types + sandbox | Done |
+| Step `policy` (parallel/loop/batch) | Parsed only |
+| `approval` / `approvalTimeout` | Parsed only |
+| `constraints` | Parsed only |
+| `schedule.cron` | Parsed only |
+| `tools.mcp` | Parsed only |
 
 ---
 
-## Agent Runtime Extension Interface
+## Agent Runtime
 
-The `Agent` Go interface is the extension point:
+### Go `Agent` interface
 
 ```go
 type Agent interface {
@@ -139,148 +176,148 @@ type Agent interface {
 }
 ```
 
-### Built-in harnesses
-
-| Harness | Implementation |
-|---|---|
-| `claude-code` | Shells out to `claude` CLI; streams `stream-json` output |
-| `pi` | Manages a `pi` subprocess (local) or Docker container; HTTP/SSE |
-| `codex` | Manages a `codex` subprocess (local) or Docker container; HTTP/SSE |
-| `docker` | Launches a user-provided container via `docker run`; HTTP/SSE |
-| `remote` | Connects to a user-configured host:port via HTTP/SSE |
-
-All three subprocess harnesses (`claude-code`, `pi`, `codex`) support `sandbox: bubblewrap` (Linux, wraps the subprocess with `bwrap`) and `sandbox: docker` (runs the agent inside a Loop-managed Docker container).
-
-### Docker harness
-
-Loop manages the full container lifecycle. On first use, `Manager.launchDocker` runs:
-
-```
-docker run -d -p 127.0.0.1::<containerPort> <image>
-docker port <containerID> <containerPort>   # → resolve random host port
-GET http://127.0.0.1:<hostPort>/info        # wait for HTTP readiness
-```
-
-Each chat message calls `POST /run` on the container and reads the SSE stream. On project delete or server shutdown, Loop calls `docker stop <containerID>`.
-
-The container image must implement the HTTP/SSE extension protocol — see `dev/extension-examples/docker/`.
-
-### Remote harness
-
-Stores the user-configured `host:port` in `Project.AgentConfig`. On project create, Loop calls `GET http://<host>:<port>/info` to verify reachability. Each chat message calls `POST /run` and reads the SSE stream. Loop owns no process or container.
-
-The remote server must implement the HTTP/SSE extension protocol — see `dev/extension-examples/remote/`.
+`ADLAgent` is the orchestrator. `Manager` caches one builtin agent per session ID and manages Docker container lifecycle (idle reaper at 30 min).
 
 ### HTTP/SSE extension protocol
 
-Both docker and remote harnesses use the same three endpoints:
+Used by `docker`, `remote`, and builtin sandbox containers.
 
 | Endpoint | Description |
 |---|---|
-| `GET /info` | `{"name","version","capabilities"}` — used as health check |
-| `POST /run` | Body: `{"message","sessionId"?,"workingDir"?}`; response: `text/event-stream` |
-| `POST /cancel` | Body: `{"runId"}`; stop current run best-effort |
+| `GET /info` | `{"name","version","capabilities"}` — health check |
+| `POST /run` | Body: `{message, sessionId?, workingDir?, systemPrompt?, model?}` → SSE |
+| `POST /cancel` | Body: `{runId}` — cancel run best-effort |
+| `POST /shutdown` | Stop subprocesses; Loop calls this before `docker stop` |
 
-SSE events: `data: {"type":"text","content":"..."}`, `data: {"type":"done","sessionId":"..."}`, `data: {"type":"error","error":"..."}`
+SSE events (JSON in `data:` lines):
 
+```
+{"type":"text","content":"..."}
+{"type":"done","sessionId":"..."}
+{"type":"error","error":"..."}
+```
 
-## UI/Backend Decoupling & Reconnection
+Also supported: `tool_call_start`, `tool_call_args`, `tool_call_end`, `tool_call_result`, `image` (see `extension.go`).
 
-**Problem**: agent inference is expensive; if the browser disconnects mid-run, the run must not restart.
+Examples: `dev/extension-examples/docker/`, `dev/extension-examples/remote/`, `docker/http_loop_agent.py`.
 
-**Solution: offset-based durable stream**
+### TCP JSON-RPC protocol (reference only)
 
-Every token written by an agent run is appended to a persistent log with a monotonic offset. On reconnect, the UI sends `Last-Event-ID: <offset>` and the server replays from that point — no inference is re-run.
+For custom extension authors. Not connected to `Manager` today.
 
-Implementation options (in order of complexity):
-1. **In-process ring buffer** (v1): append to an in-memory `[]Event` per run; replay on reconnect within the same process lifetime
-2. **File-backed log** (v2): append to `~/.loop/runs/<runID>.jsonl`; survives backend restart
-3. **Redis Streams** (v3): scale-out; multiple backend instances share the stream
+| Method | Description |
+|---|---|
+| `harness.info` | Metadata |
+| `harness.run` | Streams `harness.event` notifications |
+| `harness.cancel` | Cancel run |
+| `harness.shutdown` | Release resources |
 
-**Transport**: SSE with `Last-Event-ID` (HTTP/1.1 compatible, simpler reconnection than WebSocket, sufficient for current unidirectional streaming). Reconsider WebSocket when bidirectional HITL channels (Slack relay, live approval push) are added.
-
----
-
-## Human-in-the-Loop (HITL)
-
-### v1: Chat UI approval gates
-
-When a step has `approval: required`, the agent pauses and emits a special `approval_request` SSE event. The UI renders an inline approval card (Approve / Reject). The response is sent via `POST /api/projects/:id/approve` with `{runID, stepName, decision}`.
-
-Pending questions to resolve before implementation:
-- **Timeout policy**: what happens if no response arrives within N minutes? (deny / expire / escalate — no industry standard verified)
-- **Reversibility-based gating**: auto-approve reversible actions (draft, summarize), require approval for irreversible ones (publish, email, spend) — promising pattern but specification is still in flux
-- **State model**: approval state should be structured data, not parsed from chat messages
-
-### v2+: External channels
-
-Each approval request gets a stable `approvalURL` that can be opened outside the UI. External channels (Slack, webhook) POST to this URL. The backend resolves the pending approval regardless of which channel responds first.
+Framework: `extensions/loop_agent.py`, `dev/extension-examples/py/loop_agent.py`.
 
 ---
 
-## Persistence & State
+## UI / Backend
 
-| Store | Format | Location |
-|---|---|---|
-| Projects + session IDs | JSON | `~/.loop/data.json` |
-| Settings (theme etc.) | JSON | `~/.loop/settings.json` |
-| Run event log | JSONL | `~/.loop/runs/<runID>.jsonl` (v2) |
-| Claude Code session | JSONL | `~/.claude/projects/<dirHash>/<sessionID>.jsonl` |
-| ADL definitions | YAML | User-specified path per project, or `~/.loop/agents/<name>.yaml` |
+### Chat persistence
+
+- UI messages (user + assistant text) saved to `~/.loop/data.json` → `sessionMessages` after each turn
+- On session open: load `sessionMessages` if present, else fall back to agent history files
+- Tool call bubbles and images are **not** persisted across restarts (AG-UI state is in-memory during the session)
+
+### Reconnection (*planned*)
+
+Offset-based durable stream with `Last-Event-ID` replay is designed but not implemented. A disconnect mid-run currently loses the in-flight stream.
 
 ---
 
-## API Surface (planned additions)
+## Human-in-the-Loop (*planned*)
+
+When `approval: required` is enforced, the executor will pause, emit an approval event, and wait for `POST /api/sessions/:id/approve`. Deny-on-timeout (`approvalTimeout`) is the intended default.
+
+---
+
+## Persistence
+
+| Store | Format | Location | Status |
+|---|---|---|---|
+| Sessions + agent session IDs + UI messages | JSON | `~/.loop/data.json` | Done |
+| Settings | JSON | `~/.loop/settings.json` | Done |
+| ADL definitions | YAML | `~/.loop/agents/*.yaml` | Done |
+| Default ADL templates | YAML | Auto-provisioned on startup | Done |
+| Run event log | JSONL | `~/.loop/runs/<runID>.jsonl` | Planned |
+| Claude Code sessions | JSONL | `~/.claude/projects/<dirHash>/` | External |
+| pi / codex / opencode sessions | varies | Harness-specific paths | External |
+
+Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-echo.yaml`.
+
+---
+
+## API Surface
+
+### Implemented
 
 | Method | Path | Purpose |
 |---|---|---|
-| `POST` | `/api/events/:name` | Emit a named event to trigger autonomous agents |
-| `POST` | `/api/projects/:id/approve` | Respond to a HITL approval gate |
-| `GET` | `/api/projects/:id/runs` | List runs for a project |
-| `GET` | `/api/projects/:id/runs/:runID` | Get run status + event log |
-| `GET` | `/api/agent-definitions` | List available ADL files |
-| `POST` | `/api/agent-definitions` | Upload / register a new ADL file |
+| `GET/POST` | `/api/sessions` | List / create (docker/remote validated on create) |
+| `GET/PATCH/DELETE` | `/api/sessions/:id` | Get / rename / delete |
+| `GET/PUT` | `/api/sessions/:id/messages` | Persisted UI messages |
+| `POST` | `/api/sessions/:id/ag-ui` | AG-UI chat stream |
+| `POST` | `/api/sessions/:id/chat` | Legacy agent-event SSE |
+| `GET` | `/api/sessions/:id/history` | Agent-side history |
+| `GET` | `/api/agent-types` | Builtin + ADL agent types |
+| `GET` | `/api/directories` | Working-dir suggestions |
+| `GET/PUT` | `/api/settings` | Theme |
+| `GET` | `/api/capabilities` | Bwrap availability |
 
----
+### Planned
 
-## Open Design Questions
-
-1. **ADL versioning**: how should the system handle a step's tool or model requirements changing between runs of a long-running autonomous agent? Schema version + migration plan needed.
-2. **HITL boundary in ADL**: should approval gates be a field on each step (`approval: required`), a separate top-level `approvalPolicy` block, or inferred from action reversibility? Current draft uses per-step field.
-3. **SSE vs WebSocket at HITL scale**: SSE is sufficient for token streaming, but bidirectional HITL (Slack relay pushing approval responses back) may require a WebSocket or long-poll upgrade path.
-4. ~~**Approval timeout default**~~ — resolved: deny-on-timeout confirmed as the standard across LangGraph, Temporal, Dapr, and Microsoft Agent Framework. `approvalTimeout` with deny-on-expiry is the ADL default.
-5. **Docker harness security**: Docker alone is insufficient for untrusted agents (namespace escapes); gVisor or Firecracker micro-VMs should be evaluated for the sandboxing layer.
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/sessions/:id/approve` | HITL approval response |
+| `POST` | `/api/events/:name` | Trigger autonomous agents |
+| `GET` | `/api/sessions/:id/runs` | Run history |
 
 ---
 
 ## Implementation Phases
 
-### Phase 1 (current)
-- [x] Interactive chat with Claude Code harness
-- [x] Project CRUD with persistence (`~/.loop/data.json`)
-- [x] Chat history from Claude session files
-- [x] Theme settings (`~/.loop/settings.json`)
-- [x] Extension agent framework (HTTP/SSE protocol for built-in docker/remote types)
-- [x] Docker harness (container lifecycle + HTTP/SSE protocol)
-- [x] Remote harness (user-configured host:port + HTTP/SSE protocol)
-- [x] `pi` harness (local subprocess + docker variant)
-- [x] `codex` harness (local subprocess + docker variant; `--ignore-user-config` to avoid MCP conflicts)
-- [x] Bubblewrap sandbox for `claude-code`, `pi`, and `codex` (Linux only)
-- [x] User-defined ADL (`~/.loop/agents/*.yaml`, loaded on every `/api/agent-types` call)
+### Phase 1 — Interactive chat ✅
+- [x] Four builtin CLI harnesses (claude-code, pi, codex, opencode)
+- [x] Session CRUD + persistence (`data.json` including UI messages)
+- [x] AG-UI chat streaming with tool calls and images
+- [x] HTTP/SSE docker + remote connectors
+- [x] Builtin sandbox Docker images (`docker/`, port 8090)
+- [x] Bubblewrap sandbox for all four CLI harnesses (Linux)
+- [x] User ADL in `~/.loop/agents/*.yaml`
+- [x] Default ADL templates (docker-echo, remote-echo, opencode-docker)
+- [x] Docker/remote reachability check on session create
 
-### Phase 2
-- [x] ADL file format (v1 schema above)
-- [x] Multi-step DAG execution (`dependsOn`, topological sort via Kahn's algorithm)
-- [x] Named outputs / typed inputs between steps (`outputs` + `inputs.from`)
-- [ ] HITL approval gates in chat UI (`approval: required`, `approvalTimeout`)
-- [ ] Step-level durable run log (`~/.loop/runs/`)
-- [ ] SSE reconnection with `Last-Event-ID` replay
+### Phase 2 — ADL workflows (partial)
+- [x] ADL YAML schema + parser
+- [x] Multi-step DAG (`dependsOn`, topo sort)
+- [x] Named outputs / inputs between steps
+- [x] Per-step harness override + sandbox propagation
+- [ ] HITL approval gates
+- [ ] Step execution policies (parallel, loop, batch)
+- [ ] Constraints enforcement (timeout, maxTokens)
+- [ ] Durable run log + SSE reconnection
 
-### Phase 3
-- [ ] Autonomous mode: cron + event triggers (`schedule.cron`)
-- [ ] `loop` and `batch` execution policies
+### Phase 3 — Autonomous (*planned*)
+- [ ] Cron + event triggers
+- [ ] `loop` and `batch` policies
 
-### Phase 4
-- [ ] External HITL channels (Slack, webhook)
+### Phase 4 — External integrations (*planned*)
+- [ ] Slack/webhook HITL channels
 - [ ] ADL skill references (SKILL.md)
-- [ ] MCP server configuration in ADL
+- [ ] ADL MCP server configuration
+
+---
+
+## Open Questions
+
+1. **Wire TCP JSON-RPC extensions?** `ExtensionAgent` exists but is unused — adopt for a `custom` harness type, or remove?
+2. **ADL policy enforcement order** — policies before or after HITL?
+3. **Chat persistence scope** — persist tool calls/images in `sessionMessages` or separate store?
+4. **Docker security** — gVisor/Firecracker for untrusted agents?
+
+See also: [extension-design.md](extension-design.md), [adl/examples/README.md](adl/examples/README.md), [extension-examples/](extension-examples/).

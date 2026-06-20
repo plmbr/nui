@@ -1,25 +1,127 @@
-# Extension Process Protocol for Loop [AI generated — historical design doc]
+# Extension Protocols for Loop
 
-> **What was actually built:** Built-in extension types (`pi`) use TCP JSON-RPC 2.0
-> (the approach described below). Docker and remote agent types use a simpler
-> HTTP/SSE protocol instead — `GET /info`, `POST /run`, `POST /cancel` — which
-> works transparently with TLS reverse proxies and standard tooling. See
-> `dev/extension-examples/docker/` and `dev/extension-examples/remote/` for
-> runnable examples, and `dev/dev.md` for the authoritative design description.
+> **Source of truth:** the Go code in `internal/agent/` and the runnable examples in `dev/extension-examples/`.
 
-[Extension Examples](extension-examples)
+Loop uses **two extension transports**, depending on how the agent runs:
 
-## Recommendation: JSON-RPC 2.0 over stdio + local TCP for reconnect
+```mermaid
+flowchart LR
+  subgraph production [Production — wired to Manager]
+    GoHarnesses["Go harness agents\n(claude / pi / codex / opencode)"]
+    HTTPExt["HTTPExtensionAgent\n(docker / remote)"]
+  end
 
-The research strongly converges on a two-phase transport — the same pattern used by LSP, DAP, and Jupyter:
+  subgraph reference [Reference — examples only]
+    TCPExt["ExtensionAgent\n(TCP JSON-RPC)"]
+    PyTS["dev/extension-examples/py|ts/"]
+  end
 
-**Phase 1 — Launch:** Loop spawns the extension process and communicates over **stdin/stdout using JSON-RPC 2.0**. This is the LSP/DAP default and is trivially easy to implement in Python and TypeScript.
+  Loop[Loop Manager] --> GoHarnesses
+  Loop --> HTTPExt
+  TCPExt -.->|not wired| Loop
+  PyTS -.-> TCPExt
+```
 
-**Phase 2 — Reconnect:** On startup the extension binds a **local TCP socket** at a random port and writes a **connection file** (JSON, à la Jupyter) to a well-known path (e.g. `~/.loop/extensions/<name>.json`). When Loop restarts, it reads the file and reconnects without restarting the extension process.
+## 1. Builtin harnesses (Go subprocess) — primary path
+
+The four built-in CLI agents are **not** Python/TypeScript extensions. Go structs in `internal/agent/` manage CLI subprocesses directly:
+
+| Harness | Implementation |
+|---|---|
+| `claude-code` | `ClaudeCodeAgent` + `persistentClaudeSession` |
+| `pi` | `PiAgent` + `persistentPiSession` (`pi --mode rpc`) |
+| `codex` | `CodexAgent` + `persistentCodexSession` |
+| `opencode` | `OpenCodeAgent` + `persistentOpenCodeSession` |
+
+Sandbox (`harness.sandbox` in ADL) is propagated via `builtin_config.go` → `Manager.getBuiltinAgent()`.
+
+For `sandbox: docker`, builtin harnesses use HTTP/SSE inside Loop-managed containers (`docker/` images, port **8090**).
+
+## 2. HTTP/SSE — docker and remote connectors
+
+Used for:
+- ADL agents with `harness.type: docker` or `remote`
+- Builtin `sandbox: docker` (via `HTTPExtensionAgent` talking to `loop-*` images)
+
+### Endpoints
+
+| Endpoint | Description |
+|---|---|
+| `GET /info` | Health check; returns `{name, version, capabilities}` |
+| `POST /run` | Body: `{message, sessionId?, workingDir?, systemPrompt?, model?}` → `text/event-stream` |
+| `POST /cancel` | Body: `{runId}` — cancel current run |
+| `POST /shutdown` | Release subprocess resources; Loop calls before `docker stop` |
+
+### SSE events
+
+```json
+{"type": "text", "content": "..."}
+{"type": "done", "sessionId": "..."}
+{"type": "error", "error": "..."}
+```
+
+Extended types (tool calls, images) are supported by the Go client in `extension.go`.
+
+### Implementations
+
+| Location | Port | Notes |
+|---|---|---|
+| `docker/http_loop_agent.py` | 8090 | Builtin sandbox images (`loop-claude-code`, etc.) |
+| `dev/extension-examples/docker/` | 9090 | User custom agents; ADL `containerPort` |
+| `dev/extension-examples/remote/` | user-defined | Standalone server, no lifecycle management |
+
+### Lifecycle
+
+| Event | Docker | Remote |
+|---|---|---|
+| Session create | `docker run` + `GET /info` health check | `GET /info` reachability check |
+| Chat message | `POST /run` → SSE | `POST /run` → SSE |
+| Session delete | `POST /shutdown` + `docker stop` | Nothing |
+| Server shutdown | Stop all managed containers | Nothing |
+
+See [docker/instructions.md](extension-examples/docker/instructions.md) and [remote/instructions.md](extension-examples/remote/instructions.md).
+
+## 3. TCP JSON-RPC — reference for custom extension authors
+
+`ExtensionAgent` in `internal/agent/extension.go` implements a TCP JSON-RPC 2.0 **client**, but `Manager.GetAgent()` does **not** launch or connect to TCP extensions today. The protocol and frameworks exist for third-party agents and future wiring.
+
+### Connection file
+
+Extensions write `~/.loop/extensions/<name>.json`:
+
+```json
+{"host": "127.0.0.1", "port": 52341, "session_id": "...", "pid": 9876}
+```
+
+### Methods
+
+| Method | Description |
+|---|---|
+| `harness.info` | Returns name, version, capabilities |
+| `harness.run` | Params: `{message, runId, sessionId?, workingDir?, systemPrompt?, model?}`; streams `harness.event` notifications |
+| `harness.cancel` | Params: `{runId}` |
+| `harness.shutdown` | Release resources |
+
+### Frameworks
+
+| Language | Framework | Example |
+|---|---|---|
+| Python | `extensions/loop_agent.py` (canonical) | `dev/extension-examples/py/echo_agent.py` |
+| TypeScript | `dev/extension-examples/ts/loop_agent.ts` | `dev/extension-examples/ts/echo_agent.ts` |
+
+Test with `dev/extension-examples/py/client.py` or `ts/client.ts`.
+
+## Historical note
+
+The research below evaluated JSON-RPC over stdio/TCP, go-plugin, ZeroMQ, and MCP as extension transports. The production implementation chose:
+
+- **Go-native subprocess management** for builtin CLI harnesses (simpler, no IPC overhead)
+- **HTTP/SSE** for docker/remote (proxy-friendly, standard tooling)
+- **TCP JSON-RPC kept as reference** for custom extension authors
 
 ---
 
-## Prior Art
+## Prior Art (research)
 
 | System | Transport | Reconnect mechanism |
 |---|---|---|
@@ -27,68 +129,21 @@ The research strongly converges on a two-phase transport — the same pattern us
 | **LSP / DAP** | stdio JSON-RPC 2.0 | Process restart (no reconnect needed) |
 | **hashicorp/go-plugin** | gRPC over local TCP | `ReattachConfig{Protocol, Addr, Pid}` |
 
-### Why not ZeroMQ (Jupyter)?
-ZeroMQ requires native bindings (`pyzmq`, `zeromq.js`) — significant install friction for extension authors. The same connection-file + reconnect pattern works with plain TCP sockets.
+### Why not ZeroMQ?
+ZeroMQ requires native bindings (`pyzmq`, `zeromq.js`) — significant install friction. Plain TCP + connection file achieves the same reconnect pattern.
 
-### Why not go-plugin (hashicorp)?
-go-plugin is the canonical Go library for this and has explicit `ReattachConfig` support. However, extensions written in non-Go languages via gRPC face non-trivial boilerplate. Better to own a simpler JSON-RPC protocol.
+### Why not go-plugin?
+go-plugin is Go-centric; cross-language gRPC boilerplate is non-trivial for extension authors.
 
----
-
-## The MCP Question
-
-**Should Loop just use MCP as its extension wire protocol?**
-
-MCP (Model Context Protocol) uses JSON-RPC 2.0 over stdio *or* SSE, has official Python and TypeScript SDKs, and Loop's existing `ClaudeCodeAgent` is already Claude-adjacent infrastructure. The MCP Python SDK exposes a FastMCP server in ~10 lines; the TypeScript SDK is equally minimal. This is worth evaluating before designing a custom protocol.
-
----
-
-## Proposed Design
-
-```
-Extension process lifecycle:
-  1. Loop spawns: python my_harness.py --connection-file ~/.loop/extensions/my_harness.json
-  2. Extension binds TCP, writes: {"host":"127.0.0.1","port":52341,"session_id":"abc123","pid":9876}
-  3. Loop connects over TCP, speaks JSON-RPC 2.0
-  4. On Loop restart: read connection file → reconnect if pid is alive → else respawn
-
-Extension API (JSON-RPC methods Loop calls):
-  harness.run(request)    → streams events back
-  harness.cancel(runId)
-  harness.info()          → name, version, capabilities
-
-Connection file location: ~/.loop/extensions/<name>.json
-Persist pid + port in data.json alongside session IDs for restart recovery
-```
-
-### Python extension (~20 lines)
-
-```python
-from jsonrpcserver import method, serve
-@method
-def run(request): ...
-serve()
-```
-
-### TypeScript extension
-
-```typescript
-import { createConnection } from 'vscode-jsonrpc/node'  // standalone, no LSP needed
-```
+### The MCP question
+MCP uses JSON-RPC 2.0 over stdio or SSE with official SDKs. Loop already surfaces MCP tool UI for Claude tool events via AG-UI. Full MCP-as-extension-protocol remains an open question.
 
 ---
 
 ## Open Questions
 
-1. **Adopt MCP instead?** MCP gives you the wire protocol, Python/TS SDKs, and tool/resource schema for free. Downside: Loop's extension contract binds to an evolving external spec.
-2. **Crash policy:** go-plugin does not auto-restart crashed extensions. Should Loop respawn on connection loss, or surface the error to the user?
-3. **gRPC vs JSON-RPC:** gRPC (go-plugin style) gives typed schemas via Protobuf. JSON-RPC is simpler to author. For Loop's expected use case (small single-developer harnesses), JSON-RPC wins.
-4. **Connection file persistence:** `~/.loop/data.json` (already used) or a dedicated per-extension sidecar file?
+1. **Wire TCP extensions into Manager?** Add a `custom` harness type that launches `extensions/*.py`?
+2. **Crash policy:** respawn on connection loss or surface error to user?
+3. **MCP as wire protocol?** Reduces custom protocol surface but binds to evolving external spec.
 
----
-
-## Research Basis
-
-- 104 agents, 22 sources fetched, 25 claims adversarially verified (21 confirmed, 4 killed)
-- Key sources: jupyter-client docs, vscode-languageserver-node/jsonrpc README, hashicorp/go-plugin README + pkg.go.dev, MCP specification + Python/TypeScript SDKs
-- Refuted claims: go-plugin uses Unix sockets (uses local TCP), LSP default transport is IPC pipes (it's stdio), go-plugin cross-language gRPC is low-friction for extension authors (boilerplate is non-trivial)
+[Extension Examples](extension-examples)

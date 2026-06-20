@@ -43,7 +43,7 @@ Omnigent wraps existing runtimes — Claude Code, Codex, Pi, custom YAML-defined
 
 ## Key architectural note
 
-Loop already ships `HTTPExtensionAgent` — any HTTP/SSE agent is pluggable via config. The gap versus Omnigent is **session sharing** and **governance enforcement**, not fundamental architecture.
+Loop already ships `HTTPExtensionAgent` for docker/remote connectors. Builtin CLI harnesses run as Go-managed subprocesses with optional bubblewrap (`sandbox: bubblewrap` in ADL). The gap versus Omnigent is **session sharing** and **governance enforcement** (ADL constraints/approval parsed but not enforced), not fundamental architecture.
 
 ## Open questions
 

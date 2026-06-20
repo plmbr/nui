@@ -1,64 +1,104 @@
 # The Loop
 
-Loop is a UI for interactive and autonomous agents.
+Loop is a self-hosted UI for interactive AI agent sessions. A Go backend embeds a React frontend and runs agent harnesses locally, in Docker, or over the network.
 
 <img src="media/loop-logo.png" alt="Loop Logo" width="400">
 
-## Development
+## Documentation
 
-[Development Plan](dev/dev.md)
+- [Product & technical spec](dev/dev.md) — architecture, ADL schema, roadmap
+- [Extension protocols](dev/extension-design.md) — HTTP/SSE and TCP JSON-RPC for custom agents
+- [ADL examples](dev/adl/examples/) — sample agent/workflow YAML files
 
-[Extension Design](dev/extension-design.md)
+## Architecture
 
+```mermaid
+flowchart TB
+  subgraph ui [Browser]
+    Chat[ChatPanel / useSessionChat]
+  end
 
-### Prerequisites
+  subgraph server [Go server :8080]
+    API[REST API]
+    AGUI["/api/sessions/:id/ag-ui"]
+    ADL[ADLAgent]
+    Mgr[Manager]
+  end
+
+  subgraph builtins [Builtin harnesses — Go subprocess]
+    CC[ClaudeCodeAgent]
+    PI[PiAgent]
+    CX[CodexAgent]
+    OC[OpenCodeAgent]
+  end
+
+  subgraph connectors [Connectors — HTTP/SSE]
+    HTTP[HTTPExtensionAgent]
+    Docker[(Docker container)]
+    Remote[(Remote server)]
+  end
+
+  Chat -->|AG-UI SSE| AGUI
+  AGUI --> ADL
+  ADL --> Mgr
+  Mgr --> CC & PI & CX & OC
+  Mgr --> HTTP
+  HTTP --> Docker & Remote
+```
+
+**Session flow:** every session has an `agentType` that resolves to an ADL definition (built-in or `~/.loop/agents/*.yaml`). `ADLAgent` runs the harness — single-step for simple agents, multi-step DAG for workflows. The UI streams chat over the [AG-UI protocol](https://github.com/ag-ui-protocol/ag-ui) at `POST /api/sessions/:id/ag-ui`, not the legacy `/chat` endpoint.
+
+## Prerequisites
 
 - Go 1.22+
 - Node.js 18+
+- Agent CLIs on `PATH` as needed: `claude`, `pi`, `codex`, `opencode`
+- Docker (optional) — for `sandbox: docker` and custom docker-harness ADL agents
 
-### Project structure
+## Project structure
 
 ```
 loop/
-├── main.go                   # entrypoint
-├── embed.go                  # embeds ui/dist into the binary
-├── cmd/                      # cobra CLI commands
+├── main.go, embed.go          # entrypoint; embeds ui/dist
+├── cmd/                       # cobra CLI (`loop ui`)
 ├── internal/
-│   ├── model/                # shared Project and ChatMessage structs
-│   ├── agent/                # Agent interface, ClaudeCodeAgent, ExtensionAgent,
-│   │                         # HTTPExtensionAgent, Manager (process/container lifecycle)
-│   ├── server/               # HTTP mux, API handlers, SSE streaming
-│   └── store/                # JSON persistence (~/.loop/data.json, settings.json)
-└── ui/                       # Vite + React frontend
-    └── dist/                 # built output (generated, not committed)
+│   ├── model/                 # Session, ChatMessage, ADL structs
+│   ├── agent/                 # Agent interface, harness implementations, ADL executor
+│   ├── server/                # HTTP mux, REST + AG-UI streaming
+│   └── store/                 # JSON persistence (~/.loop/)
+├── docker/                    # Builtin sandbox images (HTTP/SSE, port 8090)
+├── extensions/                # Reference TCP JSON-RPC framework (not wired to Manager)
+├── dev/
+│   ├── dev.md                 # product spec
+│   ├── extension-design.md    # extension protocols
+│   ├── extension-examples/    # runnable docker/remote/TCP examples
+│   └── adl/examples/          # sample ADL YAML
+└── ui/                        # Vite + React frontend
 ```
 
-### Running in development
+## Running in development
 
-Start the React dev server with HMR:
+Terminal 1 — Vite dev server (proxies `/api` to Go):
 
 ```sh
-cd ui
-npm install
-npm run dev
+cd ui && npm install && npm run dev
 ```
 
-In a separate terminal, build and run the Go server:
+Terminal 2 — Go server (`ui/dist` must exist before `go build`):
 
 ```sh
-cd ui && npm run build  # ui/dist must exist before go build
-cd ..
-go run .  ui            # or: go build -o loop_bin . && ./loop_bin ui
+cd ui && npm run build && cd ..
+go run . ui              # default :8080
+go run . ui --port 3000  # custom port
 ```
 
-The Go binary embeds `ui/dist` at compile time, so rebuild after UI changes:
+Production build:
 
 ```sh
-cd ui && npm run build && cd .. && go build -o loop_bin . --port 3000
-./loop_bin ui --port 3000
+cd ui && npm run build && cd .. && go build -o loop_bin . && ./loop_bin ui
 ```
 
-### CLI usage
+## CLI
 
 ```
 loop ui              # start web server on :8080
@@ -66,7 +106,7 @@ loop ui --port 3000  # custom port
 loop ui -p 3000      # shorthand
 ```
 
-### Available endpoints
+## API endpoints
 
 | Path | Description |
 |---|---|
@@ -75,20 +115,50 @@ loop ui -p 3000      # shorthand
 | `/health` | JSON health check |
 | `GET/POST /api/sessions` | List / create sessions |
 | `GET/PATCH/DELETE /api/sessions/:id` | Get / rename / delete a session |
-| `GET/PUT /api/sessions/:id/messages` | Read / replace UI chat messages |
-| `POST /api/sessions/:id/chat` | SSE stream — runs the agent |
-| `GET /api/sessions/:id/history` | Load chat history from the agent session file |
-| `GET /api/agent-types` | List available agent types |
-| `GET/PUT /api/settings` | Read / write theme setting |
+| `GET/PUT /api/sessions/:id/messages` | Read / replace persisted UI messages |
+| `POST /api/sessions/:id/ag-ui` | **Primary chat** — AG-UI SSE stream |
+| `POST /api/sessions/:id/chat` | Legacy raw agent-event SSE (unused by UI) |
+| `GET /api/sessions/:id/history` | Load history from agent session files |
+| `GET /api/agent-types` | Builtin + user-defined ADL agent types |
+| `GET /api/directories` | Working-directory autocomplete |
+| `GET/PUT /api/settings` | Theme setting |
+| `GET /api/capabilities` | Sandbox capabilities (bwrap availability) |
 
-### Agent types
+## Agent types
 
-| Type | How Loop connects |
+### Built-in (UI → Standard)
+
+Four CLI harnesses, selectable as pills in the New Session dialog:
+
+| Name | Harness | Runs |
+|---|---|---|
+| Claude Code | `claude-code` | `claude` CLI subprocess |
+| pi | `pi` | `pi --mode rpc` subprocess |
+| codex | `codex` | `codex exec` subprocess |
+| opencode | `opencode` | `opencode serve` + `opencode run` |
+
+### Custom (UI → Custom Agents)
+
+ADL YAML files in `~/.loop/agents/*.yaml`. On first run, Loop provisions starter templates:
+
+- `docker-echo.yaml` — HTTP/SSE agent in Docker (`loop-echo-agent:9090`)
+- `remote-echo.yaml` — HTTP/SSE agent at `127.0.0.1:9090`
+- `opencode-docker.yaml` — opencode in `loop-opencode:latest`
+
+Use these for `docker` and `remote` harness types, sandbox variants (`bubblewrap`, `docker`), and multi-step workflows.
+
+### Sandbox options
+
+For `claude-code`, `pi`, `codex`, and `opencode` (set in ADL `harness.sandbox`):
+
+| Value | Behavior |
 |---|---|
-| `claude-code` | Shells out to `claude` CLI with `--output-format stream-json` |
-| `pi` | TCP JSON-RPC 2.0 to a managed Python extension process |
-| `docker` | Launches a container (`docker run`), connects via HTTP/SSE (`POST /run`) |
-| `remote` | Connects to a user-specified host:port via HTTP/SSE (`POST /run`) |
+| `none` | Run on host (default) |
+| `bubblewrap` | Wrap subprocess with `bwrap` (Linux only) |
+| `docker` | Run in a Loop-managed container (`loop-<harness>:latest`, port **8090**) |
 
-Docker and remote agents implement the HTTP/SSE extension protocol:
-`GET /info` (health + metadata), `POST /run` (SSE stream), `POST /cancel`.
+### Docker / remote connectors
+
+Custom ADL agents with `harness.type: docker` or `remote` use the HTTP/SSE protocol. Loop validates reachability on session create, then calls `POST /run` for each message. See [extension examples](dev/extension-examples/).
+
+**Port note:** builtin sandbox images in `docker/` listen on **8090**; user extension examples use **9090** (configured via ADL `containerPort`).

@@ -1,16 +1,37 @@
-# React + Vite
+# Loop UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite frontend for the Loop agent chat interface.
 
-Currently, two official plugins are available:
+## Development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```sh
+npm install
+npm run dev     # :5173, proxies /api → Go server on :8080
+npm run build   # output to dist/ (embedded by Go binary)
+npm run lint
+```
 
-## React Compiler
+Run the Go server separately (`go run . ui` from repo root). Vite proxies API calls so HMR works without rebuilding the Go binary.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Key files
 
-## Expanding the ESLint configuration
+| Path | Role |
+|---|---|
+| `src/App.tsx` | Session list + layout |
+| `src/hooks/useSessionChat.ts` | AG-UI client (`@ag-ui/client`); primary chat transport |
+| `src/components/ChatPanel.tsx` | Message rendering, tool calls, images |
+| `src/components/NewSessionDialog.tsx` | Builtin harness picker + custom ADL agents |
+| `src/api.ts` | REST client |
+| `src/types.ts` | TypeScript types mirroring Go models |
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Chat transport
+
+The UI streams chat via `POST /api/sessions/:id/ag-ui` using the [AG-UI protocol](https://github.com/ag-ui-protocol/ag-ui), not the legacy `/chat` endpoint.
+
+On session select, messages load from `GET /api/sessions/:id/messages` (persisted in `~/.loop/data.json`), falling back to `GET /api/sessions/:id/history` (agent session files).
+
+## Stack
+
+Tailwind CSS v4, shadcn/ui (Base UI), `react-markdown`, `@ag-ui/client`.
+
+See [CLAUDE.md](../CLAUDE.md) for full project documentation.

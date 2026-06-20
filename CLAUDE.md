@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Backend (Go)
 ```sh
 go build ./...          # compile
+go test ./...           # run tests
 go run . ui             # build + run server on :8080
 go run . ui --port 3000 # custom port (use this for development)
 ```
@@ -28,99 +29,147 @@ cd ui && npm run build && cd .. && go build -o loop_bin . && ./loop_bin ui
 
 ### Docker images (run from `docker/`)
 ```sh
-# Build from the docker/ directory (all images share http_loop_agent.py)
 docker build -f claude-code/Dockerfile -t loop-claude-code:latest .
 docker build -f pi/Dockerfile          -t loop-pi:latest           .
 docker build -f codex/Dockerfile       -t loop-codex:latest        .
 docker build -f opencode/Dockerfile    -t loop-opencode:latest     .
 ```
 
-All docker sandbox images forward `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `OPENAI_API_KEY`, and `OPENAI_BASE_URL` automatically from the host environment. If `ANTHROPIC_BASE_URL` or `OPENAI_BASE_URL` resolves to a loopback hostname, Loop adds `--add-host=<hostname>:host-gateway` automatically.
+All docker sandbox images listen on port **8090** and share `http_loop_agent.py`. They forward `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `OPENAI_API_KEY`, and `OPENAI_BASE_URL` from the host. Loop adds `--add-host=<hostname>:host-gateway` when a base URL resolves to loopback.
 
 ## Architecture
 
 ### Request flow
-```
-Browser → Go HTTP server (:8080)
-         ├── /assets/*         — embedded static files from ui/dist
-         ├── /api/*            — JSON REST + SSE (internal/server/api.go)
-         ├── /health           — health check
-         └── /                 — serves ui/dist/index.html (SPA fallback)
+
+```mermaid
+flowchart LR
+  Browser -->|REST| API["/api/*"]
+  Browser -->|AG-UI SSE| AGUI["/api/sessions/:id/ag-ui"]
+  API --> Store["~/.loop/data.json"]
+  AGUI --> ADLAgent
+  ADLAgent --> Manager
+  Manager --> Harnesses["ClaudeCode / Pi / Codex / OpenCode"]
+  Manager --> HTTPExt["HTTPExtensionAgent"]
+  HTTPExt --> DockerRemote["Docker / Remote"]
 ```
 
-In development, Vite's dev server (`:5173`) proxies `/api` to the Go server so HMR works without rebuilding.
+In development, Vite (`:5173`) proxies `/api` to the Go server.
 
 ### Go packages
 
 | Package | Role |
 |---|---|
-| `cmd/` | Cobra CLI (`loop ui [--port]`); wires embedded `ui/dist` FS into `server.Start()` |
-| `internal/server/` | HTTP mux, API handlers, SSE streaming, in-memory state with `sync.RWMutex` |
-| `internal/model/` | Shared `Session`, `ChatMessage`, and ADL structs (avoids import cycles) |
-| `internal/store/` | JSON persistence to `~/.loop/data.json` (sessions + agent session IDs) and `~/.loop/settings.json` (theme). Atomic writes: `os.CreateTemp` → write → `os.Rename`. Also reads/deletes Claude Code session files and user-defined ADL from `~/.loop/agents/*.yaml`. |
-| `internal/agent/` | `Agent` interface, `ClaudeCodeAgent`, `CodexAgent`, `ExtensionAgent` (TCP JSON-RPC), `HTTPExtensionAgent` (HTTP/SSE), `ADLAgent` (ADL orchestration), `Manager` (process + container lifecycle), and `sandbox.go` (bubblewrap detection + wrapping) |
+| `cmd/` | Cobra CLI (`loop ui [--port]`) |
+| `internal/server/` | HTTP mux, REST handlers, AG-UI streaming (`agui.go`), MCP tool UI (`mcp_manager.go`) |
+| `internal/model/` | `Session`, `ChatMessage`, ADL structs |
+| `internal/store/` | Persistence: `data.json` (sessions, agent session IDs, UI messages), `settings.json`, ADL YAML in `agents/`, agent history loaders |
+| `internal/agent/` | `Agent` interface, harness agents, `ADLAgent` executor, `Manager` lifecycle, `sandbox.go` (bwrap) |
 
 ### Agent interface
+
 ```go
 type Agent interface {
     Name() string
     Run(ctx context.Context, req RunRequest, events chan<- Event) error
 }
 ```
-`ClaudeCodeAgent.Run` launches `claude -p <msg> --output-format stream-json --verbose --dangerously-skip-permissions --include-partial-messages --model <model> [--resume <sessionID>] [--system-prompt <prompt>]` and streams parsed SSE events (`EventText`, `EventDone`, `EventError`) back over a channel. The channel is consumed by `handleSessionChat`, which forwards events to the browser as `text/event-stream`. When `sandbox: bubblewrap` is configured, the `claude` process runs inside a bubblewrap sandbox (read-only rootfs; `workDir` and `~/.claude` bind-mounted read-write; network preserved).
 
-`CodexAgent.Run` launches `codex exec [resume <threadID>] <msg> --json --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check --ignore-user-config [-m <model>] [-C <workDir>]` and parses JSONL events from stdout: `thread.started` captures the thread ID (used as the session ID for resuming), `item.completed` with `type: "agent_message"` emits `EventText`, `turn.completed` emits `EventDone`. `--ignore-user-config` skips `~/.codex/config.toml` to avoid MCP servers blocking the turn. The binary is auto-detected: tries `codex` on PATH first, then `/Applications/Codex.app/Contents/Resources/codex`.
+Every session resolves to an ADL definition via `findADLDef()`. `ADLAgent` dispatches to the correct harness per step (or top-level harness for single-step agents).
 
-`ExtensionAgent` speaks JSON-RPC 2.0 over TCP to a managed Python/TS extension process. `HTTPExtensionAgent` talks to Docker and remote agents via HTTP/SSE (`POST /run` → `text/event-stream`; `GET /info` for health checks).
+#### Builtin harnesses (Go-managed subprocesses)
 
-`Manager` handles the full lifecycle: launching Python extension processes (writing/reading `~/.loop/extensions/<projectID>.json` connection files), starting Docker containers (`docker run -d -p 127.0.0.1::<port>`), resolving mapped ports via `docker port`, waiting for HTTP readiness, and stopping everything on delete/shutdown. `GetClaudeCodeDocker`, `GetPiDocker`, and `GetCodexDocker` launch per-agent builtin containers (defaulting to `loop-claude-code:latest`, `loop-pi:latest`, `loop-codex:latest`). All builtin containers receive `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_OAUTH_TOKEN`, `ANTHROPIC_BASE_URL`, `OPENAI_API_KEY`, and `OPENAI_BASE_URL` from the host environment; if `ANTHROPIC_BASE_URL` resolves to a loopback hostname, `--add-host` is injected automatically. Docker container URLs are cached in-process; remote agents are stateless (Loop just stores the configured host:port).
-
-#### Agent types and step harness types
-
-There are five built-in agent types selectable at session creation, mapping directly to the five ADL step harness types:
-
-| Agent type | Harness type | How it runs |
+| Harness | Agent struct | CLI |
 |---|---|---|
-| Claude Code | `claude-code` | Runs `claude` CLI as a local subprocess |
-| pi | `pi` | Runs `pi` CLI as a local subprocess |
-| codex | `codex` | Runs `codex` CLI as a local subprocess |
-| docker | `docker` | Connects to an HTTP/SSE agent in a Docker container (`image`, `containerPort` required) |
-| remote | `remote` | Connects to a pre-running HTTP/SSE agent over the network (`host`, `port` required) |
+| `claude-code` | `ClaudeCodeAgent` | `claude -p … --output-format stream-json` (persistent session via `claude_session.go`) |
+| `pi` | `PiAgent` | `pi --mode rpc` (JSON-RPC over stdin/stdout via `pi_session.go`) |
+| `codex` | `CodexAgent` | `codex exec … --json` (JSONL via `codex_session.go`) |
+| `opencode` | `OpenCodeAgent` | `opencode serve` + `opencode run --attach` (via `opencode_session.go`) |
 
-`claude-code`, `pi`, and `codex` harnesses support a `sandbox` field:
-- `none` — run directly on the host (default)
-- `bubblewrap` — bubblewrap sandbox (Linux only)
-- `docker` — runs inside a Docker container
+Sandbox is set from ADL `harness.sandbox` and propagated via `harnessBuiltinConfig()` → `Manager.getBuiltinAgent()`. Bubblewrap only applies when `sandbox: bubblewrap` (Linux only); `none` runs unsandboxed on the host.
 
-Sandbox variants and custom configurations are expressed via user-defined ADL in `~/.loop/agents/*.yaml` rather than as separate named built-in types. The `docker/` directory contains `http_loop_agent.py` (shared HTTP/SSE base class), `claude-code/claude_code_http.py` + `Dockerfile`, `pi/pi_http.py` + `Dockerfile`, and `codex/codex_http.py` + `Dockerfile`.
+Bind mounts per harness when bwrap is active:
+- `claude-code` → `~/.claude`
+- `pi` → `~/.pi`
+- `codex` → `~/.codex`
+- `opencode` → `~/.local/share/opencode`
 
-#### Sandbox (`sandbox.go`)
+#### Connector harnesses (HTTP/SSE)
 
-`GetBwrapStatus()` detects bubblewrap once (singleton) and returns a cached `BwrapStatus`. `WrapWithBwrap(bwrapPath, bin, args, workDir)` prepends the bwrap invocation with appropriate bind-mounts. Linux-only; macOS falls back to running the subprocess unsandboxed.
+| Harness | Agent struct | Lifecycle |
+|---|---|---|
+| `docker` | `HTTPExtensionAgent` | Loop runs `docker run -d -p 127.0.0.1::<port> <image>`, maps port, health-checks `GET /info` |
+| `remote` | `HTTPExtensionAgent` | Loop stores `host:port`; no process management |
+
+`Manager` also provides `GetClaudeCodeDocker`, `GetPiDocker`, `GetCodexDocker`, `GetOpenCodeDocker` for `sandbox: docker` on builtin harnesses (images `loop-*:latest`, port 8090).
+
+On delete/shutdown, Loop calls `POST /shutdown` on managed containers, then `docker stop`.
+
+#### Reference code (not wired to Manager)
+
+- `ExtensionAgent` in `extension.go` — TCP JSON-RPC 2.0 client; implemented but not called by `Manager.GetAgent()`
+- `extensions/` and `dev/extension-examples/py|ts/` — reference TCP JSON-RPC frameworks for custom extension authors
+
+### HTTP/SSE protocol (docker + remote)
+
+| Endpoint | Description |
+|---|---|
+| `GET /info` | Health check + metadata |
+| `POST /run` | Body: `{message, sessionId?, workingDir?, systemPrompt?, model?}` → `text/event-stream` |
+| `POST /cancel` | Body: `{runId}` — cancel current run |
+| `POST /shutdown` | Stop subprocesses; used by Loop on container teardown |
+
+SSE `data:` events support `text`, `done`, `error`, and tool-call/image event types (see `eventFromHarnessParams` in `extension.go`).
 
 ### Persistence
-- `~/.loop/data.json` — sessions array + `agentSessions` map (session ID → agent-side session/thread ID). Loaded on startup via `initStore()`, saved after create/delete/rename and after a new agent session ID arrives.
-- `~/.loop/settings.json` — `{"theme": "light"|"dark"}`. Read/written on every settings GET/PUT.
-- `~/.loop/agents/*.yaml` — user-defined ADL definitions loaded on every `GET /api/agent-types` request (no restart needed).
-- Claude Code session files live at `~/.claude/projects/<dirHash>/<sessionID>.jsonl` where `dirHash = strings.ReplaceAll(workingDir, "/", "-")`. History is loaded by `store.LoadClaudeHistory` and deleted by `store.DeleteClaudeSession`.
-- When `workingDir` is empty, both the agent runner and the history loader fall back to `os.Getwd()` (the server's working directory).
+
+| File | Contents |
+|---|---|
+| `~/.loop/data.json` | `sessions`, `agentSessions` (loop session ID → agent session ID), `sessionMessages` (UI chat text) |
+| `~/.loop/settings.json` | `{"theme": "light"\|"dark"}` |
+| `~/.loop/agents/*.yaml` | User ADL definitions; loaded on every `GET /api/agent-types` |
+| Agent history files | Claude: `~/.claude/projects/<dirHash>/<id>.jsonl`; pi/codex/opencode via respective `store/*_history.go` loaders |
+
+UI loads persisted `sessionMessages` first on session select; falls back to agent history files if empty.
 
 ### API routes
-All routes are registered in `internal/server/api.go`:
-- `GET/POST /api/sessions` — list / create
-- `GET/PATCH/DELETE /api/sessions/:id` — get / rename / delete (delete also removes the agent session file)
-- `POST /api/sessions/:id/chat` — SSE stream; runs the agent, saves new agent session ID
-- `GET /api/sessions/:id/history` — load chat history from Claude's JSONL file
-- `GET /api/agent-types` — builtin + user-defined ADL agent types
-- `GET/PUT /api/settings` — theme setting
-- `GET /api/capabilities` — sandbox capabilities (bwrap availability; used by Settings UI to show a warning on unsupported platforms)
+
+Registered in `internal/server/api.go` and `agui.go`:
+
+- `GET/POST /api/sessions` — list / create (docker/remote ADL agents validated on create via `validateSessionConnector`)
+- `GET/PATCH/DELETE /api/sessions/:id` — get / rename / delete
+- `GET/PUT /api/sessions/:id/messages` — persisted UI messages
+- `POST /api/sessions/:id/ag-ui` — **primary chat endpoint** (AG-UI protocol)
+- `POST /api/sessions/:id/chat` — legacy raw agent events (unused by UI)
+- `GET /api/sessions/:id/history` — agent-side session history
+- `GET /api/agent-types` — builtin + user ADL types
+- `GET /api/directories` — working-dir autocomplete
+- `GET/PUT /api/settings` — theme
+- `GET /api/capabilities` — bwrap availability
 
 ### Frontend structure
-- `App.tsx` — root; owns `projects` and `selectedId` state, passes handlers down
-- `api.ts` — all fetch calls in one place; `request<T>()` handles errors and 204 No Content
-- `types.ts` — shared TypeScript interfaces mirroring Go model structs
-- `contexts/theme.tsx` — `ThemeProvider`; `localStorage` as first-paint cache, `/api/settings` as source of truth
-- Components: `AppSidebar` (project list + new project + settings trigger), `ProjectDetails` (rename inline, delete with confirmation dialog), `ChatPanel` (SSE streaming, markdown rendering, history load on project select)
+
+- `App.tsx` — session list + selection
+- `useSessionChat.ts` — AG-UI client (`@ag-ui/client`); handles text, tool calls, images, MCP app frames
+- `ChatPanel.tsx` / `ConversationPanel.tsx` — chat UI
+- `NewSessionDialog.tsx` — builtin harness pills + custom ADL agent cards
+- `api.ts` — REST client
+- `types.ts` — TypeScript mirrors of Go model structs
+
+### ADL executor status
+
+Implemented in `internal/agent/adl.go`:
+- Topological step scheduling (`dependsOn`)
+- Per-step harness/model/systemPrompt override
+- Named outputs → downstream inputs
+- All six harness types + sandbox variants
+
+**Not yet enforced** (parsed from YAML but ignored at runtime):
+- Step `policy` (`parallel`, `loop`, `batch`, etc.) — all steps run sequentially
+- `approval` / `approvalTimeout` (HITL gates)
+- `constraints` (timeout, maxTokens, retries)
+- `schedule.cron` (autonomous mode)
+- `tools.mcp` configuration
 
 ### UI stack
-Tailwind CSS v4 (CSS-based config in `index.css`), shadcn/ui components built on Base UI (`@base-ui/react`), `react-markdown` + `rehype-highlight` for assistant message rendering, `@tailwindcss/typography` (`prose prose-sm dark:prose-invert`) on assistant bubbles.
+
+Tailwind CSS v4, shadcn/ui on Base UI (`@base-ui/react`), `react-markdown` + `rehype-highlight`, `@ag-ui/client` for streaming.

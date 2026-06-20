@@ -1,10 +1,12 @@
-# Loop Extension Examples — TypeScript
+# TCP JSON-RPC Extension Examples — TypeScript (Reference)
+
+These examples demonstrate the TCP JSON-RPC 2.0 protocol for custom Loop extensions. **They are not wired to `Manager.GetAgent()` today.** See [extension-design.md](../../extension-design.md) for the production architecture.
 
 ## Files
 
 - `loop_agent.ts` — extension framework base class
-- `echo_agent.ts` — minimal extension using the framework
-- `client.ts` — sample client that connects to a running extension
+- `echo_agent.ts` — minimal echo harness
+- `client.ts` — sample TCP client
 
 ## Setup
 
@@ -16,21 +18,16 @@ npm install
 ## Running
 
 ```sh
-# terminal 1 — start the extension
+# terminal 1
 npx ts-node echo_agent.ts
 
-# terminal 2 — run the client
+# terminal 2
 npx ts-node client.ts
-
-# or specify a different extension name
-npx ts-node client.ts my-agent
 ```
 
-## How it works
+## Framework
 
-### loop_agent.ts
-
-Base class that handles all infrastructure. Subclass it and override `run()`:
+Subclass `LoopAgent` and override `run()`:
 
 ```typescript
 import { LoopAgent } from './loop_agent'
@@ -48,27 +45,29 @@ class MyAgent extends LoopAgent {
 new MyAgent().serve()
 ```
 
-`run()` is an async generator — you can `await` inside it before yielding chunks, which makes it natural for calling LLM APIs or doing async I/O.
+### Hooks
 
-Optional hooks:
-- `onStart(port)` — called after the server binds and connection file is written
-- `onCancel(runId)` — called when Loop sends `harness.cancel`
+- `onStart(port)` — after server binds and connection file is written
+- `onCancel(runId)` — on `harness.cancel`
+- `onShutdown()` — on `harness.shutdown` or signal
 
-On startup, `serve()` binds a random TCP port and writes `~/.loop/extensions/<name>.json`:
+### Connection file
+
+`serve()` writes `~/.loop/extensions/<name>.json`:
 
 ```json
-{ "host": "127.0.0.1", "port": 52341, "session_id": "...", "pid": 9876 }
+{"host": "127.0.0.1", "port": 52341, "session_id": "...", "pid": 9876}
 ```
 
-Loop reads this file to connect (or reconnect after a restart).
+### Methods
 
-### client.ts
-
-1. Reads `~/.loop/extensions/echo-agent.json` (exits if the extension is not running)
-2. Connects over TCP
-3. Calls `harness.info` and prints the result
-4. Calls `harness.run` with a message — `harness.event` notifications are printed as they arrive (streaming), then prints the final result
+| Method | Description |
+|---|---|
+| `harness.info` | Metadata |
+| `harness.run` | Stream `harness.event` notifications |
+| `harness.cancel` | Cancel run |
+| `harness.shutdown` | Release resources |
 
 ## Dependencies
 
-`typescript`, `ts-node`, `@types/node` — devDependencies only, no runtime deps.
+`typescript`, `ts-node`, `@types/node` — devDependencies only.

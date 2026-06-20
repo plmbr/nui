@@ -139,7 +139,7 @@ Use the limited-user-account layer as defense-in-depth on macOS, but treat Linux
 
 Plain Docker is **insufficient** against capable LLM agents (SandboxEscapeBench, Oxford/UK AISI, March 2026). Frontier models reliably escape difficulty 1–2 Docker scenarios: `--privileged` containers, writable host mounts, exposed Docker sockets. Well-configured Docker is better but lacks a hardware boundary.
 
-Loop's current Docker mode (`docker run -d -p 127.0.0.1::containerPort`) is reasonable for extension agents. The `ClaudeCodeAgent` path (direct subprocess) has **no sandboxing at all** today.
+Loop's Docker connector (`docker run -d -p 127.0.0.1::containerPort`) is reasonable for extension agents. For the four builtin CLI harnesses, Loop also supports **bubblewrap** sandboxing on Linux (`harness.sandbox: bubblewrap` in ADL) — see `internal/agent/sandbox.go` and `WrapWithBwrap()`. Set `sandbox: none` (the default) to run unsandboxed on the host.
 
 ---
 
@@ -148,7 +148,7 @@ Loop's current Docker mode (`docker run -d -p 127.0.0.1::containerPort`) is reas
 | Platform | Approach | Effort |
 |---|---|---|
 | Linux | `go-sandbox` wrapping `ClaudeCodeAgent.Run()` | Medium — adapt Runner interface |
-| Linux (simpler) | `bwrap` args via `os/exec` + build tag | Low — just arg construction |
+| Linux (simpler) | `bwrap` via `WrapWithBwrap()` in `sandbox.go` | **Done** for claude-code, pi, codex, opencode |
 | Linux (no deps) | `SysProcAttr.Cloneflags` inline | Low — no seccomp/fs restriction |
 | macOS | `sandbox-exec` profile + limited user | Medium — profile authoring |
 | Both | Keep Docker for extension/remote agents | Already done |

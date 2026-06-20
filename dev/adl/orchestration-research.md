@@ -1,5 +1,7 @@
 # ADL Multi-Step Orchestration — Research Findings [AI generated]
 
+> **Note:** Some harness wiring below is outdated. Builtin CLI harnesses are Go-managed subprocesses, not TCP `ExtensionAgent` processes. API paths use `/api/sessions/`, not `/api/projects/`. See [dev.md](../dev.md).
+
 ---
 
 ## Summary
