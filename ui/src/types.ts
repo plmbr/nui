@@ -16,6 +16,10 @@ export interface CreateSessionRequest {
   agentConfig?: Record<string, unknown>
 }
 
+export interface DirectorySuggestions {
+  directories: string[]
+}
+
 export interface AgentType {
   id: string
   label: string
