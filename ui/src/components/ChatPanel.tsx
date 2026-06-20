@@ -12,17 +12,27 @@ import type { Session } from '@/types'
 
 interface Props {
   session: Session
+  initialPrompt?: string
 }
 
-export function ChatPanel({ session }: Props) {
-  const { messages, sendMessage, isRunning } = useSessionChat(session.id)
+export function ChatPanel({ session, initialPrompt }: Props) {
+  const { messages, sendMessage, isRunning, isLoading } = useSessionChat(session.id)
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const initialPromptSentRef = useRef(false)
 
   useEffect(() => {
     inputRef.current?.focus()
   }, [session.id])
+
+  useEffect(() => {
+    if (!initialPrompt || initialPromptSentRef.current || isLoading || isRunning) return
+    if (messages.length > 0) return
+    initialPromptSentRef.current = true
+    setInput(initialPrompt)
+    sendMessage(initialPrompt)
+  }, [initialPrompt, isLoading, isRunning, messages.length, sendMessage])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

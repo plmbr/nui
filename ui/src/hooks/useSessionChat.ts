@@ -51,6 +51,7 @@ function historyToMessages(
 export function useSessionChat(sessionId: string) {
   const [messages, setMessages] = useState<SessionChatMessage[]>([])
   const [isRunning, setIsRunning] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const agentRef = useRef(
     new HttpAgent({
       url: `/api/sessions/${sessionId}/ag-ui`,
@@ -66,6 +67,7 @@ export function useSessionChat(sessionId: string) {
     })
     pendingToolsRef.current = {}
     setIsRunning(false)
+    setIsLoading(true)
     api.messages
       .list(sessionId)
       .then((stored) => {
@@ -76,6 +78,7 @@ export function useSessionChat(sessionId: string) {
         return api.history.get(sessionId).then((history) => setMessages(historyToMessages(history)))
       })
       .catch(() => setMessages([]))
+      .finally(() => setIsLoading(false))
   }, [sessionId])
 
   const sendMessage = useCallback(
@@ -252,5 +255,5 @@ export function useSessionChat(sessionId: string) {
     [messages, isRunning, sessionId],
   )
 
-  return { messages, sendMessage, isRunning }
+  return { messages, sendMessage, isRunning, isLoading }
 }

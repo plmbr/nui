@@ -13,7 +13,10 @@ import (
 )
 
 type Settings struct {
-	Theme string `json:"theme"` // "light" | "dark"
+	Theme         string `json:"theme"`                   // "light" | "dark"
+	LastAgentType string `json:"lastAgentType,omitempty"` // last agent picked in new-session dialog
+	LastSessionID string `json:"lastSessionId,omitempty"` // last selected session in UI
+	SidebarOpen   *bool  `json:"sidebarOpen,omitempty"`   // desktop sidebar expanded state
 }
 
 type Data struct {

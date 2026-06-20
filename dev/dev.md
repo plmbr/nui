@@ -58,6 +58,8 @@ flowchart TB
 
 4. **Docker/remote via custom ADL.** There is no built-in "Docker" or "Remote" picker in the UI. Users select a custom ADL agent (e.g. `docker-echo` from `~/.loop/agents/docker-echo.yaml`). Loop validates the connector on session create.
 
+5. **CLI launch + UI preferences.** `loop ui --agent-type --prompt` creates a session at server start (`bootstrap.go`), saves `lastAgentType` / `lastSessionId` to `settings.json`, and exposes the prompt once via `GET /api/bootstrap`. The UI auto-selects the session, fills the chat input, and sends the prompt. Sidebar state and last-selected session/agent are also persisted in `settings.json`.
+
 ---
 
 ## Project Modes
@@ -241,7 +243,7 @@ When `approval: required` is enforced, the executor will pause, emit an approval
 | Store | Format | Location | Status |
 |---|---|---|---|
 | Sessions + agent session IDs + UI messages | JSON | `~/.loop/data.json` | Done |
-| Settings | JSON | `~/.loop/settings.json` | Done |
+| Settings | JSON | `~/.loop/settings.json` | Done (`theme`, `lastAgentType`, `lastSessionId`, `sidebarOpen`) |
 | ADL definitions | YAML | `~/.loop/agents/*.yaml` | Done |
 | Default ADL templates | YAML | Auto-provisioned on startup | Done |
 | Run event log | JSONL | `~/.loop/runs/<runID>.jsonl` | Planned |
@@ -266,7 +268,8 @@ Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-
 | `GET` | `/api/sessions/:id/history` | Agent-side history |
 | `GET` | `/api/agent-types` | Builtin + ADL agent types |
 | `GET` | `/api/directories` | Working-dir suggestions |
-| `GET/PUT` | `/api/settings` | Theme |
+| `GET/PUT` | `/api/settings` | User preferences (partial PUT) |
+| `GET` | `/api/bootstrap` | One-shot CLI bootstrap (`sessionId`, `initialPrompt`) |
 | `GET` | `/api/capabilities` | Bwrap availability |
 
 ### Planned
@@ -287,6 +290,8 @@ Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-
 - [x] AG-UI chat streaming with tool calls and images
 - [x] HTTP/SSE docker + remote connectors
 - [x] Builtin sandbox Docker images (`docker/`, port 8090)
+- [x] CLI session launch (`loop ui --agent-type --prompt --working-dir`)
+- [x] UI preferences (`lastAgentType`, `lastSessionId`, `sidebarOpen`)
 - [x] Bubblewrap sandbox for all four CLI harnesses (Linux)
 - [x] User ADL in `~/.loop/agents/*.yaml`
 - [x] Default ADL templates (docker-echo, remote-echo, opencode-docker)

@@ -106,6 +106,42 @@ loop ui --port 3000  # custom port
 loop ui -p 3000      # shorthand
 ```
 
+### Launch an agent from the CLI
+
+Create a session on startup and optionally run an initial prompt in the UI:
+
+```sh
+loop ui --agent-type "Claude Code" --prompt "Review the README"
+loop ui -a pi -m "Summarize this repo" -w ~/my/project
+```
+
+| Flag | Short | Description |
+|---|---|---|
+| `--agent-type` | `-a` | ADL agent name (builtin or `~/.loop/agents/*.yaml`). Creates a new session on startup. |
+| `--prompt` | `-m` | Initial prompt. The UI selects the new session, fills the input, and auto-sends it. |
+| `--working-dir` | `-w` | Working directory for the session (defaults to the current directory). |
+
+Agent type names match the New Session dialog — e.g. `Claude Code`, `pi`, `codex`, `opencode`, or a custom ADL name like `docker-echo`. Legacy aliases such as `claude-code` also work.
+
+On startup Loop:
+
+1. Creates the session and validates docker/remote connectors if needed
+2. Saves `lastAgentType` and `lastSessionId` to `~/.loop/settings.json`
+3. Exposes the prompt once via `GET /api/bootstrap` for the UI to consume
+
+### User preferences
+
+Stored in `~/.loop/settings.json` and restored on reload:
+
+| Field | Saved when | Restored as |
+|---|---|---|
+| `theme` | Settings sheet toggle | Light/dark theme |
+| `lastAgentType` | Session create (UI or CLI) | Default in New Session dialog |
+| `lastSessionId` | Session selection | Auto-select on startup (if session still exists) |
+| `sidebarOpen` | Sidebar toggle | Sidebar expanded/collapsed state |
+
+`PUT /api/settings` accepts partial updates — send only the fields you want to change.
+
 ## API endpoints
 
 | Path | Description |
@@ -121,7 +157,8 @@ loop ui -p 3000      # shorthand
 | `GET /api/sessions/:id/history` | Load history from agent session files |
 | `GET /api/agent-types` | Builtin + user-defined ADL agent types |
 | `GET /api/directories` | Working-directory autocomplete |
-| `GET/PUT /api/settings` | Theme setting |
+| `GET/PUT /api/settings` | User preferences (theme, last agent/session, sidebar) |
+| `GET /api/bootstrap` | One-shot CLI bootstrap state (`sessionId`, `initialPrompt`) |
 | `GET /api/capabilities` | Sandbox capabilities (bwrap availability) |
 
 ## Agent types

@@ -17,7 +17,7 @@ import (
 
 var extensionManager *agent.Manager
 
-func Start(port int, uiFiles fs.FS) error {
+func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 	mux := http.NewServeMux()
 
 	assetsFS, err := fs.Sub(uiFiles, "assets")
@@ -31,6 +31,11 @@ func Start(port int, uiFiles fs.FS) error {
 	}
 
 	extensionManager = agent.NewManager()
+
+	if err := bootstrapFromCLI(opts); err != nil {
+		return fmt.Errorf("bootstrap session: %w", err)
+	}
+
 	mu.RLock()
 	entries := make([]agent.PrewarmEntry, 0, len(sessions))
 	for _, s := range sessions {

@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppSidebar } from '@/components/AppSidebar'
@@ -12,19 +12,59 @@ import type { Session } from '@/types'
 export default function App() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [initialPrompt, setInitialPrompt] = useState<string | undefined>()
+  const initializedRef = useRef(false)
 
   const loadSessions = useCallback(async () => {
     try {
       const list = await api.sessions.list()
       setSessions(list)
+      return list
     } catch {
-      // ignore — backend may not be up during dev
+      return []
     }
   }, [])
 
   useEffect(() => {
-    loadSessions()
+    if (initializedRef.current) return
+    initializedRef.current = true
+
+    async function init() {
+      const [list, settings, bootstrap] = await Promise.all([
+        loadSessions(),
+        api.settings.get().catch(() => ({ theme: 'light' as const })),
+        api.bootstrap.get().catch(() => ({})),
+      ])
+
+      if (settings.sidebarOpen !== undefined) {
+        setSidebarOpen(settings.sidebarOpen)
+      }
+
+      let nextId = bootstrap.sessionId ?? settings.lastSessionId ?? null
+      if (nextId && !list.some((s) => s.id === nextId)) {
+        nextId = null
+      }
+      setSelectedId(nextId)
+
+      if (bootstrap.initialPrompt && nextId) {
+        setInitialPrompt(bootstrap.initialPrompt)
+      }
+    }
+
+    void init()
   }, [loadSessions])
+
+  const handleSelect = useCallback((id: string) => {
+    setSelectedId(id)
+    setInitialPrompt(undefined)
+    api.settings.update({ lastSessionId: id }).catch(() => {})
+  }, [])
+
+  const handleSidebarOpenChange = useCallback((open: boolean) => {
+    setSidebarOpen(open)
+    api.settings.update({ sidebarOpen: open }).catch(() => {})
+  }, [])
 
   const selected = sessions.find((s) => s.id === selectedId) ?? null
 
@@ -42,7 +82,7 @@ export default function App() {
   return (
     <ThemeProvider>
     <TooltipProvider>
-      <SidebarProvider>
+      <SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange}>
         <header className="app-header">
           <SidebarTrigger />
           <span className="font-semibold text-sm shrink-0">The Loop</span>
@@ -51,7 +91,7 @@ export default function App() {
           <AppSidebar
             sessions={sessions}
             selectedId={selectedId}
-            onSelect={setSelectedId}
+            onSelect={handleSelect}
             onRefresh={loadSessions}
             onRename={handleRenameSession}
             onDelete={handleDeleteSession}
@@ -60,6 +100,7 @@ export default function App() {
             {selected ? (
               <ConversationPanel
                 session={selected}
+                initialPrompt={initialPrompt}
                 key={selected.id}
               />
             ) : (

@@ -126,6 +126,7 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/agent-types", handleAgentTypes)
 	mux.HandleFunc("/api/directories", handleDirectories)
 	mux.HandleFunc("/api/settings", handleSettings)
+	mux.HandleFunc("/api/bootstrap", handleBootstrap)
 	mux.HandleFunc("/api/capabilities", handleCapabilities)
 }
 
@@ -281,25 +282,10 @@ func handleSessions(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "name and agentType are required", http.StatusBadRequest)
 			return
 		}
-		s := model.Session{
-			ID:          uuid.NewString(),
-			Name:        req.Name,
-			WorkingDir:  req.WorkingDir,
-			AgentType:   req.AgentType,
-			AgentConfig: req.AgentConfig,
-			CreatedAt:   time.Now().UTC().Format(time.RFC3339),
-		}
-		if err := validateSessionConnector(s); err != nil {
-			extensionManager.Stop(s.ID)
+		s, err := createSession(req.Name, req.WorkingDir, req.AgentType, req.AgentConfig)
+		if err != nil {
 			http.Error(w, fmt.Sprintf("agent unavailable: %v", err), http.StatusServiceUnavailable)
 			return
-		}
-		mu.Lock()
-		sessions = append(sessions, s)
-		snapshot := snapshotData()
-		mu.Unlock()
-		if err := store.SaveData(snapshot); err != nil {
-			fmt.Fprintf(os.Stderr, "warn: save data after create: %v\n", err)
 		}
 		writeJSON(w, http.StatusCreated, s)
 
@@ -638,13 +624,29 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "failed to load settings", http.StatusInternalServerError)
 			return
 		}
-		if err := json.NewDecoder(r.Body).Decode(&current); err != nil {
+		var patch store.Settings
+		if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
 			http.Error(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
-		if current.Theme != "light" && current.Theme != "dark" {
-			http.Error(w, "theme must be 'light' or 'dark'", http.StatusBadRequest)
-			return
+		if patch.Theme != "" {
+			if patch.Theme != "light" && patch.Theme != "dark" {
+				http.Error(w, "theme must be 'light' or 'dark'", http.StatusBadRequest)
+				return
+			}
+			current.Theme = patch.Theme
+		}
+		if patch.LastAgentType != "" {
+			current.LastAgentType = patch.LastAgentType
+		}
+		if patch.LastSessionID != "" {
+			current.LastSessionID = patch.LastSessionID
+		}
+		if patch.SidebarOpen != nil {
+			current.SidebarOpen = patch.SidebarOpen
+		}
+		if current.Theme == "" {
+			current.Theme = "light"
 		}
 		if err := store.SaveSettings(current); err != nil {
 			http.Error(w, "failed to save settings", http.StatusInternalServerError)

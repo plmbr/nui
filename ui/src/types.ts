@@ -39,6 +39,14 @@ export interface ChatMessage {
 
 export interface Settings {
   theme: 'light' | 'dark'
+  lastAgentType?: string
+  lastSessionId?: string
+  sidebarOpen?: boolean
+}
+
+export interface Bootstrap {
+  sessionId?: string
+  initialPrompt?: string
 }
 
 export interface BwrapStatus {

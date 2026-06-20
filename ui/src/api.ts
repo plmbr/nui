@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, Capabilities, ChatMessage, CreateSessionRequest, DirectorySuggestions, Session, Settings } from './types'
+import type { AgentType, Bootstrap, Capabilities, ChatMessage, CreateSessionRequest, DirectorySuggestions, Session, Settings } from './types'
 
 const BASE = '/api'
 
@@ -78,6 +78,11 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(patch),
       }),
+  },
+
+  bootstrap: {
+    get: (): Promise<Bootstrap> =>
+      request('/bootstrap'),
   },
 
   capabilities: {

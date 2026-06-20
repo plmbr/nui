@@ -48,11 +48,19 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
 
   useEffect(() => {
     if (!open) return
-    api.agentTypes.list().then((types) => {
+    Promise.all([
+      api.agentTypes.list(),
+      api.settings.get().catch(() => ({ theme: 'light' as const })),
+    ]).then(([types, settings]) => {
       setAgentTypes(types)
-      if (types.length > 0 && !selectedId) {
-        setSelectedId(types[0].id)
-      }
+      if (types.length === 0) return
+      const preferred = settings.lastAgentType
+        ? types.find((t) => t.id === settings.lastAgentType)
+        : undefined
+      setSelectedId((current) => {
+        if (current && types.some((t) => t.id === current)) return current
+        return preferred?.id ?? types[0].id
+      })
     }).catch(() => {})
   }, [open])
 
@@ -141,6 +149,7 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
         agentType: selectedId,
       }
       const session = await api.sessions.create(req)
+      api.settings.update({ lastAgentType: selectedId }).catch(() => {})
       reset()
       onOpenChange(false)
       onCreated(session)
