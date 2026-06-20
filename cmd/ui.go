@@ -12,10 +12,11 @@ import (
 )
 
 var (
-	port       int
-	agentType  string
-	prompt     string
-	workingDir string
+	port        int
+	agentType   string
+	prompt      string
+	workingDir  string
+	openBrowser bool
 )
 
 var uiFS func() fs.FS
@@ -29,6 +30,7 @@ var uiCmd = &cobra.Command{
 			AgentType:  agentType,
 			Prompt:     prompt,
 			WorkingDir: workingDir,
+			Open:       openBrowser,
 		})
 	},
 }
@@ -38,6 +40,7 @@ func init() {
 	uiCmd.Flags().StringVarP(&agentType, "agent-type", "a", "", "Agent type to launch (creates a new session on startup)")
 	uiCmd.Flags().StringVarP(&prompt, "prompt", "m", "", "Initial prompt to run in the new session")
 	uiCmd.Flags().StringVarP(&workingDir, "working-dir", "w", "", "Working directory for the new session (defaults to current directory)")
+	uiCmd.Flags().BoolVar(&openBrowser, "open", false, "Open the web UI in the system default browser")
 	rootCmd.AddCommand(uiCmd)
 }
 

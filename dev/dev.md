@@ -58,7 +58,7 @@ flowchart TB
 
 4. **Docker/remote via custom ADL.** There is no built-in "Docker" or "Remote" picker in the UI. Users select a custom ADL agent (e.g. `docker-echo` from `~/.loop/agents/docker-echo.yaml`). Loop validates the connector on session create.
 
-5. **CLI launch + UI preferences.** `loop ui --agent-type --prompt` creates a session at server start (`bootstrap.go`), saves `lastAgentType` / `lastSessionId` to `settings.json`, and exposes the prompt once via `GET /api/bootstrap`. The UI auto-selects the session, fills the chat input, and sends the prompt. Sidebar state and last-selected session/agent are also persisted in `settings.json`.
+5. **CLI launch + UI preferences.** `loop ui --agent-type --prompt --open` creates a session at server start (`bootstrap.go`), saves `lastAgentType` / `lastSessionId` to `settings.json`, and exposes the prompt once via `GET /api/bootstrap`. With `--open`, Loop waits for `/health` then launches the UI in the system default browser (`open` on macOS, `xdg-open` on Linux, `start` on Windows). Sidebar state and last-selected session/agent are also persisted in `settings.json`.
 
 ---
 

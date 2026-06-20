@@ -21,6 +21,7 @@ type StartOptions struct {
 	AgentType  string
 	Prompt     string
 	WorkingDir string
+	Open       bool // open the UI in the system default browser
 }
 
 type bootstrapState struct {

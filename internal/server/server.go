@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"loop/internal/agent"
+	"loop/internal/browser"
 )
 
 var extensionManager *agent.Manager
@@ -75,9 +76,14 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 	})
 
 	addr := fmt.Sprintf(":%d", port)
-	fmt.Printf("Listening on http://localhost%s\n", addr)
+	url := fmt.Sprintf("http://localhost%s", addr)
+	fmt.Printf("Listening on %s\n", url)
 
 	srv := &http.Server{Addr: addr, Handler: mux}
+
+	if opts.Open {
+		go openBrowserWhenReady(url)
+	}
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
@@ -100,4 +106,25 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(w, `{"status":"ok"}`)
+}
+
+func openBrowserWhenReady(url string) {
+	client := &http.Client{Timeout: 500 * time.Millisecond}
+	healthURL := url + "/health"
+	for range 50 {
+		resp, err := client.Get(healthURL)
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				if err := browser.Open(url); err != nil {
+					fmt.Fprintf(os.Stderr, "warn: open browser: %v\n", err)
+				}
+				return
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if err := browser.Open(url); err != nil {
+		fmt.Fprintf(os.Stderr, "warn: open browser: %v\n", err)
+	}
 }

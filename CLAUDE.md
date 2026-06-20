@@ -10,7 +10,7 @@ go build ./...          # compile
 go test ./...           # run tests
 go run . ui             # build + run server on :8080
 go run . ui --port 3000 # custom port (use this for development)
-go run . ui -a "Claude Code" -m "Review README" -w .  # create session + initial prompt
+go run . ui -a "Claude Code" -m "Review README" -w . --open  # create session + initial prompt + open browser
 ```
 
 ### Frontend (run from `ui/`)
@@ -60,7 +60,7 @@ In development, Vite (`:5173`) proxies `/api` to the Go server.
 
 | Package | Role |
 |---|---|
-| `cmd/` | Cobra CLI (`loop ui [--port] [--agent-type] [--prompt] [--working-dir]`) |
+| `cmd/` | Cobra CLI (`loop ui [--port] [--open] [--agent-type] [--prompt] [--working-dir]`) |
 | `internal/server/` | HTTP mux, REST handlers, AG-UI streaming (`agui.go`), MCP tool UI (`mcp_manager.go`) |
 | `internal/model/` | `Session`, `ChatMessage`, ADL structs |
 | `internal/store/` | Persistence: `data.json` (sessions, agent session IDs, UI messages), `settings.json`, ADL YAML in `agents/`, agent history loaders |

@@ -104,6 +104,7 @@ cd ui && npm run build && cd .. && go build -o loop_bin . && ./loop_bin ui
 loop ui              # start web server on :8080
 loop ui --port 3000  # custom port
 loop ui -p 3000      # shorthand
+loop ui --open       # open http://localhost:8080 in the default browser
 ```
 
 ### Launch an agent from the CLI
@@ -111,12 +112,13 @@ loop ui -p 3000      # shorthand
 Create a session on startup and optionally run an initial prompt in the UI:
 
 ```sh
-loop ui --agent-type "Claude Code" --prompt "Review the README"
-loop ui -a pi -m "Summarize this repo" -w ~/my/project
+loop ui --agent-type "Claude Code" --prompt "Review the README" --open
+loop ui -a pi -m "Summarize this repo" -w ~/my/project --open
 ```
 
 | Flag | Short | Description |
 |---|---|---|
+| `--open` | | Open the web UI in the system default browser once the server is ready |
 | `--agent-type` | `-a` | ADL agent name (builtin or `~/.loop/agents/*.yaml`). Creates a new session on startup. |
 | `--prompt` | `-m` | Initial prompt. The UI selects the new session, fills the input, and auto-sends it. |
 | `--working-dir` | `-w` | Working directory for the session (defaults to the current directory). |
