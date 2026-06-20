@@ -25,6 +25,13 @@ func NewADLAgent(def model.ADLDefinition, projectID string, manager *Manager) *A
 func (a *ADLAgent) Name() string { return "adl:" + a.def.Name }
 
 func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event) error {
+	defer func() {
+		if a.claude != nil {
+			a.claude.Stop()
+			a.claude = nil
+		}
+	}()
+
 	steps := a.def.Steps
 	if len(steps) == 0 {
 		// Single-step definition — run the top-level harness directly.

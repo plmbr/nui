@@ -22,6 +22,7 @@ Example:
 
 import json
 import os
+import signal
 import socket
 import sys
 import threading
@@ -50,6 +51,10 @@ class LoopAgent:
         """Called when Loop sends harness.cancel for a running run_id."""
         _ = run_id
 
+    def on_shutdown(self) -> None:
+        """Called before the extension process exits (RPC, signal, or interrupt)."""
+        pass
+
     def get_session_id(self, run_id: str) -> str:
         """Return session ID to include in the done event. Override if needed."""
         _ = run_id
@@ -58,9 +63,11 @@ class LoopAgent:
     # ── Internals ────────────────────────────────────────────────────────────
 
     def serve(self):
-        """Start the TCP server. Blocks until KeyboardInterrupt."""
+        """Start the TCP server. Blocks until shutdown."""
         # --project-id <id> is passed by the Go manager to scope this process to one project.
         self._project_id = self._parse_project_id()
+        self._shutdown_lock = threading.Lock()
+        self._shutdown_done = False
         session_id = str(uuid.uuid4())
 
         srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -74,17 +81,39 @@ class LoopAgent:
         self._log(f"connection file: {conn_file}")
         self.on_start(port)
 
+        def request_shutdown(reason: str) -> None:
+            self._log(reason)
+            try:
+                srv.close()
+            except OSError:
+                pass
+
+        signal.signal(signal.SIGTERM, lambda _s, _f: request_shutdown("received SIGTERM"))
+        signal.signal(signal.SIGINT, lambda _s, _f: request_shutdown("received SIGINT"))
+
         try:
             while True:
-                conn, addr = srv.accept()
+                try:
+                    conn, addr = srv.accept()
+                except OSError:
+                    break
                 threading.Thread(
                     target=self._client_loop, args=(conn, addr), daemon=True
                 ).start()
-        except KeyboardInterrupt:
-            self._log("shutting down")
         finally:
+            self._shutdown_once()
             conn_file.unlink(missing_ok=True)
-            srv.close()
+            try:
+                srv.close()
+            except OSError:
+                pass
+
+    def _shutdown_once(self) -> None:
+        with self._shutdown_lock:
+            if self._shutdown_done:
+                return
+            self._shutdown_done = True
+        self.on_shutdown()
 
     # ── Private ──────────────────────────────────────────────────────────────
 
@@ -120,7 +149,7 @@ class LoopAgent:
                 "result": {
                     "name": self.name,
                     "version": self.version,
-                    "capabilities": ["run", "cancel"],
+                    "capabilities": ["run", "cancel", "shutdown"],
                 },
             })
 
@@ -153,6 +182,10 @@ class LoopAgent:
         elif method == "harness.cancel":
             run_id = params.get("runId", "")
             self.on_cancel(run_id)
+            self._send(conn, {"jsonrpc": "2.0", "id": rid, "result": {"ok": True}})
+
+        elif method == "harness.shutdown":
+            self._shutdown_once()
             self._send(conn, {"jsonrpc": "2.0", "id": rid, "result": {"ok": True}})
 
         else:

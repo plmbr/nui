@@ -91,6 +91,53 @@ func stringParam(params map[string]any, key string) string {
 	return v
 }
 
+// ShutdownExtension asks a running Python extension to release subprocess resources.
+func ShutdownExtension(conn ConnectionInfo) {
+	addr := fmt.Sprintf("%s:%d", conn.Host, conn.Port)
+	tcpConn, err := net.DialTimeout("tcp", addr, 2*time.Second)
+	if err != nil {
+		return
+	}
+	defer tcpConn.Close()
+
+	id := globalRPCID.Add(1)
+	rpcReq, _ := json.Marshal(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      id,
+		"method":  "harness.shutdown",
+		"params":  map[string]any{},
+	})
+	if _, err := tcpConn.Write(append(rpcReq, '\n')); err != nil {
+		return
+	}
+
+	_ = tcpConn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	scanner := bufio.NewScanner(tcpConn)
+	for scanner.Scan() {
+		var m struct {
+			ID *int64 `json:"id"`
+		}
+		if json.Unmarshal(scanner.Bytes(), &m) == nil && m.ID != nil && *m.ID == id {
+			return
+		}
+	}
+}
+
+// ShutdownHTTPAgent asks a Docker/remote HTTP agent to release subprocess resources.
+func ShutdownHTTPAgent(baseURL string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/shutdown", nil)
+	if err != nil {
+		return
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return
+	}
+	resp.Body.Close()
+}
+
 func (a *ExtensionAgent) Run(ctx context.Context, req RunRequest, events chan<- Event) error {
 	tcpConn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", a.conn.Host, a.conn.Port))
 	if err != nil {

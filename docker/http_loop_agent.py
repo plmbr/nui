@@ -2,15 +2,18 @@
 
 Subclass HttpLoopAgent, override run(), call serve(port).
 Protocol matches HTTPExtensionAgent in Loop's Go backend:
-  GET  /info  → {"name": "...", "version": "..."}
-  POST /run   → text/event-stream
-               data: {"type":"text","content":"..."}
-               data: {"type":"done","sessionId":"..."}
-               data: {"type":"error","error":"..."}
+  GET  /info      → {"name": "...", "version": "..."}
+  POST /run       → text/event-stream
+                   data: {"type":"text","content":"..."}
+                   data: {"type":"done","sessionId":"..."}
+                   data: {"type":"error","error":"..."}
+  POST /shutdown  → stop subprocesses and exit
 """
 
 import json
+import signal
 import sys
+import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
@@ -31,8 +34,25 @@ class HttpLoopAgent:
     def get_session_id(self, run_id: str) -> str:
         return ""
 
+    def on_shutdown(self) -> None:
+        """Called before the HTTP server exits."""
+        pass
+
     def serve(self, port: int = 8090):
         agent = self
+        agent._shutdown_lock = threading.Lock()
+        agent._shutdown_done = False
+        server_holder: list[_ThreadingHTTPServer] = []
+
+        def shutdown_once(reason: str = "shutting down") -> None:
+            with agent._shutdown_lock:
+                if agent._shutdown_done:
+                    return
+                agent._shutdown_done = True
+            print(f"[{agent.name}] {reason}", file=sys.stderr, flush=True)
+            agent.on_shutdown()
+            if server_holder:
+                threading.Thread(target=server_holder[0].shutdown, daemon=True).start()
 
         class _Handler(BaseHTTPRequestHandler):
             def do_GET(self):
@@ -48,6 +68,13 @@ class HttpLoopAgent:
                     self.end_headers()
 
             def do_POST(self):
+                if self.path == "/shutdown":
+                    shutdown_once("received /shutdown")
+                    self.send_response(200)
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
+
                 if self.path != "/run":
                     self.send_response(404)
                     self.end_headers()
@@ -85,5 +112,11 @@ class HttpLoopAgent:
                 print(f"[{agent.name}] {fmt % args}", file=sys.stderr, flush=True)
 
         server = _ThreadingHTTPServer(("0.0.0.0", port), _Handler)
+        server_holder.append(server)
+
+        signal.signal(signal.SIGTERM, lambda _s, _f: shutdown_once("received SIGTERM"))
+        signal.signal(signal.SIGINT, lambda _s, _f: shutdown_once("received SIGINT"))
+
         print(f"[{agent.name}] listening on 0.0.0.0:{port}", file=sys.stderr, flush=True)
         server.serve_forever()
+        server.server_close()

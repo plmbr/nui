@@ -57,11 +57,19 @@ func (m *Manager) idleReaper() {
 	defer ticker.Stop()
 	for range ticker.C {
 		m.containerMu.Lock()
-		var toStop []struct{ projectID, containerID string }
+		var toStop []struct {
+			projectID   string
+			containerID string
+			baseURL     string
+		}
 		for projectID, t := range m.lastActivity {
 			if time.Since(t) > containerIdleTimeout {
 				if cid, ok := m.containers[projectID]; ok {
-					toStop = append(toStop, struct{ projectID, containerID string }{projectID, cid})
+					toStop = append(toStop, struct {
+						projectID   string
+						containerID string
+						baseURL     string
+					}{projectID, cid, m.dockerURLs[projectID]})
 					delete(m.containers, projectID)
 					delete(m.dockerURLs, projectID)
 					delete(m.lastActivity, projectID)
@@ -71,6 +79,9 @@ func (m *Manager) idleReaper() {
 		m.containerMu.Unlock()
 		for _, entry := range toStop {
 			fmt.Fprintf(os.Stderr, "info: stopping idle container for project %s\n", entry.projectID)
+			if entry.baseURL != "" {
+				ShutdownHTTPAgent(entry.baseURL)
+			}
 			exec.Command("docker", "stop", entry.containerID).Run()
 		}
 	}
@@ -248,21 +259,31 @@ type PrewarmEntry struct {
 
 // Stop terminates the extension process or Docker container for a specific project.
 func (m *Manager) Stop(projectID string) {
+	if conn, err := m.readConnectionFile(projectID); err == nil && isAlive(conn.PID) {
+		ShutdownExtension(conn)
+	}
+
+	m.containerMu.Lock()
+	baseURL := m.dockerURLs[projectID]
+	containerID, hasContainer := m.containers[projectID]
+	if hasContainer {
+		delete(m.containers, projectID)
+		delete(m.dockerURLs, projectID)
+		delete(m.lastActivity, projectID)
+	}
+	m.containerMu.Unlock()
+	if baseURL != "" {
+		ShutdownHTTPAgent(baseURL)
+	}
+	if hasContainer {
+		exec.Command("docker", "stop", containerID).Run()
+	}
+
 	m.mu.Lock()
 	proc, ok := m.processes[projectID]
 	m.mu.Unlock()
 	if ok {
 		proc.Signal(syscall.SIGTERM)
-	}
-
-	m.containerMu.Lock()
-	containerID, hasContainer := m.containers[projectID]
-	if hasContainer {
-		delete(m.containers, projectID)
-	}
-	m.containerMu.Unlock()
-	if hasContainer {
-		exec.Command("docker", "stop", containerID).Run()
 	}
 
 	m.deleteConnectionFile(projectID)
@@ -271,29 +292,63 @@ func (m *Manager) Stop(projectID string) {
 // StopAll terminates all managed extension processes and Docker containers.
 // It waits for all containers to stop before returning.
 func (m *Manager) StopAll() {
+	type stopEntry struct {
+		projectID    string
+		baseURL      string
+		containerID  string
+		hasContainer bool
+	}
+
 	m.mu.Lock()
 	ids := make([]string, 0, len(m.processes))
-	for id, proc := range m.processes {
-		proc.Signal(syscall.SIGTERM)
+	conns := make(map[string]ConnectionInfo)
+	for id := range m.processes {
 		ids = append(ids, id)
+		if conn, err := m.readConnectionFile(id); err == nil && isAlive(conn.PID) {
+			conns[id] = conn
+		}
 	}
 	m.mu.Unlock()
 
 	m.containerMu.Lock()
-	containerIDs := make([]string, 0, len(m.containers))
+	entries := make([]stopEntry, 0, len(m.containers))
 	for id, containerID := range m.containers {
-		containerIDs = append(containerIDs, containerID)
+		entries = append(entries, stopEntry{
+			projectID:    id,
+			baseURL:      m.dockerURLs[id],
+			containerID:  containerID,
+			hasContainer: true,
+		})
 		delete(m.containers, id)
+		delete(m.dockerURLs, id)
+		delete(m.lastActivity, id)
 	}
 	m.containerMu.Unlock()
 
+	for _, conn := range conns {
+		ShutdownExtension(conn)
+	}
+	for _, entry := range entries {
+		if entry.baseURL != "" {
+			ShutdownHTTPAgent(entry.baseURL)
+		}
+	}
+
+	m.mu.Lock()
+	for _, id := range ids {
+		if proc, ok := m.processes[id]; ok {
+			proc.Signal(syscall.SIGTERM)
+		}
+	}
+	m.mu.Unlock()
+
 	var wg sync.WaitGroup
-	for _, cid := range containerIDs {
+	for _, entry := range entries {
 		wg.Add(1)
-		go func(id string) {
+		go func(cid string) {
 			defer wg.Done()
-			exec.Command("docker", "stop", id).Run()
-		}(cid)
+			exec.Command("docker", "stop", cid).Run()
+		}(entry.containerID)
 	}
 	wg.Wait()
 

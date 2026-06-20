@@ -47,6 +47,9 @@ class ClaudeCodeAgent(HttpLoopAgent):
         with self._lock:
             return self._sessions.pop(run_id, "")
 
+    def on_shutdown(self) -> None:
+        self._claude.stop()
+
 
 if __name__ == "__main__":
     ClaudeCodeAgent().serve()
