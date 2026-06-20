@@ -386,6 +386,8 @@ func prewarmExtensionType(sessionAgentType string) string {
 			return "claude-code"
 		case "pi":
 			return "pi"
+		case "codex":
+			return "codex"
 		case "opencode":
 			return "opencode"
 		default:
@@ -397,6 +399,8 @@ func prewarmExtensionType(sessionAgentType string) string {
 		return "claude-code"
 	case "pi":
 		return "pi"
+	case "codex":
+		return "codex"
 	case "opencode":
 		return "opencode"
 	default:

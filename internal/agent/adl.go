@@ -15,7 +15,6 @@ type ADLAgent struct {
 	def       model.ADLDefinition
 	projectID string
 	manager   *Manager
-	codex     *CodexAgent
 }
 
 func NewADLAgent(def model.ADLDefinition, projectID string, manager *Manager) *ADLAgent {
@@ -25,13 +24,6 @@ func NewADLAgent(def model.ADLDefinition, projectID string, manager *Manager) *A
 func (a *ADLAgent) Name() string { return "adl:" + a.def.Name }
 
 func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event) error {
-	defer func() {
-		if a.codex != nil {
-			a.codex.Stop()
-			a.codex = nil
-		}
-	}()
-
 	steps := a.def.Steps
 	if len(steps) == 0 {
 		// Single-step definition — run the top-level harness directly.
@@ -120,17 +112,13 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 				return fmt.Errorf("pi docker harness: %w", err)
 			}
 			return ag.Run(ctx, req, events)
-		case "bubblewrap":
-			bwrap := GetBwrapStatus()
-			if !bwrap.Available {
-				return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
-			}
-			ag, err := a.manager.GetAgent(a.projectID, "pi", req.WorkingDir, nil)
-			if err != nil {
-				return fmt.Errorf("pi bubblewrap harness: %w", err)
-			}
-			return ag.Run(ctx, req, events)
 		default:
+			if harness.Sandbox == "bubblewrap" {
+				bwrap := GetBwrapStatus()
+				if !bwrap.Available {
+					return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
+				}
+			}
 			ag, err := a.manager.GetAgent(a.projectID, "pi", req.WorkingDir, nil)
 			if err != nil {
 				return fmt.Errorf("pi harness: %w", err)
@@ -147,13 +135,17 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 			}
 			return ag.Run(ctx, req, events)
 		default:
-			if a.codex == nil || a.codex.Model != harness.Model || a.codex.Sandbox != harness.Sandbox {
-				if a.codex != nil {
-					a.codex.Stop()
+			if harness.Sandbox == "bubblewrap" {
+				bwrap := GetBwrapStatus()
+				if !bwrap.Available {
+					return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
 				}
-				a.codex = &CodexAgent{Model: harness.Model, Sandbox: harness.Sandbox}
 			}
-			return a.codex.Run(ctx, req, events)
+			ag, err := a.manager.GetAgent(a.projectID, "codex", req.WorkingDir, nil)
+			if err != nil {
+				return fmt.Errorf("codex harness: %w", err)
+			}
+			return ag.Run(ctx, req, events)
 		}
 
 	case "opencode":
@@ -165,6 +157,12 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 			}
 			return ag.Run(ctx, req, events)
 		default:
+			if harness.Sandbox == "bubblewrap" {
+				bwrap := GetBwrapStatus()
+				if !bwrap.Available {
+					return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
+				}
+			}
 			ag, err := a.manager.GetAgent(a.projectID, "opencode", req.WorkingDir, nil)
 			if err != nil {
 				return fmt.Errorf("opencode harness: %w", err)

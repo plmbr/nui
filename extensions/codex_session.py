@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -20,11 +21,33 @@ from codex_stream import new_codex_stream_parser
 
 WrapArgsFn = Callable[[list[str], str], list[str]]
 
+_CODEX_BINARY_CANDIDATES = (
+    "codex",
+    "/Applications/Codex.app/Contents/Resources/codex",
+)
+
+
+def find_codex_binary() -> str:
+    """Locate the codex CLI, matching the Go agent's search order."""
+    override = os.environ.get("LOOP_CODEX_PATH", "").strip()
+    if override:
+        return override
+
+    found = shutil.which("codex")
+    if found:
+        return found
+
+    for path in _CODEX_BINARY_CANDIDATES[1:]:
+        if os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+
+    return "codex"
+
 
 class PersistentCodexSession:
-    def __init__(self, wrap_args: WrapArgsFn | None = None, binary: str = "codex") -> None:
+    def __init__(self, wrap_args: WrapArgsFn | None = None, binary: str | None = None) -> None:
         self._wrap_args = wrap_args or (lambda args, _wd: args)
-        self._binary = binary
+        self._binary = binary or find_codex_binary()
         self._lock = threading.Lock()
         self._proc: subprocess.Popen[str] | None = None
         self._working_dir = ""
@@ -69,6 +92,15 @@ class PersistentCodexSession:
 
         thread_id = self._thread_id or resume_session_id
         flags = self._build_flags(model)
+        if not os.path.isfile(self._binary) and not shutil.which(self._binary):
+            yield {
+                "type": "error",
+                "error": (
+                    "codex CLI not found. Install Codex or set LOOP_CODEX_PATH to the binary "
+                    f"(checked PATH and {_CODEX_BINARY_CANDIDATES[1]})"
+                ),
+            }
+            return
         if thread_id:
             args = [self._binary, "exec", "resume"] + flags + [thread_id, message]
         else:

@@ -22,6 +22,7 @@ import (
 var builtinExtensions = map[string]string{
 	"claude-code": "claude_code.py",
 	"pi":          "pi.py",
+	"codex":       "codex.py",
 	"opencode":    "opencode.py",
 }
 
