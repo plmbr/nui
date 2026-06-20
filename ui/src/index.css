@@ -380,7 +380,7 @@
   }
 
   .agui-message--user .agui-message__role {
-    @apply text-muted-foreground;
+    @apply text-right text-muted-foreground;
   }
 
   .agui-message--assistant .agui-message__role {
@@ -392,7 +392,11 @@
   }
 
   .agui-message--user .agui-message__bubble {
-    @apply text-foreground/90;
+    @apply ml-auto max-w-[85%] rounded-xl bg-user-bubble px-3.5 py-2.5 text-user-bubble-foreground whitespace-pre-wrap;
+  }
+
+  .agui-message--user .agui-message__bubble p {
+    @apply m-0;
   }
 
   .agui-message--assistant .agui-message__bubble {
