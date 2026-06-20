@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { McpAppFrame } from '@/components/McpAppFrame'
-import type { SessionChatMessage } from '@/hooks/useSessionChat'
+import { imageSrc, type SessionChatMessage } from '@/hooks/useSessionChat'
+import { extractImagesFromValue } from '@/lib/images'
 
 interface Props {
   msg: SessionChatMessage
@@ -11,6 +12,8 @@ interface Props {
 export function ToolCallBubble({ msg }: Props) {
   const [expanded, setExpanded] = useState(false)
   const baseName = msg.toolName?.split(':').pop() ?? msg.toolName ?? 'tool'
+  const toolImages =
+    msg.toolResult !== undefined ? extractImagesFromValue(msg.toolResult) : []
 
   return (
     <div className="tool-call">
@@ -47,6 +50,16 @@ export function ToolCallBubble({ msg }: Props) {
           )}
         </div>
       )}
+
+      {toolImages.map((img) => (
+        <img
+          key={img.id}
+          src={imageSrc(img)}
+          alt="Tool result"
+          className="agui-message__image"
+          loading="lazy"
+        />
+      ))}
 
       {msg.mcpAppResourceUri && msg.mcpAppServerName && (
         <McpAppFrame

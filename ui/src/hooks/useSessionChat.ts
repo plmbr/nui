@@ -11,6 +11,7 @@ export interface SessionChatMessage {
   role: 'user' | 'assistant' | 'tool'
   content: string
   error?: boolean
+  images?: ChatImage[]
   toolCallId?: string
   toolName?: string
   toolArgs?: Record<string, unknown>
@@ -19,6 +20,21 @@ export interface SessionChatMessage {
   mcpAppServerName?: string
   mcpAppToolInput?: Record<string, unknown>
 }
+
+export interface ChatImage {
+  id: string
+  mediaType: string
+  data: string
+}
+
+function imageSrc(image: ChatImage): string {
+  if (image.data.startsWith('http://') || image.data.startsWith('https://')) {
+    return image.data
+  }
+  return `data:${image.mediaType};base64,${image.data}`
+}
+
+export { imageSrc }
 
 function historyToMessages(
   history: { id: string; role: string; content: string }[],
@@ -152,7 +168,30 @@ export function useSessionChat(sessionId: string) {
             )
           } else if (event.type === EventType.CUSTOM) {
             const e = event as { name?: string; value?: Record<string, unknown> }
-            if (e.name !== 'mcp_app' || !e.value) return
+            if (!e.value) return
+            if (e.name === 'image') {
+              const { mediaType, data } = e.value as { mediaType?: string; data?: string }
+              if (!data) return
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMsgId
+                    ? {
+                        ...m,
+                        images: [
+                          ...(m.images ?? []),
+                          {
+                            id: uuidv4(),
+                            mediaType: mediaType ?? 'image/png',
+                            data,
+                          },
+                        ],
+                      }
+                    : m,
+                ),
+              )
+              return
+            }
+            if (e.name !== 'mcp_app') return
             const { toolCallId, serverName, resourceUri, toolInput } = e.value as {
               toolCallId?: string
               serverName?: string

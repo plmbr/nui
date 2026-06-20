@@ -122,9 +122,7 @@ class _ClaudeStreamParser:
                         "toolArgs": args,
                     }
             elif btype == "image":
-                md = _image_block_markdown(block)
-                if md:
-                    yield {"type": "text", "content": md}
+                yield from _emit_image_events(block)
 
     def _handle_user(self, envelope: dict[str, Any]) -> Generator[dict[str, Any], None, None]:
         tool_use_id = envelope.get("parent_tool_use_id") or ""
@@ -139,6 +137,7 @@ class _ClaudeStreamParser:
 
         if tool_use_id and tool_use_result is not None:
             yield from self._emit_tool_result(tool_use_id, tool_use_result)
+            yield from _emit_image_events(tool_use_result)
 
         if isinstance(content, list):
             for block in content:
@@ -148,8 +147,7 @@ class _ClaudeStreamParser:
                 if not tid:
                     continue
                 yield from self._emit_tool_result(tid, block.get("content"))
-                for md in _image_content_markdown(block.get("content")):
-                    yield {"type": "text", "content": md}
+                yield from _emit_image_events(block.get("content"))
 
     def _emit_tool_result(self, tool_use_id: str, result: Any) -> Generator[dict[str, Any], None, None]:
         if tool_use_id in self.seen_tool_results:
@@ -166,53 +164,53 @@ class _ClaudeStreamParser:
         }
 
 
-def _image_block_markdown(block: dict[str, Any]) -> str:
+def _extract_image_block(block: dict[str, Any]) -> tuple[str, str] | None:
+    if block.get("type") != "image":
+        return None
+
+    data = block.get("data")
+    if isinstance(data, str) and data:
+        media_type = block.get("mimeType") or block.get("media_type") or "image/png"
+        return media_type, data
+
     source = block.get("source") or {}
-    return _image_source_markdown(
-        source.get("type") or "",
-        source.get("media_type") or "",
-        source.get("data") or "",
-        source.get("url") or "",
-    )
+    if not isinstance(source, dict):
+        return None
+
+    src_type = source.get("type") or ""
+    url = source.get("url") or ""
+    media_type = source.get("media_type") or source.get("mediaType") or "image/png"
+    b64 = source.get("data") or ""
+
+    if (src_type == "base64" or b64) and b64:
+        return media_type, b64
+    if url:
+        return media_type, url
+    return None
 
 
-def _image_content_markdown(content: Any) -> list[str]:
-    out: list[str] = []
-    if isinstance(content, list):
-        for block in content:
-            if isinstance(block, dict) and block.get("type") == "image":
-                md = _image_block_markdown(block)
-                if md:
-                    out.append(md)
-        return out
-    if isinstance(content, dict):
-        _walk_images(content, out)
+def _extract_images(value: Any) -> list[tuple[str, str]]:
+    out: list[tuple[str, str]] = []
+
+    def walk(node: Any) -> None:
+        if isinstance(node, dict):
+            extracted = _extract_image_block(node)
+            if extracted:
+                out.append(extracted)
+            for child in node.values():
+                walk(child)
+        elif isinstance(node, list):
+            for child in node:
+                walk(child)
+
+    walk(value)
     return out
 
 
-def _walk_images(value: Any, out: list[str]) -> None:
-    if isinstance(value, dict):
-        if value.get("type") == "image":
-            source = value.get("source") or {}
-            md = _image_source_markdown(
-                source.get("type") or "",
-                source.get("media_type") or "",
-                source.get("data") or "",
-                source.get("url") or "",
-            )
-            if md:
-                out.append(md)
-        for child in value.values():
-            _walk_images(child, out)
-    elif isinstance(value, list):
-        for child in value:
-            _walk_images(child, out)
-
-
-def _image_source_markdown(src_type: str, media_type: str, data: str, url: str) -> str:
-    if src_type == "base64" and data:
-        media_type = media_type or "image/png"
-        return f"\n\n![image](data:{media_type};base64,{data})\n\n"
-    if url:
-        return f"\n\n![image]({url})\n\n"
-    return ""
+def _emit_image_events(value: Any) -> Generator[dict[str, Any], None, None]:
+    for media_type, data in _extract_images(value):
+        yield {
+            "type": "image",
+            "imageMediaType": media_type,
+            "imageData": data,
+        }

@@ -6,7 +6,7 @@ import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
 import 'highlight.js/styles/github-dark.css'
 import { ToolCallBubble } from '@/components/ToolCallBubble'
-import { useSessionChat } from '@/hooks/useSessionChat'
+import { imageSrc, useSessionChat } from '@/hooks/useSessionChat'
 import type { Session } from '@/types'
 
 interface Props {
@@ -65,22 +65,33 @@ export function ChatPanel({ session }: Props) {
                 className={`agui-message__bubble${msg.error ? ' agui-message__bubble--error' : ''}`}
               >
                 {msg.role === 'assistant' ? (
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeHighlight]}
-                    components={{
-                      img: ({ src, alt }) => (
-                        <img
-                          src={src}
-                          alt={alt ?? 'image'}
-                          className="agui-message__image"
-                          loading="lazy"
-                        />
-                      ),
-                    }}
-                  >
-                    {msg.content || (isRunning ? '▋' : '')}
-                  </ReactMarkdown>
+                  <>
+                    {msg.images?.map((img) => (
+                      <img
+                        key={img.id}
+                        src={imageSrc(img)}
+                        alt="Agent image"
+                        className="agui-message__image"
+                        loading="lazy"
+                      />
+                    ))}
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeHighlight]}
+                      components={{
+                        img: ({ src, alt }) => (
+                          <img
+                            src={src}
+                            alt={alt ?? 'image'}
+                            className="agui-message__image"
+                            loading="lazy"
+                          />
+                        ),
+                      }}
+                    >
+                      {msg.content || (isRunning ? '▋' : '')}
+                    </ReactMarkdown>
+                  </>
                 ) : (
                   <p>{msg.content}</p>
                 )}

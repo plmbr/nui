@@ -14,16 +14,19 @@ const (
 	EventToolCallArgs    EventType = "tool_call_args"
 	EventToolCallEnd     EventType = "tool_call_end"
 	EventToolCallResult  EventType = "tool_call_result"
+	EventImage           EventType = "image"
 )
 
 type Event struct {
-	Type       EventType `json:"type"`
-	Content    string    `json:"content,omitempty"`
-	SessionID  string    `json:"sessionId,omitempty"`
-	Error      string    `json:"error,omitempty"`
-	ToolCallID string    `json:"toolCallId,omitempty"`
-	ToolName   string    `json:"toolName,omitempty"`
-	ToolArgs   string    `json:"toolArgs,omitempty"`
+	Type           EventType `json:"type"`
+	Content        string    `json:"content,omitempty"`
+	SessionID      string    `json:"sessionId,omitempty"`
+	Error          string    `json:"error,omitempty"`
+	ToolCallID     string    `json:"toolCallId,omitempty"`
+	ToolName       string    `json:"toolName,omitempty"`
+	ToolArgs       string    `json:"toolArgs,omitempty"`
+	ImageData      string    `json:"imageData,omitempty"`
+	ImageMediaType string    `json:"imageMediaType,omitempty"`
 }
 
 type RunRequest struct {

@@ -4,7 +4,6 @@ package agent
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 )
 
@@ -202,9 +201,7 @@ func (p *claudeStreamParser) handleAssistant(raw json.RawMessage, events chan<- 
 				}
 			}
 		case "image":
-			if md := imageBlockMarkdown(blockRaw); md != "" {
-				events <- Event{Type: EventText, Content: md}
-			}
+			emitImageEvents(blockRaw, events)
 		}
 	}
 }
@@ -216,6 +213,7 @@ func (p *claudeStreamParser) handleUser(parentToolUseID string, toolUseResult js
 	}
 	if toolUseID != "" && len(toolUseResult) > 0 && toolUseResult[0] != 'n' {
 		p.emitToolResult(toolUseID, toolUseResult, events)
+		emitImageEvents(toolUseResult, events)
 	}
 
 	var msg struct {
@@ -241,9 +239,7 @@ func (p *claudeStreamParser) handleUser(parentToolUseID string, toolUseResult js
 			continue
 		}
 		p.emitToolResult(block.ToolUseID, block.Content, events)
-		for _, md := range imageContentMarkdown(block.Content) {
-			events <- Event{Type: EventText, Content: md}
-		}
+		emitImageEvents(block.Content, events)
 	}
 }
 
@@ -280,100 +276,4 @@ func toolUseIDFromMessage(messageRaw json.RawMessage) string {
 		}
 	}
 	return ""
-}
-
-func imageBlockMarkdown(blockRaw json.RawMessage) string {
-	var block struct {
-		Source struct {
-			Type      string `json:"type"`
-			MediaType string `json:"media_type"`
-			Data      string `json:"data"`
-			URL       string `json:"url"`
-		} `json:"source"`
-	}
-	if err := json.Unmarshal(blockRaw, &block); err != nil {
-		return ""
-	}
-	return imageSourceMarkdown(block.Source.Type, block.Source.MediaType, block.Source.Data, block.Source.URL)
-}
-
-func imageContentMarkdown(content json.RawMessage) []string {
-	var out []string
-
-	var blocks []json.RawMessage
-	if err := json.Unmarshal(content, &blocks); err == nil {
-		for _, blockRaw := range blocks {
-			var block struct {
-				Type   string `json:"type"`
-				Source struct {
-					Type      string `json:"type"`
-					MediaType string `json:"media_type"`
-					Data      string `json:"data"`
-					URL       string `json:"url"`
-				} `json:"source"`
-			}
-			if json.Unmarshal(blockRaw, &block) != nil || block.Type != "image" {
-				continue
-			}
-			if md := imageSourceMarkdown(block.Source.Type, block.Source.MediaType, block.Source.Data, block.Source.URL); md != "" {
-				out = append(out, md)
-			}
-		}
-		return out
-	}
-
-	var obj map[string]any
-	if err := json.Unmarshal(content, &obj); err != nil {
-		return out
-	}
-	walkImages(obj, &out)
-	return out
-}
-
-func walkImages(v any, out *[]string) {
-	switch val := v.(type) {
-	case map[string]any:
-		if typ, _ := val["type"].(string); typ == "image" {
-			source, _ := val["source"].(map[string]any)
-			if source != nil {
-				srcType, _ := source["type"].(string)
-				mediaType, _ := source["media_type"].(string)
-				data, _ := source["data"].(string)
-				url, _ := source["url"].(string)
-				if md := imageSourceMarkdown(srcType, mediaType, data, url); md != "" {
-					*out = append(*out, md)
-				}
-			}
-		}
-		for _, child := range val {
-			walkImages(child, out)
-		}
-	case []any:
-		for _, child := range val {
-			walkImages(child, out)
-		}
-	}
-}
-
-func imageSourceMarkdown(srcType, mediaType, data, url string) string {
-	switch srcType {
-	case "base64":
-		if data == "" {
-			return ""
-		}
-		if mediaType == "" {
-			mediaType = "image/png"
-		}
-		return fmt.Sprintf("\n\n![image](data:%s;base64,%s)\n\n", mediaType, data)
-	case "url":
-		if url == "" {
-			return ""
-		}
-		return fmt.Sprintf("\n\n![image](%s)\n\n", url)
-	default:
-		if url != "" {
-			return fmt.Sprintf("\n\n![image](%s)\n\n", url)
-		}
-		return ""
-	}
 }

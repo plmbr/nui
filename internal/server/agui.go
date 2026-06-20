@@ -193,6 +193,22 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 				"content":    ev.Content,
 				"role":       "tool",
 			})
+		case agent.EventImage:
+			if ev.ImageData == "" {
+				continue
+			}
+			mediaType := ev.ImageMediaType
+			if mediaType == "" {
+				mediaType = "image/png"
+			}
+			writeAGUIEvent(w, flusher, map[string]any{
+				"type": "CUSTOM",
+				"name": "image",
+				"value": map[string]any{
+					"mediaType": mediaType,
+					"data":      ev.ImageData,
+				},
+			})
 		case agent.EventDone:
 			newAgentSessionID = ev.SessionID
 		case agent.EventError:

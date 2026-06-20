@@ -75,6 +75,12 @@ func eventFromHarnessParams(params map[string]any) (Event, bool) {
 			ToolCallID: stringParam(params, "toolCallId"),
 			Content:    stringParam(params, "content"),
 		}, true
+	case "image":
+		return Event{
+			Type:           EventImage,
+			ImageData:      stringParam(params, "imageData"),
+			ImageMediaType: stringParam(params, "imageMediaType"),
+		}, true
 	default:
 		return Event{}, false
 	}
