@@ -3,11 +3,10 @@
 package agent
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
+	"sync"
 )
 
 // codexBinaryPaths lists locations to search for the codex binary in order.
@@ -57,93 +56,69 @@ type CodexAgent struct {
 	Model string
 	// Sandbox controls sandboxing: "none" disables bwrap, "bubblewrap" forces it, "" uses none.
 	Sandbox string
+
+	sessionMu sync.Mutex
+	session   *persistentCodexSession
 }
 
 func (a *CodexAgent) Name() string { return "codex" }
 
 func (a *CodexAgent) Run(ctx context.Context, req RunRequest, events chan<- Event) error {
-	bin := a.BinaryPath
-	if bin == "" {
-		bin = findCodexBinary()
-	}
-
-	var args []string
-	if req.SessionID != "" {
-		args = []string{"exec", "resume", req.SessionID, req.Message}
-	} else {
-		args = []string{"exec", req.Message}
-	}
-	args = append(args,
-		"--json",
-		"--dangerously-bypass-approvals-and-sandbox",
-		"--skip-git-repo-check",
-		"--ignore-user-config",
-	)
-	if a.Model != "" {
-		args = append(args, "-m", a.Model)
-	}
-	if req.WorkingDir != "" {
-		args = append(args, "-C", req.WorkingDir)
-	}
-
-	var cmd *exec.Cmd
-	if a.Sandbox == "bubblewrap" {
-		bwrap := GetBwrapStatus()
-		if !bwrap.Available {
-			return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
-		}
-		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, req.WorkingDir)
-		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
-	} else {
-		cmd = exec.CommandContext(ctx, bin, args...)
-		if req.WorkingDir != "" {
-			cmd.Dir = req.WorkingDir
-		}
-	}
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
+	if err := a.validateSandbox(); err != nil {
 		return err
 	}
 
-	if err := cmd.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "[codex] start error: %v\n", err)
-		return err
+	a.sessionMu.Lock()
+	if a.session == nil || !a.session.matches(a, req) {
+		if a.session != nil {
+			a.session.stop()
+		}
+		a.session = &persistentCodexSession{}
 	}
+	sess := a.session
+	a.sessionMu.Unlock()
 
-	go func() {
-		s := bufio.NewScanner(stderr)
-		for s.Scan() {
-			fmt.Fprintf(os.Stderr, "[codex stderr] %s\n", s.Text())
-		}
-	}()
+	return sess.runTurn(ctx, a, req, events)
+}
 
-	var sessionID string
-	parser := newCodexStreamParser()
-	scanner := bufio.NewScanner(stdout)
-	scanner.Buffer(make([]byte, 4*1024*1024), 4*1024*1024)
-
-	for scanner.Scan() {
-		sid, done := parser.handleLine(scanner.Bytes(), events)
-		if sid != "" {
-			sessionID = sid
-		}
-		if done {
-			events <- Event{Type: EventDone, SessionID: sessionID}
-		}
+func (a *CodexAgent) validateSandbox() error {
+	if a.Sandbox != "bubblewrap" {
+		return nil
 	}
-
-	err = cmd.Wait()
-	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			fmt.Fprintf(os.Stderr, "[codex] exit code %d: %v\n", exitErr.ExitCode(), exitErr)
-		} else {
-			fmt.Fprintf(os.Stderr, "[codex] exit error: %v\n", err)
-		}
+	bwrap := GetBwrapStatus()
+	if !bwrap.Available {
+		return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
 	}
-	return err
+	return nil
+}
+
+func (a *CodexAgent) Stop() {
+	a.sessionMu.Lock()
+	defer a.sessionMu.Unlock()
+	if a.session != nil {
+		a.session.stop()
+		a.session = nil
+	}
+}
+
+func (a *CodexAgent) binaryPath() string {
+	if a.BinaryPath != "" {
+		return a.BinaryPath
+	}
+	return findCodexBinary()
+}
+
+func (a *CodexAgent) modelName() string {
+	return a.Model
+}
+
+func (a *CodexAgent) useBwrap() bool {
+	switch a.Sandbox {
+	case "bubblewrap":
+		return GetBwrapStatus().Available
+	case "none":
+		return false
+	default:
+		return false
+	}
 }

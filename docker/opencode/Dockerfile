@@ -8,6 +8,7 @@ USER loop
 COPY --chown=loop:loop http_loop_agent.py /app/http_loop_agent.py
 COPY --chown=loop:loop claude_stream.py /app/claude_stream.py
 COPY --chown=loop:loop opencode_stream.py /app/opencode_stream.py
+COPY --chown=loop:loop opencode_session.py /app/opencode_session.py
 COPY --chown=loop:loop opencode/opencode_http.py /app/opencode_http.py
 EXPOSE 8090
 CMD ["python3", "/app/opencode_http.py"]

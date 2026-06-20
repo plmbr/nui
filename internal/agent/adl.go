@@ -16,6 +16,7 @@ type ADLAgent struct {
 	projectID string
 	manager   *Manager
 	claude    *ClaudeCodeAgent
+	codex     *CodexAgent
 }
 
 func NewADLAgent(def model.ADLDefinition, projectID string, manager *Manager) *ADLAgent {
@@ -29,6 +30,10 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 		if a.claude != nil {
 			a.claude.Stop()
 			a.claude = nil
+		}
+		if a.codex != nil {
+			a.codex.Stop()
+			a.codex = nil
 		}
 	}()
 
@@ -143,8 +148,13 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 			}
 			return ag.Run(ctx, req, events)
 		default:
-			ag := &CodexAgent{Model: harness.Model, Sandbox: harness.Sandbox}
-			return ag.Run(ctx, req, events)
+			if a.codex == nil || a.codex.Model != harness.Model || a.codex.Sandbox != harness.Sandbox {
+				if a.codex != nil {
+					a.codex.Stop()
+				}
+				a.codex = &CodexAgent{Model: harness.Model, Sandbox: harness.Sandbox}
+			}
+			return a.codex.Run(ctx, req, events)
 		}
 
 	case "opencode":

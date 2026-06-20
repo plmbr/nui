@@ -9,7 +9,7 @@ from claude_stream import _emit_image_events
 
 
 def parse_pi_stream(lines: Iterator[str]) -> Generator[dict[str, Any], None, None]:
-    parser = _PiStreamParser()
+    parser = new_pi_stream_parser()
     for line in lines:
         line = line.strip()
         if not line:
@@ -19,6 +19,10 @@ def parse_pi_stream(lines: Iterator[str]) -> Generator[dict[str, Any], None, Non
         except json.JSONDecodeError:
             continue
         yield from parser.handle(obj)
+
+
+def new_pi_stream_parser() -> "_PiStreamParser":
+    return _PiStreamParser()
 
 
 class _PiStreamParser:

@@ -12,6 +12,7 @@ RUN mkdir -p /home/loop/.pi/agent/sessions
 COPY --chown=loop:loop http_loop_agent.py /app/http_loop_agent.py
 COPY --chown=loop:loop claude_stream.py /app/claude_stream.py
 COPY --chown=loop:loop pi_stream.py /app/pi_stream.py
+COPY --chown=loop:loop pi_session.py /app/pi_session.py
 COPY --chown=loop:loop pi/pi_http.py /app/pi_http.py
 
 EXPOSE 8090

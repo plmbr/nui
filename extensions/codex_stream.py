@@ -9,7 +9,7 @@ from claude_stream import _emit_image_events
 
 
 def parse_codex_stream(lines: Iterator[str]) -> Generator[dict[str, Any], None, None]:
-    parser = _CodexStreamParser()
+    parser = new_codex_stream_parser()
     for line in lines:
         line = line.strip()
         if not line:
@@ -19,6 +19,10 @@ def parse_codex_stream(lines: Iterator[str]) -> Generator[dict[str, Any], None, 
         except json.JSONDecodeError:
             continue
         yield from parser.handle(envelope)
+
+
+def new_codex_stream_parser() -> "_CodexStreamParser":
+    return _CodexStreamParser()
 
 
 class _CodexStreamParser:
@@ -44,6 +48,11 @@ class _CodexStreamParser:
             msg = envelope.get("message") or (envelope.get("error") or {}).get("message") or ""
             if msg:
                 yield {"type": "error", "error": msg}
+            return
+
+        if t == "turn.failed":
+            msg = envelope.get("message") or (envelope.get("error") or {}).get("message") or "turn failed"
+            yield {"type": "error", "error": msg}
 
     def _handle_item(self, event_type: str, item: dict[str, Any]) -> Generator[dict[str, Any], None, None]:
         item_type = item.get("type") or ""

@@ -1,20 +1,13 @@
 #!/usr/bin/env python3
-"""Pi agent for Loop Docker container.
-
-Same logic as extensions/pi.py but speaks HTTP/SSE (HttpLoopAgent)
-instead of TCP JSON-RPC. Auth credentials must be supplied via ANTHROPIC_API_KEY
-(forwarded by Loop from the host environment).
-"""
+"""Pi agent for Loop Docker container."""
 
 import os
-import subprocess
 import sys
 import threading
-from subprocess import DEVNULL, PIPE
 
 sys.path.insert(0, "/app")
 from http_loop_agent import HttpLoopAgent
-from pi_stream import parse_pi_stream
+from pi_session import PersistentPiSession
 
 
 class PiAgent(HttpLoopAgent):
@@ -24,56 +17,36 @@ class PiAgent(HttpLoopAgent):
     def __init__(self):
         self._sessions: dict[str, str] = {}
         self._lock = threading.Lock()
+        self._pi = PersistentPiSession()
 
     def run(self, message: str, run_id: str, **kwargs):
         session_id = kwargs.get("sessionId", "")
         working_dir = kwargs.get("workingDir", "") or os.getcwd()
+        model = kwargs.get("model", "")
+        system_prompt = kwargs.get("systemPrompt", "")
 
-        yield from self._run_pi(message, run_id, session_id, working_dir)
-
-    def _run_pi(self, message: str, run_id: str, session_id: str, working_dir: str):
-        args = ["pi", "-p", message, "--mode", "json"]
-        if session_id:
-            args += ["--session", session_id]
-
-        proc = subprocess.Popen(
-            args, stdin=DEVNULL, stdout=PIPE, stderr=PIPE,
-            cwd=working_dir, start_new_session=True,
-        )
-
-        stderr_lines = []
-
-        def drain_stderr():
-            for line in proc.stderr:
-                text = line.decode().rstrip()
-                stderr_lines.append(text)
-                print(f"[pi stderr] {text}", file=sys.stderr, flush=True)
-        threading.Thread(target=drain_stderr, daemon=True).start()
-
-        produced_output = False
-
-        def stdout_lines():
-            for raw in proc.stdout:
-                yield raw.decode(errors="replace")
-
-        for event in parse_pi_stream(stdout_lines()):
+        latest_session_id = ""
+        for event in self._pi.run_turn(
+            message, working_dir, session_id, model, system_prompt,
+        ):
             if event.get("type") == "session_id":
-                with self._lock:
-                    self._sessions[run_id] = event.get("sessionId") or ""
+                latest_session_id = event.get("sessionId") or ""
                 continue
-            produced_output = True
             yield event
 
-        proc.wait()
-
-        # If pi exited with no output due to a missing session, retry fresh.
-        if not produced_output and session_id and any("No session found" in l for l in stderr_lines):
-            print("[pi] session not found in container, retrying without session", file=sys.stderr, flush=True)
-            yield from self._run_pi(message, run_id, "", working_dir)
+        if latest_session_id:
+            with self._lock:
+                self._sessions[run_id] = latest_session_id
+        elif self._pi.session_id:
+            with self._lock:
+                self._sessions[run_id] = self._pi.session_id
 
     def get_session_id(self, run_id: str) -> str:
         with self._lock:
             return self._sessions.pop(run_id, "")
+
+    def on_shutdown(self) -> None:
+        self._pi.stop()
 
 
 def _write_models_json():

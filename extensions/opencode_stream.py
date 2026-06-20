@@ -9,7 +9,7 @@ from claude_stream import _emit_image_events
 
 
 def parse_opencode_stream(lines: Iterator[str]) -> Generator[dict[str, Any], None, None]:
-    parser = _OpenCodeStreamParser()
+    parser = new_opencode_stream_parser()
     for line in lines:
         line = line.strip()
         if not line:
@@ -19,6 +19,10 @@ def parse_opencode_stream(lines: Iterator[str]) -> Generator[dict[str, Any], Non
         except json.JSONDecodeError:
             continue
         yield from parser.handle(obj)
+
+
+def new_opencode_stream_parser() -> "_OpenCodeStreamParser":
+    return _OpenCodeStreamParser()
 
 
 class _OpenCodeStreamParser:
