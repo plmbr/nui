@@ -14,10 +14,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"loop/internal/agent"
 	"loop/internal/model"
 	"loop/internal/store"
+
+	"github.com/google/uuid"
 )
 
 // AgentTypeInfo is the API shape returned by GET /api/agent-types.
@@ -68,11 +69,6 @@ var legacyAgentTypeNames = map[string]string{
 	"docker-opencode": "opencode",
 }
 
-type AppConfig struct {
-	CopilotKitPublicApiKey string `json:"copilotKitPublicApiKey"`
-	CopilotKitRuntimeURL   string `json:"copilotKitRuntimeUrl"`
-}
-
 type SandboxCapabilities struct {
 	Bwrap agent.BwrapStatus `json:"bwrap"`
 }
@@ -119,7 +115,6 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/sessions/", handleSession)
 	mux.HandleFunc("/api/agent-types", handleAgentTypes)
 	mux.HandleFunc("/api/directories", handleDirectories)
-	mux.HandleFunc("/api/config", handleConfig)
 	mux.HandleFunc("/api/settings", handleSettings)
 	mux.HandleFunc("/api/capabilities", handleCapabilities)
 }
@@ -423,6 +418,8 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 			handleSessionChat(w, r, id)
 		case "history":
 			handleSessionHistory(w, r, id)
+		case "ag-ui":
+			handleSessionAGUI(w, r, id)
 		default:
 			http.NotFound(w, r)
 		}
@@ -546,18 +543,6 @@ func handleSessionMessages(w http.ResponseWriter, r *http.Request, sessionID str
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
-}
-
-func handleConfig(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	cfg := AppConfig{
-		CopilotKitPublicApiKey: os.Getenv("COPILOTKIT_PUBLIC_API_KEY"),
-		CopilotKitRuntimeURL:   os.Getenv("COPILOTKIT_RUNTIME_URL"),
-	}
-	writeJSON(w, http.StatusOK, cfg)
 }
 
 func handleSettings(w http.ResponseWriter, r *http.Request) {

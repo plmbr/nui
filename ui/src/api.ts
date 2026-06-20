@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, AppConfig, Capabilities, ChatMessage, CreateSessionRequest, DirectorySuggestions, Session, Settings } from './types'
+import type { AgentType, Capabilities, ChatMessage, CreateSessionRequest, DirectorySuggestions, Session, Settings } from './types'
 
 const BASE = '/api'
 
@@ -67,11 +67,6 @@ export const api = {
   history: {
     get: (sessionId: string): Promise<ChatMessage[]> =>
       request(`/sessions/${sessionId}/history`),
-  },
-
-  config: {
-    get: (): Promise<AppConfig> =>
-      request('/config'),
   },
 
   settings: {

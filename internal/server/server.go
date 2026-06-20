@@ -46,6 +46,11 @@ func Start(port int, uiFiles fs.FS, extFiles embed.FS) error {
 	extensionManager.PrewarmSessions(entries)
 
 	registerAPIRoutes(mux)
+	registerMCPRoutes(mux)
+
+	if err := initMCP(); err != nil {
+		return fmt.Errorf("initializing MCP: %w", err)
+	}
 
 	mux.HandleFunc("/health", handleHealth)
 

@@ -5,7 +5,6 @@ package agent
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -97,51 +96,13 @@ func (a *ClaudeCodeAgent) Run(ctx context.Context, req RunRequest, events chan<-
 		}
 	}()
 
+	parser := newClaudeStreamParser()
 	scanner := bufio.NewScanner(stdout)
 	// 4 MB buffer — claude lines can be large (init message with tool list)
 	scanner.Buffer(make([]byte, 4*1024*1024), 4*1024*1024)
 
 	for scanner.Scan() {
-		line := scanner.Bytes()
-		if len(line) == 0 {
-			continue
-		}
-
-		var envelope struct {
-			Type      string          `json:"type"`
-			Event     json.RawMessage `json:"event"`
-			SessionID string          `json:"session_id"`
-			IsError   bool            `json:"is_error"`
-			ErrMsg    string          `json:"error"`
-		}
-		if err := json.Unmarshal(line, &envelope); err != nil {
-			fmt.Fprintf(os.Stderr, "[claude stdout] %s\n", line)
-			continue
-		}
-
-		switch envelope.Type {
-		case "stream_event":
-			var ev struct {
-				Type  string `json:"type"`
-				Delta struct {
-					Type string `json:"type"`
-					Text string `json:"text"`
-				} `json:"delta"`
-			}
-			if err := json.Unmarshal(envelope.Event, &ev); err != nil {
-				continue
-			}
-			if ev.Type == "content_block_delta" && ev.Delta.Type == "text_delta" && ev.Delta.Text != "" {
-				events <- Event{Type: EventText, Content: ev.Delta.Text}
-			}
-
-		case "result":
-			if envelope.IsError {
-				events <- Event{Type: EventError, Error: envelope.ErrMsg}
-			} else {
-				events <- Event{Type: EventDone, SessionID: envelope.SessionID}
-			}
-		}
+		parser.handleLine(scanner.Bytes(), events)
 	}
 
 	err = cmd.Wait()

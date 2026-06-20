@@ -9,6 +9,7 @@ RUN useradd -m -u 1001 loop
 USER loop
 
 COPY --chown=loop:loop http_loop_agent.py /app/http_loop_agent.py
+COPY --chown=loop:loop claude_stream.py /app/claude_stream.py
 COPY --chown=loop:loop claude-code/claude_code_http.py /app/claude_code_http.py
 
 EXPOSE 8090

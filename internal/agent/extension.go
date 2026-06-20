@@ -38,6 +38,53 @@ func NewExtensionAgent(name string, conn ConnectionInfo) *ExtensionAgent {
 
 func (a *ExtensionAgent) Name() string { return a.agentName }
 
+func eventFromHarnessParams(params map[string]any) (Event, bool) {
+	typ, _ := params["type"].(string)
+	switch typ {
+	case "text":
+		content, _ := params["content"].(string)
+		return Event{Type: EventText, Content: content}, true
+	case "error":
+		errMsg, _ := params["error"].(string)
+		return Event{Type: EventError, Error: errMsg}, true
+	case "done":
+		sid, _ := params["sessionId"].(string)
+		return Event{Type: EventDone, SessionID: sid}, true
+	case "tool_call_start":
+		return Event{
+			Type:       EventToolCallStart,
+			ToolCallID: stringParam(params, "toolCallId"),
+			ToolName:   stringParam(params, "toolName"),
+		}, true
+	case "tool_call_args":
+		return Event{
+			Type:       EventToolCallArgs,
+			ToolCallID: stringParam(params, "toolCallId"),
+			ToolArgs:   stringParam(params, "toolArgs"),
+		}, true
+	case "tool_call_end":
+		return Event{
+			Type:       EventToolCallEnd,
+			ToolCallID: stringParam(params, "toolCallId"),
+			ToolName:   stringParam(params, "toolName"),
+			ToolArgs:   stringParam(params, "toolArgs"),
+		}, true
+	case "tool_call_result":
+		return Event{
+			Type:       EventToolCallResult,
+			ToolCallID: stringParam(params, "toolCallId"),
+			Content:    stringParam(params, "content"),
+		}, true
+	default:
+		return Event{}, false
+	}
+}
+
+func stringParam(params map[string]any, key string) string {
+	v, _ := params[key].(string)
+	return v
+}
+
 func (a *ExtensionAgent) Run(ctx context.Context, req RunRequest, events chan<- Event) error {
 	tcpConn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", a.conn.Host, a.conn.Port))
 	if err != nil {
@@ -91,17 +138,8 @@ func (a *ExtensionAgent) Run(ctx context.Context, req RunRequest, events chan<- 
 				continue
 			}
 			if m.Method == "harness.event" && m.Params != nil {
-				switch m.Params["type"] {
-				case "text":
-					if s, ok := m.Params["content"].(string); ok {
-						events <- Event{Type: EventText, Content: s}
-					}
-				case "error":
-					s, _ := m.Params["error"].(string)
-					events <- Event{Type: EventError, Error: s}
-				case "done":
-					sid, _ := m.Params["sessionId"].(string)
-					events <- Event{Type: EventDone, SessionID: sid}
+				if ev, ok := eventFromHarnessParams(m.Params); ok {
+					events <- ev
 				}
 			} else if m.ID != nil && *m.ID == id {
 				resultCh <- m
@@ -195,23 +233,19 @@ func (a *HTTPExtensionAgent) Run(ctx context.Context, req RunRequest, events cha
 		if !strings.HasPrefix(line, "data: ") {
 			continue
 		}
-		var ev struct {
-			Type      string `json:"type"`
-			Content   string `json:"content"`
-			Error     string `json:"error"`
-			SessionID string `json:"sessionId"`
-		}
-		if err := json.Unmarshal([]byte(line[6:]), &ev); err != nil {
+		var params map[string]any
+		if err := json.Unmarshal([]byte(line[6:]), &params); err != nil {
 			continue
 		}
-		switch ev.Type {
-		case "text":
-			events <- Event{Type: EventText, Content: ev.Content}
-		case "error":
-			events <- Event{Type: EventError, Error: ev.Error}
+		ev, ok := eventFromHarnessParams(params)
+		if !ok {
+			continue
+		}
+		events <- ev
+		if ev.Type == EventError {
 			return nil
-		case "done":
-			events <- Event{Type: EventDone, SessionID: ev.SessionID}
+		}
+		if ev.Type == EventDone {
 			return nil
 		}
 	}

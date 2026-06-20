@@ -5,165 +5,128 @@ import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
 import 'highlight.js/styles/github-dark.css'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { api } from '@/api'
-import type { ChatMessage, Session } from '@/types'
-
-function randomId(): string {
-  const b = crypto.getRandomValues(new Uint8Array(16))
-  b[6] = (b[6] & 0x0f) | 0x40
-  b[8] = (b[8] & 0x3f) | 0x80
-  return [...b].map((v, i) => ([4, 6, 8, 10].includes(i) ? '-' : '') + v.toString(16).padStart(2, '0')).join('')
-}
-
-interface StreamEvent {
-  type: 'text' | 'done' | 'error'
-  content?: string
-  sessionId?: string
-  error?: string
-}
+import { ToolCallBubble } from '@/components/ToolCallBubble'
+import { useSessionChat } from '@/hooks/useSessionChat'
+import type { Session } from '@/types'
 
 interface Props {
   session: Session
 }
 
 export function ChatPanel({ session }: Props) {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const { messages, sendMessage, isRunning } = useSessionChat(session.id)
   const [input, setInput] = useState('')
-  const [streaming, setStreaming] = useState(false)
-  const streamingIdRef = useRef<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    setMessages([])
-    api.history.get(session.id).then(setMessages).catch(() => {})
     inputRef.current?.focus()
   }, [session.id])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, isRunning])
 
-  async function send() {
-    const message = input.trim()
-    if (!message || streaming) return
+  const submit = () => {
+    const text = input.trim()
+    if (!text || isRunning) return
     setInput('')
-    setStreaming(true)
+    sendMessage(text)
+  }
 
-    const userMsg: ChatMessage = {
-      id: randomId(),
-      role: 'user',
-      content: message,
-      createdAt: new Date().toISOString(),
-    }
-    const assistantId = randomId()
-    streamingIdRef.current = assistantId
-    setMessages((prev) => [
-      ...prev,
-      userMsg,
-      { id: assistantId, role: 'assistant', content: '', createdAt: new Date().toISOString() },
-    ])
-
-    try {
-      const res = await fetch(`/api/sessions/${session.id}/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
-      })
-      if (!res.ok || !res.body) {
-        throw new Error(await res.text())
-      }
-
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          const payload: StreamEvent = JSON.parse(line.slice(6))
-          if (payload.type === 'text' && payload.content) {
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantId ? { ...m, content: m.content + payload.content } : m,
-              ),
-            )
-          }
-          if (payload.type === 'error') {
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantId
-                  ? { ...m, content: `Error: ${payload.error ?? 'unknown error'}` }
-                  : m,
-              ),
-            )
-          }
-        }
-      }
-    } catch (err) {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantId
-            ? { ...m, content: `Error: ${err instanceof Error ? err.message : 'Failed to connect'}` }
-            : m,
-        ),
-      )
-    } finally {
-      streamingIdRef.current = null
-      setStreaming(false)
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      submit()
     }
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="chat-message-list">
-          {messages.length === 0 && (
-            <div className="chat-empty">No messages yet. Start a conversation.</div>
-          )}
-          {messages.map((m) => (
-            <div key={m.id} className="chat-message-row" data-role={m.role}>
-              <div className="chat-bubble" data-role={m.role}>
-                {m.role === 'user' ? (
-                  m.content || (streaming && m.id === streamingIdRef.current ? '▋' : '')
-                ) : (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-                    {m.content || (streaming && m.id === streamingIdRef.current ? '▋' : '')}
+    <div className="agui-chat flex flex-col flex-1 min-h-0">
+      <div className="agui-chat__messages">
+        {messages.length === 0 && (
+          <div className="agui-chat__empty">
+            <div className="agui-chat__empty-icon">✦</div>
+            <p>Start a conversation with your agent</p>
+          </div>
+        )}
+
+        {messages.map((msg) => {
+          if (msg.role === 'tool') {
+            return <ToolCallBubble key={msg.id} msg={msg} />
+          }
+
+          return (
+            <div key={msg.id} className={`agui-message agui-message--${msg.role}`}>
+              <div className="agui-message__role">
+                {msg.role === 'user' ? 'You' : 'Agent'}
+              </div>
+              <div
+                className={`agui-message__bubble${msg.error ? ' agui-message__bubble--error' : ''}`}
+              >
+                {msg.role === 'assistant' ? (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeHighlight]}
+                    components={{
+                      img: ({ src, alt }) => (
+                        <img
+                          src={src}
+                          alt={alt ?? 'image'}
+                          className="agui-message__image"
+                          loading="lazy"
+                        />
+                      ),
+                    }}
+                  >
+                    {msg.content || (isRunning ? '▋' : '')}
                   </ReactMarkdown>
+                ) : (
+                  <p>{msg.content}</p>
                 )}
               </div>
             </div>
-          ))}
-          <div ref={bottomRef} />
-        </div>
-      </ScrollArea>
-      <div className="chat-input-bar">
-        <Textarea
+          )
+        })}
+
+        {isRunning && messages[messages.length - 1]?.role === 'user' && (
+          <div className="agui-message agui-message--assistant">
+            <div className="agui-message__role">Agent</div>
+            <div className="agui-message__bubble">
+              <span className="agui-thinking">▋</span>
+            </div>
+          </div>
+        )}
+
+        <div ref={bottomRef} />
+      </div>
+
+      <div className="agui-chat__input-area">
+        <textarea
           ref={inputRef}
-          className="chat-input"
-          placeholder="Ask your agent anything…"
+          className="agui-chat__input"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              send()
-            }
-          }}
-          disabled={streaming}
+          onKeyDown={onKeyDown}
+          placeholder="Message your agent… (Enter to send, Shift+Enter for newline)"
+          rows={1}
+          disabled={isRunning}
         />
-        <Button onClick={send} disabled={streaming || !input.trim()}>
-          {streaming ? 'Working…' : 'Send'}
-        </Button>
+        <button
+          type="button"
+          className="agui-chat__send"
+          onClick={submit}
+          disabled={isRunning || !input.trim()}
+          aria-label="Send message"
+        >
+          {isRunning ? (
+            <span className="agui-chat__spinner" />
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+            </svg>
+          )}
+        </button>
       </div>
     </div>
   )

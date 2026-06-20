@@ -71,7 +71,10 @@ class HttpLoopAgent:
 
                 try:
                     for chunk in agent.run(message, run_id, **kwargs):
-                        sse({"type": "text", "content": chunk})
+                        if isinstance(chunk, dict):
+                            sse(chunk)
+                        else:
+                            sse({"type": "text", "content": chunk})
                 except Exception as e:
                     sse({"type": "error", "error": str(e)})
                     return

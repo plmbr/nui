@@ -130,9 +130,13 @@ class LoopAgent:
             extra = {k: v for k, v in params.items() if k not in ("message", "runId")}
             try:
                 for chunk in self.run(message, run_id, **extra):
+                    if isinstance(chunk, dict):
+                        event_params = {"runId": run_id, **chunk}
+                    else:
+                        event_params = {"runId": run_id, "type": "text", "content": chunk}
                     self._send(conn, {
                         "jsonrpc": "2.0", "method": "harness.event",
-                        "params": {"runId": run_id, "type": "text", "content": chunk},
+                        "params": event_params,
                     })
             except Exception as e:
                 self._send(conn, {

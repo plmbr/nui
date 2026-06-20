@@ -8,6 +8,7 @@ import sys
 import threading
 
 sys.path.insert(0, os.path.dirname(__file__))
+from claude_stream import parse_claude_stream
 from loop_agent import LoopAgent
 
 
@@ -60,7 +61,6 @@ class ClaudeCodeAgent(LoopAgent):
             claude_args += ["--resume", session_id]
 
         args = _wrap_with_bwrap(claude_args, working_dir)
-        # When bwrap is active, working dir is set via --chdir; pass cwd only otherwise.
         cwd = None if os.environ.get("LOOP_BWRAP_PATH") else working_dir
 
         proc = subprocess.Popen(
@@ -77,26 +77,16 @@ class ClaudeCodeAgent(LoopAgent):
                 print(f"[claude stderr] {line.decode().rstrip()}", file=sys.stderr, flush=True)
         threading.Thread(target=drain_stderr, daemon=True).start()
 
-        for raw in proc.stdout:
-            line = raw.decode().strip()
-            if not line:
-                continue
-            try:
-                envelope = json.loads(line)
-            except json.JSONDecodeError:
-                continue
+        def stdout_lines():
+            for raw in proc.stdout:
+                yield raw.decode()
 
-            t = envelope.get("type")
-            if t == "stream_event":
-                ev = envelope.get("event", {})
-                if ev.get("type") == "content_block_delta":
-                    delta = ev.get("delta", {})
-                    if delta.get("type") == "text_delta" and delta.get("text"):
-                        yield delta["text"]
-            elif t == "result":
-                if not envelope.get("is_error"):
-                    with self._lock:
-                        self._sessions[run_id] = envelope.get("session_id", "")
+        for event in parse_claude_stream(stdout_lines()):
+            if event.get("type") == "session_id":
+                with self._lock:
+                    self._sessions[run_id] = event.get("sessionId") or ""
+                continue
+            yield event
 
         proc.wait()
 
