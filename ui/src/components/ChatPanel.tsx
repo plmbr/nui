@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
 import 'highlight.js/styles/github-dark.css'
+import { ThinkingIndicator } from '@/components/ThinkingIndicator'
 import { ToolCallBubble } from '@/components/ToolCallBubble'
 import { imageSrc, useSessionChat } from '@/hooks/useSessionChat'
 import { normalizeMarkdown, stripInlineCodeDelimiters } from '@/lib/markdown'
@@ -53,6 +54,10 @@ export function ChatPanel({ session, initialPrompt, hideInput }: Props) {
     }
   }
 
+  const streamingAssistantId = isRunning
+    ? [...messages].reverse().find((m) => m.role === 'assistant')?.id
+    : undefined
+
   return (
     <div className="agui-chat flex flex-col flex-1 min-h-0">
       <div className="agui-chat__messages">
@@ -67,6 +72,8 @@ export function ChatPanel({ session, initialPrompt, hideInput }: Props) {
           if (msg.role === 'tool') {
             return <ToolCallBubble key={msg.id} msg={msg} />
           }
+
+          const isStreaming = isRunning && msg.id === streamingAssistantId
 
           return (
             <div key={msg.id} className={`agui-message agui-message--${msg.role}`}>
@@ -87,38 +94,45 @@ export function ChatPanel({ session, initialPrompt, hideInput }: Props) {
                         loading="lazy"
                       />
                     ))}
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      rehypePlugins={[rehypeHighlight]}
-                      components={{
-                        code: ({ className, children, ...props }) => {
-                          const isBlock = className?.includes('language-')
-                          if (isBlock) {
-                            return (
-                              <code className={className} {...props}>
-                                {children}
-                              </code>
-                            )
-                          }
-                          const text = stripInlineCodeDelimiters(String(children ?? ''))
-                          return (
-                            <code className="agui-inline-code" {...props}>
-                              {text}
-                            </code>
-                          )
-                        },
-                        img: ({ src, alt }) => (
-                          <img
-                            src={src}
-                            alt={alt ?? 'image'}
-                            className="agui-message__image"
-                            loading="lazy"
-                          />
-                        ),
-                      }}
-                    >
-                      {normalizeMarkdown(msg.content) || (isRunning ? '▋' : '')}
-                    </ReactMarkdown>
+                    {msg.content ? (
+                      <>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          rehypePlugins={[rehypeHighlight]}
+                          components={{
+                            code: ({ className, children, ...props }) => {
+                              const isBlock = className?.includes('language-')
+                              if (isBlock) {
+                                return (
+                                  <code className={className} {...props}>
+                                    {children}
+                                  </code>
+                                )
+                              }
+                              const text = stripInlineCodeDelimiters(String(children ?? ''))
+                              return (
+                                <code className="agui-inline-code" {...props}>
+                                  {text}
+                                </code>
+                              )
+                            },
+                            img: ({ src, alt }) => (
+                              <img
+                                src={src}
+                                alt={alt ?? 'image'}
+                                className="agui-message__image"
+                                loading="lazy"
+                              />
+                            ),
+                          }}
+                        >
+                          {normalizeMarkdown(msg.content)}
+                        </ReactMarkdown>
+                        {isStreaming && <span className="agui-stream-cursor" aria-hidden />}
+                      </>
+                    ) : isStreaming ? (
+                      <ThinkingIndicator />
+                    ) : null}
                   </>
                 ) : (
                   <p>{msg.content}</p>
@@ -127,15 +141,6 @@ export function ChatPanel({ session, initialPrompt, hideInput }: Props) {
             </div>
           )
         })}
-
-        {isRunning && messages[messages.length - 1]?.role === 'user' && (
-          <div className="agui-message agui-message--assistant">
-            <div className="agui-message__role">Agent</div>
-            <div className="agui-message__bubble">
-              <span className="agui-thinking">▋</span>
-            </div>
-          </div>
-        )}
 
         <div ref={bottomRef} />
       </div>

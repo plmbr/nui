@@ -413,12 +413,40 @@
   }
 
   .agui-thinking {
-    @apply inline-block;
-    color: color-mix(in oklch, var(--primary) 75%, var(--foreground));
-    animation: agui-blink 1s step-start infinite;
+    @apply inline-flex items-center gap-1 py-1;
   }
 
-  @keyframes agui-blink {
+  .agui-thinking__dot {
+    @apply size-1.5 rounded-full bg-primary/70;
+    animation: agui-thinking-bounce 1.2s ease-in-out infinite;
+  }
+
+  .agui-thinking__dot:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+
+  .agui-thinking__dot:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+
+  @keyframes agui-thinking-bounce {
+    0%, 60%, 100% {
+      transform: translateY(0);
+      opacity: 0.35;
+    }
+    30% {
+      transform: translateY(-3px);
+      opacity: 1;
+    }
+  }
+
+  .agui-stream-cursor {
+    @apply ml-0.5 inline-block h-[1.1em] w-[2px] align-text-bottom;
+    background: color-mix(in oklch, var(--primary) 75%, var(--foreground));
+    animation: agui-stream-cursor-blink 1s step-start infinite;
+  }
+
+  @keyframes agui-stream-cursor-blink {
     50% { opacity: 0; }
   }
 
