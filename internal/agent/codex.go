@@ -5,7 +5,6 @@ package agent
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -124,40 +123,17 @@ func (a *CodexAgent) Run(ctx context.Context, req RunRequest, events chan<- Even
 	}()
 
 	var sessionID string
+	parser := newCodexStreamParser()
 	scanner := bufio.NewScanner(stdout)
 	scanner.Buffer(make([]byte, 4*1024*1024), 4*1024*1024)
 
 	for scanner.Scan() {
-		line := scanner.Bytes()
-		if len(line) == 0 {
-			continue
+		sid, done := parser.handleLine(scanner.Bytes(), events)
+		if sid != "" {
+			sessionID = sid
 		}
-
-		var envelope struct {
-			Type     string `json:"type"`
-			ThreadID string `json:"thread_id"`
-			Item     struct {
-				Type string `json:"type"`
-				Text string `json:"text"`
-			} `json:"item"`
-			Error string `json:"error"`
-		}
-		if err := json.Unmarshal(line, &envelope); err != nil {
-			fmt.Fprintf(os.Stderr, "[codex stdout] %s\n", line)
-			continue
-		}
-
-		switch envelope.Type {
-		case "thread.started":
-			sessionID = envelope.ThreadID
-		case "item.completed":
-			if envelope.Item.Type == "agent_message" && envelope.Item.Text != "" {
-				events <- Event{Type: EventText, Content: envelope.Item.Text}
-			}
-		case "turn.completed":
+		if done {
 			events <- Event{Type: EventDone, SessionID: sessionID}
-		case "error":
-			events <- Event{Type: EventError, Error: envelope.Error}
 		}
 	}
 

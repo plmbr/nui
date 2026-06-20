@@ -1,20 +1,15 @@
 #!/usr/bin/env python3
-"""Built-in Pi agent extension for Loop.
+"""Built-in Pi agent extension for Loop."""
 
-Wraps the `pi` CLI (AI coding assistant) exactly the way claude_code.py
-wraps the `claude` CLI — subprocess with --mode json, streaming text deltas,
-session resume via --session <uuid>.
-"""
-
-import json
 import os
 import subprocess
 import sys
 import threading
-from subprocess import PIPE, DEVNULL
+from subprocess import DEVNULL, PIPE
 
 sys.path.insert(0, os.path.dirname(__file__))
 from loop_agent import LoopAgent
+from pi_stream import parse_pi_stream
 
 
 class PiAgent(LoopAgent):
@@ -43,29 +38,16 @@ class PiAgent(LoopAgent):
                 print(f"[pi stderr] {line.decode().rstrip()}", file=sys.stderr, flush=True)
         threading.Thread(target=drain_stderr, daemon=True).start()
 
-        for raw in proc.stdout:
-            line = raw.decode(errors="replace").strip()
-            if not line:
+        def stdout_lines():
+            for raw in proc.stdout:
+                yield raw.decode(errors="replace")
+
+        for event in parse_pi_stream(stdout_lines()):
+            if event.get("type") == "session_id":
+                with self._lock:
+                    self._sessions[run_id] = event.get("sessionId") or ""
                 continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-
-            t = obj.get("type", "")
-
-            if t == "session":
-                sid = obj.get("id", "")
-                if sid:
-                    with self._lock:
-                        self._sessions[run_id] = sid
-
-            elif t == "message_update":
-                ev = obj.get("assistantMessageEvent", {})
-                if ev.get("type") == "text_delta":
-                    delta = ev.get("delta", "")
-                    if delta:
-                        yield delta
+            yield event
 
         proc.wait()
 

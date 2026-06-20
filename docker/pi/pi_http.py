@@ -6,7 +6,6 @@ instead of TCP JSON-RPC. Auth credentials must be supplied via ANTHROPIC_API_KEY
 (forwarded by Loop from the host environment).
 """
 
-import json
 import os
 import subprocess
 import sys
@@ -15,6 +14,7 @@ from subprocess import DEVNULL, PIPE
 
 sys.path.insert(0, "/app")
 from http_loop_agent import HttpLoopAgent
+from pi_stream import parse_pi_stream
 
 
 class PiAgent(HttpLoopAgent):
@@ -51,28 +51,18 @@ class PiAgent(HttpLoopAgent):
         threading.Thread(target=drain_stderr, daemon=True).start()
 
         produced_output = False
-        for raw in proc.stdout:
-            line = raw.decode(errors="replace").strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError:
-                continue
 
+        def stdout_lines():
+            for raw in proc.stdout:
+                yield raw.decode(errors="replace")
+
+        for event in parse_pi_stream(stdout_lines()):
+            if event.get("type") == "session_id":
+                with self._lock:
+                    self._sessions[run_id] = event.get("sessionId") or ""
+                continue
             produced_output = True
-            t = obj.get("type", "")
-            if t == "session":
-                sid = obj.get("id", "")
-                if sid:
-                    with self._lock:
-                        self._sessions[run_id] = sid
-            elif t == "message_update":
-                ev = obj.get("assistantMessageEvent", {})
-                if ev.get("type") == "text_delta":
-                    delta = ev.get("delta", "")
-                    if delta:
-                        yield delta
+            yield event
 
         proc.wait()
 
@@ -87,6 +77,8 @@ class PiAgent(HttpLoopAgent):
 
 
 def _write_models_json():
+    import json
+
     base_url = os.environ.get("ANTHROPIC_BASE_URL", "")
     if not base_url:
         return

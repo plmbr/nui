@@ -6,7 +6,6 @@ ANTHROPIC_BASE_URL forwarded from the host. --ignore-user-config skips any
 container-side config that might have MCP servers or conflicting settings.
 """
 
-import json
 import os
 import subprocess
 import sys
@@ -14,6 +13,7 @@ import threading
 from subprocess import DEVNULL, PIPE
 
 sys.path.insert(0, "/app")
+from codex_stream import parse_codex_stream
 from http_loop_agent import HttpLoopAgent
 
 
@@ -73,28 +73,16 @@ class CodexAgent(HttpLoopAgent):
                 print(f"[codex stderr] {line.decode().rstrip()}", file=sys.stderr, flush=True)
         threading.Thread(target=drain_stderr, daemon=True).start()
 
-        for raw in proc.stdout:
-            line = raw.decode(errors="replace").strip()
-            if not line:
-                continue
-            try:
-                envelope = json.loads(line)
-            except json.JSONDecodeError:
-                print(f"[codex stdout] {line}", file=sys.stderr, flush=True)
-                continue
+        def stdout_lines():
+            for raw in proc.stdout:
+                yield raw.decode(errors="replace")
 
-            t = envelope.get("type", "")
-            if t == "thread.started":
-                thread_id = envelope.get("thread_id", "")
-                if thread_id:
-                    with self._lock:
-                        self._sessions[run_id] = thread_id
-            elif t == "item.completed":
-                item = envelope.get("item", {})
-                if item.get("type") == "agent_message" and item.get("text"):
-                    yield item["text"]
-            elif t == "error":
-                print(f"[codex error] {envelope.get('error', '')}", file=sys.stderr, flush=True)
+        for event in parse_codex_stream(stdout_lines()):
+            if event.get("type") == "session_id":
+                with self._lock:
+                    self._sessions[run_id] = event.get("sessionId") or ""
+                continue
+            yield event
 
         proc.wait()
 

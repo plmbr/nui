@@ -5,7 +5,6 @@ Speaks HTTP/SSE (HttpLoopAgent). Auth is provided via ANTHROPIC_API_KEY /
 ANTHROPIC_BASE_URL forwarded from the host.
 """
 
-import json
 import os
 import subprocess
 import sys
@@ -14,6 +13,7 @@ from subprocess import DEVNULL, PIPE
 
 sys.path.insert(0, "/app")
 from http_loop_agent import HttpLoopAgent
+from opencode_stream import parse_opencode_stream
 
 
 class OpenCodeAgent(HttpLoopAgent):
@@ -51,30 +51,16 @@ class OpenCodeAgent(HttpLoopAgent):
                 print(f"[opencode stderr] {line.decode().rstrip()}", file=sys.stderr, flush=True)
         threading.Thread(target=drain_stderr, daemon=True).start()
 
-        for raw in proc.stdout:
-            line = raw.decode(errors="replace").strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError:
-                print(f"[opencode stdout] {line}", file=sys.stderr, flush=True)
-                continue
+        def stdout_lines():
+            for raw in proc.stdout:
+                yield raw.decode(errors="replace")
 
-            t = obj.get("type", "")
-            sid = obj.get("sessionID", "")
-
-            if sid:
+        for event in parse_opencode_stream(stdout_lines()):
+            if event.get("type") == "session_id":
                 with self._lock:
-                    if run_id not in self._sessions:
-                        self._sessions[run_id] = sid
-
-            if t == "text":
-                part = obj.get("part", {})
-                if part.get("type") == "text":
-                    text = part.get("text", "")
-                    if text:
-                        yield text
+                    self._sessions[run_id] = event.get("sessionId") or ""
+                continue
+            yield event
 
         proc.wait()
 

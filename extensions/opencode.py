@@ -1,20 +1,15 @@
 #!/usr/bin/env python3
-"""Built-in opencode agent extension for Loop.
+"""Built-in opencode agent extension for Loop."""
 
-Wraps the `opencode` CLI exactly the way pi.py wraps the `pi` CLI —
-subprocess with --format json, streaming text parts, session resume via
---session <id>.
-"""
-
-import json
 import os
 import subprocess
 import sys
 import threading
-from subprocess import PIPE, DEVNULL
+from subprocess import DEVNULL, PIPE
 
 sys.path.insert(0, os.path.dirname(__file__))
 from loop_agent import LoopAgent
+from opencode_stream import parse_opencode_stream
 
 
 class OpenCodeAgent(LoopAgent):
@@ -52,30 +47,16 @@ class OpenCodeAgent(LoopAgent):
                 print(f"[opencode stderr] {line.decode().rstrip()}", file=sys.stderr, flush=True)
         threading.Thread(target=drain_stderr, daemon=True).start()
 
-        for raw in proc.stdout:
-            line = raw.decode(errors="replace").strip()
-            if not line:
-                continue
-            try:
-                obj = json.loads(line)
-            except json.JSONDecodeError:
-                continue
+        def stdout_lines():
+            for raw in proc.stdout:
+                yield raw.decode(errors="replace")
 
-            t = obj.get("type", "")
-            sid = obj.get("sessionID", "")
-
-            # Capture session ID from the first event that carries it.
-            if sid:
+        for event in parse_opencode_stream(stdout_lines()):
+            if event.get("type") == "session_id":
                 with self._lock:
-                    if run_id not in self._sessions:
-                        self._sessions[run_id] = sid
-
-            if t == "text":
-                part = obj.get("part", {})
-                if part.get("type") == "text":
-                    text = part.get("text", "")
-                    if text:
-                        yield text
+                    self._sessions[run_id] = event.get("sessionId") or ""
+                continue
+            yield event
 
         proc.wait()
 
