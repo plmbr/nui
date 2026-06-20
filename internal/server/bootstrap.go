@@ -23,12 +23,14 @@ type StartOptions struct {
 	Prompt     string
 	WorkingDir string
 	Open       bool // open the UI in the system default browser
+	HideInput  bool // hide the chat input in the UI (one-off runs)
 }
 
 type bootstrapState struct {
 	SessionID     string `json:"sessionId,omitempty"`
 	InitialPrompt string `json:"initialPrompt,omitempty"`
 	SidebarOpen   *bool  `json:"sidebarOpen,omitempty"`
+	HideInput     bool   `json:"hideInput,omitempty"`
 }
 
 var (
@@ -36,11 +38,12 @@ var (
 	bootstrap   bootstrapState
 )
 
-func setBootstrap(sessionID, prompt string, sidebarOpen *bool) {
+func setBootstrap(sessionID, prompt string, sidebarOpen *bool, hideInput bool) {
 	bootstrapMu.Lock()
 	bootstrap.SessionID = sessionID
 	bootstrap.InitialPrompt = prompt
 	bootstrap.SidebarOpen = sidebarOpen
+	bootstrap.HideInput = hideInput
 	bootstrapMu.Unlock()
 }
 
@@ -89,7 +92,7 @@ func bootstrapFromCLI(opts StartOptions) error {
 			return err
 		}
 
-		setBootstrap(s.ID, strings.TrimSpace(opts.Prompt), cliLaunchSidebarOpen(opts))
+		setBootstrap(s.ID, strings.TrimSpace(opts.Prompt), cliLaunchSidebarOpen(opts), opts.HideInput)
 
 		settings, err := store.LoadSettings()
 		if err != nil {
@@ -110,7 +113,7 @@ func bootstrapFromCLI(opts StartOptions) error {
 	if err != nil {
 		return fmt.Errorf("create session for --open: %w", err)
 	}
-	setBootstrap(s.ID, "", nil)
+	setBootstrap(s.ID, "", nil, false)
 	return nil
 }
 

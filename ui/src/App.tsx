@@ -14,6 +14,8 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [initialPrompt, setInitialPrompt] = useState<string | undefined>()
+  const [hideInput, setHideInput] = useState(false)
+  const [appReady, setAppReady] = useState(false)
   const initializedRef = useRef(false)
 
   const loadSessions = useCallback(async () => {
@@ -67,6 +69,11 @@ export default function App() {
       if (bootstrap.initialPrompt && nextId) {
         setInitialPrompt(bootstrap.initialPrompt)
       }
+      if (bootstrap.hideInput) {
+        setHideInput(true)
+      }
+
+      setAppReady(true)
     }
 
     void init()
@@ -75,6 +82,7 @@ export default function App() {
   const handleSelect = useCallback((id: string) => {
     setSelectedId(id)
     setInitialPrompt(undefined)
+    setHideInput(false)
     api.settings.update({ lastSessionId: id }).catch(() => {})
   }, [])
 
@@ -99,6 +107,9 @@ export default function App() {
   return (
     <ThemeProvider>
     <TooltipProvider>
+      {!appReady ? (
+        <div className="h-screen bg-background" />
+      ) : (
       <SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange}>
         <header className="app-header">
           <SidebarTrigger />
@@ -118,6 +129,7 @@ export default function App() {
               <ConversationPanel
                 session={selected}
                 initialPrompt={initialPrompt}
+                hideInput={hideInput}
                 key={selected.id}
               />
             ) : (
@@ -128,6 +140,7 @@ export default function App() {
           </main>
         </div>
       </SidebarProvider>
+      )}
     </TooltipProvider>
     </ThemeProvider>
   )

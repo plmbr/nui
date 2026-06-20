@@ -48,6 +48,7 @@ export interface Bootstrap {
   sessionId?: string
   initialPrompt?: string
   sidebarOpen?: boolean
+  hideInput?: boolean
 }
 
 export interface BwrapStatus {

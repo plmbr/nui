@@ -17,6 +17,7 @@ var (
 	prompt      string
 	workingDir  string
 	openBrowser bool
+	hideInput   bool
 )
 
 var uiFS func() fs.FS
@@ -31,6 +32,7 @@ var uiCmd = &cobra.Command{
 			Prompt:     prompt,
 			WorkingDir: workingDir,
 			Open:       openBrowser,
+			HideInput:  hideInput,
 		})
 	},
 }
@@ -41,6 +43,7 @@ func init() {
 	uiCmd.Flags().StringVarP(&prompt, "prompt", "m", "", "Initial prompt to run in the new session")
 	uiCmd.Flags().StringVarP(&workingDir, "working-dir", "w", "", "Working directory for the new session (defaults to current directory)")
 	uiCmd.Flags().BoolVar(&openBrowser, "open", false, "Open the web UI in the system default browser")
+	uiCmd.Flags().BoolVar(&hideInput, "hide-input", false, "Hide the chat input (for one-off runs with --prompt)")
 	rootCmd.AddCommand(uiCmd)
 }
 

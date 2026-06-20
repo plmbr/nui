@@ -113,14 +113,15 @@ Create a session on startup and optionally run an initial prompt in the UI:
 
 ```sh
 loop ui --agent-type "Claude Code" --prompt "Review the README" --open
-loop ui -a pi -m "Summarize this repo" -w ~/my/project --open
+loop ui -a pi -m "Summarize this repo" --open --hide-input
 ```
 
 | Flag | Short | Description |
 |---|---|---|
 | `--open` | | Open the web UI in the system default browser. Creates a new blank session with the default agent and selects it (instead of resuming the last session). |
 | `--agent-type` | `-a` | ADL agent name (builtin or `~/.loop/agents/*.yaml`). Creates a new session on startup and starts with the sidebar closed. |
-| `--prompt` | `-m` | Initial prompt. The UI selects the new session, fills the input, and auto-sends it. Also starts with the sidebar closed. |
+| `--prompt` | `-m` | Initial prompt. The UI auto-sends it in the new session. Also starts with the sidebar closed. |
+| `--hide-input` | | Hide the chat input field (for one-off runs; use with `--prompt`). |
 | `--working-dir` | `-w` | Working directory for the session (defaults to the current directory). |
 
 Agent type names match the New Session dialog — e.g. `Claude Code`, `pi`, `codex`, `opencode`, or a custom ADL name like `docker-echo`. Legacy aliases such as `claude-code` also work.

@@ -13,9 +13,10 @@ import type { Session } from '@/types'
 interface Props {
   session: Session
   initialPrompt?: string
+  hideInput?: boolean
 }
 
-export function ChatPanel({ session, initialPrompt }: Props) {
+export function ChatPanel({ session, initialPrompt, hideInput }: Props) {
   const { messages, sendMessage, isRunning, isLoading } = useSessionChat(session.id)
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -23,14 +24,14 @@ export function ChatPanel({ session, initialPrompt }: Props) {
   const initialPromptSentRef = useRef(false)
 
   useEffect(() => {
+    if (hideInput) return
     inputRef.current?.focus()
-  }, [session.id])
+  }, [session.id, hideInput])
 
   useEffect(() => {
     if (!initialPrompt || initialPromptSentRef.current || isLoading || isRunning) return
     if (messages.length > 0) return
     initialPromptSentRef.current = true
-    setInput(initialPrompt)
     sendMessage(initialPrompt)
   }, [initialPrompt, isLoading, isRunning, messages.length, sendMessage])
 
@@ -139,6 +140,7 @@ export function ChatPanel({ session, initialPrompt }: Props) {
         <div ref={bottomRef} />
       </div>
 
+      {!hideInput && (
       <div className="agui-chat__input-area">
         <textarea
           ref={inputRef}
@@ -166,6 +168,7 @@ export function ChatPanel({ session, initialPrompt }: Props) {
           )}
         </button>
       </div>
+      )}
     </div>
   )
 }

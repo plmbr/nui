@@ -10,7 +10,7 @@ go build ./...          # compile
 go test ./...           # run tests
 go run . ui             # build + run server on :8080
 go run . ui --port 3000 # custom port (use this for development)
-go run . ui -a "Claude Code" -m "Review README" -w . --open  # create session + initial prompt + open browser
+go run . ui -a "Claude Code" -m "Review README" -w . --open --hide-input
 ```
 
 ### Frontend (run from `ui/`)
