@@ -14,36 +14,33 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
-// builtinExtensions maps agent type IDs to their Python script filenames.
-var builtinExtensions = map[string]string{
-	"claude-code": "claude_code.py",
-	"pi":          "pi.py",
-	"codex":       "codex.py",
-	"opencode":    "opencode.py",
+// builtinAgentTypes are harness types implemented in-process inside the Loop binary.
+var builtinAgentTypes = map[string]bool{
+	"claude-code": true,
+	"pi":          true,
+	"codex":       true,
+	"opencode":    true,
 }
 
 const containerIdleTimeout = 30 * time.Minute
 
-// Manager launches and reconnects to extension processes, Docker containers, and remote agents.
+// Manager launches in-process harness agents, Docker containers, and remote agents.
 type Manager struct {
-	extensionsDir string
-	mu            sync.Mutex // protects processes
-	containerMu   sync.Mutex // protects containers, dockerURLs, and lastActivity
-	agentMu       sync.Map   // map[projectID]*sync.Mutex — serialises per-project launch
-	processes     map[string]*os.Process
+	builtinMu     sync.Mutex
+	builtinAgents map[string]Agent // projectID → agent
+	containerMu   sync.Mutex       // protects containers, dockerURLs, and lastActivity
+	agentMu       sync.Map         // map[projectID]*sync.Mutex — serialises per-project launch
 	containers    map[string]string // projectID → containerID
 	dockerURLs    map[string]string // projectID → http base URL
 	lastActivity  map[string]time.Time
 }
 
-func NewManager(extensionsDir string) *Manager {
+func NewManager() *Manager {
 	m := &Manager{
-		extensionsDir: extensionsDir,
-		processes:     make(map[string]*os.Process),
+		builtinAgents: make(map[string]Agent),
 		containers:    make(map[string]string),
 		dockerURLs:    make(map[string]string),
 		lastActivity:  make(map[string]time.Time),
@@ -216,15 +213,61 @@ func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[s
 		}
 		return NewHTTPExtensionAgent(agentType, baseURL), nil
 	default:
-		script, ok := builtinExtensions[agentType]
-		if !ok {
+		if !builtinAgentTypes[agentType] {
 			return nil, fmt.Errorf("unknown agent type: %q", agentType)
 		}
-		conn, err := m.ensureRunning(projectID, script)
-		if err != nil {
-			return nil, err
-		}
-		return NewExtensionAgent(agentType, conn), nil
+		return m.getBuiltinAgent(projectID, agentType)
+	}
+}
+
+func (m *Manager) getBuiltinAgent(projectID, agentType string) (Agent, error) {
+	m.builtinMu.Lock()
+	if ag, ok := m.builtinAgents[projectID]; ok {
+		m.builtinMu.Unlock()
+		return ag, nil
+	}
+	m.builtinMu.Unlock()
+
+	v, _ := m.agentMu.LoadOrStore(projectID, &sync.Mutex{})
+	agLock := v.(*sync.Mutex)
+	agLock.Lock()
+	defer agLock.Unlock()
+
+	m.builtinMu.Lock()
+	defer m.builtinMu.Unlock()
+	if ag, ok := m.builtinAgents[projectID]; ok {
+		return ag, nil
+	}
+
+	var ag Agent
+	switch agentType {
+	case "claude-code":
+		ag = &ClaudeCodeAgent{}
+	case "pi":
+		ag = &PiAgent{}
+	case "codex":
+		ag = &CodexAgent{}
+	case "opencode":
+		ag = &OpenCodeAgent{}
+	default:
+		return nil, fmt.Errorf("unknown agent type: %q", agentType)
+	}
+	m.builtinAgents[projectID] = ag
+	return ag, nil
+}
+
+func (m *Manager) stopBuiltinAgent(projectID string) {
+	m.builtinMu.Lock()
+	ag, ok := m.builtinAgents[projectID]
+	if ok {
+		delete(m.builtinAgents, projectID)
+	}
+	m.builtinMu.Unlock()
+	if !ok {
+		return
+	}
+	if s, ok := ag.(interface{ Stop() }); ok {
+		s.Stop()
 	}
 }
 
@@ -237,7 +280,7 @@ func isDockerOrRemote(agentType string) bool {
 	return false
 }
 
-// PrewarmSessions eagerly starts local extension processes. Docker and remote
+// PrewarmSessions eagerly creates in-process harness agents. Docker and remote
 // agents are skipped — they start lazily when a session is first used.
 func (m *Manager) PrewarmSessions(sessions []PrewarmEntry) {
 	for _, s := range sessions {
@@ -258,11 +301,9 @@ type PrewarmEntry struct {
 	AgentConfig map[string]any
 }
 
-// Stop terminates the extension process or Docker container for a specific project.
+// Stop terminates the in-process harness agent or Docker container for a specific project.
 func (m *Manager) Stop(projectID string) {
-	if conn, err := m.readConnectionFile(projectID); err == nil && isAlive(conn.PID) {
-		ShutdownExtension(conn)
-	}
+	m.stopBuiltinAgent(projectID)
 
 	m.containerMu.Lock()
 	baseURL := m.dockerURLs[projectID]
@@ -279,19 +320,9 @@ func (m *Manager) Stop(projectID string) {
 	if hasContainer {
 		exec.Command("docker", "stop", containerID).Run()
 	}
-
-	m.mu.Lock()
-	proc, ok := m.processes[projectID]
-	m.mu.Unlock()
-	if ok {
-		proc.Signal(syscall.SIGTERM)
-	}
-
-	m.deleteConnectionFile(projectID)
 }
 
-// StopAll terminates all managed extension processes and Docker containers.
-// It waits for all containers to stop before returning.
+// StopAll terminates all managed harness agents and Docker containers.
 func (m *Manager) StopAll() {
 	type stopEntry struct {
 		projectID    string
@@ -300,16 +331,12 @@ func (m *Manager) StopAll() {
 		hasContainer bool
 	}
 
-	m.mu.Lock()
-	ids := make([]string, 0, len(m.processes))
-	conns := make(map[string]ConnectionInfo)
-	for id := range m.processes {
-		ids = append(ids, id)
-		if conn, err := m.readConnectionFile(id); err == nil && isAlive(conn.PID) {
-			conns[id] = conn
-		}
+	m.builtinMu.Lock()
+	builtinIDs := make([]string, 0, len(m.builtinAgents))
+	for id := range m.builtinAgents {
+		builtinIDs = append(builtinIDs, id)
 	}
-	m.mu.Unlock()
+	m.builtinMu.Unlock()
 
 	m.containerMu.Lock()
 	entries := make([]stopEntry, 0, len(m.containers))
@@ -326,22 +353,14 @@ func (m *Manager) StopAll() {
 	}
 	m.containerMu.Unlock()
 
-	for _, conn := range conns {
-		ShutdownExtension(conn)
+	for _, id := range builtinIDs {
+		m.stopBuiltinAgent(id)
 	}
 	for _, entry := range entries {
 		if entry.baseURL != "" {
 			ShutdownHTTPAgent(entry.baseURL)
 		}
 	}
-
-	m.mu.Lock()
-	for _, id := range ids {
-		if proc, ok := m.processes[id]; ok {
-			proc.Signal(syscall.SIGTERM)
-		}
-	}
-	m.mu.Unlock()
 
 	var wg sync.WaitGroup
 	for _, entry := range entries {
@@ -352,76 +371,6 @@ func (m *Manager) StopAll() {
 		}(entry.containerID)
 	}
 	wg.Wait()
-
-	for _, id := range ids {
-		m.deleteConnectionFile(id)
-	}
-}
-
-// ── Python extension ─────────────────────────────────────────────────────────
-
-func (m *Manager) ensureRunning(projectID, script string) (ConnectionInfo, error) {
-	if conn, err := m.readConnectionFile(projectID); err == nil && isAlive(conn.PID) {
-		return conn, nil
-	}
-
-	v, _ := m.agentMu.LoadOrStore(projectID, &sync.Mutex{})
-	agLock := v.(*sync.Mutex)
-	agLock.Lock()
-	defer agLock.Unlock()
-
-	if conn, err := m.readConnectionFile(projectID); err == nil && isAlive(conn.PID) {
-		return conn, nil
-	}
-	return m.launch(projectID, script)
-}
-
-func (m *Manager) launch(projectID, script string) (ConnectionInfo, error) {
-	m.deleteConnectionFile(projectID)
-
-	scriptPath := filepath.Join(m.extensionsDir, script)
-	cmd := exec.Command("python3", scriptPath, "--project-id", projectID)
-	cmd.Stderr = os.Stderr
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
-	env := os.Environ()
-	if s := GetBwrapStatus(); s.Available {
-		env = append(env, "LOOP_BWRAP_PATH="+s.Path)
-	}
-	cmd.Env = env
-
-	if err := cmd.Start(); err != nil {
-		return ConnectionInfo{}, fmt.Errorf("launch extension for project %s: %w", projectID, err)
-	}
-
-	m.mu.Lock()
-	m.processes[projectID] = cmd.Process
-	m.mu.Unlock()
-
-	conn, err := m.waitForConnection(projectID, 15*time.Second)
-	if err != nil {
-		cmd.Process.Kill()
-		return ConnectionInfo{}, fmt.Errorf("extension for project %s failed to start: %w", projectID, err)
-	}
-
-	go func() {
-		cmd.Wait()
-		m.mu.Lock()
-		delete(m.processes, projectID)
-		m.mu.Unlock()
-	}()
-
-	return conn, nil
-}
-
-func (m *Manager) waitForConnection(projectID string, timeout time.Duration) (ConnectionInfo, error) {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if conn, err := m.readConnectionFile(projectID); err == nil {
-			return conn, nil
-		}
-		time.Sleep(200 * time.Millisecond)
-	}
-	return ConnectionInfo{}, fmt.Errorf("timed out waiting for extension for project %s to start", projectID)
 }
 
 // ── Docker agent ─────────────────────────────────────────────────────────────
@@ -727,54 +676,6 @@ func (m *Manager) connectRemote(config map[string]any) (string, error) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-func (m *Manager) readConnectionFile(projectID string) (ConnectionInfo, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ConnectionInfo{}, fmt.Errorf("get home dir: %w", err)
-	}
-	data, err := os.ReadFile(filepath.Join(home, ".loop", "extensions", projectID+".json"))
-	if err != nil {
-		return ConnectionInfo{}, err
-	}
-	var conn ConnectionInfo
-	return conn, json.Unmarshal(data, &conn)
-}
-
-func (m *Manager) writeConnectionFile(projectID string, conn ConnectionInfo) error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("get home dir: %w", err)
-	}
-	dir := filepath.Join(home, ".loop", "extensions")
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
-	}
-	data, err := json.Marshal(conn)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(filepath.Join(dir, projectID+".json"), data, 0644)
-}
-
-func (m *Manager) deleteConnectionFile(projectID string) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return
-	}
-	os.Remove(filepath.Join(home, ".loop", "extensions", projectID+".json"))
-}
-
-func isAlive(pid int) bool {
-	if pid <= 0 {
-		return false
-	}
-	proc, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	return proc.Signal(syscall.Signal(0)) == nil
-}
 
 func isHTTPAlive(baseURL string) bool {
 	cl := &http.Client{Timeout: time.Second}

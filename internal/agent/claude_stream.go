@@ -1,0 +1,279 @@
+// Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
+
+package agent
+
+import (
+	"encoding/json"
+	"strings"
+)
+
+type claudeStreamParser struct {
+	emittedText      bool
+	seenToolStarts   map[string]bool
+	seenToolEnds     map[string]bool
+	seenToolResults  map[string]bool
+	blocks           map[int]*claudeBlockState
+}
+
+type claudeBlockState struct {
+	kind     string
+	toolID   string
+	toolName string
+	args     strings.Builder
+}
+
+func newClaudeStreamParser() *claudeStreamParser {
+	return &claudeStreamParser{
+		seenToolStarts:  map[string]bool{},
+		seenToolEnds:    map[string]bool{},
+		seenToolResults: map[string]bool{},
+		blocks:          map[int]*claudeBlockState{},
+	}
+}
+
+func (p *claudeStreamParser) handleLine(line []byte, events chan<- Event) {
+	if len(line) == 0 {
+		return
+	}
+
+	var envelope struct {
+		Type             string          `json:"type"`
+		Event            json.RawMessage `json:"event"`
+		SessionID        string          `json:"session_id"`
+		IsError          bool            `json:"is_error"`
+		ErrMsg           string          `json:"error"`
+		ParentToolUseID  string          `json:"parent_tool_use_id"`
+		ToolUseResult    json.RawMessage `json:"tool_use_result"`
+		Message          json.RawMessage `json:"message"`
+	}
+	if err := json.Unmarshal(line, &envelope); err != nil {
+		return
+	}
+
+	switch envelope.Type {
+	case "stream_event":
+		p.handleStreamEvent(envelope.Event, events)
+	case "assistant":
+		p.handleAssistant(envelope.Message, events)
+	case "user":
+		p.handleUser(envelope.ParentToolUseID, envelope.ToolUseResult, envelope.Message, events)
+	case "result":
+		if envelope.IsError {
+			events <- Event{Type: EventError, Error: envelope.ErrMsg}
+		} else {
+			events <- Event{Type: EventDone, SessionID: envelope.SessionID}
+		}
+	}
+}
+
+func (p *claudeStreamParser) handleStreamEvent(raw json.RawMessage, events chan<- Event) {
+	var ev struct {
+		Type  string `json:"type"`
+		Index int    `json:"index"`
+		Delta struct {
+			Type        string `json:"type"`
+			Text        string `json:"text"`
+			PartialJSON string `json:"partial_json"`
+		} `json:"delta"`
+		ContentBlock struct {
+			Type string `json:"type"`
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"content_block"`
+	}
+	if err := json.Unmarshal(raw, &ev); err != nil {
+		return
+	}
+
+	switch ev.Type {
+	case "content_block_delta":
+		if ev.Delta.Type == "text_delta" && ev.Delta.Text != "" {
+			p.emittedText = true
+			events <- Event{Type: EventText, Content: ev.Delta.Text}
+		}
+	case "content_block_start":
+		block := ev.ContentBlock
+		if block.Type != "tool_use" || block.ID == "" {
+			return
+		}
+		p.blocks[ev.Index] = &claudeBlockState{
+			kind:     "tool_use",
+			toolID:   block.ID,
+			toolName: block.Name,
+		}
+		if p.seenToolStarts[block.ID] {
+			return
+		}
+		p.seenToolStarts[block.ID] = true
+		events <- Event{
+			Type:       EventToolCallStart,
+			ToolCallID: block.ID,
+			ToolName:   block.Name,
+		}
+	case "content_block_stop":
+		state, ok := p.blocks[ev.Index]
+		if !ok || state.kind != "tool_use" {
+			delete(p.blocks, ev.Index)
+			return
+		}
+		args := state.args.String()
+		if args != "" {
+			events <- Event{
+				Type:       EventToolCallArgs,
+				ToolCallID: state.toolID,
+				ToolArgs:   args,
+			}
+		}
+		if !p.seenToolEnds[state.toolID] {
+			p.seenToolEnds[state.toolID] = true
+			events <- Event{
+				Type:       EventToolCallEnd,
+				ToolCallID: state.toolID,
+				ToolName:   state.toolName,
+				ToolArgs:   args,
+			}
+		}
+		delete(p.blocks, ev.Index)
+	}
+
+	if ev.Type == "content_block_delta" && ev.Delta.Type == "input_json_delta" && ev.Delta.PartialJSON != "" {
+		if state, ok := p.blocks[ev.Index]; ok && state.kind == "tool_use" {
+			state.args.WriteString(ev.Delta.PartialJSON)
+		}
+	}
+}
+
+func (p *claudeStreamParser) handleAssistant(raw json.RawMessage, events chan<- Event) {
+	var msg struct {
+		Content []json.RawMessage `json:"content"`
+	}
+	if err := json.Unmarshal(raw, &msg); err != nil {
+		return
+	}
+
+	for _, blockRaw := range msg.Content {
+		var blockType struct {
+			Type string `json:"type"`
+		}
+		if err := json.Unmarshal(blockRaw, &blockType); err != nil {
+			continue
+		}
+
+		switch blockType.Type {
+		case "text":
+			var block struct {
+				Text string `json:"text"`
+			}
+			if json.Unmarshal(blockRaw, &block) == nil && block.Text != "" && !p.emittedText {
+				events <- Event{Type: EventText, Content: block.Text}
+			}
+		case "tool_use":
+			var block struct {
+				ID    string         `json:"id"`
+				Name  string         `json:"name"`
+				Input map[string]any `json:"input"`
+			}
+			if err := json.Unmarshal(blockRaw, &block); err != nil || block.ID == "" {
+				continue
+			}
+			argsJSON, _ := json.Marshal(block.Input)
+			argsStr := string(argsJSON)
+			if !p.seenToolStarts[block.ID] {
+				p.seenToolStarts[block.ID] = true
+				events <- Event{
+					Type:       EventToolCallStart,
+					ToolCallID: block.ID,
+					ToolName:   block.Name,
+				}
+				events <- Event{
+					Type:       EventToolCallArgs,
+					ToolCallID: block.ID,
+					ToolArgs:   argsStr,
+				}
+			}
+			if !p.seenToolEnds[block.ID] {
+				p.seenToolEnds[block.ID] = true
+				events <- Event{
+					Type:       EventToolCallEnd,
+					ToolCallID: block.ID,
+					ToolName:   block.Name,
+					ToolArgs:   argsStr,
+				}
+			}
+		case "image":
+			emitImageEvents(blockRaw, events)
+		}
+	}
+}
+
+func (p *claudeStreamParser) handleUser(parentToolUseID string, toolUseResult json.RawMessage, messageRaw json.RawMessage, events chan<- Event) {
+	toolUseID := parentToolUseID
+	if toolUseID == "" {
+		toolUseID = toolUseIDFromMessage(messageRaw)
+	}
+	if toolUseID != "" && len(toolUseResult) > 0 && toolUseResult[0] != 'n' {
+		p.emitToolResult(toolUseID, toolUseResult, events)
+		emitImageEvents(toolUseResult, events)
+	}
+
+	var msg struct {
+		Content json.RawMessage `json:"content"`
+	}
+	if err := json.Unmarshal(messageRaw, &msg); err != nil {
+		return
+	}
+	var blocks []json.RawMessage
+	if err := json.Unmarshal(msg.Content, &blocks); err != nil {
+		return
+	}
+	for _, blockRaw := range blocks {
+		var block struct {
+			Type      string          `json:"type"`
+			ToolUseID string          `json:"tool_use_id"`
+			Content   json.RawMessage `json:"content"`
+		}
+		if err := json.Unmarshal(blockRaw, &block); err != nil {
+			continue
+		}
+		if block.Type != "tool_result" || block.ToolUseID == "" {
+			continue
+		}
+		p.emitToolResult(block.ToolUseID, block.Content, events)
+		emitImageEvents(block.Content, events)
+	}
+}
+
+func (p *claudeStreamParser) emitToolResult(toolUseID string, result json.RawMessage, events chan<- Event) {
+	if p.seenToolResults[toolUseID] {
+		return
+	}
+	p.seenToolResults[toolUseID] = true
+	events <- Event{
+		Type:       EventToolCallResult,
+		ToolCallID: toolUseID,
+		Content:    string(result),
+	}
+}
+
+func toolUseIDFromMessage(messageRaw json.RawMessage) string {
+	var msg struct {
+		Content json.RawMessage `json:"content"`
+	}
+	if err := json.Unmarshal(messageRaw, &msg); err != nil {
+		return ""
+	}
+	var blocks []json.RawMessage
+	if err := json.Unmarshal(msg.Content, &blocks); err != nil {
+		return ""
+	}
+	for _, blockRaw := range blocks {
+		var block struct {
+			Type      string `json:"type"`
+			ToolUseID string `json:"tool_use_id"`
+		}
+		if json.Unmarshal(blockRaw, &block) == nil && block.Type == "tool_result" && block.ToolUseID != "" {
+			return block.ToolUseID
+		}
+	}
+	return ""
+}

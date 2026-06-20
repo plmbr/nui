@@ -63,18 +63,21 @@ func detectBwrap() BwrapStatus {
 }
 
 // WrapWithBwrap returns the bwrap binary and args that sandbox bin+args under workDir.
-// workDir and ~/.claude are bind-mounted read-write; everything else is read-only.
-// Network access is preserved so the claude CLI can reach Anthropic's API.
-func WrapWithBwrap(bwrapPath, bin string, args []string, workDir string) (string, []string) {
+// workDir and ~/<homeSubdir> are bind-mounted read-write; everything else is read-only.
+// Network access is preserved so harness CLIs can reach their APIs.
+func WrapWithBwrap(bwrapPath, bin string, args []string, workDir, homeSubdir string) (string, []string) {
 	if workDir == "" {
 		if wd, err := os.Getwd(); err == nil {
 			workDir = wd
 		}
 	}
+	if homeSubdir == "" {
+		homeSubdir = ".claude"
+	}
 
 	home, _ := os.UserHomeDir()
-	claudeDir := filepath.Join(home, ".claude")
-	os.MkdirAll(claudeDir, 0700) //nolint:errcheck
+	configDir := filepath.Join(home, homeSubdir)
+	os.MkdirAll(configDir, 0700) //nolint:errcheck
 
 	bwrapArgs := []string{
 		"--unshare-user",
@@ -86,7 +89,7 @@ func WrapWithBwrap(bwrapPath, bin string, args []string, workDir string) (string
 		"--dev", "/dev",
 		"--tmpfs", "/tmp",
 		"--die-with-parent",
-		"--bind", claudeDir, claudeDir,
+		"--bind", configDir, configDir,
 	}
 
 	if workDir != "" {

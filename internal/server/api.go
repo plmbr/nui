@@ -373,8 +373,8 @@ func sessionHarnessType(session model.Session) string {
 	return "claude-code"
 }
 
-// prewarmExtensionType returns the local Python extension script key for a session,
-// or "" if the session uses docker, remote, or an inline Go harness.
+// prewarmExtensionType returns the in-process harness key for a session,
+// or "" if the session uses docker, remote, or an unsupported harness.
 func prewarmExtensionType(sessionAgentType string) string {
 	if def, ok := findADLDef(sessionAgentType); ok {
 		h := def.Harness
