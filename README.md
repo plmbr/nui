@@ -73,10 +73,11 @@ loop ui -p 3000      # shorthand
 | `/` | React SPA |
 | `/assets/*` | Static assets (embedded from `ui/dist`) |
 | `/health` | JSON health check |
-| `GET/POST /api/projects` | List / create projects |
-| `GET/PATCH/DELETE /api/projects/:id` | Get / rename / delete a project |
-| `POST /api/projects/:id/chat` | SSE stream — runs the agent |
-| `GET /api/projects/:id/history` | Load chat history from Claude session file |
+| `GET/POST /api/sessions` | List / create sessions |
+| `GET/PATCH/DELETE /api/sessions/:id` | Get / rename / delete a session |
+| `GET/PUT /api/sessions/:id/messages` | Read / replace UI chat messages |
+| `POST /api/sessions/:id/chat` | SSE stream — runs the agent |
+| `GET /api/sessions/:id/history` | Load chat history from the agent session file |
 | `GET /api/agent-types` | List available agent types |
 | `GET/PUT /api/settings` | Read / write theme setting |
 
