@@ -30,6 +30,11 @@ export function ChatPanel({ session, initialPrompt, hideInput }: Props) {
   }, [session.id, hideInput])
 
   useEffect(() => {
+    if (hideInput || isRunning) return
+    inputRef.current?.focus()
+  }, [isRunning, hideInput])
+
+  useEffect(() => {
     if (!initialPrompt || initialPromptSentRef.current || isLoading || isRunning) return
     if (messages.length > 0) return
     initialPromptSentRef.current = true
