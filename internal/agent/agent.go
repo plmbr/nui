@@ -34,6 +34,7 @@ type RunRequest struct {
 	WorkingDir   string
 	Message      string
 	SystemPrompt string
+	Model        string
 }
 
 type Agent interface {

@@ -157,6 +157,12 @@ func (a *ExtensionAgent) Run(ctx context.Context, req RunRequest, events chan<- 
 	if req.WorkingDir != "" {
 		params["workingDir"] = req.WorkingDir
 	}
+	if req.SystemPrompt != "" {
+		params["systemPrompt"] = req.SystemPrompt
+	}
+	if req.Model != "" {
+		params["model"] = req.Model
+	}
 
 	rpcReq, _ := json.Marshal(map[string]any{
 		"jsonrpc": "2.0",
@@ -257,6 +263,9 @@ func (a *HTTPExtensionAgent) Run(ctx context.Context, req RunRequest, events cha
 	}
 	if req.SystemPrompt != "" {
 		params["systemPrompt"] = req.SystemPrompt
+	}
+	if req.Model != "" {
+		params["model"] = req.Model
 	}
 
 	body, _ := json.Marshal(params)

@@ -15,7 +15,6 @@ type ADLAgent struct {
 	def       model.ADLDefinition
 	projectID string
 	manager   *Manager
-	claude    *ClaudeCodeAgent
 	codex     *CodexAgent
 }
 
@@ -27,10 +26,6 @@ func (a *ADLAgent) Name() string { return "adl:" + a.def.Name }
 
 func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event) error {
 	defer func() {
-		if a.claude != nil {
-			a.claude.Stop()
-			a.claude = nil
-		}
 		if a.codex != nil {
 			a.codex.Stop()
 			a.codex = nil
@@ -92,6 +87,7 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 // runStep resolves the harness and runs the agent for a single step.
 func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.ADLHarness, systemPrompt string, events chan<- Event) error {
 	req.SystemPrompt = systemPrompt
+	req.Model = harness.Model
 
 	switch harness.Type {
 	case "claude-code", "":
@@ -103,14 +99,17 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 			}
 			return ag.Run(ctx, req, events)
 		default:
-			// "none", "bubblewrap", or "" (auto-detect legacy)
-			if a.claude == nil || a.claude.Model != harness.Model || a.claude.Sandbox != harness.Sandbox {
-				if a.claude != nil {
-					a.claude.Stop()
+			if harness.Sandbox == "bubblewrap" {
+				bwrap := GetBwrapStatus()
+				if !bwrap.Available {
+					return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
 				}
-				a.claude = &ClaudeCodeAgent{Model: harness.Model, Sandbox: harness.Sandbox}
 			}
-			return a.claude.Run(ctx, req, events)
+			ag, err := a.manager.GetAgent(a.projectID, "claude-code", req.WorkingDir, nil)
+			if err != nil {
+				return fmt.Errorf("claude-code harness: %w", err)
+			}
+			return ag.Run(ctx, req, events)
 		}
 
 	case "pi":

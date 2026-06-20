@@ -153,6 +153,13 @@ func (s *persistentCodexSession) buildArgs(agent *CodexAgent, req RunRequest) []
 	return args
 }
 
+func processAlive(cmd *exec.Cmd) bool {
+	if cmd == nil || cmd.Process == nil || cmd.ProcessState != nil {
+		return false
+	}
+	return cmd.Process.Signal(syscall.Signal(0)) == nil
+}
+
 func (s *persistentCodexSession) ensureIdle() error {
 	if s.cmd == nil || !processAlive(s.cmd) {
 		return nil
