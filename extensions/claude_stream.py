@@ -7,7 +7,7 @@ from typing import Any, Generator, Iterator
 
 
 def parse_claude_stream(lines: Iterator[str]) -> Generator[dict[str, Any], None, None]:
-    parser = _ClaudeStreamParser()
+    parser = new_claude_stream_parser()
     for line in lines:
         line = line.strip()
         if not line:
@@ -17,6 +17,10 @@ def parse_claude_stream(lines: Iterator[str]) -> Generator[dict[str, Any], None,
         except json.JSONDecodeError:
             continue
         yield from parser.handle_envelope(envelope)
+
+
+def new_claude_stream_parser() -> "_ClaudeStreamParser":
+    return _ClaudeStreamParser()
 
 
 class _ClaudeStreamParser:

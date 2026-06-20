@@ -7,12 +7,11 @@ Auth credentials are provided via the ~/.claude volume mount.
 """
 
 import os
-import subprocess
 import sys
 import threading
 
 sys.path.insert(0, "/app")
-from claude_stream import parse_claude_stream
+from claude_session import PersistentClaudeSession
 from http_loop_agent import HttpLoopAgent
 
 
@@ -23,49 +22,26 @@ class ClaudeCodeAgent(HttpLoopAgent):
     def __init__(self):
         self._sessions: dict[str, str] = {}
         self._lock = threading.Lock()
+        self._claude = PersistentClaudeSession()
 
     def run(self, message: str, run_id: str, **kwargs):
         session_id = kwargs.get("sessionId", "")
         working_dir = kwargs.get("workingDir", "") or os.getcwd()
+        model = kwargs.get("model", "")
+        system_prompt = kwargs.get("systemPrompt", "")
 
-        args = [
-            "claude", "-p", message,
-            "--output-format", "stream-json",
-            "--verbose",
-            "--dangerously-skip-permissions",
-            "--include-partial-messages",
-        ]
-        if session_id:
-            args += ["--resume", session_id]
-        if "systemPrompt" in kwargs:
-            args += ["--system-prompt", kwargs["systemPrompt"]]
-
-        proc = subprocess.Popen(
-            args,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            cwd=working_dir,
-            start_new_session=True,
-        )
-
-        def drain_stderr():
-            for line in proc.stderr:
-                print(f"[claude stderr] {line.decode().rstrip()}", file=sys.stderr, flush=True)
-        threading.Thread(target=drain_stderr, daemon=True).start()
-
-        def stdout_lines():
-            for raw in proc.stdout:
-                yield raw.decode()
-
-        for event in parse_claude_stream(stdout_lines()):
+        latest_session_id = ""
+        for event in self._claude.run_turn(
+            message, working_dir, session_id, model, system_prompt,
+        ):
             if event.get("type") == "session_id":
-                with self._lock:
-                    self._sessions[run_id] = event.get("sessionId") or ""
+                latest_session_id = event.get("sessionId") or ""
                 continue
             yield event
 
-        proc.wait()
+        if latest_session_id:
+            with self._lock:
+                self._sessions[run_id] = latest_session_id
 
     def get_session_id(self, run_id: str) -> str:
         with self._lock:

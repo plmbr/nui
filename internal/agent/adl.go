@@ -15,6 +15,7 @@ type ADLAgent struct {
 	def       model.ADLDefinition
 	projectID string
 	manager   *Manager
+	claude    *ClaudeCodeAgent
 }
 
 func NewADLAgent(def model.ADLDefinition, projectID string, manager *Manager) *ADLAgent {
@@ -91,8 +92,13 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 			return ag.Run(ctx, req, events)
 		default:
 			// "none", "bubblewrap", or "" (auto-detect legacy)
-			ag := &ClaudeCodeAgent{Model: harness.Model, Sandbox: harness.Sandbox}
-			return ag.Run(ctx, req, events)
+			if a.claude == nil || a.claude.Model != harness.Model || a.claude.Sandbox != harness.Sandbox {
+				if a.claude != nil {
+					a.claude.Stop()
+				}
+				a.claude = &ClaudeCodeAgent{Model: harness.Model, Sandbox: harness.Sandbox}
+			}
+			return a.claude.Run(ctx, req, events)
 		}
 
 	case "pi":

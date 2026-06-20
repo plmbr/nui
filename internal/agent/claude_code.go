@@ -3,11 +3,9 @@
 package agent
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"os"
-	"os/exec"
+	"sync"
 )
 
 type ClaudeCodeAgent struct {
@@ -18,100 +16,69 @@ type ClaudeCodeAgent struct {
 	// Sandbox controls sandboxing: "none" disables bwrap, "bubblewrap" forces it,
 	// "" auto-detects (uses bwrap if available — legacy behaviour).
 	Sandbox string
+
+	sessionMu sync.Mutex
+	session   *persistentClaudeSession
 }
 
 func (a *ClaudeCodeAgent) Name() string { return "claude-code" }
 
 func (a *ClaudeCodeAgent) Run(ctx context.Context, req RunRequest, events chan<- Event) error {
-	bin := a.BinaryPath
-	if bin == "" {
-		bin = "claude"
+	if err := a.validateSandbox(); err != nil {
+		return err
 	}
 
-	model := a.Model
-	if model == "" {
-		model = "claude-sonnet-4-6"
+	a.sessionMu.Lock()
+	if a.session == nil {
+		a.session = &persistentClaudeSession{}
 	}
+	sess := a.session
+	a.sessionMu.Unlock()
 
-	args := []string{
-		"-p", req.Message,
-		"--output-format", "stream-json",
-		"--verbose",
-		"--dangerously-skip-permissions",
-		"--include-partial-messages",
-		"--model", model,
-	}
-	if req.SessionID != "" {
-		args = append(args, "--resume", req.SessionID)
-	}
-	if req.SystemPrompt != "" {
-		args = append(args, "--system-prompt", req.SystemPrompt)
-	}
+	return sess.runTurn(ctx, a, req, events)
+}
 
-	var cmd *exec.Cmd
-	useBwrap := false
+func (a *ClaudeCodeAgent) validateSandbox() error {
+	if a.Sandbox != "bubblewrap" {
+		return nil
+	}
+	bwrap := GetBwrapStatus()
+	if !bwrap.Available {
+		return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
+	}
+	return nil
+}
+
+func (a *ClaudeCodeAgent) Stop() {
+	a.sessionMu.Lock()
+	defer a.sessionMu.Unlock()
+	if a.session != nil {
+		a.session.stop()
+		a.session = nil
+	}
+}
+
+func (a *ClaudeCodeAgent) binaryPath() string {
+	if a.BinaryPath != "" {
+		return a.BinaryPath
+	}
+	return "claude"
+}
+
+func (a *ClaudeCodeAgent) modelName() string {
+	if a.Model != "" {
+		return a.Model
+	}
+	return "claude-sonnet-4-6"
+}
+
+func (a *ClaudeCodeAgent) useBwrap() bool {
 	switch a.Sandbox {
 	case "bubblewrap":
-		bwrap := GetBwrapStatus()
-		if !bwrap.Available {
-			return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
-		}
-		useBwrap = true
+		return GetBwrapStatus().Available
 	case "none":
-		useBwrap = false
+		return false
 	default:
-		// Legacy auto-detect: use bwrap when available on the host.
-		useBwrap = GetBwrapStatus().Available
+		return GetBwrapStatus().Available
 	}
-
-	if useBwrap {
-		bwrap := GetBwrapStatus()
-		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, req.WorkingDir)
-		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
-	} else {
-		cmd = exec.CommandContext(ctx, bin, args...)
-		if req.WorkingDir != "" {
-			cmd.Dir = req.WorkingDir
-		}
-	}
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-
-	if err := cmd.Start(); err != nil {
-		fmt.Fprintf(os.Stderr, "[claude] start error: %v\n", err)
-		return err
-	}
-
-	go func() {
-		s := bufio.NewScanner(stderr)
-		for s.Scan() {
-			fmt.Fprintf(os.Stderr, "[claude stderr] %s\n", s.Text())
-		}
-	}()
-
-	parser := newClaudeStreamParser()
-	scanner := bufio.NewScanner(stdout)
-	// 4 MB buffer — claude lines can be large (init message with tool list)
-	scanner.Buffer(make([]byte, 4*1024*1024), 4*1024*1024)
-
-	for scanner.Scan() {
-		parser.handleLine(scanner.Bytes(), events)
-	}
-
-	err = cmd.Wait()
-	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			fmt.Fprintf(os.Stderr, "[claude] exit code %d: %v\n", exitErr.ExitCode(), exitErr)
-		} else {
-			fmt.Fprintf(os.Stderr, "[claude] exit error: %v\n", err)
-		}
-	}
-	return err
 }
