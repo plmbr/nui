@@ -356,7 +356,8 @@
     color: color-mix(in oklch, var(--primary) 55%, transparent);
   }
 
-  .agui-message {
+  .agui-message,
+  .tool-call {
     @apply mx-auto mb-5 max-w-[760px] px-5;
   }
 
@@ -452,7 +453,7 @@
   }
 
   .tool-call {
-    @apply mx-6 my-2 overflow-hidden rounded-[10px] border bg-card;
+    @apply overflow-hidden rounded-[10px] border bg-card;
   }
 
   .tool-call__header {
@@ -501,7 +502,7 @@
   }
 
   .mcp-app-frame iframe {
-    @apply block w-full border-0;
+    @apply block w-full max-w-full border-0;
     min-height: 300px;
   }
 }

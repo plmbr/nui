@@ -86,9 +86,8 @@ export function McpAppFrame({
       return (await res.json()) as any
     }
 
-    bridge.addEventListener('sizechange', ({ height: h, width: w }) => {
+    bridge.addEventListener('sizechange', ({ height: h }) => {
       if (h) setHeight(h)
-      if (w && iframe) iframe.style.width = `${w}px`
     })
 
     bridge.addEventListener('initialized', async () => {
