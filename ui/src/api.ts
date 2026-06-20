@@ -33,6 +33,9 @@ export const api = {
         body: JSON.stringify(data),
       }),
 
+    ensureDefault: (): Promise<Session> =>
+      request('/sessions/ensure-default', { method: 'POST' }),
+
     rename: (id: string, name: string): Promise<Session> =>
       request(`/sessions/${id}`, {
         method: 'PATCH',

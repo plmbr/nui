@@ -136,7 +136,8 @@ UI loads persisted `sessionMessages` first on session select; falls back to agen
 
 Registered in `internal/server/api.go` and `agui.go`:
 
-- `GET/POST /api/sessions` — list / create (docker/remote ADL agents validated on create via `validateSessionConnector`)
+- `GET/POST /api/sessions` — list / create (docker/remote ADL config validated on create; agents start on first message)
+- `POST /api/sessions/ensure-default` — return last session or create one with the default agent
 - `GET/PATCH/DELETE /api/sessions/:id` — get / rename / delete
 - `GET/PUT /api/sessions/:id/messages` — persisted UI messages
 - `POST /api/sessions/:id/ag-ui` — **primary chat endpoint** (AG-UI protocol)

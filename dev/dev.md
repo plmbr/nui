@@ -58,7 +58,7 @@ flowchart TB
 
 4. **Docker/remote via custom ADL.** There is no built-in "Docker" or "Remote" picker in the UI. Users select a custom ADL agent (e.g. `docker-echo` from `~/.loop/agents/docker-echo.yaml`). Loop validates the connector on session create.
 
-5. **CLI launch + UI preferences.** `loop ui --agent-type --prompt --open` creates a session at server start (`bootstrap.go`), saves `lastAgentType` / `lastSessionId` to `settings.json`, and exposes the prompt once via `GET /api/bootstrap`. With `--open`, Loop waits for `/health` then launches the UI in the system default browser (`open` on macOS, `xdg-open` on Linux, `start` on Windows). Sidebar state and last-selected session/agent are also persisted in `settings.json`.
+5. **CLI launch + UI preferences.** `loop ui --agent-type --prompt --open` creates a session at server start (`bootstrap.go`), saves `lastAgentType` / `lastSessionId` to `settings.json`, and exposes the prompt once via `GET /api/bootstrap`. `loop ui --open` (without `--agent-type`) also creates a fresh blank session and selects it via bootstrap instead of resuming `lastSessionId`. With `--open`, Loop waits for `/health` then launches the UI in the system default browser. If no sessions exist at startup, Loop auto-creates one with the default agent. Sidebar state and last-selected session/agent are also persisted in `settings.json`.
 
 ---
 
@@ -260,7 +260,7 @@ Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET/POST` | `/api/sessions` | List / create (docker/remote validated on create) |
+| `GET/POST` | `/api/sessions` | List / create (docker/remote config validated on create; agents start on first message) |
 | `GET/PATCH/DELETE` | `/api/sessions/:id` | Get / rename / delete |
 | `GET/PUT` | `/api/sessions/:id/messages` | Persisted UI messages |
 | `POST` | `/api/sessions/:id/ag-ui` | AG-UI chat stream |

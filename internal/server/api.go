@@ -363,27 +363,42 @@ func validateSessionConnector(s model.Session) error {
 	if def, ok := findADLDef(s.AgentType); ok {
 		switch def.Harness.Type {
 		case "docker":
-			_, err := extensionManager.GetAgent(s.ID, "docker", s.WorkingDir, map[string]any{
-				"image":         def.Harness.Image,
-				"containerPort": def.Harness.ContainerPort,
-			})
-			return err
+			if strings.TrimSpace(def.Harness.Image) == "" {
+				return fmt.Errorf("docker harness requires image")
+			}
+			if def.Harness.ContainerPort <= 0 {
+				return fmt.Errorf("docker harness requires containerPort")
+			}
 		case "remote":
-			_, err := extensionManager.GetAgent(s.ID, "remote", s.WorkingDir, map[string]any{
-				"host": def.Harness.Host,
-				"port": def.Harness.Port,
-			})
-			return err
+			if strings.TrimSpace(def.Harness.Host) == "" {
+				return fmt.Errorf("remote harness requires host")
+			}
+			if def.Harness.Port <= 0 {
+				return fmt.Errorf("remote harness requires port")
+			}
 		}
 		return nil
 	}
 	switch s.AgentType {
-	case "docker", "remote":
-		_, err := extensionManager.GetAgent(s.ID, s.AgentType, s.WorkingDir, s.AgentConfig)
-		return err
-	default:
-		return nil
+	case "docker":
+		if s.AgentConfig == nil {
+			return fmt.Errorf("docker agent requires agentConfig")
+		}
+		image, _ := s.AgentConfig["image"].(string)
+		if strings.TrimSpace(image) == "" {
+			return fmt.Errorf("docker agent requires image in agentConfig")
+		}
+	case "remote":
+		if s.AgentConfig == nil {
+			return fmt.Errorf("remote agent requires agentConfig")
+		}
+		host, _ := s.AgentConfig["host"].(string)
+		port, _ := s.AgentConfig["port"].(float64)
+		if strings.TrimSpace(host) == "" || port <= 0 {
+			return fmt.Errorf("remote agent requires host and port in agentConfig")
+		}
 	}
+	return nil
 }
 
 // sessionHarnessType returns the harness type for a session, used for history and cleanup.
@@ -399,41 +414,6 @@ func sessionHarnessType(session model.Session) string {
 		return "opencode"
 	}
 	return "claude-code"
-}
-
-// prewarmExtensionType returns the in-process harness key for a session,
-// or "" if the session uses docker, remote, or an unsupported harness.
-func prewarmExtensionType(sessionAgentType string) string {
-	if def, ok := findADLDef(sessionAgentType); ok {
-		h := def.Harness
-		if h.Sandbox == "docker" || h.Type == "docker" || h.Type == "remote" {
-			return ""
-		}
-		switch h.Type {
-		case "claude-code", "":
-			return "claude-code"
-		case "pi":
-			return "pi"
-		case "codex":
-			return "codex"
-		case "opencode":
-			return "opencode"
-		default:
-			return ""
-		}
-	}
-	switch sessionAgentType {
-	case "claude-code":
-		return "claude-code"
-	case "pi":
-		return "pi"
-	case "codex":
-		return "codex"
-	case "opencode":
-		return "opencode"
-	default:
-		return ""
-	}
 }
 
 func findSession(id string) (model.Session, bool) {
@@ -469,6 +449,11 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/sessions/")
 	if path == "" {
 		http.NotFound(w, r)
+		return
+	}
+
+	if path == "ensure-default" {
+		handleEnsureDefaultSession(w, r)
 		return
 	}
 

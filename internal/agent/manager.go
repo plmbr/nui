@@ -281,36 +281,6 @@ func (m *Manager) stopBuiltinAgent(projectID string) {
 	}
 }
 
-// isDockerOrRemote returns true for agent types that are launched lazily on first use.
-func isDockerOrRemote(agentType string) bool {
-	switch agentType {
-	case "docker", "docker-claude", "docker-pi", "docker-opencode", "remote":
-		return true
-	}
-	return false
-}
-
-// PrewarmSessions eagerly creates in-process harness agents. Docker and remote
-// agents are skipped — they start lazily when a session is first used.
-func (m *Manager) PrewarmSessions(sessions []PrewarmEntry) {
-	for _, s := range sessions {
-		go func(e PrewarmEntry) {
-			if strings.HasPrefix(e.AgentType, "adl:") || isDockerOrRemote(e.AgentType) {
-				return
-			}
-			m.GetAgent(e.SessionID, e.AgentType, e.WorkingDir, e.AgentConfig) //nolint:errcheck
-		}(s)
-	}
-}
-
-// PrewarmEntry holds the session ID, agent type, working dir, and config for prewarming.
-type PrewarmEntry struct {
-	SessionID   string
-	AgentType   string
-	WorkingDir  string
-	AgentConfig map[string]any
-}
-
 // Stop terminates the in-process harness agent or Docker container for a specific project.
 func (m *Manager) Stop(projectID string) {
 	m.stopBuiltinAgent(projectID)

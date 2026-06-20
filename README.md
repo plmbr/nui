@@ -104,7 +104,7 @@ cd ui && npm run build && cd .. && go build -o loop_bin . && ./loop_bin ui
 loop ui              # start web server on :8080
 loop ui --port 3000  # custom port
 loop ui -p 3000      # shorthand
-loop ui --open       # open http://localhost:8080 in the default browser
+loop ui --open       # open http://localhost:8080 with a new blank session
 ```
 
 ### Launch an agent from the CLI
@@ -118,9 +118,9 @@ loop ui -a pi -m "Summarize this repo" -w ~/my/project --open
 
 | Flag | Short | Description |
 |---|---|---|
-| `--open` | | Open the web UI in the system default browser once the server is ready |
-| `--agent-type` | `-a` | ADL agent name (builtin or `~/.loop/agents/*.yaml`). Creates a new session on startup. |
-| `--prompt` | `-m` | Initial prompt. The UI selects the new session, fills the input, and auto-sends it. |
+| `--open` | | Open the web UI in the system default browser. Creates a new blank session with the default agent and selects it (instead of resuming the last session). |
+| `--agent-type` | `-a` | ADL agent name (builtin or `~/.loop/agents/*.yaml`). Creates a new session on startup and starts with the sidebar closed. |
+| `--prompt` | `-m` | Initial prompt. The UI selects the new session, fills the input, and auto-sends it. Also starts with the sidebar closed. |
 | `--working-dir` | `-w` | Working directory for the session (defaults to the current directory). |
 
 Agent type names match the New Session dialog — e.g. `Claude Code`, `pi`, `codex`, `opencode`, or a custom ADL name like `docker-echo`. Legacy aliases such as `claude-code` also work.
@@ -131,6 +131,8 @@ On startup Loop:
 2. Saves `lastAgentType` and `lastSessionId` to `~/.loop/settings.json`
 3. Exposes the prompt once via `GET /api/bootstrap` for the UI to consume
 
+If no sessions exist when the server starts (and `--agent-type` was not passed), Loop automatically creates one using `lastAgentType` from settings, or the first available built-in agent (`Claude Code`, `pi`, `codex`, or `opencode`).
+
 ### User preferences
 
 Stored in `~/.loop/settings.json` and restored on reload:
@@ -140,7 +142,7 @@ Stored in `~/.loop/settings.json` and restored on reload:
 | `theme` | Settings sheet toggle | Light/dark theme |
 | `lastAgentType` | Session create (UI or CLI) | Default in New Session dialog |
 | `lastSessionId` | Session selection | Auto-select on startup (if session still exists) |
-| `sidebarOpen` | Sidebar toggle | Sidebar expanded/collapsed state |
+| `sidebarOpen` | Sidebar toggle | Sidebar expanded/collapsed state (offcanvas — no gutter when closed) |
 
 `PUT /api/settings` accepts partial updates — send only the fields you want to change.
 
@@ -152,6 +154,7 @@ Stored in `~/.loop/settings.json` and restored on reload:
 | `/assets/*` | Static assets (embedded from `ui/dist`) |
 | `/health` | JSON health check |
 | `GET/POST /api/sessions` | List / create sessions |
+| `POST /api/sessions/ensure-default` | Return or create the default session |
 | `GET/PATCH/DELETE /api/sessions/:id` | Get / rename / delete a session |
 | `GET/PUT /api/sessions/:id/messages` | Read / replace persisted UI messages |
 | `POST /api/sessions/:id/ag-ui` | **Primary chat** — AG-UI SSE stream |
@@ -198,6 +201,6 @@ For `claude-code`, `pi`, `codex`, and `opencode` (set in ADL `harness.sandbox`):
 
 ### Docker / remote connectors
 
-Custom ADL agents with `harness.type: docker` or `remote` use the HTTP/SSE protocol. Loop validates reachability on session create, then calls `POST /run` for each message. See [extension examples](dev/extension-examples/).
+Custom ADL agents with `harness.type: docker` or `remote` use the HTTP/SSE protocol. Loop validates connector configuration on session create; containers and remote connections start on the first message. See [extension examples](dev/extension-examples/).
 
 **Port note:** builtin sandbox images in `docker/` listen on **8090**; user extension examples use **9090** (configured via ADL `containerPort`).

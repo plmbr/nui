@@ -31,13 +31,16 @@ export default function App() {
     initializedRef.current = true
 
     async function init() {
-      const [list, settings, bootstrap] = await Promise.all([
+      let [list, settings, bootstrap] = await Promise.all([
         loadSessions(),
         api.settings.get().catch(() => ({ theme: 'light' as const })),
         api.bootstrap.get().catch(() => ({})),
       ])
 
-      if (settings.sidebarOpen !== undefined) {
+      if (bootstrap.sidebarOpen !== undefined) {
+        setSidebarOpen(bootstrap.sidebarOpen)
+        api.settings.update({ sidebarOpen: bootstrap.sidebarOpen }).catch(() => {})
+      } else if (settings.sidebarOpen !== undefined) {
         setSidebarOpen(settings.sidebarOpen)
       }
 
@@ -45,6 +48,20 @@ export default function App() {
       if (nextId && !list.some((s) => s.id === nextId)) {
         nextId = null
       }
+
+      if (!nextId) {
+        try {
+          const session = await api.sessions.ensureDefault()
+          list = await loadSessions()
+          nextId = session.id
+        } catch {
+          if (list.length > 0) {
+            nextId = list[0].id
+          }
+        }
+      }
+
+      setSessions(list)
       setSelectedId(nextId)
 
       if (bootstrap.initialPrompt && nextId) {

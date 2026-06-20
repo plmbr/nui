@@ -37,20 +37,7 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 		return fmt.Errorf("bootstrap session: %w", err)
 	}
 
-	mu.RLock()
-	entries := make([]agent.PrewarmEntry, 0, len(sessions))
-	for _, s := range sessions {
-		if extType := prewarmExtensionType(s.AgentType); extType != "" {
-			entries = append(entries, agent.PrewarmEntry{
-				SessionID:   s.ID,
-				AgentType:   extType,
-				WorkingDir:  s.WorkingDir,
-				AgentConfig: s.AgentConfig,
-			})
-		}
-	}
-	mu.RUnlock()
-	extensionManager.PrewarmSessions(entries)
+	ensureDefaultSession()
 
 	registerAPIRoutes(mux)
 	registerMCPRoutes(mux)

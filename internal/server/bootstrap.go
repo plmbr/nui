@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"loop/internal/agent"
 	"loop/internal/model"
 	"loop/internal/store"
 
@@ -27,6 +28,7 @@ type StartOptions struct {
 type bootstrapState struct {
 	SessionID     string `json:"sessionId,omitempty"`
 	InitialPrompt string `json:"initialPrompt,omitempty"`
+	SidebarOpen   *bool  `json:"sidebarOpen,omitempty"`
 }
 
 var (
@@ -34,11 +36,20 @@ var (
 	bootstrap   bootstrapState
 )
 
-func setBootstrap(sessionID, prompt string) {
+func setBootstrap(sessionID, prompt string, sidebarOpen *bool) {
 	bootstrapMu.Lock()
 	bootstrap.SessionID = sessionID
 	bootstrap.InitialPrompt = prompt
+	bootstrap.SidebarOpen = sidebarOpen
 	bootstrapMu.Unlock()
+}
+
+func cliLaunchSidebarOpen(opts StartOptions) *bool {
+	if strings.TrimSpace(opts.AgentType) != "" || strings.TrimSpace(opts.Prompt) != "" {
+		closed := false
+		return &closed
+	}
+	return nil
 }
 
 func takeBootstrap() bootstrapState {
@@ -57,48 +68,162 @@ func handleBootstrap(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, takeBootstrap())
 }
 
-// bootstrapFromCLI creates a session when loop ui is started with --agent-type.
+// bootstrapFromCLI creates a session from CLI flags and exposes it to the UI via bootstrap.
 func bootstrapFromCLI(opts StartOptions) error {
 	agentType := strings.TrimSpace(opts.AgentType)
-	if agentType == "" {
+	if agentType != "" {
+		def, ok := findADLDef(agentType)
+		if !ok {
+			return fmt.Errorf("unknown agent type %q", agentType)
+		}
+
+		workingDir := strings.TrimSpace(opts.WorkingDir)
+		if workingDir == "" {
+			if cwd, err := os.Getwd(); err == nil {
+				workingDir = cwd
+			}
+		}
+
+		s, err := createSession(def.Name, workingDir, def.Name, nil)
+		if err != nil {
+			return err
+		}
+
+		setBootstrap(s.ID, strings.TrimSpace(opts.Prompt), cliLaunchSidebarOpen(opts))
+
+		settings, err := store.LoadSettings()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warn: load settings for bootstrap: %v\n", err)
+			settings = store.Settings{Theme: "light"}
+		}
+		saveSessionPreferences(def.Name, s.ID, settings)
+
+		fmt.Fprintf(os.Stderr, "Created session %q (%s) with agent %s\n", s.Name, s.ID, def.Name)
 		return nil
 	}
 
-	def, ok := findADLDef(agentType)
-	if !ok {
-		return fmt.Errorf("unknown agent type %q", agentType)
+	if !opts.Open {
+		return nil
 	}
 
-	workingDir := strings.TrimSpace(opts.WorkingDir)
-	if workingDir == "" {
-		if cwd, err := os.Getwd(); err == nil {
-			workingDir = cwd
+	s, err := createDefaultSession()
+	if err != nil {
+		return fmt.Errorf("create session for --open: %w", err)
+	}
+	setBootstrap(s.ID, "", nil)
+	return nil
+}
+
+// ensureDefaultSession creates a session when none exist, using the preferred default agent.
+func ensureDefaultSession() {
+	mu.RLock()
+	count := len(sessions)
+	mu.RUnlock()
+	if count > 0 {
+		return
+	}
+	if _, err := createDefaultSession(); err != nil {
+		fmt.Fprintf(os.Stderr, "warn: %v\n", err)
+	}
+}
+
+func handleEnsureDefaultSession(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	s, err := getOrCreateDefaultSession()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+	writeJSON(w, http.StatusOK, s)
+}
+
+func getOrCreateDefaultSession() (model.Session, error) {
+	settings, err := store.LoadSettings()
+	if err != nil {
+		settings = store.Settings{Theme: "light"}
+	}
+
+	mu.RLock()
+	if len(sessions) == 0 {
+		mu.RUnlock()
+		return createDefaultSession()
+	}
+	if settings.LastSessionID != "" {
+		for _, s := range sessions {
+			if s.ID == settings.LastSessionID {
+				mu.RUnlock()
+				return s, nil
+			}
+		}
+	}
+	s := sessions[0]
+	mu.RUnlock()
+	saveSessionPreferences(s.AgentType, s.ID, settings)
+	return s, nil
+}
+
+func createDefaultSession() (model.Session, error) {
+	workingDir := ""
+	if cwd, err := os.Getwd(); err == nil {
+		workingDir = cwd
+	}
+
+	for _, agentType := range defaultAgentTypeCandidates() {
+		s, err := createSession(agentType, workingDir, agentType, nil)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warn: could not create default session with %s: %v\n", agentType, err)
+			continue
+		}
+
+		settings, loadErr := store.LoadSettings()
+		if loadErr != nil {
+			settings = store.Settings{Theme: "light"}
+		}
+		saveSessionPreferences(agentType, s.ID, settings)
+
+		fmt.Fprintf(os.Stderr, "Created default session %q (%s) with agent %s\n", s.Name, s.ID, agentType)
+		return s, nil
+	}
+
+	return model.Session{}, fmt.Errorf("no agent type available for default session")
+}
+
+func defaultAgentTypeCandidates() []string {
+	settings, _ := store.LoadSettings()
+
+	var candidates []string
+	seen := map[string]bool{}
+
+	if settings.LastAgentType != "" {
+		if def, ok := findADLDef(settings.LastAgentType); ok {
+			candidates = append(candidates, def.Name)
+			seen[def.Name] = true
 		}
 	}
 
-	s, err := createSession(def.Name, workingDir, def.Name, nil)
-	if err != nil {
-		return err
+	for _, def := range builtinAgentDefs {
+		if seen[def.Name] || !agent.CLIAvailable(def.Harness.Type) {
+			continue
+		}
+		candidates = append(candidates, def.Name)
+		seen[def.Name] = true
 	}
 
-	prompt := strings.TrimSpace(opts.Prompt)
-	if prompt != "" {
-		setBootstrap(s.ID, prompt)
+	if len(candidates) == 0 && len(builtinAgentDefs) > 0 {
+		candidates = append(candidates, builtinAgentDefs[0].Name)
 	}
+	return candidates
+}
 
-	settings, err := store.LoadSettings()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "warn: load settings for bootstrap: %v\n", err)
-		settings = store.Settings{Theme: "light"}
-	}
-	settings.LastAgentType = def.Name
-	settings.LastSessionID = s.ID
+func saveSessionPreferences(agentType, sessionID string, settings store.Settings) {
+	settings.LastAgentType = agentType
+	settings.LastSessionID = sessionID
 	if err := store.SaveSettings(settings); err != nil {
-		fmt.Fprintf(os.Stderr, "warn: save settings after bootstrap: %v\n", err)
+		fmt.Fprintf(os.Stderr, "warn: save settings after session create: %v\n", err)
 	}
-
-	fmt.Fprintf(os.Stderr, "Created session %q (%s) with agent %s\n", s.Name, s.ID, def.Name)
-	return nil
 }
 
 func createSession(name, workingDir, agentType string, agentConfig map[string]any) (model.Session, error) {
@@ -119,7 +244,6 @@ func createSession(name, workingDir, agentType string, agentConfig map[string]an
 		CreatedAt:   time.Now().UTC().Format(time.RFC3339),
 	}
 	if err := validateSessionConnector(s); err != nil {
-		extensionManager.Stop(s.ID)
 		return model.Session{}, err
 	}
 

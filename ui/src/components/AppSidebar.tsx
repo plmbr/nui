@@ -168,7 +168,7 @@ export function AppSidebar({ sessions, selectedId, onSelect, onRefresh, onRename
 
   return (
     <>
-      <Sidebar collapsible="icon" className="pt-12">
+      <Sidebar collapsible="offcanvas" className="pt-12">
         <SidebarHeader className="p-3">
           <Button
             variant="secondary"
