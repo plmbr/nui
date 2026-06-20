@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm'
 import 'highlight.js/styles/github-dark.css'
 import { ToolCallBubble } from '@/components/ToolCallBubble'
 import { imageSrc, useSessionChat } from '@/hooks/useSessionChat'
+import { normalizeMarkdown, stripInlineCodeDelimiters } from '@/lib/markdown'
 import type { Session } from '@/types'
 
 interface Props {
@@ -79,6 +80,22 @@ export function ChatPanel({ session }: Props) {
                       remarkPlugins={[remarkGfm]}
                       rehypePlugins={[rehypeHighlight]}
                       components={{
+                        code: ({ className, children, ...props }) => {
+                          const isBlock = className?.includes('language-')
+                          if (isBlock) {
+                            return (
+                              <code className={className} {...props}>
+                                {children}
+                              </code>
+                            )
+                          }
+                          const text = stripInlineCodeDelimiters(String(children ?? ''))
+                          return (
+                            <code className="agui-inline-code" {...props}>
+                              {text}
+                            </code>
+                          )
+                        },
                         img: ({ src, alt }) => (
                           <img
                             src={src}
@@ -89,7 +106,7 @@ export function ChatPanel({ session }: Props) {
                         ),
                       }}
                     >
-                      {msg.content || (isRunning ? '▋' : '')}
+                      {normalizeMarkdown(msg.content) || (isRunning ? '▋' : '')}
                     </ReactMarkdown>
                   </>
                 ) : (

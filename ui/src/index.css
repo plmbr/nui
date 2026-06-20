@@ -250,13 +250,27 @@
 
 /* Prose inline code: remove typography plugin's backtick pseudo-elements, add pill background */
 .prose :where(code):not(:where([class~="not-prose"],[class~="not-prose"] *))::before,
-.prose :where(code):not(:where([class~="not-prose"],[class~="not-prose"] *))::after {
+.prose :where(code):not(:where([class~="not-prose"],[class~="not-prose"] *))::after,
+.agui-message--assistant .agui-message__bubble :where(code:not(pre code))::before,
+.agui-message--assistant .agui-message__bubble :where(code:not(pre code))::after,
+.agui-inline-code::before,
+.agui-inline-code::after {
   content: none !important;
 }
 .prose :where(code):not(:where([class~="not-prose"],[class~="not-prose"] *)) {
   background-color: color-mix(in srgb, currentColor 12%, transparent);
   padding: 0.1em 0.35em;
   border-radius: 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.875em;
+}
+
+.agui-inline-code {
+  background-color: color-mix(in srgb, currentColor 12%, transparent);
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.875em;
 }
 
 @layer components {
