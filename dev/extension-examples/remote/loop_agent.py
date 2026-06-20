@@ -4,7 +4,8 @@ Loop extension framework — HTTP/SSE variant for Docker and remote agents.
 Exposes three endpoints:
   GET  /info   — agent metadata (name, version, capabilities)
   POST /run    — run the agent; returns text/event-stream SSE
-  POST /cancel — cancel a running run (best-effort)
+  POST /cancel   — cancel a running run (best-effort)
+  POST /shutdown — stop the server and release resources
 
 Usage in a Dockerfile:
     CMD ["python3", "my_agent.py", "--port", "9090"]
@@ -48,6 +49,9 @@ class LoopAgent:
     def on_cancel(self, run_id: str) -> None:
         """Called when Loop sends POST /cancel."""
 
+    def on_shutdown(self) -> None:
+        """Called before the HTTP server exits."""
+
     def get_session_id(self, run_id: str) -> str:
         """Return session ID to include in the done event. Override if needed."""
         return ""
@@ -63,6 +67,12 @@ class LoopAgent:
         agent = self
         cancel_events: dict[str, threading.Event] = {}
         cancel_lock = threading.Lock()
+        server_holder: list[ThreadingHTTPServer] = []
+
+        def shutdown_server() -> None:
+            agent.on_shutdown()
+            if server_holder:
+                threading.Thread(target=server_holder[0].shutdown, daemon=True).start()
 
         class Handler(BaseHTTPRequestHandler):
             def log_message(self, fmt, *args):  # silence default access log
@@ -81,7 +91,7 @@ class LoopAgent:
                     self._send_json(200, {
                         "name": agent.name,
                         "version": agent.version,
-                        "capabilities": ["run", "cancel"],
+                        "capabilities": ["run", "cancel", "shutdown"],
                     })
                 else:
                     self._send_json(404, {"error": "not found"})
@@ -99,6 +109,9 @@ class LoopAgent:
                     if ev:
                         ev.set()
                     agent.on_cancel(run_id)
+                    self._send_json(200, {"ok": True})
+                elif self.path == "/shutdown":
+                    shutdown_server()
                     self._send_json(200, {"ok": True})
                 else:
                     self._send_json(404, {"error": "not found"})
@@ -145,6 +158,7 @@ class LoopAgent:
                         cancel_events.pop(run_id, None)
 
         server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
+        server_holder.append(server)
         self._log(f"listening on 0.0.0.0:{port}")
         self.on_start(port)
         try:

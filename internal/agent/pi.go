@@ -69,5 +69,5 @@ func (a *PiAgent) binaryPath() string {
 }
 
 func (a *PiAgent) useBwrap() bool {
-	return false
+	return a.Sandbox == "bubblewrap" && GetBwrapStatus().Available
 }

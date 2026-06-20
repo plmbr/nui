@@ -17,11 +17,13 @@ import (
 type persistentOpenCodeSession struct {
 	mu sync.Mutex
 
-	server   *exec.Cmd
-	baseURL  string
+	server     *exec.Cmd
+	baseURL    string
 	workingDir string
-	model    string
-	sessionID string
+	model      string
+	sandbox    string
+	useBwrap   bool
+	sessionID  string
 }
 
 var opencodeServeURLPattern = regexp.MustCompile(`(?i)listening on (https?://[^\s]+)`)
@@ -57,7 +59,21 @@ func (s *persistentOpenCodeSession) runTurn(ctx context.Context, agent *OpenCode
 	}
 	args = append(args, req.Message)
 
-	cmd := exec.CommandContext(ctx, agent.binaryPath(), args...)
+	bin := agent.binaryPath()
+	var cmd *exec.Cmd
+	if agent.useBwrap() {
+		bwrap := GetBwrapStatus()
+		if !bwrap.Available {
+			return "", fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
+		}
+		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, wd, ".local/share/opencode")
+		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
+	} else {
+		cmd = exec.CommandContext(ctx, bin, args...)
+		if wd != "" {
+			cmd.Dir = wd
+		}
+	}
 	cmd.Stdin = nil
 
 	stdout, err := cmd.StdoutPipe()
@@ -123,14 +139,31 @@ func (s *persistentOpenCodeSession) ensureServer(ctx context.Context, agent *Ope
 		}
 	}
 	if s.server != nil && processAlive(s.server) && s.baseURL != "" &&
-		s.workingDir == wd && s.model == req.Model {
+		s.workingDir == wd && s.model == req.Model &&
+		s.sandbox == agent.Sandbox &&
+		s.useBwrap == agent.useBwrap() {
 		return nil
 	}
 
 	s.stopLocked()
-	cmd := exec.CommandContext(ctx, agent.binaryPath(), "serve", "--port", "0", "--hostname", "127.0.0.1")
+	serveArgs := []string{"serve", "--port", "0", "--hostname", "127.0.0.1"}
+	bin := agent.binaryPath()
+	var cmd *exec.Cmd
+	if agent.useBwrap() {
+		bwrap := GetBwrapStatus()
+		if !bwrap.Available {
+			return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
+		}
+		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, serveArgs, wd, ".local/share/opencode")
+		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
+	} else {
+		cmd = exec.CommandContext(ctx, bin, serveArgs...)
+		if wd != "" {
+			cmd.Dir = wd
+		}
+	}
+
 	cmd.Stdin = nil
-	cmd.Dir = wd
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
@@ -143,6 +176,8 @@ func (s *persistentOpenCodeSession) ensureServer(ctx context.Context, agent *Ope
 	s.server = cmd
 	s.workingDir = wd
 	s.model = req.Model
+	s.sandbox = agent.Sandbox
+	s.useBwrap = agent.useBwrap()
 
 	urlCh := make(chan string, 1)
 	go func() {

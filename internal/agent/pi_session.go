@@ -27,6 +27,8 @@ type persistentPiSession struct {
 	model        string
 	systemPrompt string
 	workingDir   string
+	sandbox      string
+	useBwrap     bool
 
 	sessionID string
 }
@@ -205,7 +207,9 @@ func (s *persistentPiSession) ensureProcess(ctx context.Context, agent *PiAgent,
 	if s.cmd != nil && processAlive(s.cmd) &&
 		s.workingDir == wd &&
 		s.model == req.Model &&
-		s.systemPrompt == req.SystemPrompt {
+		s.systemPrompt == req.SystemPrompt &&
+		s.sandbox == agent.Sandbox &&
+		s.useBwrap == agent.useBwrap() {
 		return nil
 	}
 
@@ -229,9 +233,20 @@ func (s *persistentPiSession) ensureProcess(ctx context.Context, agent *PiAgent,
 		args = append(args, "--session", resume)
 	}
 
-	cmd := exec.CommandContext(ctx, agent.binaryPath(), args...)
-	if wd != "" {
-		cmd.Dir = wd
+	bin := agent.binaryPath()
+	var cmd *exec.Cmd
+	if agent.useBwrap() {
+		bwrap := GetBwrapStatus()
+		if !bwrap.Available {
+			return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
+		}
+		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, wd, ".pi")
+		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
+	} else {
+		cmd = exec.CommandContext(ctx, bin, args...)
+		if wd != "" {
+			cmd.Dir = wd
+		}
 	}
 
 	stdin, err := cmd.StdinPipe()
@@ -273,7 +288,9 @@ func (s *persistentPiSession) ensureProcess(ctx context.Context, agent *PiAgent,
 	s.workingDir = wd
 	s.model = req.Model
 	s.systemPrompt = req.SystemPrompt
-	s.binaryPath = agent.binaryPath()
+	s.binaryPath = bin
+	s.sandbox = agent.Sandbox
+	s.useBwrap = agent.useBwrap()
 	return nil
 }
 

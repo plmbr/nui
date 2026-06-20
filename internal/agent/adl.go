@@ -97,7 +97,7 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 					return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
 				}
 			}
-			ag, err := a.manager.GetAgent(a.projectID, "claude-code", req.WorkingDir, nil)
+			ag, err := a.manager.GetAgent(a.projectID, "claude-code", req.WorkingDir, harnessBuiltinConfig(harness))
 			if err != nil {
 				return fmt.Errorf("claude-code harness: %w", err)
 			}
@@ -119,7 +119,7 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 					return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
 				}
 			}
-			ag, err := a.manager.GetAgent(a.projectID, "pi", req.WorkingDir, nil)
+			ag, err := a.manager.GetAgent(a.projectID, "pi", req.WorkingDir, harnessBuiltinConfig(harness))
 			if err != nil {
 				return fmt.Errorf("pi harness: %w", err)
 			}
@@ -141,7 +141,7 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 					return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
 				}
 			}
-			ag, err := a.manager.GetAgent(a.projectID, "codex", req.WorkingDir, nil)
+			ag, err := a.manager.GetAgent(a.projectID, "codex", req.WorkingDir, harnessBuiltinConfig(harness))
 			if err != nil {
 				return fmt.Errorf("codex harness: %w", err)
 			}
@@ -163,7 +163,7 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 					return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
 				}
 			}
-			ag, err := a.manager.GetAgent(a.projectID, "opencode", req.WorkingDir, nil)
+			ag, err := a.manager.GetAgent(a.projectID, "opencode", req.WorkingDir, harnessBuiltinConfig(harness))
 			if err != nil {
 				return fmt.Errorf("opencode harness: %w", err)
 			}

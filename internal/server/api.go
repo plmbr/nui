@@ -92,6 +92,10 @@ func initStore() error {
 	mu.Lock()
 	sessions = data.Sessions
 	agentSessions = data.AgentSessions
+	sessionMessages = data.SessionMessages
+	if sessionMessages == nil {
+		sessionMessages = map[string][]model.ChatMessage{}
+	}
 	mu.Unlock()
 	if err := store.ProvisionDefaultAgents(); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: provisioning default agents: %v\n", err)
@@ -107,7 +111,13 @@ func snapshotData() store.Data {
 	for k, v := range agentSessions {
 		as[k] = v
 	}
-	return store.Data{Sessions: ss, AgentSessions: as}
+	sm := make(map[string][]model.ChatMessage, len(sessionMessages))
+	for k, v := range sessionMessages {
+		copied := make([]model.ChatMessage, len(v))
+		copy(copied, v)
+		sm[k] = copied
+	}
+	return store.Data{Sessions: ss, AgentSessions: as, SessionMessages: sm}
 }
 
 func registerAPIRoutes(mux *http.ServeMux) {
@@ -279,6 +289,11 @@ func handleSessions(w http.ResponseWriter, r *http.Request) {
 			AgentConfig: req.AgentConfig,
 			CreatedAt:   time.Now().UTC().Format(time.RFC3339),
 		}
+		if err := validateSessionConnector(s); err != nil {
+			extensionManager.Stop(s.ID)
+			http.Error(w, fmt.Sprintf("agent unavailable: %v", err), http.StatusServiceUnavailable)
+			return
+		}
 		mu.Lock()
 		sessions = append(sessions, s)
 		snapshot := snapshotData()
@@ -356,6 +371,33 @@ func findADLDef(agentType string) (model.ADLDefinition, bool) {
 		}
 	}
 	return model.ADLDefinition{}, false
+}
+
+func validateSessionConnector(s model.Session) error {
+	if def, ok := findADLDef(s.AgentType); ok {
+		switch def.Harness.Type {
+		case "docker":
+			_, err := extensionManager.GetAgent(s.ID, "docker", s.WorkingDir, map[string]any{
+				"image":         def.Harness.Image,
+				"containerPort": def.Harness.ContainerPort,
+			})
+			return err
+		case "remote":
+			_, err := extensionManager.GetAgent(s.ID, "remote", s.WorkingDir, map[string]any{
+				"host": def.Harness.Host,
+				"port": def.Harness.Port,
+			})
+			return err
+		}
+		return nil
+	}
+	switch s.AgentType {
+	case "docker", "remote":
+		_, err := extensionManager.GetAgent(s.ID, s.AgentType, s.WorkingDir, s.AgentConfig)
+		return err
+	default:
+		return nil
+	}
 }
 
 // sessionHarnessType returns the harness type for a session, used for history and cleanup.
@@ -721,10 +763,8 @@ func handleSessionChat(w http.ResponseWriter, r *http.Request, sessionID string)
 		}
 		snapshot := snapshotData()
 		mu.Unlock()
-		if newAgentSessionID != "" && !isADL {
-			if err := store.SaveData(snapshot); err != nil {
-				fmt.Fprintf(os.Stderr, "warn: save session: %v\n", err)
-			}
+		if err := store.SaveData(snapshot); err != nil {
+			fmt.Fprintf(os.Stderr, "warn: save session: %v\n", err)
 		}
 	}
 }

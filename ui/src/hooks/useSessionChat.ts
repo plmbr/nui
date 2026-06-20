@@ -66,9 +66,15 @@ export function useSessionChat(sessionId: string) {
     })
     pendingToolsRef.current = {}
     setIsRunning(false)
-    api.history
-      .get(sessionId)
-      .then((history) => setMessages(historyToMessages(history)))
+    api.messages
+      .list(sessionId)
+      .then((stored) => {
+        if (stored.length > 0) {
+          setMessages(historyToMessages(stored))
+          return
+        }
+        return api.history.get(sessionId).then((history) => setMessages(historyToMessages(history)))
+      })
       .catch(() => setMessages([]))
   }, [sessionId])
 

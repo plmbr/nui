@@ -216,17 +216,26 @@ func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[s
 		if !builtinAgentTypes[agentType] {
 			return nil, fmt.Errorf("unknown agent type: %q", agentType)
 		}
-		return m.getBuiltinAgent(projectID, agentType)
+		return m.getBuiltinAgent(projectID, agentType, config)
 	}
 }
 
-func (m *Manager) getBuiltinAgent(projectID, agentType string) (Agent, error) {
+func (m *Manager) getBuiltinAgent(projectID, agentType string, config map[string]any) (Agent, error) {
+	sandbox := sandboxFromConfig(config)
+
 	m.builtinMu.Lock()
 	if ag, ok := m.builtinAgents[projectID]; ok {
+		if builtinAgentSandbox(ag) != sandbox {
+			m.builtinMu.Unlock()
+			m.stopBuiltinAgent(projectID)
+		} else {
+			applyBuiltinSandbox(ag, sandbox)
+			m.builtinMu.Unlock()
+			return ag, nil
+		}
+	} else {
 		m.builtinMu.Unlock()
-		return ag, nil
 	}
-	m.builtinMu.Unlock()
 
 	v, _ := m.agentMu.LoadOrStore(projectID, &sync.Mutex{})
 	agLock := v.(*sync.Mutex)
@@ -253,6 +262,7 @@ func (m *Manager) getBuiltinAgent(projectID, agentType string) (Agent, error) {
 		return nil, fmt.Errorf("unknown agent type: %q", agentType)
 	}
 	m.builtinAgents[projectID] = ag
+	applyBuiltinSandbox(ag, sandbox)
 	return ag, nil
 }
 

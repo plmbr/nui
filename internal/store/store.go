@@ -17,8 +17,9 @@ type Settings struct {
 }
 
 type Data struct {
-	Sessions      []model.Session   `json:"sessions"`
-	AgentSessions map[string]string `json:"agentSessions"`
+	Sessions        []model.Session              `json:"sessions"`
+	AgentSessions   map[string]string            `json:"agentSessions"`
+	SessionMessages map[string][]model.ChatMessage `json:"sessionMessages,omitempty"`
 }
 
 func Dir() (string, error) {
@@ -60,7 +61,11 @@ func SaveSettings(s Settings) error {
 }
 
 func LoadData() (Data, error) {
-	empty := Data{Sessions: []model.Session{}, AgentSessions: map[string]string{}}
+	empty := Data{
+		Sessions:        []model.Session{},
+		AgentSessions:   map[string]string{},
+		SessionMessages: map[string][]model.ChatMessage{},
+	}
 	dir, err := Dir()
 	if err != nil {
 		return empty, err
@@ -77,7 +82,11 @@ func LoadData() (Data, error) {
 	if err := json.Unmarshal(raw, &fields); err != nil {
 		return empty, err
 	}
-	d := Data{Sessions: []model.Session{}, AgentSessions: map[string]string{}}
+	d := Data{
+		Sessions:        []model.Session{},
+		AgentSessions:   map[string]string{},
+		SessionMessages: map[string][]model.ChatMessage{},
+	}
 
 	// New format: "sessions" is an array of Session objects.
 	if sessRaw, ok := fields["sessions"]; ok {
@@ -85,6 +94,9 @@ func LoadData() (Data, error) {
 	}
 	if asRaw, ok := fields["agentSessions"]; ok {
 		json.Unmarshal(asRaw, &d.AgentSessions) //nolint:errcheck
+	}
+	if smRaw, ok := fields["sessionMessages"]; ok {
+		json.Unmarshal(smRaw, &d.SessionMessages) //nolint:errcheck
 	}
 
 	// Legacy migration: old format had "projects":[...] and "sessions":{map}.
@@ -104,6 +116,9 @@ func LoadData() (Data, error) {
 	}
 	if d.AgentSessions == nil {
 		d.AgentSessions = map[string]string{}
+	}
+	if d.SessionMessages == nil {
+		d.SessionMessages = map[string][]model.ChatMessage{}
 	}
 	return d, nil
 }
@@ -171,6 +186,22 @@ harness:
   type: opencode
   sandbox: docker
   image: loop-opencode:latest
+`,
+		"docker-echo.yaml": `adl: "1.0"
+name: docker-echo
+description: Echo agent in a Docker container (build dev/extension-examples/docker first)
+harness:
+  type: docker
+  image: loop-echo-agent
+  containerPort: 9090
+`,
+		"remote-echo.yaml": `adl: "1.0"
+name: remote-echo
+description: Echo agent on a local HTTP/SSE server (start dev/extension-examples/remote/echo_agent.py)
+harness:
+  type: remote
+  host: 127.0.0.1
+  port: 9090
 `,
 	}
 	for filename, content := range defaults {

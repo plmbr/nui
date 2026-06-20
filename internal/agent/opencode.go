@@ -64,3 +64,7 @@ func (a *OpenCodeAgent) binaryPath() string {
 	}
 	return "opencode"
 }
+
+func (a *OpenCodeAgent) useBwrap() bool {
+	return a.Sandbox == "bubblewrap" && GetBwrapStatus().Available
+}

@@ -242,10 +242,8 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 		}
 		snapshot := snapshotData()
 		mu.Unlock()
-		if newAgentSessionID != "" && !isADL {
-			if err := store.SaveData(snapshot); err != nil {
-				fmt.Fprintf(os.Stderr, "warn: save session: %v\n", err)
-			}
+		if err := store.SaveData(snapshot); err != nil {
+			fmt.Fprintf(os.Stderr, "warn: save session: %v\n", err)
 		}
 	}
 }

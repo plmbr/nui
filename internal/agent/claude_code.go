@@ -11,8 +11,8 @@ import (
 type ClaudeCodeAgent struct {
 	// BinaryPath overrides the claude binary location; defaults to "claude" on PATH.
 	BinaryPath string
-	// Sandbox controls sandboxing: "none" disables bwrap, "bubblewrap" forces it,
-	// "" auto-detects (uses bwrap if available — legacy behaviour).
+	// Sandbox controls sandboxing: "none" (default) runs on the host,
+	// "bubblewrap" wraps the subprocess with bwrap (Linux only).
 	Sandbox string
 
 	sessionMu sync.Mutex
@@ -64,12 +64,5 @@ func (a *ClaudeCodeAgent) binaryPath() string {
 }
 
 func (a *ClaudeCodeAgent) useBwrap() bool {
-	switch a.Sandbox {
-	case "bubblewrap":
-		return GetBwrapStatus().Available
-	case "none":
-		return false
-	default:
-		return GetBwrapStatus().Available
-	}
+	return a.Sandbox == "bubblewrap" && GetBwrapStatus().Available
 }
