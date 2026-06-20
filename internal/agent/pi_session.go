@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -13,6 +14,8 @@ import (
 	"strings"
 	"sync"
 )
+
+var errPiProcessEnded = errors.New("pi process ended unexpectedly")
 
 type persistentPiSession struct {
 	mu sync.Mutex
@@ -48,20 +51,34 @@ func (s *persistentPiSession) runTurn(ctx context.Context, agent *PiAgent, req R
 		resume = s.sessionID
 	}
 
-	if err := s.ensureProcess(ctx, agent, req, resume); err != nil {
+	if err := s.ensureProcess(agent, req, resume); err != nil {
 		return "", err
 	}
 
 	producedOutput, err := s.promptTurn(ctx, req.Message, events)
 	if err != nil {
-		return "", err
+		if !errors.Is(err, errPiProcessEnded) {
+			return "", err
+		}
+		fmt.Fprintln(os.Stderr, "[pi] process ended during turn, restarting")
+		s.stopLocked()
+		if resume != "" && s.sessionID == "" {
+			s.sessionID = resume
+		}
+		if err := s.ensureProcess(agent, req, resume); err != nil {
+			return "", err
+		}
+		producedOutput, err = s.promptTurn(ctx, req.Message, events)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	if !producedOutput && resume != "" && s.hasSessionNotFound() {
 		fmt.Fprintln(os.Stderr, "[pi] session not found, retrying without session")
 		s.stopLocked()
 		s.sessionID = ""
-		if err := s.ensureProcess(ctx, agent, req, ""); err != nil {
+		if err := s.ensureProcess(agent, req, ""); err != nil {
 			return "", err
 		}
 		if _, err := s.promptTurn(ctx, req.Message, events); err != nil {
@@ -70,6 +87,9 @@ func (s *persistentPiSession) runTurn(ctx context.Context, agent *PiAgent, req R
 	}
 
 	s.refreshSessionID()
+	if s.sessionID == "" {
+		s.sessionID = resume
+	}
 	return s.sessionID, nil
 }
 
@@ -84,7 +104,7 @@ func (s *persistentPiSession) hasSessionNotFound() bool {
 
 func (s *persistentPiSession) promptTurn(ctx context.Context, message string, events chan<- Event) (bool, error) {
 	if s.stdin == nil || s.stdout == nil {
-		return false, fmt.Errorf("pi stdin unavailable")
+		return false, errPiProcessEnded
 	}
 
 	payload, err := json.Marshal(map[string]any{"type": "prompt", "message": message})
@@ -93,9 +113,9 @@ func (s *persistentPiSession) promptTurn(ctx context.Context, message string, ev
 	}
 	payload = append(payload, '\n')
 
-	if _, err := s.stdin.Write(payload); err != nil {
+	if err := s.writeStdin(payload); err != nil {
 		s.stopLocked()
-		return false, fmt.Errorf("pi process ended unexpectedly")
+		return false, errPiProcessEnded
 	}
 
 	parser := newPiStreamParser()
@@ -106,7 +126,7 @@ func (s *persistentPiSession) promptTurn(ctx context.Context, message string, ev
 		}
 		if !s.stdout.Scan() {
 			s.stopLocked()
-			return producedOutput, fmt.Errorf("pi process ended unexpectedly")
+			return producedOutput, errPiProcessEnded
 		}
 
 		line := s.stdout.Bytes()
@@ -116,6 +136,7 @@ func (s *persistentPiSession) promptTurn(ctx context.Context, message string, ev
 
 		var obj struct {
 			Type    string `json:"type"`
+			ID      string `json:"id"`
 			Command string `json:"command"`
 			Success bool   `json:"success"`
 			Error   any    `json:"error"`
@@ -130,6 +151,10 @@ func (s *persistentPiSession) promptTurn(ctx context.Context, message string, ev
 				events <- Event{Type: EventError, Error: msg}
 				return producedOutput, nil
 			}
+			continue
+		}
+		if obj.Type == "session" && obj.ID != "" {
+			s.sessionID = obj.ID
 			continue
 		}
 		if obj.Type == "extension_ui_request" || obj.Type == "extension_ui_response" {
@@ -168,7 +193,7 @@ func (s *persistentPiSession) refreshSessionID() {
 		return
 	}
 	payload := []byte(`{"type":"get_state"}` + "\n")
-	if _, err := s.stdin.Write(payload); err != nil {
+	if err := s.writeStdin(payload); err != nil {
 		return
 	}
 	for {
@@ -197,14 +222,14 @@ func (s *persistentPiSession) refreshSessionID() {
 	}
 }
 
-func (s *persistentPiSession) ensureProcess(ctx context.Context, agent *PiAgent, req RunRequest, resumeSessionID string) error {
+func (s *persistentPiSession) ensureProcess(agent *PiAgent, req RunRequest, resumeSessionID string) error {
 	wd := req.WorkingDir
 	if wd == "" {
 		if cwd, err := os.Getwd(); err == nil {
 			wd = cwd
 		}
 	}
-	if s.cmd != nil && processAlive(s.cmd) &&
+	if s.cmd != nil && processAlive(s.cmd) && s.stdin != nil && s.stdout != nil &&
 		s.workingDir == wd &&
 		s.model == req.Model &&
 		s.systemPrompt == req.SystemPrompt &&
@@ -241,9 +266,9 @@ func (s *persistentPiSession) ensureProcess(ctx context.Context, agent *PiAgent,
 			return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
 		}
 		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, wd, ".pi")
-		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
+		cmd = exec.Command(wrappedBin, wrappedArgs...)
 	} else {
-		cmd = exec.CommandContext(ctx, bin, args...)
+		cmd = exec.Command(bin, args...)
 		if wd != "" {
 			cmd.Dir = wd
 		}
@@ -292,6 +317,14 @@ func (s *persistentPiSession) ensureProcess(ctx context.Context, agent *PiAgent,
 	s.sandbox = agent.Sandbox
 	s.useBwrap = agent.useBwrap()
 	return nil
+}
+
+func (s *persistentPiSession) writeStdin(payload []byte) error {
+	if s.stdin == nil {
+		return errPiProcessEnded
+	}
+	_, err := s.stdin.Write(payload)
+	return err
 }
 
 func (s *persistentPiSession) stop() {
