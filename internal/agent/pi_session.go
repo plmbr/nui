@@ -276,7 +276,7 @@ func (s *persistentPiSession) ensureProcess(agent *PiAgent, req RunRequest, resu
 			cmd.Dir = wd
 		}
 	}
-	applyHarnessConfigEnv(cmd, "pi", req.ConfigDir)
+	applyCmdEnv(cmd, "pi", req.ConfigDir, req.Env)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"loop/internal/model"
 	"loop/internal/store"
@@ -108,17 +109,40 @@ func ProvisionHarnessConfig(sessionID, harnessType string, deps HarnessDeps) (st
 	return configDir, nil
 }
 
-// applyHarnessConfigEnv sets cmd.Env with the harness config directory env var.
-func applyHarnessConfigEnv(cmd *exec.Cmd, harnessType, sessionConfigDir string) {
+// applyCmdEnv sets cmd.Env from the host environment, ADL overrides, and the harness config dir.
+func applyCmdEnv(cmd *exec.Cmd, harnessType, sessionConfigDir string, adlEnv map[string]string) {
+	overrides := make(map[string]string, len(adlEnv)+1)
+	for k, v := range adlEnv {
+		overrides[k] = v
+	}
 	bindDir := harnessConfigBindDir(harnessType, sessionConfigDir)
-	if bindDir == "" {
-		return
+	if bindDir != "" {
+		if envKey := harnessConfigEnvVar(harnessType); envKey != "" {
+			overrides[envKey] = bindDir
+		}
 	}
-	envKey := harnessConfigEnvVar(harnessType)
-	if envKey == "" {
-		return
+	cmd.Env = envWithOverrides(overrides)
+}
+
+func envWithOverrides(overrides map[string]string) []string {
+	if len(overrides) == 0 {
+		return os.Environ()
 	}
-	cmd.Env = append(os.Environ(), envKey+"="+bindDir)
+	m := make(map[string]string)
+	for _, kv := range os.Environ() {
+		k, v, ok := strings.Cut(kv, "=")
+		if ok {
+			m[k] = v
+		}
+	}
+	for k, v := range overrides {
+		m[k] = v
+	}
+	out := make([]string, 0, len(m))
+	for k, v := range m {
+		out = append(out, k+"="+v)
+	}
+	return out
 }
 
 func writeHarnessManifest(configDir, harness string, deps HarnessDeps, extra map[string]any) error {

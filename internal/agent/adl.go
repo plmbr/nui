@@ -86,6 +86,7 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 	req.ConfigDir = configDir
 	req.SystemPrompt = systemPrompt
 	req.Model = harness.Model
+	req.Env = mergeADLEnv(a.def, harness)
 
 	switch harness.Type {
 	case "claude-code", "":

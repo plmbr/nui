@@ -68,7 +68,7 @@ func (s *persistentCodexSession) runTurn(ctx context.Context, agent *CodexAgent,
 			cmd.Dir = req.WorkingDir
 		}
 	}
-	applyHarnessConfigEnv(cmd, "codex", req.ConfigDir)
+	applyCmdEnv(cmd, "codex", req.ConfigDir, req.Env)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

@@ -101,6 +101,11 @@ harness:
   containerPort: 9090             # harness.type:docker (user images; builtin sandbox images use 8090)
   host: string                    # harness.type:remote
   port: 9090                      # harness.type:remote
+  env:                            # per-harness env (overrides top-level env on conflict)
+    ANTHROPIC_API_KEY: string
+
+env:                              # global env for all harness subprocesses
+  ANTHROPIC_BASE_URL: string
 
 systemPrompt: |
   You are ...
@@ -160,6 +165,11 @@ description: Example Agent
 harness:
   type: claude-code
   model: claude-sonnet-4-6
+  env:
+    ANTHROPIC_API_KEY: your-api-key
+
+env:
+  ANTHROPIC_BASE_URL: https://api.anthropic.com
 
 systemPrompt: |
   You are a helpful assistant.
@@ -183,6 +193,8 @@ For each Loop session, ADL dependencies are materialized under `~/.loop/sessions
 | `codex` | `CODEX_HOME` | `AGENTS.md`, `config.toml`, `skills/…` |
 | `pi` | `PI_CODING_AGENT_DIR` | `pi-agent/SYSTEM.md`, `pi-agent/mcp.json`, `pi-agent/skills/…` |
 | `opencode` | `OPENCODE_CONFIG_DIR` | `INSTRUCTIONS.md`, `opencode.json`, `skills/…` |
+
+ADL `env` (global) and `harness.env` are merged and set on harness subprocess environments. Harness keys override global keys. Host environment variables are inherited unless overridden.
 
 ### Harness types (implemented)
 
@@ -208,6 +220,7 @@ Sandbox config flows: ADL `harness.sandbox` → `harnessBuiltinConfig()` → `Ma
 | All six harness types + sandbox | Done |
 | `aiAssets.mcpServers` → session harness config | Done |
 | `skill` + `systemPrompt` → session harness config | Done |
+| `env` / `harness.env` → subprocess environment | Done |
 | Step `policy` (parallel/loop/batch) | Parsed only |
 | `approval` / `approvalTimeout` | Parsed only |
 | `constraints` | Parsed only |

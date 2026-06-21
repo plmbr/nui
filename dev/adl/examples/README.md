@@ -22,6 +22,7 @@ The executor in `internal/agent/adl.go` runs multi-step pipelines today. Example
 | `12-codex-sandbox-variants.yaml` | Basic | codex: none / bubblewrap / docker | Yes |
 | `13-opencode-sandbox-variants.yaml` | Basic | opencode: none / bubblewrap / docker | Yes |
 | `14-ai-assets-mcp.yaml` | Basic | `aiAssets.mcpServers` (HTTP + stdio) | Yes |
+| `15-env-vars.yaml` | Basic | Global `env` + `harness.env` | Yes |
 
 \*All steps execute in topological order regardless of `policy` field today.
 
@@ -95,6 +96,21 @@ skill: ~/.cursor/skills/my-skill   # path to skill dir or SKILL.md
 
 `systemPrompt` is written as harness-native markdown (`CLAUDE.md`, `AGENTS.md`, etc.). `skill` is copied into the session harness skills directory.
 
+### Environment variables
+
+Global `env` applies to every harness subprocess. `harness.env` overrides global keys for that harness (and per-step harness overrides).
+
+```yaml
+env:
+  ANTHROPIC_BASE_URL: https://api.anthropic.com
+
+harness:
+  type: claude-code
+  model: claude-sonnet-4-6
+  env:
+    ANTHROPIC_API_KEY: your-api-key
+```
+
 ### Named outputs and inputs
 
 ```yaml
@@ -151,6 +167,7 @@ When implemented, the executor will pause and wait for `POST /api/sessions/:id/a
 | Six harness types + sandbox | Done |
 | `aiAssets.mcpServers` → harness config | Done |
 | `skill` + `systemPrompt` → harness config | Done |
+| `env` / `harness.env` → subprocess env | Done |
 | Step `policy` (parallel/loop/batch) | Parsed only |
 | `approval` / `approvalTimeout` | Parsed only |
 | `constraints` | Parsed only |

@@ -7,9 +7,14 @@ name: data-analytics-agent
 description: Agent with an HTTP MCP server from aiAssets
 version: 0.1.0
 
+env:
+  ANTHROPIC_BASE_URL: https://api.anthropic.com
+
 harness:
   type: claude-code
   model: claude-sonnet-4-6
+  env:
+    ANTHROPIC_API_KEY: your-api-key
 
 systemPrompt: |
   You are a helpful assistant that can answer questions using the configured MCP tools.

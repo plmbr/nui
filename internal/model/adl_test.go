@@ -38,3 +38,27 @@ aiAssets:
 		t.Fatalf("server: %+v", srv)
 	}
 }
+
+func TestADLDefinitionYAML_env(t *testing.T) {
+	raw := []byte(`adl: "1.0"
+name: env-agent
+harness:
+  type: claude-code
+  model: claude-sonnet-4-6
+  env:
+    ANTHROPIC_API_KEY: harness-key
+env:
+  ANTHROPIC_BASE_URL: https://api.anthropic.com
+`)
+
+	var def ADLDefinition
+	if err := yaml.Unmarshal(raw, &def); err != nil {
+		t.Fatal(err)
+	}
+	if def.Env["ANTHROPIC_BASE_URL"] != "https://api.anthropic.com" {
+		t.Fatalf("global env: %v", def.Env)
+	}
+	if def.Harness.Env["ANTHROPIC_API_KEY"] != "harness-key" {
+		t.Fatalf("harness env: %v", def.Harness.Env)
+	}
+}

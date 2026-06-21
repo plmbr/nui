@@ -37,6 +37,8 @@ type RunRequest struct {
 	Model        string
 	// ConfigDir is ~/.loop/sessions/<sessionID> with provisioned harness config.
 	ConfigDir string
+	// Env is merged ADL env (global + harness); applied to harness subprocesses.
+	Env map[string]string
 }
 
 type Agent interface {

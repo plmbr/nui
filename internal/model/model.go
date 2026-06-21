@@ -33,6 +33,7 @@ type ADLDefinition struct {
 	SystemPrompt string         `yaml:"systemPrompt" json:"systemPrompt,omitempty"`
 	Skill        string         `yaml:"skill"        json:"skill,omitempty"`
 	AIAssets     ADLAIAssets    `yaml:"aiAssets"     json:"aiAssets,omitempty"`
+	Env          map[string]string `yaml:"env"          json:"env,omitempty"`
 	Steps        []ADLStep      `yaml:"steps"        json:"steps,omitempty"`
 	Constraints  ADLConstraints `yaml:"constraints"  json:"constraints,omitempty"`
 	Schedule     *ADLSchedule   `yaml:"schedule"     json:"schedule,omitempty"`
@@ -59,8 +60,9 @@ type ADLHarness struct {
 	WorkingDir    string `yaml:"workingDir"    json:"workingDir,omitempty"`
 	Image         string `yaml:"image"         json:"image,omitempty"`          // Docker image (sandbox=docker or harness type=docker)
 	ContainerPort int    `yaml:"containerPort" json:"containerPort,omitempty"` // harness type=docker only
-	Host          string `yaml:"host"          json:"host,omitempty"`           // harness type=remote only
-	Port          int    `yaml:"port"          json:"port,omitempty"`           // harness type=remote only
+	Host          string            `yaml:"host"          json:"host,omitempty"`           // harness type=remote only
+	Port          int               `yaml:"port"          json:"port,omitempty"`           // harness type=remote only
+	Env           map[string]string `yaml:"env"           json:"env,omitempty"`
 }
 
 type ADLAIAssets struct {

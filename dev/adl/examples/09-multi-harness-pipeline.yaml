@@ -21,9 +21,14 @@ description: Plan → sandbox execute → security-scan + review → approve →
 version: 0.1.0
 
 # Top-level harness is the default for steps that don't override it.
+env:
+  ANTHROPIC_BASE_URL: https://api.anthropic.com
+
 harness:
   type: claude-code
   model: claude-sonnet-4-6
+  env:
+    ANTHROPIC_API_KEY: your-api-key
 
 constraints:
   maxTokens: 150000

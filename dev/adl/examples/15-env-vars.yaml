@@ -1,0 +1,24 @@
+adl: "1.0"
+
+# Environment variables for harness subprocesses.
+# Global env applies to every step; harness.env overrides on key conflicts.
+
+name: env-vars-agent
+description: Demonstrates global and per-harness environment variables
+version: 0.1.0
+
+env:
+  ANTHROPIC_BASE_URL: https://api.anthropic.com
+
+harness:
+  type: claude-code
+  model: claude-sonnet-4-6
+  env:
+    ANTHROPIC_API_KEY: your-api-key
+
+systemPrompt: |
+  You are a helpful assistant. Confirm which API base URL you would use if asked.
+
+steps:
+  - name: greet
+    policy: react

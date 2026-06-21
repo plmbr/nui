@@ -211,7 +211,7 @@ func (s *persistentClaudeSession) start(ctx context.Context, agent *ClaudeCodeAg
 			cmd.Dir = req.WorkingDir
 		}
 	}
-	applyHarnessConfigEnv(cmd, "claude-code", req.ConfigDir)
+	applyCmdEnv(cmd, "claude-code", req.ConfigDir, req.Env)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

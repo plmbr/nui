@@ -7,9 +7,14 @@ name: hello-world
 description: Echoes the user's message back with a greeting.
 version: 0.1.0
 
+env:
+  ANTHROPIC_BASE_URL: https://api.anthropic.com
+
 harness:
   type: claude-code
   model: claude-haiku-4-5-20251001
+  env:
+    ANTHROPIC_API_KEY: your-api-key
 
 systemPrompt: |
   You are a friendly greeter. Respond warmly to whatever the user says.
