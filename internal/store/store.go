@@ -165,6 +165,7 @@ func LoadADLDefinitions() ([]model.ADLDefinition, error) {
 			continue
 		}
 		model.NormalizeADLDefinition(&def)
+		model.NormalizeADLSkills(&def)
 		if def.ID == "" && def.Name == "" {
 			continue
 		}

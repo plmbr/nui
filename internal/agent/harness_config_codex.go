@@ -23,10 +23,8 @@ func (codexHarnessProvisioner) provision(configDir string, deps HarnessDeps) err
 	if err := writeCodexConfig(configDir, deps); err != nil {
 		return err
 	}
-	if deps.Skill != "" {
-		if err := installCodexSkill(configDir, deps.Skill); err != nil {
-			return fmt.Errorf("install skill: %w", err)
-		}
+	if err := installHarnessSkills("codex", configDir, deps.WorkingDir, deps.Skills); err != nil {
+		return fmt.Errorf("install skills: %w", err)
 	}
 	return writeHarnessManifest(configDir, "codex", deps, map[string]any{
 		"systemPromptFile": codexSystemPromptFile,
@@ -96,16 +94,4 @@ func codexMCPServerTOML(name string, srv model.ADLMCPServer) (string, error) {
 	}
 	lines = append(lines, fmt.Sprintf("url = %q", url))
 	return strings.Join(lines, "\n"), nil
-}
-
-func installCodexSkill(configDir, skillPath string) error {
-	src, skillName, err := resolveSkillSource(skillPath)
-	if err != nil {
-		return err
-	}
-	destDir := filepath.Join(configDir, "skills", skillName)
-	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return err
-	}
-	return copyFile(filepath.Join(src, "SKILL.md"), filepath.Join(destDir, "SKILL.md"))
 }

@@ -114,7 +114,7 @@ env:                              # global env for all harness subprocesses
 systemPrompt: |
   You are ...
 
-skill: /path/to/skill-dir        # optional; SKILL.md copied into session harness config
+skill: /path/to/skill-dir        # deprecated; use aiAssets.skills
 
 aiAssets:
   mcpServers:
@@ -125,6 +125,22 @@ aiAssets:
       command: npx               # stdio MCP
       args: ["-y", "some-package"]
       type: stdio
+  skills:
+    - name: code-review          # required; install dir name in harness config
+      path: ./skills/code-review # local dir or SKILL.md
+    - name: commit-helper
+      ref: commit-helper         # ~/.loop/skills/<ref>/skill/
+    - name: greeting
+      content: |                 # inline SKILL.md (including frontmatter)
+        ---
+        name: greeting
+        description: Brief greeting skill
+        ---
+        Keep responses to one sentence.
+    - name: shared-style
+      git: https://github.com/example/agent-skills.git
+      path: skills/shared-style  # required with git; relative skill dir in repo
+      version: v1.0.0            # optional tag/commit
 
 schedule:                         # *planned — not enforced*
   cron: "0 9 * * 1-5"
@@ -194,7 +210,7 @@ For each Loop session, ADL dependencies are materialized under `~/.loop/sessions
 
 | Harness | Env var | Provisioned files (examples) |
 |---|---|---|
-| `claude-code` | `CLAUDE_CONFIG_DIR` | `CLAUDE.md`, `.claude.json`, `.claude/skills/…` |
+| `claude-code` | `CLAUDE_CONFIG_DIR` | `CLAUDE.md`, `.claude.json`, `skills/…` |
 | `codex` | `CODEX_HOME` | `AGENTS.md`, `config.toml`, `skills/…` |
 | `pi` | `PI_CODING_AGENT_DIR` | `pi-agent/SYSTEM.md`, `pi-agent/mcp.json`, `pi-agent/skills/…` |
 | `opencode` | `OPENCODE_CONFIG_DIR` | `INSTRUCTIONS.md`, `opencode.json`, `skills/…` |
@@ -226,7 +242,8 @@ Sandbox config flows: ADL `harness.sandbox` → `harnessBuiltinConfig()` → `Ma
 | Named outputs → downstream inputs | Done |
 | All six harness types + sandbox | Done |
 | `aiAssets.mcpServers` → session harness config | Done |
-| `skill` + `systemPrompt` → session harness config | Done |
+| `skill` + `systemPrompt` → session harness config | Done (legacy `skill:`; prefer `aiAssets.skills`) |
+| `aiAssets.skills` → resolve + install into session | Done |
 | `env` / `harness.env` → subprocess environment | Done |
 | `promptMode` / `defaultPrompt` → UI auto-run | Done |
 | Step `policy` (parallel/loop/batch) | Parsed only |
@@ -383,6 +400,8 @@ Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-
 ### Phase 4 — External integrations (*planned*)
 - [ ] Slack/webhook HITL channels
 - [x] ADL `skill` references (SKILL.md) → session harness config
+- [x] ADL `aiAssets.skills` (path, ref, content, git+path) → catalog + session harness config
+- [x] `loop skills install|list|remove` CLI
 - [x] ADL `aiAssets.mcpServers` → session harness config
 
 ---

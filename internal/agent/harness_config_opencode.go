@@ -24,10 +24,8 @@ func (opencodeHarnessProvisioner) provision(configDir string, deps HarnessDeps) 
 	if err := writeOpenCodeConfig(configDir, deps); err != nil {
 		return err
 	}
-	if deps.Skill != "" {
-		if err := installOpenCodeSkill(configDir, deps.Skill); err != nil {
-			return fmt.Errorf("install skill: %w", err)
-		}
+	if err := installHarnessSkills("opencode", configDir, deps.WorkingDir, deps.Skills); err != nil {
+		return fmt.Errorf("install skills: %w", err)
 	}
 	return writeHarnessManifest(configDir, "opencode", deps, map[string]any{
 		"configFile":       opencodeConfigFile,
@@ -105,16 +103,4 @@ func adlMCPServerToOpenCode(srv model.ADLMCPServer) (map[string]any, error) {
 	entry["type"] = "remote"
 	entry["url"] = url
 	return entry, nil
-}
-
-func installOpenCodeSkill(configDir, skillPath string) error {
-	src, skillName, err := resolveSkillSource(skillPath)
-	if err != nil {
-		return err
-	}
-	destDir := filepath.Join(configDir, "skills", skillName)
-	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return err
-	}
-	return copyFile(filepath.Join(src, "SKILL.md"), filepath.Join(destDir, "SKILL.md"))
 }

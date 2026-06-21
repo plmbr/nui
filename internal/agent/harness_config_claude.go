@@ -27,10 +27,8 @@ func (claudeHarnessProvisioner) provision(configDir string, deps HarnessDeps) er
 	if err := linkClaudeAuthFromUser(configDir); err != nil {
 		return err
 	}
-	if deps.Skill != "" {
-		if err := installClaudeSkill(configDir, deps.Skill); err != nil {
-			return fmt.Errorf("install skill: %w", err)
-		}
+	if err := installHarnessSkills("claude-code", configDir, deps.WorkingDir, deps.Skills); err != nil {
+		return fmt.Errorf("install skills: %w", err)
 	}
 	return writeHarnessManifest(configDir, "claude-code", deps, map[string]any{
 		"systemPromptFile": claudeSystemPromptFile,
@@ -127,47 +125,6 @@ func adlMCPServerToClaude(srv model.ADLMCPServer) (map[string]any, error) {
 		entry["type"] = "http"
 	}
 	return entry, nil
-}
-
-func installClaudeSkill(configDir, skillPath string) error {
-	src, skillName, err := resolveSkillSource(skillPath)
-	if err != nil {
-		return err
-	}
-	destDir := filepath.Join(configDir, ".claude", "skills", skillName)
-	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return err
-	}
-	return copyFile(filepath.Join(src, "SKILL.md"), filepath.Join(destDir, "SKILL.md"))
-}
-
-func resolveSkillSource(skillPath string) (skillDir string, skillName string, err error) {
-	src, err := expandPath(skillPath)
-	if err != nil {
-		return "", "", err
-	}
-
-	switch {
-	case strings.HasSuffix(src, "SKILL.md"):
-		skillDir = filepath.Dir(src)
-		skillName = filepath.Base(skillDir)
-	case isDir(src):
-		skillDir = src
-		skillName = filepath.Base(src)
-	default:
-		return "", "", fmt.Errorf("skill path %q is not a directory or SKILL.md file", skillPath)
-	}
-
-	skillFile := filepath.Join(skillDir, "SKILL.md")
-	if _, err := os.Stat(skillFile); err != nil {
-		return "", "", fmt.Errorf("skill %q: missing SKILL.md", skillPath)
-	}
-	return skillDir, skillName, nil
-}
-
-func isDir(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && info.IsDir()
 }
 
 func copyFile(src, dst string) error {

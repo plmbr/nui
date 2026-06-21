@@ -25,6 +25,7 @@ The executor in `internal/agent/adl.go` runs multi-step pipelines today. Example
 | `13-opencode-sandbox-variants.yaml` | Basic | opencode: none / bubblewrap / docker | Yes |
 | `14-ai-assets-mcp.yaml` | Basic | `aiAssets.mcpServers` (HTTP + stdio) | Yes |
 | `15-env-vars.yaml` | Basic | Global `env` + `harness.env` | Yes |
+| `16-ai-assets-skills.yaml` | Basic | `aiAssets.skills` (path, ref, content, git) | Yes |
 
 \*All steps execute in topological order regardless of `policy` field today.
 
@@ -93,10 +94,32 @@ steps:
 systemPrompt: |
   You are a helpful assistant.
 
-skill: ~/.cursor/skills/my-skill   # path to skill dir or SKILL.md
+aiAssets:
+  skills:
+    - name: code-review
+      path: ./skills/code-review
+    - name: commit-helper
+      ref: commit-helper
+    - name: greeting
+      content: |
+        ---
+        name: greeting
+        description: Brief greeting skill
+        ---
+        Keep responses to one sentence.
 ```
 
-`systemPrompt` is written as harness-native markdown (`CLAUDE.md`, `AGENTS.md`, etc.). `skill` is copied into the session harness skills directory.
+Legacy top-level `skill:` still works (mapped to a single `aiAssets.skills` entry).
+
+Install catalog skills ahead of time:
+
+```sh
+loop skills install ./skills/code-review --name code-review
+loop skills install --git https://github.com/example/agent-skills.git --path skills/shared-style --name shared-style
+loop skills list
+```
+
+`systemPrompt` is written as harness-native markdown (`CLAUDE.md`, `AGENTS.md`, etc.). Skills are copied into the session harness skills directory (full directory tree, not just `SKILL.md`).
 
 ### Environment variables
 
@@ -177,6 +200,7 @@ When implemented, the executor will pause and wait for `POST /api/sessions/:id/a
 | Named outputs → inputs | Done |
 | Six harness types + sandbox | Done |
 | `aiAssets.mcpServers` → harness config | Done |
+| `aiAssets.skills` → harness config | Done |
 | `skill` + `systemPrompt` → harness config | Done |
 | `env` / `harness.env` → subprocess env | Done |
 | `promptMode` / `defaultPrompt` | Done |

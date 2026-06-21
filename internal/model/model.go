@@ -70,6 +70,18 @@ type ADLHarness struct {
 
 type ADLAIAssets struct {
 	MCPServers []ADLMCPServer `yaml:"mcpServers" json:"mcpServers,omitempty"`
+	Skills     []ADLSkill     `yaml:"skills"     json:"skills,omitempty"`
+}
+
+// ADLSkill configures one agent skill under aiAssets.skills.
+// Exactly one source: local path, ref, content, or git+path.
+type ADLSkill struct {
+	Name    string `yaml:"name"              json:"name"`
+	Path    string `yaml:"path,omitempty"    json:"path,omitempty"`    // local dir/SKILL.md, or subpath within git repo
+	Ref     string `yaml:"ref,omitempty"     json:"ref,omitempty"`     // named skill in ~/.loop/skills/
+	Git     string `yaml:"git,omitempty"     json:"git,omitempty"`     // remote repo URL
+	Version string `yaml:"version,omitempty" json:"version,omitempty"` // git tag/commit
+	Content string `yaml:"content,omitempty" json:"content,omitempty"` // inline SKILL.md
 }
 
 // ADLMCPServer configures one MCP server entry in aiAssets.mcpServers.

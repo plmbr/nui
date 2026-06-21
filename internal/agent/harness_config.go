@@ -4,13 +4,13 @@ package agent
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"loop/internal/model"
+	"loop/internal/skills"
 	"loop/internal/store"
 )
 
@@ -25,7 +25,8 @@ const (
 type HarnessDeps struct {
 	SystemPrompt string
 	MCPServers   []model.ADLMCPServer
-	Skill        string
+	Skills       []model.ADLSkill
+	WorkingDir   string
 }
 
 type harnessProvisioner interface {
@@ -65,11 +66,15 @@ func normalizeHarnessType(harnessType string) string {
 }
 
 // harnessDepsFromADL merges top-level ADL fields with optional step overrides.
-func harnessDepsFromADL(def model.ADLDefinition, step *model.ADLStep) HarnessDeps {
+func harnessDepsFromADL(def model.ADLDefinition, step *model.ADLStep, workingDir string) HarnessDeps {
+	defCopy := def
+	model.NormalizeADLSkills(&defCopy)
+
 	deps := HarnessDeps{
-		SystemPrompt: def.SystemPrompt,
-		MCPServers:   adlMCPServersFromDef(def),
-		Skill:        def.Skill,
+		SystemPrompt: defCopy.SystemPrompt,
+		MCPServers:   adlMCPServersFromDef(defCopy),
+		Skills:       adlSkillsFromDef(defCopy),
+		WorkingDir:   workingDir,
 	}
 	if step != nil {
 		if step.SystemPrompt != "" {
@@ -78,8 +83,19 @@ func harnessDepsFromADL(def model.ADLDefinition, step *model.ADLStep) HarnessDep
 		if servers := adlMCPServersFromStep(*step); len(servers) > 0 {
 			deps.MCPServers = servers
 		}
+		if stepSkills := adlSkillsFromStep(*step); len(stepSkills) > 0 {
+			deps.Skills = stepSkills
+		}
 	}
 	return deps
+}
+
+func adlSkillsFromDef(def model.ADLDefinition) []model.ADLSkill {
+	return def.AIAssets.Skills
+}
+
+func adlSkillsFromStep(step model.ADLStep) []model.ADLSkill {
+	return step.AIAssets.Skills
 }
 
 func adlMCPServersFromDef(def model.ADLDefinition) []model.ADLMCPServer {
@@ -150,7 +166,7 @@ func writeHarnessManifest(configDir, harness string, deps HarnessDeps, extra map
 		"harness": harness,
 		"deps": map[string]any{
 			"systemPrompt": deps.SystemPrompt != "",
-			"skill":        deps.Skill,
+			"skills":       len(deps.Skills),
 			"mcpServers":   len(deps.MCPServers),
 		},
 	}
@@ -165,17 +181,5 @@ func writeHarnessManifest(configDir, harness string, deps HarnessDeps, extra map
 }
 
 func expandPath(p string) (string, error) {
-	if p == "" {
-		return "", fmt.Errorf("empty path")
-	}
-	if p[0] == '~' {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-		if len(p) == 1 || p[1] == '/' {
-			p = filepath.Join(home, p[1:])
-		}
-	}
-	return filepath.Abs(p)
+	return skills.ExpandPath(p)
 }

@@ -35,7 +35,7 @@ func TestProvisionClaudeHarnessConfig(t *testing.T) {
 			{Name: "docs", URL: "http://localhost:3040", Type: "http"},
 			{Name: "local", Command: "npx", Args: []string{"-y", "some-mcp"}},
 		},
-		Skill: skillSrc,
+		Skills: []model.ADLSkill{{Name: "review-skill", Path: skillSrc}},
 	}
 
 	configDir, err := ProvisionHarnessConfig(sessionID, "claude-code", deps)
@@ -71,7 +71,7 @@ func TestProvisionClaudeHarnessConfig(t *testing.T) {
 		t.Fatalf("local mcp: %v", cfg.MCPServers["local"])
 	}
 
-	skillPath := filepath.Join(configDir, ".claude", "skills", "review-skill", "SKILL.md")
+	skillPath := filepath.Join(configDir, "skills", "review-skill", "SKILL.md")
 	skillData, err := os.ReadFile(skillPath)
 	if err != nil {
 		t.Fatal(err)
@@ -162,7 +162,7 @@ func TestProvisionPiHarnessConfig(t *testing.T) {
 	sessionID := "pi-session"
 	deps := HarnessDeps{
 		SystemPrompt: "Pi system prompt.",
-		Skill:        skillSrc,
+		Skills:       []model.ADLSkill{{Name: "pi-skill", Path: skillSrc}},
 		MCPServers: []model.ADLMCPServer{
 			{Name: "local", Command: "echo", Args: []string{"mcp"}},
 		},
@@ -236,9 +236,26 @@ func TestAdlMCPServersFromAIAssets(t *testing.T) {
 			MCPServers: []model.ADLMCPServer{{Name: "step", URL: "http://step", Type: "http"}},
 		},
 	}
-	deps := harnessDepsFromADL(def, &step)
+	deps := harnessDepsFromADL(def, &step, "")
 	if len(deps.MCPServers) != 1 || deps.MCPServers[0].Name != "step" {
 		t.Fatalf("step aiAssets: %v", deps.MCPServers)
+	}
+}
+
+func TestHarnessDepsFromADLSkills(t *testing.T) {
+	def := model.ADLDefinition{
+		AIAssets: model.ADLAIAssets{
+			Skills: []model.ADLSkill{{Name: "agent-skill", Ref: "agent-skill"}},
+		},
+	}
+	step := model.ADLStep{
+		AIAssets: model.ADLAIAssets{
+			Skills: []model.ADLSkill{{Name: "step-skill", Path: "/tmp/step"}},
+		},
+	}
+	deps := harnessDepsFromADL(def, &step, "/workspace")
+	if len(deps.Skills) != 1 || deps.Skills[0].Name != "step-skill" {
+		t.Fatalf("step skills: %v", deps.Skills)
 	}
 }
 

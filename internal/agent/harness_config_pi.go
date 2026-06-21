@@ -27,10 +27,8 @@ func (piHarnessProvisioner) provision(sessionConfigDir string, deps HarnessDeps)
 	if err := writePiMCPConfig(agentDir, deps.MCPServers); err != nil {
 		return err
 	}
-	if deps.Skill != "" {
-		if err := installPiSkill(agentDir, deps.Skill); err != nil {
-			return fmt.Errorf("install skill: %w", err)
-		}
+	if err := installHarnessSkills("pi", sessionConfigDir, deps.WorkingDir, deps.Skills); err != nil {
+		return fmt.Errorf("install skills: %w", err)
 	}
 	return writeHarnessManifest(sessionConfigDir, "pi", deps, map[string]any{
 		"agentDir":         agentDir,
@@ -77,16 +75,4 @@ func writePiMCPConfig(agentDir string, servers []model.ADLMCPServer) error {
 		return err
 	}
 	return os.WriteFile(cfgPath, data, 0644)
-}
-
-func installPiSkill(agentDir, skillPath string) error {
-	src, skillName, err := resolveSkillSource(skillPath)
-	if err != nil {
-		return err
-	}
-	destDir := filepath.Join(agentDir, "skills", skillName)
-	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return err
-	}
-	return copyFile(filepath.Join(src, "SKILL.md"), filepath.Join(destDir, "SKILL.md"))
 }
