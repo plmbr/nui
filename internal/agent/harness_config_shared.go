@@ -3,6 +3,7 @@
 package agent
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -28,4 +29,24 @@ func piAgentConfigDir(sessionConfigDir string) string {
 // escapeTOMLMultiline prepares content for a TOML """ block.
 func escapeTOMLMultiline(s string) string {
 	return strings.ReplaceAll(s, "\\", "\\\\")
+}
+
+// userClaudeConfigDir is the default Claude Code config directory (~/.claude).
+func userClaudeConfigDir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".claude"), nil
+}
+
+// linkFileIfMissing creates a symlink at dst pointing to src when src exists and dst is absent.
+func linkFileIfMissing(src, dst string) error {
+	if _, err := os.Stat(src); err != nil {
+		return nil
+	}
+	if _, err := os.Stat(dst); err == nil {
+		return nil
+	}
+	return os.Symlink(src, dst)
 }

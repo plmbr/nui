@@ -226,12 +226,13 @@ export function useSessionChat(sessionId: string) {
             setIsRunning(false)
           } else if (event.type === EventType.RUN_ERROR) {
             const errEvent = event as { message?: string }
+            const errText = errEvent.message?.trim()
             setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMsgId
-                  ? { ...m, content: errEvent.message ?? 'An error occurred.', error: true }
-                  : m,
-              ),
+              prev.map((m) => {
+                if (m.id !== assistantMsgId) return m
+                const content = errText || m.content || 'An error occurred.'
+                return { ...m, content, error: true }
+              }),
             )
             setIsRunning(false)
           }

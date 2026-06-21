@@ -24,6 +24,9 @@ func (claudeHarnessProvisioner) provision(configDir string, deps HarnessDeps) er
 	if err := writeClaudeMCPConfig(configDir, deps.MCPServers); err != nil {
 		return err
 	}
+	if err := linkClaudeAuthFromUser(configDir); err != nil {
+		return err
+	}
 	if deps.Skill != "" {
 		if err := installClaudeSkill(configDir, deps.Skill); err != nil {
 			return fmt.Errorf("install skill: %w", err)
@@ -33,6 +36,30 @@ func (claudeHarnessProvisioner) provision(configDir string, deps HarnessDeps) er
 		"systemPromptFile": claudeSystemPromptFile,
 		"configEnv":        envClaudeConfigDir,
 	})
+}
+
+// linkClaudeAuthFromUser symlinks the user's Claude login credentials into the
+// session config dir so isolated CLAUDE_CONFIG_DIR sessions stay authenticated.
+func linkClaudeAuthFromUser(configDir string) error {
+	srcDir, err := userClaudeConfigDir()
+	if err != nil {
+		return err
+	}
+	absConfig, err := filepath.Abs(configDir)
+	if err != nil {
+		return err
+	}
+	absSrc, err := filepath.Abs(srcDir)
+	if err != nil {
+		return err
+	}
+	if absConfig == absSrc {
+		return nil
+	}
+	return linkFileIfMissing(
+		filepath.Join(srcDir, ".credentials.json"),
+		filepath.Join(configDir, ".credentials.json"),
+	)
 }
 
 func writeClaudeSystemPrompt(configDir, systemPrompt string) error {

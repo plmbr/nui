@@ -81,6 +81,34 @@ func TestProvisionClaudeHarnessConfig(t *testing.T) {
 	}
 }
 
+func TestProvisionClaudeHarnessConfigLinksCredentials(t *testing.T) {
+	tmp := t.TempDir()
+	home := filepath.Join(tmp, "home")
+	claudeHome := filepath.Join(home, ".claude")
+	if err := os.MkdirAll(claudeHome, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(claudeHome, ".credentials.json"), []byte("test-credential\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", home)
+
+	sessionID := "cred-session"
+	configDir, err := ProvisionHarnessConfig(sessionID, "claude-code", HarnessDeps{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	credDst := filepath.Join(configDir, ".credentials.json")
+	credData, err := os.ReadFile(credDst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(credData), "test-credential") {
+		t.Fatalf(".credentials.json = %q", string(credData))
+	}
+}
+
 func TestProvisionCodexHarnessConfig(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", filepath.Join(tmp, "home"))

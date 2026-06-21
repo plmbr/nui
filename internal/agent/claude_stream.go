@@ -42,6 +42,7 @@ func (p *claudeStreamParser) handleLine(line []byte, events chan<- Event) {
 		SessionID        string          `json:"session_id"`
 		IsError          bool            `json:"is_error"`
 		ErrMsg           string          `json:"error"`
+		Result           string          `json:"result"`
 		ParentToolUseID  string          `json:"parent_tool_use_id"`
 		ToolUseResult    json.RawMessage `json:"tool_use_result"`
 		Message          json.RawMessage `json:"message"`
@@ -59,7 +60,11 @@ func (p *claudeStreamParser) handleLine(line []byte, events chan<- Event) {
 		p.handleUser(envelope.ParentToolUseID, envelope.ToolUseResult, envelope.Message, events)
 	case "result":
 		if envelope.IsError {
-			events <- Event{Type: EventError, Error: envelope.ErrMsg}
+			msg := envelope.ErrMsg
+			if msg == "" {
+				msg = envelope.Result
+			}
+			events <- Event{Type: EventError, Error: msg}
 		} else {
 			events <- Event{Type: EventDone, SessionID: envelope.SessionID}
 		}
