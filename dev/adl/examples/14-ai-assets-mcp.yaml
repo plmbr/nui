@@ -3,9 +3,9 @@ adl: "1.0"
 # Reference agent matching the aiAssets.mcpServers schema.
 # Loop provisions ~/.loop/sessions/<session-id>/ and sets CLAUDE_CONFIG_DIR.
 
-id: data-analytics-agent
-name: Data Analytics Agent
-description: Agent with an HTTP MCP server from aiAssets
+id: test-agent
+name: Test Agent
+description: Test Agent with an HTTP MCP server from aiAssets
 version: 0.1.0
 
 env:
@@ -22,7 +22,7 @@ systemPrompt: |
 
 aiAssets:
   mcpServers:
-    - name: data-analytics-mcp-server
+    - name: test-mcp-server
       url: http://localhost:9123/mcp
       type: http
     - name: local-tool

@@ -19,7 +19,7 @@ systemPrompt: |
   You are helpful.
 aiAssets:
   mcpServers:
-    - name: data-analytics-mcp-server
+    - name: test-mcp-server
       url: http://localhost:9123/mcp
       type: http
 `)
@@ -38,7 +38,7 @@ aiAssets:
 		t.Fatalf("mcpServers: %v", def.AIAssets.MCPServers)
 	}
 	srv := def.AIAssets.MCPServers[0]
-	if srv.Name != "data-analytics-mcp-server" || srv.URL != "http://localhost:9123/mcp" || srv.Type != "http" {
+	if srv.Name != "test-mcp-server" || srv.URL != "http://localhost:9123/mcp" || srv.Type != "http" {
 		t.Fatalf("server: %+v", srv)
 	}
 }

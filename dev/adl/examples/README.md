@@ -64,7 +64,7 @@ MCP servers are declared under `aiAssets.mcpServers`. Each entry requires `name`
 ```yaml
 aiAssets:
   mcpServers:
-    - name: data-analytics-mcp-server
+    - name: test-mcp-server
       url: http://localhost:9123/mcp
       type: http
     - name: local-tool
