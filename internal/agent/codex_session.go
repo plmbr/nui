@@ -22,6 +22,7 @@ type persistentCodexSession struct {
 	sandbox    string
 	useBwrap   bool
 	workingDir string
+	configDir  string
 
 	threadID string
 }
@@ -34,7 +35,8 @@ func (s *persistentCodexSession) matches(agent *CodexAgent, req RunRequest) bool
 		s.model == req.Model &&
 		s.sandbox == agent.Sandbox &&
 		s.useBwrap == agent.useBwrap() &&
-		s.workingDir == req.WorkingDir
+		s.workingDir == req.WorkingDir &&
+		s.configDir == req.ConfigDir
 }
 
 func (s *persistentCodexSession) runTurn(ctx context.Context, agent *CodexAgent, req RunRequest, events chan<- Event) error {
@@ -51,13 +53,14 @@ func (s *persistentCodexSession) runTurn(ctx context.Context, agent *CodexAgent,
 
 	bin := agent.binaryPath()
 	args := s.buildArgs(req)
+	bindDir := harnessConfigBindDir("codex", req.ConfigDir)
 	var cmd *exec.Cmd
 	if agent.useBwrap() {
 		bwrap := GetBwrapStatus()
 		if !bwrap.Available {
 			return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
 		}
-		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, req.WorkingDir, ".codex")
+		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, req.WorkingDir, ".codex", bindDir)
 		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
 	} else {
 		cmd = exec.CommandContext(ctx, bin, args...)
@@ -65,6 +68,7 @@ func (s *persistentCodexSession) runTurn(ctx context.Context, agent *CodexAgent,
 			cmd.Dir = req.WorkingDir
 		}
 	}
+	applyHarnessConfigEnv(cmd, "codex", req.ConfigDir)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -88,6 +92,7 @@ func (s *persistentCodexSession) runTurn(ctx context.Context, agent *CodexAgent,
 	s.sandbox = agent.Sandbox
 	s.useBwrap = agent.useBwrap()
 	s.workingDir = req.WorkingDir
+	s.configDir = req.ConfigDir
 
 	go func() {
 		scanner := bufio.NewScanner(stderr)
@@ -143,8 +148,10 @@ func (s *persistentCodexSession) buildArgs(req RunRequest) []string {
 		"--json",
 		"--dangerously-bypass-approvals-and-sandbox",
 		"--skip-git-repo-check",
-		"--ignore-user-config",
 	)
+	if req.ConfigDir == "" {
+		args = append(args, "--ignore-user-config")
+	}
 	if baseURL := os.Getenv("OPENAI_BASE_URL"); baseURL != "" {
 		args = append(args,
 			"-c", `model_provider="loop_gateway"`,

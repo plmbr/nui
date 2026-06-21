@@ -125,7 +125,8 @@ steps:
     systemPrompt: |
       Trigger a deployment using the test-validated build artifact.
       Report the deployment job URL and status.
-    tools:
-      mcp:
-        - url: http://ci.internal:3020
-          name: ci-runner
+    aiAssets:
+      mcpServers:
+        - name: ci-runner
+          url: http://ci.internal:3020
+          type: http

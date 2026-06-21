@@ -32,7 +32,7 @@ type ADLDefinition struct {
 	Harness      ADLHarness     `yaml:"harness"      json:"harness"`
 	SystemPrompt string         `yaml:"systemPrompt" json:"systemPrompt,omitempty"`
 	Skill        string         `yaml:"skill"        json:"skill,omitempty"`
-	Tools        ADLTools       `yaml:"tools"        json:"tools,omitempty"`
+	AIAssets     ADLAIAssets    `yaml:"aiAssets"     json:"aiAssets,omitempty"`
 	Steps        []ADLStep      `yaml:"steps"        json:"steps,omitempty"`
 	Constraints  ADLConstraints `yaml:"constraints"  json:"constraints,omitempty"`
 	Schedule     *ADLSchedule   `yaml:"schedule"     json:"schedule,omitempty"`
@@ -63,13 +63,17 @@ type ADLHarness struct {
 	Port          int    `yaml:"port"          json:"port,omitempty"`           // harness type=remote only
 }
 
-type ADLTools struct {
-	MCP []ADLMCPServer `yaml:"mcp" json:"mcp,omitempty"`
+type ADLAIAssets struct {
+	MCPServers []ADLMCPServer `yaml:"mcpServers" json:"mcpServers,omitempty"`
 }
 
+// ADLMCPServer configures one MCP server entry in aiAssets.mcpServers.
 type ADLMCPServer struct {
-	URL  string `yaml:"url"  json:"url"`
-	Name string `yaml:"name" json:"name"`
+	Name    string   `yaml:"name"    json:"name"`
+	URL     string   `yaml:"url"     json:"url,omitempty"`
+	Command string   `yaml:"command" json:"command,omitempty"`
+	Args    []string `yaml:"args"    json:"args,omitempty"`
+	Type    string   `yaml:"type"    json:"type,omitempty"` // http | sse | stdio
 }
 
 type ADLOutput struct {
@@ -89,7 +93,7 @@ type ADLStep struct {
 	Harness         *ADLHarness `yaml:"harness"         json:"harness,omitempty"`
 	SystemPrompt    string      `yaml:"systemPrompt"    json:"systemPrompt,omitempty"`
 	DependsOn       []string    `yaml:"dependsOn"       json:"dependsOn,omitempty"`
-	Tools           ADLTools    `yaml:"tools"           json:"tools,omitempty"`
+	AIAssets        ADLAIAssets `yaml:"aiAssets"        json:"aiAssets,omitempty"`
 	Outputs         []ADLOutput `yaml:"outputs"         json:"outputs,omitempty"`
 	Inputs          []ADLInput  `yaml:"inputs"          json:"inputs,omitempty"`
 	Approval        string      `yaml:"approval"        json:"approval,omitempty"`

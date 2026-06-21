@@ -63,21 +63,25 @@ func detectBwrap() BwrapStatus {
 }
 
 // WrapWithBwrap returns the bwrap binary and args that sandbox bin+args under workDir.
-// workDir and ~/<homeSubdir> are bind-mounted read-write; everything else is read-only.
+// When harnessConfigDir is set it is bind-mounted (session harness config from Loop).
+// Otherwise ~/<homeSubdir> is bind-mounted read-write; everything else is read-only.
 // Network access is preserved so harness CLIs can reach their APIs.
-func WrapWithBwrap(bwrapPath, bin string, args []string, workDir, homeSubdir string) (string, []string) {
+func WrapWithBwrap(bwrapPath, bin string, args []string, workDir, homeSubdir, harnessConfigDir string) (string, []string) {
 	if workDir == "" {
 		if wd, err := os.Getwd(); err == nil {
 			workDir = wd
 		}
 	}
-	if homeSubdir == "" {
-		homeSubdir = ".claude"
-	}
 
-	home, _ := os.UserHomeDir()
-	configDir := filepath.Join(home, homeSubdir)
-	os.MkdirAll(configDir, 0700) //nolint:errcheck
+	bindDir := harnessConfigDir
+	if bindDir == "" {
+		if homeSubdir == "" {
+			homeSubdir = ".claude"
+		}
+		home, _ := os.UserHomeDir()
+		bindDir = filepath.Join(home, homeSubdir)
+	}
+	os.MkdirAll(bindDir, 0700) //nolint:errcheck
 
 	bwrapArgs := []string{
 		"--unshare-user",
@@ -89,7 +93,7 @@ func WrapWithBwrap(bwrapPath, bin string, args []string, workDir, homeSubdir str
 		"--dev", "/dev",
 		"--tmpfs", "/tmp",
 		"--die-with-parent",
-		"--bind", configDir, configDir,
+		"--bind", bindDir, bindDir,
 	}
 
 	if workDir != "" {

@@ -543,6 +543,9 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(os.Stderr, "warn: save data after delete: %v\n", err)
 		}
 		extensionManager.Stop(id)
+		if err := store.RemoveSessionConfigDir(id); err != nil {
+			fmt.Fprintf(os.Stderr, "warn: remove session config dir: %v\n", err)
+		}
 		if agentSessionID != "" {
 			var delErr error
 			switch sessionHarnessType(model.Session{AgentType: agentType, WorkingDir: workingDir}) {

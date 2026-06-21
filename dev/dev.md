@@ -78,9 +78,9 @@ ADL is a YAML format for declaring an agent type or multi-step workflow. It is a
 
 ### Three-layer architecture
 
-- **ADL** — agent identity, steps, harness, schedule (*this layer*)
-- **MCP** — runtime tool protocol; MCP tool UI works for Claude tool events, but ADL `tools.mcp` is not yet wired
-- **SKILL.md** — agent persona file (*planned* reference support)
+- **ADL** — agent identity, steps, harness, schedule, `aiAssets` (*this layer*)
+- **MCP** — runtime tool protocol; ADL `aiAssets.mcpServers` is provisioned into per-session harness config; Loop UI MCP tool frames also use `~/.loop/.mcp.json`
+- **SKILL.md** — referenced via ADL `skill` (path to skill directory or `SKILL.md`); copied into session harness config
 
 ### Schema
 
@@ -95,7 +95,7 @@ kind: agent | workflow          # workflow = multi-step; omitted defaults to age
 harness:
   type: claude-code | pi | codex | opencode | docker | remote
   model: string
-  workingDir: string              # optional; defaults to server CWD
+  workingDir: string              # optional; defaults to session working dir
   sandbox: none | bubblewrap | docker   # subprocess harnesses only; default: none
   image: string                   # sandbox:docker or harness.type:docker
   containerPort: 9090             # harness.type:docker (user images; builtin sandbox images use 8090)
@@ -105,14 +105,21 @@ harness:
 systemPrompt: |
   You are ...
 
+skill: /path/to/skill-dir        # optional; SKILL.md copied into session harness config
+
+aiAssets:
+  mcpServers:
+    - name: my-mcp-server        # required; used as the MCP server key in harness config
+      url: http://localhost:9123/mcp   # HTTP/SSE MCP (remote)
+      type: http                 # http | sse (default: http when url is set)
+    - name: local-mcp
+      command: npx               # stdio MCP
+      args: ["-y", "some-package"]
+      type: stdio
+
 schedule:                         # *planned — not enforced*
   cron: "0 9 * * 1-5"
   timezone: America/Los_Angeles
-
-tools:                            # *planned — not enforced*
-  mcp:
-    - url: "http://localhost:3001"
-      name: filesystem
 
 steps:                            # omit for single-step agents
   - name: research
@@ -121,6 +128,13 @@ steps:                            # omit for single-step agents
       type: claude-code
       model: claude-opus-4-8
     dependsOn: []
+    systemPrompt: |               # optional step override
+      ...
+    aiAssets:                     # optional step override
+      mcpServers:
+        - name: docs
+          url: http://localhost:3040
+          type: http
     outputs:
       - name: report
         type: text
@@ -136,6 +150,39 @@ constraints:                      # *parsed, not enforced*
   retries: 3
   maxConcurrency: 4
 ```
+
+Example
+
+```yaml
+adl: "1.0"
+name: example-agent
+description: Example Agent
+harness:
+  type: claude-code
+  model: claude-sonnet-4-6
+
+systemPrompt: |
+  You are a helpful assistant.
+
+aiAssets:
+  mcpServers:
+    - name: example-mcp-server
+      url: https://example.org/mcp
+      type: http
+```
+
+Place agent YAML files in `~/.loop/agents/` to make them selectable under **Custom Agents** in the UI.
+
+### Session harness config
+
+For each Loop session, ADL dependencies are materialized under `~/.loop/sessions/<session-id>/` and passed to harnesses via config-dir environment variables:
+
+| Harness | Env var | Provisioned files (examples) |
+|---|---|---|
+| `claude-code` | `CLAUDE_CONFIG_DIR` | `CLAUDE.md`, `.claude.json`, `.claude/skills/…` |
+| `codex` | `CODEX_HOME` | `AGENTS.md`, `config.toml`, `skills/…` |
+| `pi` | `PI_CODING_AGENT_DIR` | `pi-agent/SYSTEM.md`, `pi-agent/mcp.json`, `pi-agent/skills/…` |
+| `opencode` | `OPENCODE_CONFIG_DIR` | `INSTRUCTIONS.md`, `opencode.json`, `skills/…` |
 
 ### Harness types (implemented)
 
@@ -159,11 +206,12 @@ Sandbox config flows: ADL `harness.sandbox` → `harnessBuiltinConfig()` → `Ma
 | Per-step harness/model/systemPrompt | Done |
 | Named outputs → downstream inputs | Done |
 | All six harness types + sandbox | Done |
+| `aiAssets.mcpServers` → session harness config | Done |
+| `skill` + `systemPrompt` → session harness config | Done |
 | Step `policy` (parallel/loop/batch) | Parsed only |
 | `approval` / `approvalTimeout` | Parsed only |
 | `constraints` | Parsed only |
 | `schedule.cron` | Parsed only |
-| `tools.mcp` | Parsed only |
 
 ---
 
@@ -313,8 +361,8 @@ Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-
 
 ### Phase 4 — External integrations (*planned*)
 - [ ] Slack/webhook HITL channels
-- [ ] ADL skill references (SKILL.md)
-- [ ] ADL MCP server configuration
+- [x] ADL `skill` references (SKILL.md) → session harness config
+- [x] ADL `aiAssets.mcpServers` → session harness config
 
 ---
 

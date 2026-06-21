@@ -17,10 +17,11 @@ The executor in `internal/agent/adl.go` runs multi-step pipelines today. Example
 | `07-loop-policy.yaml` | Intermediate | `loop` policy | No — policy not enforced |
 | `08-batch-processing.yaml` | Intermediate | `batch` policy | No — policy not enforced |
 | `09-multi-harness-pipeline.yaml` | Advanced | Per-step harness/model override | Yes |
-| `10-autonomous-scheduled.yaml` | Advanced | `schedule.cron`, MCP tools | No — schedule/MCP not enforced |
+| `10-autonomous-scheduled.yaml` | Advanced | `schedule.cron`, `aiAssets.mcpServers` | Schedule not enforced |
 | `11-complex-research-pipeline.yaml` | Complex | All features combined | Partial |
 | `12-codex-sandbox-variants.yaml` | Basic | codex: none / bubblewrap / docker | Yes |
 | `13-opencode-sandbox-variants.yaml` | Basic | opencode: none / bubblewrap / docker | Yes |
+| `14-ai-assets-mcp.yaml` | Basic | `aiAssets.mcpServers` (HTTP + stdio) | Yes |
 
 \*All steps execute in topological order regardless of `policy` field today.
 
@@ -52,6 +53,47 @@ steps:
       type: claude-code
       model: claude-opus-4-8
 ```
+
+### AI assets (MCP servers)
+
+MCP servers are declared under `aiAssets.mcpServers`. Each entry requires `name`. Use `url` + `type` for HTTP/SSE servers, or `command` + `args` + `type` for stdio servers.
+
+```yaml
+aiAssets:
+  mcpServers:
+    - name: data-analytics-mcp-server
+      url: http://localhost:9123/mcp
+      type: http
+    - name: local-tool
+      command: npx
+      args: ["-y", "some-mcp-package"]
+      type: stdio
+```
+
+Loop provisions these into `~/.loop/sessions/<session-id>/` and sets the harness config-dir env var (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `PI_CODING_AGENT_DIR`, or `OPENCODE_CONFIG_DIR`) before each run.
+
+Per-step overrides:
+
+```yaml
+steps:
+  - name: doc-search
+    aiAssets:
+      mcpServers:
+        - name: internal-docs
+          url: http://localhost:3040
+          type: http
+```
+
+### System prompt and skills
+
+```yaml
+systemPrompt: |
+  You are a helpful assistant.
+
+skill: ~/.cursor/skills/my-skill   # path to skill dir or SKILL.md
+```
+
+`systemPrompt` is written as harness-native markdown (`CLAUDE.md`, `AGENTS.md`, etc.). `skill` is copied into the session harness skills directory.
 
 ### Named outputs and inputs
 
@@ -107,10 +149,11 @@ When implemented, the executor will pause and wait for `POST /api/sessions/:id/a
 | Per-step harness / model / systemPrompt | Done |
 | Named outputs → inputs | Done |
 | Six harness types + sandbox | Done |
+| `aiAssets.mcpServers` → harness config | Done |
+| `skill` + `systemPrompt` → harness config | Done |
 | Step `policy` (parallel/loop/batch) | Parsed only |
 | `approval` / `approvalTimeout` | Parsed only |
 | `constraints` | Parsed only |
 | `schedule.cron` | Parsed only |
-| `tools.mcp` | Parsed only |
 
 See [dev/dev.md](../dev.md) for the full architecture and [orchestration-research.md](orchestration-research.md) for design research.

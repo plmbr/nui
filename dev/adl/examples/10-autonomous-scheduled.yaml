@@ -3,7 +3,7 @@ adl: "1.0"
 # Autonomous agent that runs on a cron schedule with no human interaction.
 # Monitors a data source, generates a digest, and posts it to a Slack channel.
 #
-# Demonstrates: autonomous mode, schedule, external tools via MCP, no HITL.
+# Demonstrates: autonomous mode, schedule, aiAssets.mcpServers, no HITL.
 
 name: daily-digest
 description: Every morning, summarize overnight GitHub activity and post to Slack.
@@ -17,12 +17,14 @@ schedule:
   cron: "0 9 * * 1-5"    # 09:00 Mon–Fri
   timezone: America/Los_Angeles
 
-tools:
-  mcp:
-    - url: http://localhost:3030
-      name: github
-    - url: http://localhost:3031
-      name: slack
+aiAssets:
+  mcpServers:
+    - name: github
+      url: http://localhost:3030
+      type: http
+    - name: slack
+      url: http://localhost:3031
+      type: http
 
 constraints:
   maxTokens: 20000

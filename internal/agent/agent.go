@@ -35,6 +35,8 @@ type RunRequest struct {
 	Message      string
 	SystemPrompt string
 	Model        string
+	// ConfigDir is ~/.loop/sessions/<sessionID> with provisioned harness config.
+	ConfigDir string
 }
 
 type Agent interface {

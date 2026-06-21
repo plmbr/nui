@@ -32,6 +32,7 @@ type persistentPiSession struct {
 	workingDir   string
 	sandbox      string
 	useBwrap     bool
+	configDir    string
 
 	sessionID string
 }
@@ -234,7 +235,8 @@ func (s *persistentPiSession) ensureProcess(agent *PiAgent, req RunRequest, resu
 		s.model == req.Model &&
 		s.systemPrompt == req.SystemPrompt &&
 		s.sandbox == agent.Sandbox &&
-		s.useBwrap == agent.useBwrap() {
+		s.useBwrap == agent.useBwrap() &&
+		s.configDir == req.ConfigDir {
 		return nil
 	}
 
@@ -259,13 +261,14 @@ func (s *persistentPiSession) ensureProcess(agent *PiAgent, req RunRequest, resu
 	}
 
 	bin := agent.binaryPath()
+	bindDir := harnessConfigBindDir("pi", req.ConfigDir)
 	var cmd *exec.Cmd
 	if agent.useBwrap() {
 		bwrap := GetBwrapStatus()
 		if !bwrap.Available {
 			return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
 		}
-		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, wd, ".pi")
+		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, wd, ".pi", bindDir)
 		cmd = exec.Command(wrappedBin, wrappedArgs...)
 	} else {
 		cmd = exec.Command(bin, args...)
@@ -273,6 +276,7 @@ func (s *persistentPiSession) ensureProcess(agent *PiAgent, req RunRequest, resu
 			cmd.Dir = wd
 		}
 	}
+	applyHarnessConfigEnv(cmd, "pi", req.ConfigDir)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -316,6 +320,7 @@ func (s *persistentPiSession) ensureProcess(agent *PiAgent, req RunRequest, resu
 	s.binaryPath = bin
 	s.sandbox = agent.Sandbox
 	s.useBwrap = agent.useBwrap()
+	s.configDir = req.ConfigDir
 	return nil
 }
 

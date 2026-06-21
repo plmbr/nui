@@ -1,0 +1,25 @@
+adl: "1.0"
+
+# Reference agent matching the aiAssets.mcpServers schema.
+# Loop provisions ~/.loop/sessions/<session-id>/ and sets CLAUDE_CONFIG_DIR.
+
+name: data-analytics-agent
+description: Agent with an HTTP MCP server from aiAssets
+version: 0.1.0
+
+harness:
+  type: claude-code
+  model: claude-sonnet-4-6
+
+systemPrompt: |
+  You are a helpful assistant that can answer questions using the configured MCP tools.
+
+aiAssets:
+  mcpServers:
+    - name: data-analytics-mcp-server
+      url: http://localhost:9123/mcp
+      type: http
+    - name: local-tool
+      command: npx
+      args: ["-y", "some-mcp-package"]
+      type: stdio

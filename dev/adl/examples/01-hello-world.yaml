@@ -1,6 +1,6 @@
 adl: "1.0"
 
-# The simplest possible agent. Single step, no dependencies, no tools.
+# The simplest possible agent. Single step, no dependencies, no aiAssets.
 # Uses the default claude-code harness inherited from the top-level harness block.
 
 name: hello-world

@@ -10,7 +10,7 @@ adl: "1.0"
 # UI, and blocks. The user approves or rejects via the chat UI. On approval,
 # the publish step runs. On rejection, the run ends without publishing.
 #
-# Demonstrates: approval gate, approvalTimeout, conditional continuation.
+# Demonstrates: approval gate, approvalTimeout, per-step aiAssets.mcpServers.
 
 name: draft-and-publish
 description: Drafts content for human review, then publishes only if approved.
@@ -55,7 +55,8 @@ steps:
     systemPrompt: |
       The content has been approved. Simulate publishing it by printing:
       "Published: <title>" followed by a confirmation timestamp.
-    tools:
-      mcp:
-        - url: http://localhost:3010
-          name: cms-publisher
+    aiAssets:
+      mcpServers:
+        - name: cms-publisher
+          url: http://localhost:3010
+          type: http

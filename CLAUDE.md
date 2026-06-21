@@ -165,13 +165,13 @@ Implemented in `internal/agent/adl.go`:
 - Per-step harness/model/systemPrompt override
 - Named outputs → downstream inputs
 - All six harness types + sandbox variants
+- `aiAssets.mcpServers`, `skill`, and `systemPrompt` provisioned to `~/.loop/sessions/<session-id>/`
 
 **Not yet enforced** (parsed from YAML but ignored at runtime):
 - Step `policy` (`parallel`, `loop`, `batch`, etc.) — all steps run sequentially
 - `approval` / `approvalTimeout` (HITL gates)
 - `constraints` (timeout, maxTokens, retries)
 - `schedule.cron` (autonomous mode)
-- `tools.mcp` configuration
 
 ### UI stack
 

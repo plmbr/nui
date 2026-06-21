@@ -27,6 +27,7 @@ type persistentClaudeSession struct {
 	sandbox      string
 	useBwrap     bool
 	workingDir   string
+	configDir    string
 
 	claudeSessionID string
 }
@@ -40,7 +41,8 @@ func (s *persistentClaudeSession) matches(agent *ClaudeCodeAgent, req RunRequest
 		s.systemPrompt == req.SystemPrompt &&
 		s.sandbox == agent.Sandbox &&
 		s.useBwrap == agent.useBwrap() &&
-		s.workingDir == req.WorkingDir
+		s.workingDir == req.WorkingDir &&
+		s.configDir == req.ConfigDir
 }
 
 func processAlive(cmd *exec.Cmd) bool {
@@ -201,7 +203,7 @@ func (s *persistentClaudeSession) start(ctx context.Context, agent *ClaudeCodeAg
 	var cmd *exec.Cmd
 	if useBwrap {
 		bwrap := GetBwrapStatus()
-		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, req.WorkingDir, ".claude")
+		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, req.WorkingDir, ".claude", harnessConfigBindDir("claude-code", req.ConfigDir))
 		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
 	} else {
 		cmd = exec.CommandContext(ctx, bin, args...)
@@ -209,6 +211,7 @@ func (s *persistentClaudeSession) start(ctx context.Context, agent *ClaudeCodeAg
 			cmd.Dir = req.WorkingDir
 		}
 	}
+	applyHarnessConfigEnv(cmd, "claude-code", req.ConfigDir)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -247,6 +250,7 @@ func (s *persistentClaudeSession) start(ctx context.Context, agent *ClaudeCodeAg
 	s.sandbox = agent.Sandbox
 	s.useBwrap = useBwrap
 	s.workingDir = req.WorkingDir
+	s.configDir = req.ConfigDir
 	return nil
 }
 

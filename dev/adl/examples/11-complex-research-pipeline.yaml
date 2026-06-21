@@ -1,7 +1,7 @@
 adl: "1.0"
 
 # Full-featured complex example combining: parallel fan-out, multi-harness,
-# MCP tools, adversarial verification, HITL approval, and batch output.
+# aiAssets.mcpServers, adversarial verification, HITL approval, and batch output.
 #
 # Execution graph:
 #
@@ -74,10 +74,11 @@ steps:
     harness:
       type: claude-code
       model: claude-haiku-4-5-20251001    # cheap model, just retrieval
-    tools:
-      mcp:
-        - url: http://localhost:3040
-          name: internal-docs
+    aiAssets:
+      mcpServers:
+        - name: internal-docs
+          url: http://localhost:3040
+          type: http
     systemPrompt: |
       Search internal documentation (wiki, runbooks, RFCs) for content
       related to the user's topic. Return page titles, URLs, and excerpts.

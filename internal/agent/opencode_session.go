@@ -23,6 +23,7 @@ type persistentOpenCodeSession struct {
 	model      string
 	sandbox    string
 	useBwrap   bool
+	configDir  string
 	sessionID  string
 }
 
@@ -60,13 +61,14 @@ func (s *persistentOpenCodeSession) runTurn(ctx context.Context, agent *OpenCode
 	args = append(args, req.Message)
 
 	bin := agent.binaryPath()
+	bindDir := harnessConfigBindDir("opencode", req.ConfigDir)
 	var cmd *exec.Cmd
 	if agent.useBwrap() {
 		bwrap := GetBwrapStatus()
 		if !bwrap.Available {
 			return "", fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
 		}
-		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, wd, ".local/share/opencode")
+		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, wd, ".local/share/opencode", bindDir)
 		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
 	} else {
 		cmd = exec.CommandContext(ctx, bin, args...)
@@ -74,6 +76,7 @@ func (s *persistentOpenCodeSession) runTurn(ctx context.Context, agent *OpenCode
 			cmd.Dir = wd
 		}
 	}
+	applyHarnessConfigEnv(cmd, "opencode", req.ConfigDir)
 	cmd.Stdin = nil
 
 	stdout, err := cmd.StdoutPipe()
@@ -141,20 +144,22 @@ func (s *persistentOpenCodeSession) ensureServer(ctx context.Context, agent *Ope
 	if s.server != nil && processAlive(s.server) && s.baseURL != "" &&
 		s.workingDir == wd && s.model == req.Model &&
 		s.sandbox == agent.Sandbox &&
-		s.useBwrap == agent.useBwrap() {
+		s.useBwrap == agent.useBwrap() &&
+		s.configDir == req.ConfigDir {
 		return nil
 	}
 
 	s.stopLocked()
 	serveArgs := []string{"serve", "--port", "0", "--hostname", "127.0.0.1"}
 	bin := agent.binaryPath()
+	bindDir := harnessConfigBindDir("opencode", req.ConfigDir)
 	var cmd *exec.Cmd
 	if agent.useBwrap() {
 		bwrap := GetBwrapStatus()
 		if !bwrap.Available {
 			return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
 		}
-		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, serveArgs, wd, ".local/share/opencode")
+		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, serveArgs, wd, ".local/share/opencode", bindDir)
 		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
 	} else {
 		cmd = exec.CommandContext(ctx, bin, serveArgs...)
@@ -162,6 +167,7 @@ func (s *persistentOpenCodeSession) ensureServer(ctx context.Context, agent *Ope
 			cmd.Dir = wd
 		}
 	}
+	applyHarnessConfigEnv(cmd, "opencode", req.ConfigDir)
 
 	cmd.Stdin = nil
 
@@ -178,6 +184,7 @@ func (s *persistentOpenCodeSession) ensureServer(ctx context.Context, agent *Ope
 	s.model = req.Model
 	s.sandbox = agent.Sandbox
 	s.useBwrap = agent.useBwrap()
+	s.configDir = req.ConfigDir
 
 	urlCh := make(chan string, 1)
 	go func() {

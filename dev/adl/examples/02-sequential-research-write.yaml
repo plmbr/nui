@@ -3,6 +3,7 @@ adl: "1.0"
 # Two-step sequential pipeline: research then write.
 # The write step receives the research output as its input context.
 # Demonstrates: dependsOn, named outputs, per-step systemPrompt override.
+# aiAssets.mcpServers may be set at the top level or per step when MCP tools are needed.
 
 name: research-and-write
 description: Researches a topic then writes a polished summary.
