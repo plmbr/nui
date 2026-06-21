@@ -165,7 +165,7 @@ Implemented in `internal/agent/adl.go`:
 - Per-step harness/model/systemPrompt override
 - Named outputs → downstream inputs
 - All six harness types + sandbox variants
-- `aiAssets.mcpServers`, `skill`, `systemPrompt`, and `env`/`harness.env` provisioned to harness subprocesses via `~/.loop/sessions/<session-id>/`
+- `aiAssets.mcpServers`, `skill`, `systemPrompt`, `env`/`harness.env`, and `promptMode` provisioned to harness subprocesses / UI via `~/.loop/sessions/<session-id>/`
 
 **Not yet enforced** (parsed from YAML but ignored at runtime):
 - Step `policy` (`parallel`, `loop`, `batch`, etc.) — all steps run sequentially

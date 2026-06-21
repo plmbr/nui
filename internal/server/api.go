@@ -24,13 +24,15 @@ import (
 // AgentTypeInfo is the API shape returned by GET /api/agent-types.
 // ID equals the ADL definition name and is stored in Session.AgentType.
 type AgentTypeInfo struct {
-	ID          string `json:"id"`
-	Label       string `json:"label"`
-	Description string `json:"description,omitempty"`
-	Harness     string `json:"harness"`           // claude-code | pi | codex | opencode | docker | remote
-	Sandbox     string `json:"sandbox,omitempty"` // none | bubblewrap | docker
-	IsBuiltin   bool   `json:"isBuiltin"`
-	Available   bool   `json:"available"` // false when the required CLI is not installed
+	ID            string `json:"id"`
+	Label         string `json:"label"`
+	Description   string `json:"description,omitempty"`
+	Harness       string `json:"harness"`           // claude-code | pi | codex | opencode | docker | remote
+	Sandbox       string `json:"sandbox,omitempty"` // none | bubblewrap | docker
+	PromptMode    string `json:"promptMode,omitempty"`    // user | auto
+	DefaultPrompt string `json:"defaultPrompt,omitempty"`
+	IsBuiltin     bool   `json:"isBuiltin"`
+	Available     bool   `json:"available"` // false when the required CLI is not installed
 }
 
 // builtinAgentDefs are the compiled-in ADL definitions shipped with Loop.
@@ -302,15 +304,7 @@ func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
 
 	var all []AgentTypeInfo
 	for _, def := range builtinAgentDefs {
-		all = append(all, AgentTypeInfo{
-			ID:          def.Name,
-			Label:       def.Name,
-			Description: def.Description,
-			Harness:     def.Harness.Type,
-			Sandbox:     def.Harness.Sandbox,
-			IsBuiltin:   true,
-			Available:   agent.CLIAvailable(def.Harness.Type),
-		})
+		all = append(all, agentTypeInfoFromDef(def, true))
 	}
 
 	userDefs, err := store.LoadADLDefinitions()
@@ -321,18 +315,30 @@ func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
 		if def.Kind == "workflow" {
 			continue // workflows are not selectable as session agent types
 		}
-		all = append(all, AgentTypeInfo{
-			ID:          def.Name,
-			Label:       def.Name,
-			Description: def.Description,
-			Harness:     def.Harness.Type,
-			Sandbox:     def.Harness.Sandbox,
-			IsBuiltin:   false,
-			Available:   true,
-		})
+		all = append(all, agentTypeInfoFromDef(def, false))
 	}
 
 	writeJSON(w, http.StatusOK, all)
+}
+
+func agentTypeInfoFromDef(def model.ADLDefinition, builtin bool) AgentTypeInfo {
+	info := AgentTypeInfo{
+		ID:            def.Name,
+		Label:         def.Name,
+		Description:   def.Description,
+		Harness:       def.Harness.Type,
+		Sandbox:       def.Harness.Sandbox,
+		DefaultPrompt: def.DefaultPrompt,
+		IsBuiltin:     builtin,
+		Available:     true,
+	}
+	if model.IsADLAutoPrompt(def) {
+		info.PromptMode = model.ADLPromptModeAuto
+	}
+	if builtin {
+		info.Available = agent.CLIAvailable(def.Harness.Type)
+	}
+	return info
 }
 
 // findADLDef looks up an ADL definition by name from builtins and user-defined definitions.

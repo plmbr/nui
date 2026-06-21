@@ -92,7 +92,14 @@ func bootstrapFromCLI(opts StartOptions) error {
 			return err
 		}
 
-		setBootstrap(s.ID, strings.TrimSpace(opts.Prompt), cliLaunchSidebarOpen(opts), opts.HideInput)
+		prompt := strings.TrimSpace(opts.Prompt)
+		hideInput := opts.HideInput
+		if model.IsADLAutoPrompt(def) {
+			hideInput = true
+			prompt = model.ResolveADLLaunchPrompt(def, prompt)
+		}
+
+		setBootstrap(s.ID, prompt, cliLaunchSidebarOpen(opts), hideInput)
 
 		settings, err := store.LoadSettings()
 		if err != nil {

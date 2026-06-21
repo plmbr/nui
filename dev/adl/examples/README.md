@@ -111,6 +111,15 @@ harness:
     ANTHROPIC_API_KEY: your-api-key
 ```
 
+### Prompt mode
+
+`promptMode: user` (default) waits for the user to type a message. `promptMode: auto` hides the input and runs on session open with a launch prompt, ADL `defaultPrompt`, or the built-in phrase `"Follow your system instructions and run."`.
+
+```yaml
+promptMode: auto
+defaultPrompt: Follow your system instructions and run.
+```
+
 ### Named outputs and inputs
 
 ```yaml
@@ -168,6 +177,7 @@ When implemented, the executor will pause and wait for `POST /api/sessions/:id/a
 | `aiAssets.mcpServers` → harness config | Done |
 | `skill` + `systemPrompt` → harness config | Done |
 | `env` / `harness.env` → subprocess env | Done |
+| `promptMode` / `defaultPrompt` | Done |
 | Step `policy` (parallel/loop/batch) | Parsed only |
 | `approval` / `approvalTimeout` | Parsed only |
 | `constraints` | Parsed only |

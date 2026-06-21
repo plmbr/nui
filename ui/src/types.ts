@@ -26,6 +26,8 @@ export interface AgentType {
   description?: string
   harness: 'claude-code' | 'pi' | 'codex' | 'opencode' | 'docker' | 'remote'
   sandbox?: 'none' | 'bubblewrap' | 'docker'
+  promptMode?: 'user' | 'auto'
+  defaultPrompt?: string
   isBuiltin: boolean
   available: boolean
 }

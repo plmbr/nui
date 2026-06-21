@@ -7,7 +7,7 @@ import { AppSidebar } from '@/components/AppSidebar'
 import { ConversationPanel } from '@/components/ConversationPanel'
 import { ThemeProvider } from '@/contexts/theme'
 import { api } from '@/api'
-import type { Session } from '@/types'
+import type { Session, AgentType } from '@/types'
 
 export default function App() {
   const [sessions, setSessions] = useState<Session[]>([])
@@ -15,6 +15,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [initialPrompt, setInitialPrompt] = useState<string | undefined>()
   const [hideInput, setHideInput] = useState(false)
+  const [agentTypes, setAgentTypes] = useState<AgentType[]>([])
   const [appReady, setAppReady] = useState(false)
   const initializedRef = useRef(false)
 
@@ -33,11 +34,14 @@ export default function App() {
     initializedRef.current = true
 
     async function init() {
-      let [list, settings, bootstrap] = await Promise.all([
+      let [list, settings, bootstrap, types] = await Promise.all([
         loadSessions(),
         api.settings.get().catch(() => ({ theme: 'light' as const })),
         api.bootstrap.get().catch(() => ({})),
+        api.agentTypes.list().catch(() => []),
       ])
+
+      setAgentTypes(types)
 
       if (bootstrap.sidebarOpen !== undefined) {
         setSidebarOpen(bootstrap.sidebarOpen)
@@ -92,6 +96,9 @@ export default function App() {
   }, [])
 
   const selected = sessions.find((s) => s.id === selectedId) ?? null
+  const selectedAgent = agentTypes.find((a) => a.id === selected?.agentType)
+  const promptMode = selectedAgent?.promptMode ?? 'user'
+  const effectiveHideInput = hideInput || promptMode === 'auto'
 
   const handleDeleteSession = useCallback(async (id: string) => {
     await api.sessions.delete(id)
@@ -129,7 +136,9 @@ export default function App() {
               <ConversationPanel
                 session={selected}
                 initialPrompt={initialPrompt}
-                hideInput={hideInput}
+                hideInput={effectiveHideInput}
+                promptMode={promptMode}
+                defaultPrompt={selectedAgent?.defaultPrompt}
                 key={selected.id}
               />
             ) : (

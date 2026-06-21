@@ -11,13 +11,23 @@ import { imageSrc, useSessionChat } from '@/hooks/useSessionChat'
 import { normalizeMarkdown, stripInlineCodeDelimiters } from '@/lib/markdown'
 import type { Session } from '@/types'
 
+const AUTO_PROMPT_FALLBACK = 'Follow your system instructions and run.'
+
 interface Props {
   session: Session
   initialPrompt?: string
   hideInput?: boolean
+  promptMode?: 'user' | 'auto'
+  defaultPrompt?: string
 }
 
-export function ChatPanel({ session, initialPrompt, hideInput }: Props) {
+export function ChatPanel({
+  session,
+  initialPrompt,
+  hideInput,
+  promptMode = 'user',
+  defaultPrompt,
+}: Props) {
   const { messages, sendMessage, isRunning, isLoading } = useSessionChat(session.id)
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -35,11 +45,30 @@ export function ChatPanel({ session, initialPrompt, hideInput }: Props) {
   }, [isRunning, hideInput])
 
   useEffect(() => {
-    if (!initialPrompt || initialPromptSentRef.current || isLoading || isRunning) return
+    if (initialPromptSentRef.current || isLoading || isRunning) return
     if (messages.length > 0) return
+
+    let prompt = initialPrompt?.trim()
+    if (promptMode === 'auto') {
+      if (!prompt) {
+        prompt = defaultPrompt?.trim() || AUTO_PROMPT_FALLBACK
+      }
+      initialPromptSentRef.current = true
+      sendMessage(prompt)
+      return
+    }
+    if (!prompt) return
     initialPromptSentRef.current = true
-    sendMessage(initialPrompt)
-  }, [initialPrompt, isLoading, isRunning, messages.length, sendMessage])
+    sendMessage(prompt)
+  }, [
+    initialPrompt,
+    defaultPrompt,
+    promptMode,
+    isLoading,
+    isRunning,
+    messages.length,
+    sendMessage,
+  ])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

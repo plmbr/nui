@@ -92,6 +92,9 @@ description: string
 version: semver
 kind: agent | workflow          # workflow = multi-step; omitted defaults to agent
 
+promptMode: user | auto         # auto hides input and runs default or launch prompt
+defaultPrompt: string           # optional; auto mode when no launch prompt (default: built-in phrase)
+
 harness:
   type: claude-code | pi | codex | opencode | docker | remote
   model: string
@@ -196,6 +199,8 @@ For each Loop session, ADL dependencies are materialized under `~/.loop/sessions
 
 ADL `env` (global) and `harness.env` are merged and set on harness subprocess environments. Harness keys override global keys. Host environment variables are inherited unless overridden.
 
+`promptMode: auto` hides the chat input and automatically sends `defaultPrompt` (or `"Follow your system instructions and run."` when omitted). CLI `-m` and bootstrap prompts override the default for that launch.
+
 ### Harness types (implemented)
 
 | Harness | Local (`sandbox: none`) | Bubblewrap (`sandbox: bubblewrap`) | Docker (`sandbox: docker`) |
@@ -221,6 +226,7 @@ Sandbox config flows: ADL `harness.sandbox` → `harnessBuiltinConfig()` → `Ma
 | `aiAssets.mcpServers` → session harness config | Done |
 | `skill` + `systemPrompt` → session harness config | Done |
 | `env` / `harness.env` → subprocess environment | Done |
+| `promptMode` / `defaultPrompt` → UI auto-run | Done |
 | Step `policy` (parallel/loop/batch) | Parsed only |
 | `approval` / `approvalTimeout` | Parsed only |
 | `constraints` | Parsed only |

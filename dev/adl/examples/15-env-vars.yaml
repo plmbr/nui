@@ -7,6 +7,8 @@ name: env-vars-agent
 description: Demonstrates global and per-harness environment variables
 version: 0.1.0
 
+promptMode: auto
+
 env:
   ANTHROPIC_BASE_URL: https://api.anthropic.com
 
