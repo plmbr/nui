@@ -11,7 +11,8 @@ adl: "1.0"
 #
 # Demonstrates: parallel policy, fan-in via dependsOn list, multiple inputs.
 
-name: parallel-market-research
+id: parallel-market-research
+name: Parallel Market Research
 description: Researches a topic from three angles in parallel then synthesizes findings.
 version: 0.1.0
 

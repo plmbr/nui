@@ -9,7 +9,8 @@ adl: "1.0"
 #
 # Demonstrates: batch policy, maxConcurrency, per-item parallelism.
 
-name: batch-translator
+id: batch-translator
+name: Batch Translator
 description: Translates a list of texts into a target language in parallel.
 version: 0.1.0
 

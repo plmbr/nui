@@ -23,7 +23,8 @@ adl: "1.0"
 #                                               ↓
 #                                          compile-report
 
-name: deep-research-report
+id: deep-research-report
+name: Deep Research Report
 description: |
   Multi-source research with adversarial fact-checking, human sign-off,
   and parallel section generation. Produces a cited technical report.

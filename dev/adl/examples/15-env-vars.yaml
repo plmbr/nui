@@ -3,7 +3,8 @@ adl: "1.0"
 # Environment variables for harness subprocesses.
 # Global env applies to every step; harness.env overrides on key conflicts.
 
-name: env-vars-agent
+id: env-vars-agent
+name: Env Vars Agent
 description: Demonstrates global and per-harness environment variables
 version: 0.1.0
 

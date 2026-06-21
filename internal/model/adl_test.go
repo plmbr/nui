@@ -10,7 +10,8 @@ import (
 
 func TestADLDefinitionYAML_aiAssets(t *testing.T) {
 	raw := []byte(`adl: "1.0"
-name: data-agent
+id: data-agent
+name: Data Agent
 harness:
   type: claude-code
   model: claude-sonnet-4-6
@@ -27,7 +28,10 @@ aiAssets:
 	if err := yaml.Unmarshal(raw, &def); err != nil {
 		t.Fatal(err)
 	}
-	if def.Name != "data-agent" {
+	if def.ID != "data-agent" {
+		t.Fatalf("id = %q", def.ID)
+	}
+	if def.Name != "Data Agent" {
 		t.Fatalf("name = %q", def.Name)
 	}
 	if len(def.AIAssets.MCPServers) != 1 {
@@ -41,7 +45,8 @@ aiAssets:
 
 func TestADLDefinitionYAML_env(t *testing.T) {
 	raw := []byte(`adl: "1.0"
-name: env-agent
+id: env-agent
+name: Env Agent
 harness:
   type: claude-code
   model: claude-sonnet-4-6

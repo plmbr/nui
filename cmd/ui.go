@@ -39,7 +39,7 @@ var uiCmd = &cobra.Command{
 
 func init() {
 	uiCmd.Flags().IntVarP(&port, "port", "p", 8080, "Port to listen on")
-	uiCmd.Flags().StringVarP(&agentType, "agent-type", "a", "", "Agent type to launch (creates a new session on startup)")
+	uiCmd.Flags().StringVarP(&agentType, "agent-type", "a", "", "Agent id to launch (creates a new session on startup)")
 	uiCmd.Flags().StringVarP(&prompt, "prompt", "m", "", "Initial prompt to run in the new session")
 	uiCmd.Flags().StringVarP(&workingDir, "working-dir", "w", "", "Working directory for the new session (defaults to current directory)")
 	uiCmd.Flags().BoolVar(&openBrowser, "open", false, "Open the web UI in the system default browser")

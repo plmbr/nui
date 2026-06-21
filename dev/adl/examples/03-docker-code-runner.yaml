@@ -8,7 +8,8 @@ adl: "1.0"
 #
 # Loop launches the container automatically on first use and stops it on delete.
 
-name: code-runner
+id: code-runner
+name: Code Runner
 description: Executes code snippets in an isolated Docker sandbox and returns the output.
 version: 0.1.0
 

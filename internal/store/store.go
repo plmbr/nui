@@ -164,7 +164,8 @@ func LoadADLDefinitions() ([]model.ADLDefinition, error) {
 		if err := yaml.Unmarshal(raw, &def); err != nil {
 			continue
 		}
-		if def.Name == "" {
+		model.NormalizeADLDefinition(&def)
+		if def.ID == "" && def.Name == "" {
 			continue
 		}
 		defs = append(defs, def)
@@ -183,7 +184,8 @@ func ProvisionDefaultAgents() error {
 	}
 	defaults := map[string]string{
 		"opencode-docker.yaml": `adl: "1.0"
-name: opencode-docker
+id: opencode-docker
+name: OpenCode Docker
 description: opencode running inside a Docker container (loop-opencode:latest)
 harness:
   type: opencode
@@ -191,7 +193,8 @@ harness:
   image: loop-opencode:latest
 `,
 		"docker-echo.yaml": `adl: "1.0"
-name: docker-echo
+id: docker-echo
+name: Docker Echo
 description: Echo agent in a Docker container (build dev/extension-examples/docker first)
 harness:
   type: docker
@@ -199,7 +202,8 @@ harness:
   containerPort: 9090
 `,
 		"remote-echo.yaml": `adl: "1.0"
-name: remote-echo
+id: remote-echo
+name: Remote Echo
 description: Echo agent on a local HTTP/SSE server (start dev/extension-examples/remote/echo_agent.py)
 harness:
   type: remote

@@ -10,7 +10,8 @@ adl: "1.0"
 #   - A production model endpoint behind a TLS reverse proxy
 #   - A shared team agent on an internal network
 
-name: remote-llm
+id: remote-llm
+name: Remote LLM
 description: Forwards requests to a remotely hosted LLM agent server.
 version: 0.1.0
 

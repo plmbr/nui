@@ -16,7 +16,8 @@ adl: "1.0"
 # sandbox, security-scans with Codex, reviews the output, gets human sign-off,
 # then triggers a remote CI deploy.
 
-name: ai-dev-pipeline
+id: ai-dev-pipeline
+name: AI Dev Pipeline
 description: Plan → sandbox execute → security-scan + review → approve → remote deploy.
 version: 0.1.0
 

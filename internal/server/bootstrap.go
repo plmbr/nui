@@ -77,7 +77,7 @@ func bootstrapFromCLI(opts StartOptions) error {
 	if agentType != "" {
 		def, ok := findADLDef(agentType)
 		if !ok {
-			return fmt.Errorf("unknown agent type %q", agentType)
+			return fmt.Errorf("unknown agent id %q", agentType)
 		}
 
 		workingDir := strings.TrimSpace(opts.WorkingDir)
@@ -87,7 +87,7 @@ func bootstrapFromCLI(opts StartOptions) error {
 			}
 		}
 
-		s, err := createSession(def.Name, workingDir, def.Name, nil)
+		s, err := createSession(model.ADLAgentLabel(def), workingDir, model.ADLAgentID(def), nil)
 		if err != nil {
 			return err
 		}
@@ -106,9 +106,9 @@ func bootstrapFromCLI(opts StartOptions) error {
 			fmt.Fprintf(os.Stderr, "warn: load settings for bootstrap: %v\n", err)
 			settings = store.Settings{Theme: "light"}
 		}
-		saveSessionPreferences(def.Name, s.ID, settings)
+		saveSessionPreferences(model.ADLAgentID(def), s.ID, settings)
 
-		fmt.Fprintf(os.Stderr, "Created session %q (%s) with agent %s\n", s.Name, s.ID, def.Name)
+		fmt.Fprintf(os.Stderr, "Created session %q (%s) with agent %s\n", s.Name, s.ID, model.ADLAgentID(def))
 		return nil
 	}
 
@@ -209,21 +209,23 @@ func defaultAgentTypeCandidates() []string {
 
 	if settings.LastAgentType != "" {
 		if def, ok := findADLDef(settings.LastAgentType); ok {
-			candidates = append(candidates, def.Name)
-			seen[def.Name] = true
+			id := model.ADLAgentID(def)
+			candidates = append(candidates, id)
+			seen[id] = true
 		}
 	}
 
 	for _, def := range builtinAgentDefs {
-		if seen[def.Name] || !agent.CLIAvailable(def.Harness.Type) {
+		id := model.ADLAgentID(def)
+		if seen[id] || !agent.CLIAvailable(def.Harness.Type) {
 			continue
 		}
-		candidates = append(candidates, def.Name)
-		seen[def.Name] = true
+		candidates = append(candidates, id)
+		seen[id] = true
 	}
 
 	if len(candidates) == 0 && len(builtinAgentDefs) > 0 {
-		candidates = append(candidates, builtinAgentDefs[0].Name)
+		candidates = append(candidates, model.ADLAgentID(builtinAgentDefs[0]))
 	}
 	return candidates
 }
@@ -249,7 +251,7 @@ func createSession(name, workingDir, agentType string, agentConfig map[string]an
 		ID:          uuid.NewString(),
 		Name:        name,
 		WorkingDir:  workingDir,
-		AgentType:   def.Name,
+		AgentType:   model.ADLAgentID(def),
 		AgentConfig: agentConfig,
 		CreatedAt:   time.Now().UTC().Format(time.RFC3339),
 	}

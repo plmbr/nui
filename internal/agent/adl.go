@@ -21,7 +21,7 @@ func NewADLAgent(def model.ADLDefinition, projectID string, manager *Manager) *A
 	return &ADLAgent{def: def, projectID: projectID, manager: manager}
 }
 
-func (a *ADLAgent) Name() string { return "adl:" + a.def.Name }
+func (a *ADLAgent) Name() string { return "adl:" + model.ADLAgentID(a.def) }
 
 func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event) error {
 	steps := a.def.Steps

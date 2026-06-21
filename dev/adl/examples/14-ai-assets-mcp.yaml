@@ -3,7 +3,8 @@ adl: "1.0"
 # Reference agent matching the aiAssets.mcpServers schema.
 # Loop provisions ~/.loop/sessions/<session-id>/ and sets CLAUDE_CONFIG_DIR.
 
-name: data-analytics-agent
+id: data-analytics-agent
+name: Data Analytics Agent
 description: Agent with an HTTP MCP server from aiAssets
 version: 0.1.0
 

@@ -3,7 +3,8 @@ adl: "1.0"
 # The simplest possible agent. Single step, no dependencies, no aiAssets.
 # Uses the default claude-code harness inherited from the top-level harness block.
 
-name: hello-world
+id: hello-world
+name: Hello World
 description: Echoes the user's message back with a greeting.
 version: 0.1.0
 

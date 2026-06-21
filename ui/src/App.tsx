@@ -139,6 +139,8 @@ export default function App() {
                 hideInput={effectiveHideInput}
                 promptMode={promptMode}
                 defaultPrompt={selectedAgent?.defaultPrompt}
+                agentLabel={selectedAgent?.label}
+                agentDescription={selectedAgent?.description}
                 key={selected.id}
               />
             ) : (

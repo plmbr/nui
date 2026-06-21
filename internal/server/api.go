@@ -22,7 +22,7 @@ import (
 )
 
 // AgentTypeInfo is the API shape returned by GET /api/agent-types.
-// ID equals the ADL definition name and is stored in Session.AgentType.
+// ID equals the ADL definition id and is stored in Session.AgentType.
 type AgentTypeInfo struct {
 	ID            string `json:"id"`
 	Label         string `json:"label"`
@@ -41,34 +41,41 @@ type AgentTypeInfo struct {
 // Docker and remote harness types are configured via user ADL in ~/.loop/agents/*.yaml.
 var builtinAgentDefs = []model.ADLDefinition{
 	{
+		ID:          "claude-code",
 		Name:        "Claude Code",
 		Description: "Claude Code running as a local subprocess",
 		Harness:     model.ADLHarness{Type: "claude-code", Sandbox: "none"},
 	},
 	{
-		Name:        "pi",
+		ID:          "pi",
+		Name:        "Pi",
 		Description: "Pi running as a local subprocess",
 		Harness:     model.ADLHarness{Type: "pi", Sandbox: "none"},
 	},
 	{
-		Name:        "codex",
+		ID:          "codex",
+		Name:        "Codex",
 		Description: "Codex running as a local subprocess",
 		Harness:     model.ADLHarness{Type: "codex", Sandbox: "none"},
 	},
 	{
-		Name:        "opencode",
-		Description: "opencode running as a local subprocess",
+		ID:          "opencode",
+		Name:        "OpenCode",
+		Description: "OpenCode running as a local subprocess",
 		Harness:     model.ADLHarness{Type: "opencode", Sandbox: "none"},
 	},
 }
 
-// legacyAgentTypeNames maps old Session.AgentType strings to the new ADL definition name.
+// legacyAgentTypeNames maps old Session.AgentType strings to ADL ids.
 var legacyAgentTypeNames = map[string]string{
-	"claude-code":     "Claude Code",
+	"claude-code":     "claude-code",
 	"pi":              "pi",
-	"docker-claude":   "Claude Code",
+	"codex":           "codex",
+	"opencode":        "opencode",
+	"docker-claude":   "claude-code",
 	"docker-pi":       "pi",
 	"docker-opencode": "opencode",
+	"Claude Code":     "claude-code",
 }
 
 type SandboxCapabilities struct {
@@ -323,8 +330,8 @@ func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
 
 func agentTypeInfoFromDef(def model.ADLDefinition, builtin bool) AgentTypeInfo {
 	info := AgentTypeInfo{
-		ID:            def.Name,
-		Label:         def.Name,
+		ID:            model.ADLAgentID(def),
+		Label:         model.ADLAgentLabel(def),
 		Description:   def.Description,
 		Harness:       def.Harness.Type,
 		Sandbox:       def.Harness.Sandbox,
@@ -341,28 +348,33 @@ func agentTypeInfoFromDef(def model.ADLDefinition, builtin bool) AgentTypeInfo {
 	return info
 }
 
-// findADLDef looks up an ADL definition by name from builtins and user-defined definitions.
-// It also handles legacy Session.AgentType strings (e.g. "claude-code", "adl:name").
+// findADLDef looks up an ADL definition by id from builtins and user-defined definitions.
+// It also handles legacy Session.AgentType strings (harness names, old display names, "adl:id").
 func findADLDef(agentType string) (model.ADLDefinition, bool) {
-	// Map legacy type strings to their ADL definition name.
 	if mapped, ok := legacyAgentTypeNames[agentType]; ok {
 		agentType = mapped
 	}
-	// Strip legacy "adl:" prefix used by old sessions.
 	agentType = strings.TrimPrefix(agentType, "adl:")
 
 	for _, def := range builtinAgentDefs {
-		if def.Name == agentType {
+		if adlDefMatches(def, agentType) {
 			return def, true
 		}
 	}
 	userDefs, _ := store.LoadADLDefinitions()
 	for _, def := range userDefs {
-		if def.Name == agentType {
+		if adlDefMatches(def, agentType) {
 			return def, true
 		}
 	}
 	return model.ADLDefinition{}, false
+}
+
+func adlDefMatches(def model.ADLDefinition, key string) bool {
+	if key == "" {
+		return false
+	}
+	return def.ID == key || def.Name == key || model.ADLAgentID(def) == key
 }
 
 func validateSessionConnector(s model.Session) error {

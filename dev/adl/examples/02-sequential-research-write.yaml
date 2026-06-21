@@ -5,7 +5,8 @@ adl: "1.0"
 # Demonstrates: dependsOn, named outputs, per-step systemPrompt override.
 # aiAssets.mcpServers may be set at the top level or per step when MCP tools are needed.
 
-name: research-and-write
+id: research-and-write
+name: Research and Write
 description: Researches a topic then writes a polished summary.
 version: 0.1.0
 

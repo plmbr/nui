@@ -26,6 +26,7 @@ type ChatMessage struct {
 type ADLDefinition struct {
 	ADL          string         `yaml:"adl"          json:"adl"`
 	Kind         string         `yaml:"kind"         json:"kind,omitempty"` // "agent" | "workflow"; defaults to "agent"
+	ID           string         `yaml:"id"           json:"id"`
 	Name         string         `yaml:"name"         json:"name"`
 	Description  string         `yaml:"description"  json:"description,omitempty"`
 	Version      string         `yaml:"version"      json:"version,omitempty"`

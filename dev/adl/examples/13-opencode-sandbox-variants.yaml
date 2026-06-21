@@ -18,7 +18,8 @@ adl: "1.0"
 # Use case: validate that a security-sensitive analysis produces the same
 # findings regardless of sandbox level before adopting stricter isolation.
 
-name: opencode-sandbox-comparison
+id: opencode-sandbox-comparison
+name: OpenCode Sandbox Comparison
 description: Run the same opencode prompt under three sandbox levels and compare outputs.
 version: 0.1.0
 

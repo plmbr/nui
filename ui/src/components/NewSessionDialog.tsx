@@ -138,7 +138,7 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
       setError('Select an agent type.')
       return
     }
-    const displayLabel = HARNESS_LABELS[selected?.harness ?? ''] ?? selected?.label ?? selectedId
+    const displayLabel = selected?.label ?? selectedId
     const sessionName = name.trim() || displayLabel
     setLoading(true)
     setError('')
@@ -196,7 +196,7 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
                               : 'border-border bg-background text-muted-foreground hover:bg-muted',
                           ].join(' ')}
                         >
-                          {HARNESS_LABELS[a.harness] ?? a.label}
+                          {a.label}
                         </button>
                       ))}
                     </div>
@@ -220,6 +220,16 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
                   </>
                 )}
               </div>
+              {selected && (
+                <div className="rounded-lg border px-3 py-2 bg-muted/30">
+                  <span className="block text-sm font-medium leading-tight">{selected.label}</span>
+                  {selected.description && (
+                    <span className="block text-xs text-muted-foreground mt-0.5 leading-snug">
+                      {selected.description}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* ── Session name ─────────────────────────────────────────── */}
@@ -229,7 +239,7 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
               </Label>
               <Input
                 id="name"
-                placeholder={HARNESS_LABELS[selected?.harness ?? ''] ?? selected?.label ?? 'my-session'}
+                placeholder={selected?.label ?? 'my-session'}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />

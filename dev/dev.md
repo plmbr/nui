@@ -48,7 +48,7 @@ flowchart TB
 
 ### Key design decisions
 
-1. **Every session is an ADL agent.** Even the four built-in CLI harnesses are compiled-in ADL definitions (`builtinAgentDefs` in `api.go`). Selecting "Claude Code" in the UI stores `agentType: "Claude Code"`, which resolves to `harness.type: claude-code`.
+1. **Every session is an ADL agent.** Even the four built-in CLI harnesses are compiled-in ADL definitions (`builtinAgentDefs` in `api.go`). Selecting "Claude Code" in the UI stores `agentType: "claude-code"` (the ADL `id`), which resolves to `harness.type: claude-code`.
 
 2. **Chat uses AG-UI, not raw SSE.** The UI (`useSessionChat.ts`) streams via `POST /api/sessions/:id/ag-ui` using the [AG-UI protocol](https://github.com/ag-ui-protocol/ag-ui). Tool calls, images, and MCP app frames are translated from agent `Event` types in `agui.go`. The legacy `POST /chat` endpoint still exists but the UI does not use it.
 
@@ -58,7 +58,7 @@ flowchart TB
 
 4. **Docker/remote via custom ADL.** There is no built-in "Docker" or "Remote" picker in the UI. Users select a custom ADL agent (e.g. `docker-echo` from `~/.loop/agents/docker-echo.yaml`). Loop validates the connector on session create.
 
-5. **CLI launch + UI preferences.** `loop ui --agent-type --prompt --open` creates a session at server start (`bootstrap.go`), saves `lastAgentType` / `lastSessionId` to `settings.json`, and exposes the prompt once via `GET /api/bootstrap`. `loop ui --open` (without `--agent-type`) also creates a fresh blank session and selects it via bootstrap instead of resuming `lastSessionId`. With `--open`, Loop waits for `/health` then launches the UI in the system default browser. If no sessions exist at startup, Loop auto-creates one with the default agent. Sidebar state and last-selected session/agent are also persisted in `settings.json`.
+5. **CLI launch + UI preferences.** `loop ui -a <agent-id> --prompt --open` creates a session at server start (`bootstrap.go`), saves `lastAgentType` / `lastSessionId` to `settings.json`, and exposes the prompt once via `GET /api/bootstrap`. `loop ui --open` (without `-a`) also creates a fresh blank session and selects it via bootstrap instead of resuming `lastSessionId`. With `--open`, Loop waits for `/health` then launches the UI in the system default browser. If no sessions exist at startup, Loop auto-creates one with the default agent. Sidebar state and last-selected session/agent are also persisted in `settings.json`.
 
 ---
 
@@ -87,7 +87,8 @@ ADL is a YAML format for declaring an agent type or multi-step workflow. It is a
 ```yaml
 adl: "1.0"
 
-name: string
+id: string                      # stable identifier; used by CLI (-a) and Session.agentType
+name: string                    # display name in UI
 description: string
 version: semver
 kind: agent | workflow          # workflow = multi-step; omitted defaults to agent
@@ -163,7 +164,8 @@ Example
 
 ```yaml
 adl: "1.0"
-name: example-agent
+id: example-agent
+name: Example Agent
 description: Example Agent
 harness:
   type: claude-code

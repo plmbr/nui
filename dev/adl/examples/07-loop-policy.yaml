@@ -11,7 +11,8 @@ adl: "1.0"
 #
 # Demonstrates: loop policy, self-improvement pattern, iteration cap.
 
-name: iterative-writer
+id: iterative-writer
+name: Iterative Writer
 description: Drafts, self-critiques, and revises until quality threshold is met.
 version: 0.1.0
 

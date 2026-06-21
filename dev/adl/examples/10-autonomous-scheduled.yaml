@@ -5,7 +5,8 @@ adl: "1.0"
 #
 # Demonstrates: autonomous mode, schedule, aiAssets.mcpServers, no HITL.
 
-name: daily-digest
+id: daily-digest
+name: Daily Digest
 description: Every morning, summarize overnight GitHub activity and post to Slack.
 version: 0.1.0
 

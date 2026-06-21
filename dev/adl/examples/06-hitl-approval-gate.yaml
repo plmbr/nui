@@ -12,7 +12,8 @@ adl: "1.0"
 #
 # Demonstrates: approval gate, approvalTimeout, per-step aiAssets.mcpServers.
 
-name: draft-and-publish
+id: draft-and-publish
+name: Draft and Publish
 description: Drafts content for human review, then publishes only if approved.
 version: 0.1.0
 
