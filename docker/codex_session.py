@@ -17,6 +17,7 @@ from subprocess import DEVNULL, PIPE
 from typing import Any, Callable, Generator
 
 from codex_stream import new_codex_stream_parser
+from harness_env import subprocess_env
 
 
 WrapArgsFn = Callable[[list[str], str], list[str]]
@@ -62,11 +63,12 @@ class PersistentCodexSession:
         resume_session_id: str = "",
         model: str = "",
         system_prompt: str = "",
+        **kwargs: Any,
     ) -> Generator[dict[str, Any], None, None]:
         _ = system_prompt
         with self._lock:
             yield from self._run_turn_locked(
-                message, working_dir, resume_session_id, model,
+                message, working_dir, resume_session_id, model, kwargs,
             )
 
     def stop(self) -> None:
@@ -83,6 +85,7 @@ class PersistentCodexSession:
         working_dir: str,
         resume_session_id: str,
         model: str,
+        kwargs: dict[str, Any],
     ) -> Generator[dict[str, Any], None, None]:
         wd = working_dir or os.getcwd()
         if self._working_dir != wd or self._model != model:
@@ -115,6 +118,7 @@ class PersistentCodexSession:
             stdout=PIPE,
             stderr=PIPE,
             cwd=cwd,
+            env=subprocess_env(kwargs),
             text=True,
             bufsize=1,
             start_new_session=True,
@@ -157,8 +161,9 @@ class PersistentCodexSession:
             "--json",
             "--dangerously-bypass-approvals-and-sandbox",
             "--skip-git-repo-check",
-            "--ignore-user-config",
         ]
+        if not os.environ.get("CODEX_HOME"):
+            flags.append("--ignore-user-config")
         base_url = os.environ.get("OPENAI_BASE_URL", "")
         if base_url:
             flags += [

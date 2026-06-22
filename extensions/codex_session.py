@@ -157,8 +157,9 @@ class PersistentCodexSession:
             "--json",
             "--dangerously-bypass-approvals-and-sandbox",
             "--skip-git-repo-check",
-            "--ignore-user-config",
         ]
+        if not os.environ.get("CODEX_HOME"):
+            flags.append("--ignore-user-config")
         base_url = os.environ.get("OPENAI_BASE_URL", "")
         if base_url:
             flags += [

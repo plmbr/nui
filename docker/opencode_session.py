@@ -12,6 +12,7 @@ from subprocess import DEVNULL, PIPE
 from typing import Any, Generator
 
 from opencode_stream import new_opencode_stream_parser
+from harness_env import subprocess_env
 
 
 class PersistentOpenCodeSession:
@@ -33,11 +34,12 @@ class PersistentOpenCodeSession:
         resume_session_id: str = "",
         model: str = "",
         system_prompt: str = "",
+        **kwargs: Any,
     ) -> Generator[dict[str, Any], None, None]:
         _ = system_prompt
         with self._lock:
             yield from self._run_turn_locked(
-                message, working_dir, resume_session_id, model,
+                message, working_dir, resume_session_id, model, kwargs,
             )
 
     def stop(self) -> None:
@@ -54,8 +56,9 @@ class PersistentOpenCodeSession:
         working_dir: str,
         resume_session_id: str,
         model: str,
+        kwargs: dict[str, Any],
     ) -> Generator[dict[str, Any], None, None]:
-        self._ensure_server(working_dir, model)
+        self._ensure_server(working_dir, model, kwargs)
         session_id = self._session_id or resume_session_id
 
         args = [
@@ -76,6 +79,7 @@ class PersistentOpenCodeSession:
             stdin=DEVNULL,
             stdout=PIPE,
             stderr=PIPE,
+            env=subprocess_env(kwargs),
             text=True,
             bufsize=1,
             start_new_session=True,
@@ -105,7 +109,7 @@ class PersistentOpenCodeSession:
 
         proc.wait()
 
-    def _ensure_server(self, working_dir: str, model: str) -> None:
+    def _ensure_server(self, working_dir: str, model: str, kwargs: dict[str, Any]) -> None:
         wd = working_dir or os.getcwd()
         if (
             self._server is not None
@@ -123,6 +127,7 @@ class PersistentOpenCodeSession:
             stdout=PIPE,
             stderr=PIPE,
             cwd=wd,
+            env=subprocess_env(kwargs),
             text=True,
             bufsize=1,
             start_new_session=True,

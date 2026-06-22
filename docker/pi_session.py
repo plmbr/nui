@@ -11,6 +11,7 @@ from subprocess import PIPE
 from typing import Any, Callable, Generator
 
 from pi_stream import new_pi_stream_parser
+from harness_env import subprocess_env
 
 
 WrapArgsFn = Callable[[list[str], str], list[str]]
@@ -37,10 +38,11 @@ class PersistentPiSession:
         resume_session_id: str = "",
         model: str = "",
         system_prompt: str = "",
+        **kwargs: Any,
     ) -> Generator[dict[str, Any], None, None]:
         with self._lock:
             yield from self._run_turn_locked(
-                message, working_dir, resume_session_id, model, system_prompt,
+                message, working_dir, resume_session_id, model, system_prompt, kwargs,
             )
 
     def stop(self) -> None:
@@ -58,9 +60,10 @@ class PersistentPiSession:
         resume_session_id: str,
         model: str,
         system_prompt: str,
+        kwargs: dict[str, Any],
     ) -> Generator[dict[str, Any], None, None]:
         resume = resume_session_id or self._session_id
-        self._ensure_process(working_dir, resume, model, system_prompt)
+        self._ensure_process(working_dir, resume, model, system_prompt, kwargs)
         assert self._proc is not None and self._proc.stdin is not None and self._proc.stdout is not None
 
         produced_output = False
@@ -81,7 +84,7 @@ class PersistentPiSession:
             print("[pi] session not found, retrying without session", file=sys.stderr, flush=True)
             self._stop_unlocked()
             self._session_id = ""
-            self._ensure_process(working_dir, "", model, system_prompt)
+            self._ensure_process(working_dir, "", model, system_prompt, kwargs)
             yield from self._prompt_turn(message)
 
         self._refresh_session_id()
@@ -155,6 +158,7 @@ class PersistentPiSession:
         resume_session_id: str,
         model: str,
         system_prompt: str,
+        kwargs: dict[str, Any],
     ) -> None:
         wd = working_dir or os.getcwd()
         if (
@@ -189,6 +193,7 @@ class PersistentPiSession:
             stdout=PIPE,
             stderr=PIPE,
             cwd=cwd,
+            env=subprocess_env(kwargs),
             text=True,
             bufsize=1,
             start_new_session=True,

@@ -32,7 +32,7 @@ class ClaudeCodeAgent(HttpLoopAgent):
 
         latest_session_id = ""
         for event in self._claude.run_turn(
-            message, working_dir, session_id, model, system_prompt,
+            message, working_dir, session_id, model, system_prompt, **kwargs,
         ):
             if event.get("type") == "session_id":
                 latest_session_id = event.get("sessionId") or ""

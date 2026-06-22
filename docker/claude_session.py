@@ -11,6 +11,7 @@ from subprocess import PIPE
 from typing import Any, Callable, Generator
 
 from claude_stream import new_claude_stream_parser
+from harness_env import subprocess_env
 
 
 WrapArgsFn = Callable[[list[str], str], list[str]]
@@ -36,10 +37,11 @@ class PersistentClaudeSession:
         resume_session_id: str = "",
         model: str = "",
         system_prompt: str = "",
+        **kwargs: Any,
     ) -> Generator[dict[str, Any], None, None]:
         with self._lock:
             yield from self._run_turn_locked(
-                message, working_dir, resume_session_id, model, system_prompt,
+                message, working_dir, resume_session_id, model, system_prompt, kwargs,
             )
 
     def stop(self) -> None:
@@ -53,8 +55,9 @@ class PersistentClaudeSession:
         resume_session_id: str,
         model: str,
         system_prompt: str,
+        kwargs: dict[str, Any],
     ) -> Generator[dict[str, Any], None, None]:
-        self._ensure_process(working_dir, resume_session_id, model, system_prompt)
+        self._ensure_process(working_dir, resume_session_id, model, system_prompt, kwargs)
         assert self._proc is not None and self._proc.stdin is not None and self._proc.stdout is not None
 
         user_msg: dict[str, Any] = {
@@ -74,7 +77,7 @@ class PersistentClaudeSession:
             self._proc.stdin.flush()
         except (BrokenPipeError, OSError):
             self._stop_unlocked()
-            self._ensure_process(working_dir, resume_session_id, model, system_prompt)
+            self._ensure_process(working_dir, resume_session_id, model, system_prompt, kwargs)
             assert self._proc is not None and self._proc.stdin is not None and self._proc.stdout is not None
             self._proc.stdin.write(payload)
             self._proc.stdin.flush()
@@ -119,6 +122,7 @@ class PersistentClaudeSession:
         resume_session_id: str,
         model: str,
         system_prompt: str,
+        kwargs: dict[str, Any],
     ) -> None:
         wd = working_dir or os.getcwd()
         if (
@@ -162,6 +166,7 @@ class PersistentClaudeSession:
             stdout=PIPE,
             stderr=PIPE,
             cwd=cwd,
+            env=subprocess_env(kwargs),
             start_new_session=True,
         )
         self._proc = proc

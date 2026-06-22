@@ -65,6 +65,25 @@ func normalizeHarnessType(harnessType string) string {
 	return harnessType
 }
 
+// dockerSessionConfigArgs returns docker run -v/-e flags for a provisioned session config dir.
+func dockerSessionConfigArgs(harnessType, sessionConfigDir string) []string {
+	if sessionConfigDir == "" {
+		return nil
+	}
+	args := []string{"-v", sessionConfigDir + ":" + dockerSessionConfigMount}
+	if envKey := harnessConfigEnvVar(harnessType); envKey != "" {
+		args = append(args, "-e", envKey+"="+dockerHarnessConfigEnvValue(harnessType))
+	}
+	return args
+}
+
+func dockerHarnessConfigEnvValue(harnessType string) string {
+	if normalizeHarnessType(harnessType) == "pi" {
+		return dockerSessionConfigMount + "/" + piAgentSubdir
+	}
+	return dockerSessionConfigMount
+}
+
 // harnessDepsFromADL merges top-level ADL fields with optional step overrides.
 func harnessDepsFromADL(def model.ADLDefinition, step *model.ADLStep, workingDir string) HarnessDeps {
 	defCopy := def

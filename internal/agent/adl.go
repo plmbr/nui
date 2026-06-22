@@ -92,7 +92,7 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 	case "claude-code", "":
 		switch harness.Sandbox {
 		case "docker":
-			ag, err := a.manager.GetClaudeCodeDocker(a.projectID, harness.Image, req.WorkingDir)
+			ag, err := a.manager.GetClaudeCodeDocker(a.projectID, harness.Image, req.WorkingDir, req.ConfigDir)
 			if err != nil {
 				return fmt.Errorf("claude-code docker harness: %w", err)
 			}
@@ -114,7 +114,7 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 	case "pi":
 		switch harness.Sandbox {
 		case "docker":
-			ag, err := a.manager.GetPiDocker(a.projectID, harness.Image, req.WorkingDir)
+			ag, err := a.manager.GetPiDocker(a.projectID, harness.Image, req.WorkingDir, req.ConfigDir)
 			if err != nil {
 				return fmt.Errorf("pi docker harness: %w", err)
 			}
@@ -136,7 +136,7 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 	case "codex":
 		switch harness.Sandbox {
 		case "docker":
-			ag, err := a.manager.GetCodexDocker(a.projectID, harness.Image, req.WorkingDir)
+			ag, err := a.manager.GetCodexDocker(a.projectID, harness.Image, req.WorkingDir, req.ConfigDir)
 			if err != nil {
 				return fmt.Errorf("codex docker harness: %w", err)
 			}
@@ -158,7 +158,7 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 	case "opencode":
 		switch harness.Sandbox {
 		case "docker":
-			ag, err := a.manager.GetOpenCodeDocker(a.projectID, harness.Image, req.WorkingDir)
+			ag, err := a.manager.GetOpenCodeDocker(a.projectID, harness.Image, req.WorkingDir, req.ConfigDir)
 			if err != nil {
 				return fmt.Errorf("opencode docker harness: %w", err)
 			}

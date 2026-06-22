@@ -276,7 +276,79 @@ func TestHarnessConfigEnvVar(t *testing.T) {
 	if harnessConfigEnvVar("codex") != envCodexHome {
 		t.Fatal("codex env")
 	}
+	if harnessConfigEnvVar("pi") != envPiCodingAgentDir {
+		t.Fatal("pi env")
+	}
+	if harnessConfigEnvVar("opencode") != envOpenCodeConfigDir {
+		t.Fatal("opencode env")
+	}
 	if harnessConfigEnvVar("docker") != "" {
 		t.Fatal("docker should have no env")
+	}
+}
+
+func TestDockerSessionConfigArgs(t *testing.T) {
+	args := dockerSessionConfigArgs("codex", "/tmp/session")
+	if len(args) != 4 {
+		t.Fatalf("args = %v", args)
+	}
+	if args[0] != "-v" || args[1] != "/tmp/session:"+dockerSessionConfigMount {
+		t.Fatalf("volume mount: %v", args[:2])
+	}
+	if args[2] != "-e" || args[3] != envCodexHome+"="+dockerSessionConfigMount {
+		t.Fatalf("codex env: %v", args[2:])
+	}
+
+	piArgs := dockerSessionConfigArgs("pi", "/tmp/session")
+	wantPiEnv := envPiCodingAgentDir + "=" + dockerSessionConfigMount + "/" + piAgentSubdir
+	if piArgs[len(piArgs)-1] != wantPiEnv {
+		t.Fatalf("pi env: got %q want %q", piArgs[len(piArgs)-1], wantPiEnv)
+	}
+	if dockerSessionConfigArgs("claude-code", "") != nil {
+		t.Fatal("empty session dir should produce no args")
+	}
+}
+
+func TestProvisionCodexHarnessConfigSkills(t *testing.T) {
+	tmp := t.TempDir()
+	skillSrc := filepath.Join(tmp, "codex-skill")
+	if err := os.MkdirAll(skillSrc, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillSrc, "SKILL.md"), []byte("# Codex skill\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", filepath.Join(tmp, "home"))
+
+	configDir, err := ProvisionHarnessConfig("codex-skills", "codex", HarnessDeps{
+		Skills: []model.ADLSkill{{Name: "codex-skill", Path: skillSrc}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(configDir, "skills", "codex-skill", "SKILL.md")); err != nil {
+		t.Fatalf("missing codex skill: %v", err)
+	}
+}
+
+func TestProvisionOpenCodeHarnessConfigSkills(t *testing.T) {
+	tmp := t.TempDir()
+	skillSrc := filepath.Join(tmp, "oc-skill")
+	if err := os.MkdirAll(skillSrc, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillSrc, "SKILL.md"), []byte("# OpenCode skill\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", filepath.Join(tmp, "home"))
+
+	configDir, err := ProvisionHarnessConfig("opencode-skills", "opencode", HarnessDeps{
+		Skills: []model.ADLSkill{{Name: "oc-skill", Path: skillSrc}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(configDir, "skills", "oc-skill", "SKILL.md")); err != nil {
+		t.Fatalf("missing opencode skill: %v", err)
 	}
 }
