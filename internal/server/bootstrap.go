@@ -112,13 +112,9 @@ func bootstrapFromCLI(opts StartOptions) error {
 		return nil
 	}
 
-	if !opts.Open {
-		return nil
-	}
-
 	s, err := createDefaultSession()
 	if err != nil {
-		return fmt.Errorf("create session for --open: %w", err)
+		return fmt.Errorf("create default session: %w", err)
 	}
 	setBootstrap(s.ID, "", nil, false)
 	return nil
@@ -203,16 +199,14 @@ func createDefaultSession() (model.Session, error) {
 
 func defaultAgentTypeCandidates() []string {
 	settings, _ := store.LoadSettings()
+	primary := ensureDefaultAgentType(&settings)
 
 	var candidates []string
 	seen := map[string]bool{}
 
-	if settings.LastAgentType != "" {
-		if def, ok := findADLDef(settings.LastAgentType); ok {
-			id := model.ADLAgentID(def)
-			candidates = append(candidates, id)
-			seen[id] = true
-		}
+	if primary != "" {
+		candidates = append(candidates, primary)
+		seen[primary] = true
 	}
 
 	for _, def := range builtinAgentDefs {
@@ -228,6 +222,29 @@ func defaultAgentTypeCandidates() []string {
 		candidates = append(candidates, model.ADLAgentID(builtinAgentDefs[0]))
 	}
 	return candidates
+}
+
+// ensureDefaultAgentType resolves the configured default agent, persisting the
+// first available built-in when settings.json has no defaultAgentType yet.
+func ensureDefaultAgentType(settings *store.Settings) string {
+	if settings.DefaultAgentType != "" {
+		if def, ok := findADLDef(settings.DefaultAgentType); ok {
+			return model.ADLAgentID(def)
+		}
+	}
+
+	for _, def := range builtinAgentDefs {
+		id := model.ADLAgentID(def)
+		if !agent.CLIAvailable(def.Harness.Type) {
+			continue
+		}
+		settings.DefaultAgentType = id
+		if err := store.SaveSettings(*settings); err != nil {
+			fmt.Fprintf(os.Stderr, "warn: save default agent type: %v\n", err)
+		}
+		return id
+	}
+	return ""
 }
 
 func saveSessionPreferences(agentType, sessionID string, settings store.Settings) {

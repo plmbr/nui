@@ -642,6 +642,9 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 			}
 			current.Theme = patch.Theme
 		}
+		if patch.DefaultAgentType != "" {
+			current.DefaultAgentType = patch.DefaultAgentType
+		}
 		if patch.LastAgentType != "" {
 			current.LastAgentType = patch.LastAgentType
 		}

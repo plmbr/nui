@@ -13,10 +13,11 @@ import (
 )
 
 type Settings struct {
-	Theme         string `json:"theme"`                   // "light" | "dark"
-	LastAgentType string `json:"lastAgentType,omitempty"` // last agent picked in new-session dialog
-	LastSessionID string `json:"lastSessionId,omitempty"` // last selected session in UI
-	SidebarOpen   *bool  `json:"sidebarOpen,omitempty"`   // desktop sidebar expanded state
+	Theme             string `json:"theme"`                       // "light" | "dark"
+	DefaultAgentType  string `json:"defaultAgentType,omitempty"`  // default agent for new sessions on launch
+	LastAgentType     string `json:"lastAgentType,omitempty"`     // last agent picked in new-session dialog
+	LastSessionID     string `json:"lastSessionId,omitempty"`     // last selected session in UI
+	SidebarOpen       *bool  `json:"sidebarOpen,omitempty"`       // desktop sidebar expanded state
 }
 
 type Data struct {

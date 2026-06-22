@@ -41,6 +41,7 @@ export interface ChatMessage {
 
 export interface Settings {
   theme: 'light' | 'dark'
+  defaultAgentType?: string
   lastAgentType?: string
   lastSessionId?: string
   sidebarOpen?: boolean
