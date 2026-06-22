@@ -85,6 +85,9 @@ func codexMCPServerTOML(name string, srv model.ADLMCPServer) (string, error) {
 			}
 			lines = append(lines, "args = ["+strings.Join(args, ", ")+"]")
 		}
+		if len(srv.Env) > 0 {
+			lines = append(lines, "env = "+codexTOMLInlineTable(srv.Env))
+		}
 		return strings.Join(lines, "\n"), nil
 	}
 
@@ -93,5 +96,8 @@ func codexMCPServerTOML(name string, srv model.ADLMCPServer) (string, error) {
 		return "", fmt.Errorf("requires url or command")
 	}
 	lines = append(lines, fmt.Sprintf("url = %q", url))
+	if len(srv.Headers) > 0 {
+		lines = append(lines, "http_headers = "+codexTOMLInlineTable(srv.Headers))
+	}
 	return strings.Join(lines, "\n"), nil
 }

@@ -352,3 +352,116 @@ func TestProvisionOpenCodeHarnessConfigSkills(t *testing.T) {
 		t.Fatalf("missing opencode skill: %v", err)
 	}
 }
+
+func TestProvisionHarnessConfigMCPEnvAndHeaders(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", filepath.Join(tmp, "home"))
+
+	deps := HarnessDeps{
+		MCPServers: []model.ADLMCPServer{
+			{
+				Name:    "remote",
+				URL:     "http://localhost:3040/mcp",
+				Type:    "http",
+				Headers: map[string]string{"Authorization": "Bearer token"},
+			},
+			{
+				Name:    "local",
+				Command: "npx",
+				Args:    []string{"-y", "some-mcp"},
+				Type:    "stdio",
+				Env:     map[string]string{"API_KEY": "secret"},
+			},
+		},
+	}
+
+	t.Run("claude-code", func(t *testing.T) {
+		configDir, err := ProvisionHarnessConfig("claude-mcp-env", "claude-code", deps)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(filepath.Join(configDir, ".claude.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var cfg struct {
+			MCPServers map[string]map[string]any `json:"mcpServers"`
+		}
+		if err := json.Unmarshal(data, &cfg); err != nil {
+			t.Fatal(err)
+		}
+		headers, ok := cfg.MCPServers["remote"]["headers"].(map[string]any)
+		if !ok || headers["Authorization"] != "Bearer token" {
+			t.Fatalf("remote headers: %v", cfg.MCPServers["remote"])
+		}
+		env, ok := cfg.MCPServers["local"]["env"].(map[string]any)
+		if !ok || env["API_KEY"] != "secret" {
+			t.Fatalf("local env: %v", cfg.MCPServers["local"])
+		}
+	})
+
+	t.Run("codex", func(t *testing.T) {
+		configDir, err := ProvisionHarnessConfig("codex-mcp-env", "codex", deps)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg, err := os.ReadFile(filepath.Join(configDir, codexConfigFile))
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfgStr := string(cfg)
+		if !strings.Contains(cfgStr, `http_headers = {`) || !strings.Contains(cfgStr, `Authorization = "Bearer token"`) {
+			t.Fatalf("codex http_headers: %s", cfgStr)
+		}
+		if !strings.Contains(cfgStr, `env = {`) || !strings.Contains(cfgStr, `API_KEY = "secret"`) {
+			t.Fatalf("codex env: %s", cfgStr)
+		}
+	})
+
+	t.Run("pi", func(t *testing.T) {
+		configDir, err := ProvisionHarnessConfig("pi-mcp-env", "pi", deps)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(filepath.Join(piAgentConfigDir(configDir), "mcp.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var cfg struct {
+			MCPServers map[string]map[string]any `json:"mcpServers"`
+		}
+		if err := json.Unmarshal(data, &cfg); err != nil {
+			t.Fatal(err)
+		}
+		if cfg.MCPServers["remote"]["headers"] == nil {
+			t.Fatalf("pi remote headers: %v", cfg.MCPServers["remote"])
+		}
+		if cfg.MCPServers["local"]["env"] == nil {
+			t.Fatalf("pi local env: %v", cfg.MCPServers["local"])
+		}
+	})
+
+	t.Run("opencode", func(t *testing.T) {
+		configDir, err := ProvisionHarnessConfig("opencode-mcp-env", "opencode", deps)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(filepath.Join(configDir, opencodeConfigFile))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var cfg map[string]any
+		if err := json.Unmarshal(data, &cfg); err != nil {
+			t.Fatal(err)
+		}
+		mcp := cfg["mcp"].(map[string]any)
+		remote := mcp["remote"].(map[string]any)
+		if remote["headers"] == nil {
+			t.Fatalf("opencode remote headers: %v", remote)
+		}
+		local := mcp["local"].(map[string]any)
+		if local["environment"] == nil {
+			t.Fatalf("opencode local environment: %v", local)
+		}
+	})
+}

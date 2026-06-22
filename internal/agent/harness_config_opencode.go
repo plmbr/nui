@@ -93,6 +93,9 @@ func adlMCPServerToOpenCode(srv model.ADLMCPServer) (map[string]any, error) {
 		}
 		entry["type"] = "local"
 		entry["command"] = command
+		if len(srv.Env) > 0 {
+			entry["environment"] = srv.Env
+		}
 		return entry, nil
 	}
 
@@ -102,5 +105,8 @@ func adlMCPServerToOpenCode(srv model.ADLMCPServer) (map[string]any, error) {
 	}
 	entry["type"] = "remote"
 	entry["url"] = url
+	if len(srv.Headers) > 0 {
+		entry["headers"] = srv.Headers
+	}
 	return entry, nil
 }

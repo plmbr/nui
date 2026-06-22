@@ -3,6 +3,7 @@
 package agent
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,6 +33,27 @@ func piAgentConfigDir(sessionConfigDir string) string {
 // escapeTOMLMultiline prepares content for a TOML """ block.
 func escapeTOMLMultiline(s string) string {
 	return strings.ReplaceAll(s, "\\", "\\\\")
+}
+
+// codexTOMLInlineTable formats a map as a TOML inline table, e.g. { KEY = "value" }.
+func codexTOMLInlineTable(m map[string]string) string {
+	if len(m) == 0 {
+		return "{}"
+	}
+	items := make([]string, 0, len(m))
+	for k, v := range m {
+		items = append(items, fmt.Sprintf("%s = %q", codexTOMLKey(k), v))
+	}
+	return "{" + strings.Join(items, ", ") + "}"
+}
+
+func codexTOMLKey(k string) string {
+	for _, r := range k {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') && r != '_' && r != '-' {
+			return fmt.Sprintf("%q", k)
+		}
+	}
+	return k
 }
 
 // userClaudeConfigDir is the default Claude Code config directory (~/.claude).

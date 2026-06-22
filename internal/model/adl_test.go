@@ -22,6 +22,14 @@ aiAssets:
     - name: test-mcp-server
       url: http://localhost:9123/mcp
       type: http
+      headers:
+        Authorization: Bearer token
+    - name: local-mcp
+      command: npx
+      args: ["-y", "pkg"]
+      type: stdio
+      env:
+        API_KEY: secret
 `)
 
 	var def ADLDefinition
@@ -34,12 +42,19 @@ aiAssets:
 	if def.Name != "Data Agent" {
 		t.Fatalf("name = %q", def.Name)
 	}
-	if len(def.AIAssets.MCPServers) != 1 {
+	if len(def.AIAssets.MCPServers) != 2 {
 		t.Fatalf("mcpServers: %v", def.AIAssets.MCPServers)
 	}
-	srv := def.AIAssets.MCPServers[0]
-	if srv.Name != "test-mcp-server" || srv.URL != "http://localhost:9123/mcp" || srv.Type != "http" {
-		t.Fatalf("server: %+v", srv)
+	httpSrv := def.AIAssets.MCPServers[0]
+	if httpSrv.Name != "test-mcp-server" || httpSrv.URL != "http://localhost:9123/mcp" || httpSrv.Type != "http" {
+		t.Fatalf("http server: %+v", httpSrv)
+	}
+	if httpSrv.Headers["Authorization"] != "Bearer token" {
+		t.Fatalf("http headers: %+v", httpSrv.Headers)
+	}
+	stdioSrv := def.AIAssets.MCPServers[1]
+	if stdioSrv.Env["API_KEY"] != "secret" {
+		t.Fatalf("stdio env: %+v", stdioSrv.Env)
 	}
 }
 

@@ -86,11 +86,13 @@ type ADLSkill struct {
 
 // ADLMCPServer configures one MCP server entry in aiAssets.mcpServers.
 type ADLMCPServer struct {
-	Name    string   `yaml:"name"    json:"name"`
-	URL     string   `yaml:"url"     json:"url,omitempty"`
-	Command string   `yaml:"command" json:"command,omitempty"`
-	Args    []string `yaml:"args"    json:"args,omitempty"`
-	Type    string   `yaml:"type"    json:"type,omitempty"` // http | sse | stdio
+	Name    string            `yaml:"name"              json:"name"`
+	URL     string            `yaml:"url"               json:"url,omitempty"`
+	Command string            `yaml:"command"           json:"command,omitempty"`
+	Args    []string          `yaml:"args"              json:"args,omitempty"`
+	Type    string            `yaml:"type"              json:"type,omitempty"` // http | sse | stdio
+	Env     map[string]string `yaml:"env,omitempty"     json:"env,omitempty"`     // stdio only
+	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"` // http | sse only
 }
 
 type ADLOutput struct {

@@ -111,6 +111,9 @@ func adlMCPServerToClaude(srv model.ADLMCPServer) (map[string]any, error) {
 		if t := strings.TrimSpace(srv.Type); t != "" {
 			entry["type"] = t
 		}
+		if len(srv.Env) > 0 {
+			entry["env"] = srv.Env
+		}
 		return entry, nil
 	}
 
@@ -123,6 +126,9 @@ func adlMCPServerToClaude(srv model.ADLMCPServer) (map[string]any, error) {
 		entry["type"] = t
 	} else {
 		entry["type"] = "http"
+	}
+	if len(srv.Headers) > 0 {
+		entry["headers"] = srv.Headers
 	}
 	return entry, nil
 }
