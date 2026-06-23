@@ -106,7 +106,7 @@ Harness processes write `~/.loop/connections/<id>.json`:
 
 | Language | Framework | Example |
 |---|---|---|
-| Python | `extensions/loop_agent.py` (canonical) | `dev/harness-examples/py/echo_agent.py` |
+| Python | `harness-sdk/loop_agent.py` (canonical) | `dev/harness-examples/py/echo_agent.py` |
 | TypeScript | `dev/harness-examples/ts/loop_agent.ts` | `dev/harness-examples/ts/echo_agent.ts` |
 
 Test with `dev/harness-examples/py/client.py` or `ts/client.ts`.
@@ -142,7 +142,7 @@ MCP uses JSON-RPC 2.0 over stdio or SSE with official SDKs. Loop already surface
 
 ## Open Questions
 
-1. **Wire TCP harnesses into Manager?** Add a `custom` harness type that launches `extensions/*.py`?
+1. **Wire TCP harnesses into Manager?** Add a `custom` harness type that launches harness SDK scripts?
 2. **Crash policy:** respawn on connection loss or surface error to user?
 3. **MCP as wire protocol?** Reduces custom protocol surface but binds to evolving external spec.
 

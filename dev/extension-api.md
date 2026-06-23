@@ -59,7 +59,7 @@ All contributions are **lists**. Files may be JSON or YAML with a top-level arra
 
 Registered as agent types `ext:<extension>/<harness-id>`. Execution uses the harness wire protocol (`harness.info`, `harness.run`, `harness.cancel`, `harness.shutdown`) documented in [`harness-design.md`](harness-design.md).
 
-Framework: [`extensions/loop_agent_stdio.py`](../extensions/loop_agent_stdio.py)
+Framework: [`harness-sdk/loop_agent_stdio.py`](../harness-sdk/loop_agent_stdio.py)
 
 ### MCP servers
 
@@ -98,7 +98,7 @@ When `source.command` or `contributions.catalog.command` is set, Loop spawns a s
 | `extension.listAgents` | `{agents: [...]}` |
 | `extension.shutdown` | cleanup |
 
-Framework: [`extensions/loop_catalog.py`](../extensions/loop_catalog.py)
+Framework: [`harness-sdk/loop_catalog.py`](../harness-sdk/loop_catalog.py)
 
 ## API
 

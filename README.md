@@ -67,7 +67,7 @@ loop/
 │   ├── server/                # HTTP mux, REST + AG-UI streaming
 │   └── store/                 # JSON persistence (~/.loop/)
 ├── docker/                    # Builtin sandbox images (HTTP/SSE, port 8090)
-├── extensions/                # Reference TCP JSON-RPC framework (not wired to Manager)
+├── harness-sdk/               # Python harness author SDK (TCP/stdio JSON-RPC; not loaded at runtime)
 ├── dev/
 │   ├── dev.md                 # product spec
 │   ├── harness-design.md      # custom harness protocols

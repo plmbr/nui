@@ -4,7 +4,7 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "extensions"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "harness-sdk"))
 
 from loop_agent_stdio import LoopAgent
 

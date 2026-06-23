@@ -300,7 +300,7 @@ For custom harness authors. Not connected to `Manager` today.
 | `harness.cancel` | Cancel run |
 | `harness.shutdown` | Release resources |
 
-Framework: `extensions/loop_agent.py`, `dev/harness-examples/py/loop_agent.py`.
+Framework: `harness-sdk/loop_agent.py`, `dev/harness-examples/py/loop_agent.py`.
 
 ---
 

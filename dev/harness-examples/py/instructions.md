@@ -4,7 +4,7 @@ These examples demonstrate the TCP JSON-RPC 2.0 protocol for custom Loop harness
 
 ## Files
 
-- `loop_agent.py` — harness framework (canonical copy of `extensions/loop_agent.py`)
+- `loop_agent.py` — harness framework (canonical copy of `harness-sdk/loop_agent.py`)
 - `echo_agent.py` — minimal echo harness
 - `client.py` — sample client that connects to a running harness
 

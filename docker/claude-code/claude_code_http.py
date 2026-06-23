@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Claude Code agent for Loop Docker container.
 
-Same logic as extensions/claude_code.py but speaks HTTP/SSE (HttpLoopAgent)
+Same logic as harness-sdk/claude_code.py but speaks HTTP/SSE (HttpLoopAgent)
 instead of TCP JSON-RPC, and skips bwrap — the container itself is the sandbox.
 Auth credentials are provided via the ~/.claude volume mount.
 """

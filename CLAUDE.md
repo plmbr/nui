@@ -63,7 +63,7 @@ In development, Vite (`:5173`) proxies `/api` to the Go server.
 | `cmd/` | Cobra CLI (`loop ui [--port] [--open] [--agent-type] [--prompt] [--working-dir]`) |
 | `internal/server/` | HTTP mux, REST handlers, AG-UI streaming (`agui.go`), MCP tool UI (`mcp_manager.go`) |
 | `internal/model/` | `Session`, `ChatMessage`, ADL structs |
-| `internal/store/` | Persistence: `data.json` (sessions, agent session IDs, UI messages), `settings.json`, ADL YAML in `agents/`, extensions in `extensions/`, agent history loaders |
+| `internal/store/` | Persistence: `data.json`, `settings.json`, ADL YAML in `agents/`, user plugins in `~/.loop/extensions/`, agent history loaders |
 | `internal/extensions/` | Extension registry: manifest scan, list sources (file/catalog RPC), harness/MCP/skill/agent contributions |
 | `internal/agent/` | `Agent` interface, harness agents, `ADLAgent` executor, `Manager` lifecycle, `sandbox.go` (bwrap) |
 
@@ -109,7 +109,7 @@ On delete/shutdown, Loop calls `POST /shutdown` on managed containers, then `doc
 #### Reference code (not wired to Manager)
 
 - `ExtensionAgent` in `extension.go` — TCP JSON-RPC 2.0 client; implemented but not called by `Manager.GetAgent()`
-- `extensions/` and `dev/harness-examples/py|ts/` — reference TCP JSON-RPC frameworks for custom harness authors
+- `harness-sdk/` and `dev/harness-examples/py|ts/` — reference harness SDK for custom harness authors
 
 ### HTTP/SSE protocol (docker + remote)
 
