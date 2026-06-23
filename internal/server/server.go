@@ -14,6 +14,7 @@ import (
 
 	"loop/internal/agent"
 	"loop/internal/browser"
+	"loop/internal/extensions"
 )
 
 var extensionManager *agent.Manager
@@ -32,6 +33,12 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 	}
 
 	extensionManager = agent.NewManager()
+
+	if reg, err := extensions.LoadRegistry(); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: load extensions: %v\n", err)
+	} else {
+		extensionManager.SetExtensionRegistry(reg)
+	}
 
 	if err := bootstrapFromCLI(opts); err != nil {
 		return fmt.Errorf("bootstrap session: %w", err)
@@ -78,6 +85,9 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 	go func() {
 		<-quit
 		fmt.Fprintln(os.Stderr, "shutting down: stopping agents and containers...")
+		if extensions.Default != nil {
+			extensions.Default.Shutdown()
+		}
 		extensionManager.StopAll()
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()

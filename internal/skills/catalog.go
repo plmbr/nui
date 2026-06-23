@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"loop/internal/extensions"
 	"loop/internal/model"
 	"loop/internal/store"
 )
@@ -222,6 +223,15 @@ func Resolve(ctx Context, skill model.ADLSkill) (string, error) {
 }
 
 func resolveRef(ctx Context, ref string) (string, error) {
+	if extensions.IsExtRef(ref) && extensions.Default != nil {
+		_, dir, err := extensions.Default.ResolveSkill(ref)
+		if err == nil {
+			if err := validateSkillDir(dir); err == nil {
+				return dir, nil
+			}
+			return "", err
+		}
+	}
 	for _, p := range refSearchPaths(ctx, ref) {
 		if err := validateSkillDir(p); err == nil {
 			return p, nil

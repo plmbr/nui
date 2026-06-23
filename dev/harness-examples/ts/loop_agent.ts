@@ -157,8 +157,12 @@ export abstract class LoopAgent {
     socket.write(JSON.stringify(msg) + '\n')
   }
 
+  private _connectionId(): string {
+    return process.env.LOOP_CONNECTION_ID ?? this.name
+  }
+
   private _connectionFilePath(): string {
-    return path.join(os.homedir(), '.loop', 'extensions', `${this.name}.json`)
+    return path.join(os.homedir(), '.loop', 'connections', `${this._connectionId()}.json`)
   }
 
   private _writeConnectionFile(port: number, sessionId: string): string {

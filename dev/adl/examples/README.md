@@ -66,7 +66,7 @@ MCP servers are declared under `aiAssets.mcpServers`. Each entry requires `name`
 aiAssets:
   mcpServers:
     - name: test-mcp-server
-      url: http://localhost:9123/mcp
+      url: http://localhost:3000/mcp
       type: http
     - name: local-tool
       command: npx

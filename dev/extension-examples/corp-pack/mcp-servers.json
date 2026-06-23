@@ -1,0 +1,10 @@
+{
+  "mcpServers": [
+    {
+      "name": "echo-tool",
+      "command": "python3",
+      "args": ["-c", "print('mcp stub')"],
+      "type": "stdio"
+    }
+  ]
+}

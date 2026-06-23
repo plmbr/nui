@@ -87,6 +87,7 @@ type ADLSkill struct {
 // ADLMCPServer configures one MCP server entry in aiAssets.mcpServers.
 type ADLMCPServer struct {
 	Name    string            `yaml:"name"              json:"name"`
+	Ref     string            `yaml:"ref,omitempty"     json:"ref,omitempty"` // ext:<extension>/<server-name>
 	URL     string            `yaml:"url"               json:"url,omitempty"`
 	Command string            `yaml:"command"           json:"command,omitempty"`
 	Args    []string          `yaml:"args"              json:"args,omitempty"`

@@ -1,0 +1,10 @@
+skills:
+  - name: code-review
+    path: ./skills/code-review
+  - name: deploy-checklist
+    content: |
+      ---
+      name: deploy-checklist
+      description: Pre-deploy verification steps
+      ---
+      Run through the checklist before merging.

@@ -1,7 +1,7 @@
 /**
  * Sample Loop extension client — TypeScript.
  *
- * Reads ~/.loop/extensions/<name>.json, connects over TCP, and calls
+ * Reads ~/.loop/connections/<name>.json, connects over TCP, and calls
  * harness.info then harness.run, printing streamed events as they arrive.
  *
  * Usage:
@@ -35,7 +35,7 @@ interface JsonRpcMessage {
 }
 
 function loadConnection(name: string): ConnectionInfo {
-  const filePath = path.join(os.homedir(), '.loop', 'extensions', `${name}.json`)
+  const filePath = path.join(os.homedir(), '.loop', 'connections', `${name}.json`)
   if (!fs.existsSync(filePath)) {
     console.error(`connection file not found: ${filePath}\nIs the extension running?`)
     process.exit(1)

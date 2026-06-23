@@ -143,6 +143,40 @@ func AgentsDir() (string, error) {
 	return agentsDir, nil
 }
 
+func ExtensionsDir() (string, error) {
+	dir, err := Dir()
+	if err != nil {
+		return "", err
+	}
+	extDir := filepath.Join(dir, "extensions")
+	if err := os.MkdirAll(extDir, 0700); err != nil {
+		return "", err
+	}
+	return extDir, nil
+}
+
+// ConnectionsDir returns ~/.loop/connections where harness TCP/HTTP handshake files are written.
+func ConnectionsDir() (string, error) {
+	dir, err := Dir()
+	if err != nil {
+		return "", err
+	}
+	connDir := filepath.Join(dir, "connections")
+	if err := os.MkdirAll(connDir, 0700); err != nil {
+		return "", err
+	}
+	return connDir, nil
+}
+
+// ConnectionFilePath returns ~/.loop/connections/<connectionID>.json.
+func ConnectionFilePath(connectionID string) (string, error) {
+	dir, err := ConnectionsDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, connectionID+".json"), nil
+}
+
 func LoadADLDefinitions() ([]model.ADLDefinition, error) {
 	dir, err := AgentsDir()
 	if err != nil {

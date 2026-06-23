@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"loop/internal/agent"
+	"loop/internal/extensions"
 	"loop/internal/model"
 	"loop/internal/store"
 
@@ -32,6 +33,7 @@ type AgentTypeInfo struct {
 	PromptMode    string `json:"promptMode,omitempty"`    // user | auto
 	DefaultPrompt string `json:"defaultPrompt,omitempty"`
 	IsBuiltin     bool   `json:"isBuiltin"`
+	Source        string `json:"source,omitempty"` // builtin | user | extension
 	Available     bool   `json:"available"` // false when the required CLI is not installed
 }
 
@@ -137,6 +139,8 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/settings", handleSettings)
 	mux.HandleFunc("/api/bootstrap", handleBootstrap)
 	mux.HandleFunc("/api/capabilities", handleCapabilities)
+	mux.HandleFunc("/api/extensions", handleExtensions)
+	mux.HandleFunc("/api/extensions/reload", handleExtensionsReload)
 }
 
 var errDirectoryOutsideHome = errors.New("directory is outside the home directory")
@@ -325,6 +329,24 @@ func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
 		all = append(all, agentTypeInfoFromDef(def, false))
 	}
 
+	if extensions.Default != nil {
+		for _, def := range extensions.Default.AllAgents() {
+			if def.Kind == "workflow" {
+				continue
+			}
+			info := agentTypeInfoFromDef(def, false)
+			info.Source = "extension"
+			all = append(all, info)
+		}
+		for _, def := range extensions.Default.HarnessOnlyAgentTypes() {
+			info := agentTypeInfoFromDef(def, false)
+			info.Source = "extension"
+			info.Harness = "extension"
+			info.Available = true
+			all = append(all, info)
+		}
+	}
+
 	writeJSON(w, http.StatusOK, all)
 }
 
@@ -365,6 +387,23 @@ func findADLDef(agentType string) (model.ADLDefinition, bool) {
 	for _, def := range userDefs {
 		if adlDefMatches(def, agentType) {
 			return def, true
+		}
+	}
+	if extensions.Default != nil {
+		if def, ok := extensions.Default.FindAgent(agentType); ok {
+			return def, true
+		}
+		if ref, ok := extensions.Default.ResolveHarness(agentType); ok {
+			label := ref.Entry.DisplayName
+			if label == "" {
+				label = ref.Entry.ID
+			}
+			return model.ADLDefinition{
+				ID:          agentType,
+				Name:        label,
+				Description: ref.Entry.Description,
+				Harness:     model.ADLHarness{Type: agentType},
+			}, true
 		}
 	}
 	return model.ADLDefinition{}, false

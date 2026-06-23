@@ -87,7 +87,7 @@ See [docker/instructions.md](harness-examples/docker/instructions.md) and [remot
 
 ### Connection file
 
-Harness processes write `~/.loop/extensions/<name>.json`:
+Harness processes write `~/.loop/connections/<id>.json`:
 
 ```json
 {"host": "127.0.0.1", "port": 52341, "session_id": "...", "pid": 9876}

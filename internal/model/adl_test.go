@@ -10,7 +10,7 @@ import (
 
 func TestADLDefinitionYAML_aiAssets(t *testing.T) {
 	raw := []byte(`adl: "1.0"
-id: data-agent
+id: test-agent
 name: Data Agent
 harness:
   type: claude-code
@@ -20,7 +20,7 @@ systemPrompt: |
 aiAssets:
   mcpServers:
     - name: test-mcp-server
-      url: http://localhost:9123/mcp
+      url: http://localhost:3000/mcp
       type: http
       headers:
         Authorization: Bearer token
@@ -46,7 +46,7 @@ aiAssets:
 		t.Fatalf("mcpServers: %v", def.AIAssets.MCPServers)
 	}
 	httpSrv := def.AIAssets.MCPServers[0]
-	if httpSrv.Name != "test-mcp-server" || httpSrv.URL != "http://localhost:9123/mcp" || httpSrv.Type != "http" {
+	if httpSrv.Name != "test-mcp-server" || httpSrv.URL != "http://localhost:3000/mcp" || httpSrv.Type != "http" {
 		t.Fatalf("http server: %+v", httpSrv)
 	}
 	if httpSrv.Headers["Authorization"] != "Bearer token" {

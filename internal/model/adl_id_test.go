@@ -10,9 +10,9 @@ import (
 
 func TestADLDefinitionYAML_id(t *testing.T) {
 	raw := []byte(`adl: "1.0"
-id: data-agent
-name: Data Agent
-description: Queries analytics data.
+id: test-agent
+name: Test Agent
+description: Test agent.
 harness:
   type: claude-code
 `)
@@ -21,16 +21,16 @@ harness:
 	if err := yaml.Unmarshal(raw, &def); err != nil {
 		t.Fatal(err)
 	}
-	if def.ID != "data-agent" {
+	if def.ID != "test-agent" {
 		t.Fatalf("id = %q", def.ID)
 	}
-	if def.Name != "Data Agent" {
+	if def.Name != "Test Agent" {
 		t.Fatalf("name = %q", def.Name)
 	}
-	if ADLAgentID(def) != "data-agent" {
+	if ADLAgentID(def) != "test-agent" {
 		t.Fatalf("ADLAgentID = %q", ADLAgentID(def))
 	}
-	if ADLAgentLabel(def) != "Data Agent" {
+	if ADLAgentLabel(def) != "Test Agent" {
 		t.Fatalf("ADLAgentLabel = %q", ADLAgentLabel(def))
 	}
 }

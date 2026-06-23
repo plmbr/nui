@@ -53,7 +53,7 @@ new MyAgent().serve()
 
 ### Connection file
 
-`serve()` writes `~/.loop/extensions/<name>.json`:
+`serve()` writes `~/.loop/connections/<name>.json`:
 
 ```json
 {"host": "127.0.0.1", "port": 52341, "session_id": "...", "pid": 9876}

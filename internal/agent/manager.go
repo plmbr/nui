@@ -15,6 +15,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"loop/internal/extensions"
 )
 
 // builtinAgentTypes are harness types implemented in-process inside the Loop binary.
@@ -29,8 +31,11 @@ const containerIdleTimeout = 30 * time.Minute
 
 // Manager launches in-process harness agents, Docker containers, and remote agents.
 type Manager struct {
+	registry      *extensions.Registry
 	builtinMu     sync.Mutex
 	builtinAgents map[string]Agent // projectID → agent
+	extMu         sync.Mutex
+	extAgents     map[string]Agent // projectID → extension harness agent
 	containerMu   sync.Mutex       // protects containers, dockerURLs, and lastActivity
 	agentMu       sync.Map         // map[projectID]*sync.Mutex — serialises per-project launch
 	containers    map[string]string // projectID → containerID
@@ -38,9 +43,15 @@ type Manager struct {
 	lastActivity  map[string]time.Time
 }
 
+// SetExtensionRegistry attaches the loaded extension registry.
+func (m *Manager) SetExtensionRegistry(reg *extensions.Registry) {
+	m.registry = reg
+}
+
 func NewManager() *Manager {
 	m := &Manager{
 		builtinAgents: make(map[string]Agent),
+		extAgents:     make(map[string]Agent),
 		containers:    make(map[string]string),
 		dockerURLs:    make(map[string]string),
 		lastActivity:  make(map[string]time.Time),
@@ -213,11 +224,130 @@ func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[s
 		}
 		return NewHTTPExtensionAgent(agentType, baseURL), nil
 	default:
+		if m.registry != nil {
+			if ref, ok := m.registry.ResolveHarness(agentType); ok {
+				return m.getExtensionHarnessAgent(projectID, ref)
+			}
+		}
 		if !builtinAgentTypes[agentType] {
 			return nil, fmt.Errorf("unknown agent type: %q", agentType)
 		}
 		return m.getBuiltinAgent(projectID, agentType, config)
 	}
+}
+
+func (m *Manager) getExtensionHarnessAgent(projectID string, ref extensions.HarnessRef) (Agent, error) {
+	m.extMu.Lock()
+	if ag, ok := m.extAgents[projectID]; ok {
+		m.extMu.Unlock()
+		return ag, nil
+	}
+	m.extMu.Unlock()
+
+	v, _ := m.agentMu.LoadOrStore(projectID, &sync.Mutex{})
+	lock := v.(*sync.Mutex)
+	lock.Lock()
+	defer lock.Unlock()
+
+	m.extMu.Lock()
+	defer m.extMu.Unlock()
+	if ag, ok := m.extAgents[projectID]; ok {
+		return ag, nil
+	}
+
+	transport := strings.TrimSpace(ref.Runtime.Transport)
+	if transport == "" {
+		transport = "stdio"
+	}
+
+	var ag Agent
+	var err error
+	switch transport {
+	case "stdio":
+		ag, err = newStdioHarnessAgent(ref.AgentID, ref.Entry.ID, projectID, ref.Extension.Dir, ref.Runtime)
+	case "tcp":
+		conn, connErr := m.startTCPHarness(ref)
+		if connErr != nil {
+			return nil, connErr
+		}
+		ag = NewExtensionAgent(ref.AgentID, conn)
+	case "http":
+		baseURL, urlErr := m.startHTTPHarness(ref)
+		if urlErr != nil {
+			return nil, urlErr
+		}
+		ag = NewHTTPExtensionAgent(ref.AgentID, baseURL)
+	default:
+		return nil, fmt.Errorf("harness %s: unsupported transport %q", ref.AgentID, transport)
+	}
+	if err != nil {
+		return nil, err
+	}
+	m.extAgents[projectID] = ag
+	return ag, nil
+}
+
+func (m *Manager) startTCPHarness(ref extensions.HarnessRef) (ConnectionInfo, error) {
+	command := extensionsExpandCommand(ref.Runtime.Command, ref.Extension.Dir)
+	if len(command) == 0 {
+		return ConnectionInfo{}, fmt.Errorf("harness %s: empty runtime command", ref.AgentID)
+	}
+	cwd := ref.Extension.Dir
+	if c := ref.Runtime.Cwd; c != "" && c != "." {
+		cwd = filepath.Join(ref.Extension.Dir, c)
+	}
+	cmd := exec.Command(command[0], command[1:]...)
+	cmd.Dir = cwd
+	cmd.Env = append(os.Environ(),
+		"LOOP_EXTENSION_DIR="+ref.Extension.Dir,
+		"LOOP_HARNESS_ID="+ref.Entry.ID,
+		"LOOP_CONNECTION_ID="+SanitizeConnectionID(ref.AgentID),
+	)
+	if err := cmd.Start(); err != nil {
+		return ConnectionInfo{}, err
+	}
+	connID := SanitizeConnectionID(ref.AgentID)
+	conn, err := WaitForConnectionInfo(connID, 10*time.Second)
+	if err != nil {
+		_ = cmd.Process.Kill()
+		return ConnectionInfo{}, fmt.Errorf("harness %s: %w", ref.AgentID, err)
+	}
+	return conn, nil
+}
+
+func (m *Manager) startHTTPHarness(ref extensions.HarnessRef) (string, error) {
+	host := ref.Runtime.Host
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	port := ref.Runtime.Port
+	if port <= 0 {
+		command := extensionsExpandCommand(ref.Runtime.Command, ref.Extension.Dir)
+		if len(command) == 0 {
+			return "", fmt.Errorf("harness %s: http transport requires port or command", ref.AgentID)
+		}
+		cwd := ref.Extension.Dir
+		if c := ref.Runtime.Cwd; c != "" && c != "." {
+			cwd = filepath.Join(ref.Extension.Dir, c)
+		}
+		cmd := exec.Command(command[0], command[1:]...)
+		cmd.Dir = cwd
+		connID := SanitizeConnectionID(ref.AgentID)
+		cmd.Env = append(os.Environ(),
+			"LOOP_EXTENSION_DIR="+ref.Extension.Dir,
+			"LOOP_CONNECTION_ID="+connID,
+		)
+		if err := cmd.Start(); err != nil {
+			return "", err
+		}
+		var err error
+		host, port, err = ConnectionHostPort(connID, 10*time.Second)
+		if err != nil {
+			_ = cmd.Process.Kill()
+			return "", fmt.Errorf("harness %s: %w", ref.AgentID, err)
+		}
+	}
+	return fmt.Sprintf("http://%s:%d", host, port), nil
 }
 
 func (m *Manager) getBuiltinAgent(projectID, agentType string, config map[string]any) (Agent, error) {
@@ -284,6 +414,7 @@ func (m *Manager) stopBuiltinAgent(projectID string) {
 // Stop terminates the in-process harness agent or Docker container for a specific project.
 func (m *Manager) Stop(projectID string) {
 	m.stopBuiltinAgent(projectID)
+	m.stopExtensionAgent(projectID)
 
 	m.containerMu.Lock()
 	baseURL := m.dockerURLs[projectID]
@@ -302,6 +433,21 @@ func (m *Manager) Stop(projectID string) {
 	}
 }
 
+func (m *Manager) stopExtensionAgent(projectID string) {
+	m.extMu.Lock()
+	ag, ok := m.extAgents[projectID]
+	if ok {
+		delete(m.extAgents, projectID)
+	}
+	m.extMu.Unlock()
+	if !ok {
+		return
+	}
+	if s, ok := ag.(interface{ Stop() }); ok {
+		s.Stop()
+	}
+}
+
 // StopAll terminates all managed harness agents and Docker containers.
 func (m *Manager) StopAll() {
 	type stopEntry struct {
@@ -317,6 +463,16 @@ func (m *Manager) StopAll() {
 		builtinIDs = append(builtinIDs, id)
 	}
 	m.builtinMu.Unlock()
+
+	m.extMu.Lock()
+	extIDs := make([]string, 0, len(m.extAgents))
+	for id := range m.extAgents {
+		extIDs = append(extIDs, id)
+	}
+	m.extMu.Unlock()
+	for _, id := range extIDs {
+		m.stopExtensionAgent(id)
+	}
 
 	m.containerMu.Lock()
 	entries := make([]stopEntry, 0, len(m.containers))

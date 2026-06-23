@@ -2,7 +2,7 @@
 """
 Sample Loop extension client.
 
-Reads ~/.loop/extensions/<name>.json, connects over TCP, and calls
+Reads ~/.loop/connections/<name>.json, connects over TCP, and calls
 harness.info then harness.run, printing streamed events as they arrive.
 
 Usage:
@@ -21,7 +21,7 @@ from pathlib import Path
 
 
 def load_connection(name: str) -> dict:
-    path = Path.home() / ".loop" / "extensions" / f"{name}.json"
+    path = Path.home() / ".loop" / "connections" / f"{name}.json"
     if not path.exists():
         sys.exit(f"connection file not found: {path}\nIs the extension running?")
     return json.loads(path.read_text())

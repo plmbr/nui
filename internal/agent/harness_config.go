@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"loop/internal/extensions"
 	"loop/internal/model"
 	"loop/internal/skills"
 	"loop/internal/store"
@@ -123,6 +124,33 @@ func adlMCPServersFromDef(def model.ADLDefinition) []model.ADLMCPServer {
 
 func adlMCPServersFromStep(step model.ADLStep) []model.ADLMCPServer {
 	return step.AIAssets.MCPServers
+}
+
+// ExpandHarnessDeps resolves extension refs in MCP servers and skills.
+func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry) (HarnessDeps, error) {
+	if reg == nil {
+		return deps, nil
+	}
+	var err error
+	deps.MCPServers, err = reg.ExpandMCPServers(deps.MCPServers)
+	if err != nil {
+		return deps, err
+	}
+	expandedSkills := make([]model.ADLSkill, 0, len(deps.Skills))
+	for _, skill := range deps.Skills {
+		ref := strings.TrimSpace(skill.Ref)
+		if ref != "" && extensions.IsExtRef(ref) {
+			_, dir, resolveErr := reg.ResolveSkill(ref)
+			if resolveErr != nil {
+				return deps, resolveErr
+			}
+			skill.Ref = ""
+			skill.Path = dir
+		}
+		expandedSkills = append(expandedSkills, skill)
+	}
+	deps.Skills = expandedSkills
+	return deps, nil
 }
 
 // ProvisionHarnessConfig creates ~/.loop/sessions/<sessionID> and writes harness-specific

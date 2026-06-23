@@ -63,7 +63,8 @@ In development, Vite (`:5173`) proxies `/api` to the Go server.
 | `cmd/` | Cobra CLI (`loop ui [--port] [--open] [--agent-type] [--prompt] [--working-dir]`) |
 | `internal/server/` | HTTP mux, REST handlers, AG-UI streaming (`agui.go`), MCP tool UI (`mcp_manager.go`) |
 | `internal/model/` | `Session`, `ChatMessage`, ADL structs |
-| `internal/store/` | Persistence: `data.json` (sessions, agent session IDs, UI messages), `settings.json`, ADL YAML in `agents/`, agent history loaders |
+| `internal/store/` | Persistence: `data.json` (sessions, agent session IDs, UI messages), `settings.json`, ADL YAML in `agents/`, extensions in `extensions/`, agent history loaders |
+| `internal/extensions/` | Extension registry: manifest scan, list sources (file/catalog RPC), harness/MCP/skill/agent contributions |
 | `internal/agent/` | `Agent` interface, harness agents, `ADLAgent` executor, `Manager` lifecycle, `sandbox.go` (bwrap) |
 
 ### Agent interface
@@ -128,6 +129,8 @@ SSE `data:` events support `text`, `done`, `error`, and tool-call/image event ty
 | `~/.loop/data.json` | `sessions`, `agentSessions` (loop session ID → agent session ID), `sessionMessages` (UI chat text) |
 | `~/.loop/settings.json` | `theme`, `lastAgentType`, `lastSessionId`, `sidebarOpen` |
 | `~/.loop/agents/*.yaml` | User ADL definitions; loaded on every `GET /api/agent-types` |
+| `~/.loop/extensions/<name>/` | Backend extensions (`extension.yaml` + contribution list files); see `dev/extension-api.md` |
+| `~/.loop/connections/*.json` | Harness TCP/HTTP handshake files (`host`, `port`, `session_id`, `pid`) |
 | Agent history files | Claude: `~/.claude/projects/<dirHash>/<id>.jsonl`; pi/codex/opencode via respective `store/*_history.go` loaders |
 
 UI loads persisted `sessionMessages` first on session select; falls back to agent history files if empty.
@@ -148,6 +151,8 @@ Registered in `internal/server/api.go` and `agui.go`:
 - `GET/PUT /api/settings` — user preferences (partial PUT supported)
 - `GET /api/bootstrap` — one-shot CLI bootstrap (`sessionId`, `initialPrompt`); consumed on first read
 - `GET /api/capabilities` — bwrap availability
+- `GET /api/extensions` — installed extensions and contribution ids
+- `POST /api/extensions/reload` — rescan `~/.loop/extensions/`
 
 ### Frontend structure
 

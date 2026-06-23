@@ -1,0 +1,7 @@
+harnesses:
+  - id: echo
+    displayName: Echo
+    description: Repeats your message
+  - id: reverse
+    displayName: Reverse
+    description: Reverses your message

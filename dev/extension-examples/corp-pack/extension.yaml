@@ -1,0 +1,25 @@
+apiVersion: loop.dev/extension/v1
+name: corp-pack
+version: 1.0.0
+displayName: Corp Pack
+description: Example extension with harnesses, MCP servers, skills, and agents
+
+contributions:
+  harnesses:
+    source:
+      file: harnesses.yaml
+    runtime:
+      transport: stdio
+      command: ["python3", "harness_host.py"]
+
+  mcpServers:
+    source:
+      file: mcp-servers.json
+
+  skills:
+    source:
+      file: skills.yaml
+
+  agents:
+    source:
+      file: agents.yaml

@@ -23,7 +23,7 @@ systemPrompt: |
 aiAssets:
   mcpServers:
     - name: test-mcp-server
-      url: http://localhost:9123/mcp
+      url: http://localhost:3000/mcp
       type: http
       headers:
         Authorization: Bearer ${API_TOKEN}

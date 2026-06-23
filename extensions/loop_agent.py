@@ -124,8 +124,11 @@ class LoopAgent:
                 return args[i + 1]
         return self.name
 
+    def _connection_id(self) -> str:
+        return os.environ.get("LOOP_CONNECTION_ID", self._project_id)
+
     def _write_connection_file(self, port: int, session_id: str) -> Path:
-        path = Path.home() / ".loop" / "extensions" / f"{self._project_id}.json"
+        path = Path.home() / ".loop" / "connections" / f"{self._connection_id()}.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({
             "host": "127.0.0.1",

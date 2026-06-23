@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"loop/internal/extensions"
 	"loop/internal/model"
 )
 
@@ -79,6 +80,10 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 // runStep resolves the harness and runs the agent for a single step.
 func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.ADLHarness, systemPrompt string, step *model.ADLStep, events chan<- Event) error {
 	deps := harnessDepsFromADL(a.def, step, req.WorkingDir)
+	deps, err := ExpandHarnessDeps(deps, a.manager.registry)
+	if err != nil {
+		return fmt.Errorf("expand harness deps: %w", err)
+	}
 	configDir, err := ProvisionHarnessConfig(a.projectID, harness.Type, deps)
 	if err != nil {
 		return fmt.Errorf("provision harness config: %w", err)
@@ -199,6 +204,13 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 		return ag.Run(ctx, req, events)
 
 	default:
+		if extensions.IsExtRef(harness.Type) || (a.manager.registry != nil && a.manager.registry.IsExtensionHarnessAgent(harness.Type)) {
+			ag, err := a.manager.GetAgent(a.projectID, harness.Type, req.WorkingDir, nil)
+			if err != nil {
+				return fmt.Errorf("extension harness: %w", err)
+			}
+			return ag.Run(ctx, req, events)
+		}
 		return fmt.Errorf("unknown harness type: %q", harness.Type)
 	}
 }

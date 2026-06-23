@@ -20,7 +20,7 @@ python dev/harness-examples/py/client.py
 
 ## Protocol
 
-On startup, the harness binds a random TCP port and writes `~/.loop/extensions/<name>.json`:
+On startup, the harness binds a random TCP port and writes `~/.loop/connections/<name>.json`:
 
 ```json
 {"host": "127.0.0.1", "port": 52341, "session_id": "...", "pid": 9876}

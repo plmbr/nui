@@ -1,0 +1,17 @@
+agents:
+  - id: echo-bot
+    name: Echo Bot
+    description: Uses the extension echo harness
+    harness:
+      type: ext:corp-pack/echo
+  - id: reviewer
+    name: Code Reviewer
+    description: Claude with corp extension skills and MCP
+    harness:
+      type: claude-code
+      model: claude-sonnet-4-6
+    aiAssets:
+      skills:
+        - ref: ext:corp-pack/code-review
+      mcpServers:
+        - ref: ext:corp-pack/echo-tool

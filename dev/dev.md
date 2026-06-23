@@ -119,7 +119,7 @@ skill: /path/to/skill-dir        # deprecated; use aiAssets.skills
 aiAssets:
   mcpServers:
     - name: my-mcp-server        # required; used as the MCP server key in harness config
-      url: http://localhost:9123/mcp   # HTTP/SSE MCP (remote)
+      url: http://localhost:3000/mcp   # HTTP/SSE MCP (remote)
       type: http                 # http | sse (default: http when url is set)
     - name: local-mcp
       command: npx               # stdio MCP
