@@ -1,13 +1,24 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useCallback, useEffect, useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { FileCode2, FormInput, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { cn } from '@/lib/utils'
+import { AgentForm } from '@/components/customize/AgentForm'
+import {
+  defaultAgentForm,
+  formToAgentYaml,
+  parseAgentYaml,
+  type AgentFormModel,
+} from '@/lib/adlAgentForm'
+import { useAgentFormOptions } from '@/lib/useAgentFormOptions'
 import { api } from '@/api'
 import type { AgentFileInfo } from '@/types'
+
+type EditMode = 'form' | 'yaml'
 
 const NEW_AGENT_TEMPLATE = `adl: "1.0"
 id: my-agent
@@ -18,15 +29,67 @@ harness:
   sandbox: none
 `
 
+function ModeToggle({ mode, onChange }: { mode: EditMode; onChange: (mode: EditMode) => void }) {
+  return (
+    <div className="inline-flex rounded-lg border p-0.5">
+      <button
+        type="button"
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+          mode === 'form' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
+        )}
+        onClick={() => onChange('form')}
+      >
+        <FormInput className="size-3.5" />
+        Form
+      </button>
+      <button
+        type="button"
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+          mode === 'yaml' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground',
+        )}
+        onClick={() => onChange('yaml')}
+      >
+        <FileCode2 className="size-3.5" />
+        YAML
+      </button>
+    </div>
+  )
+}
+
 export function AgentsTab() {
+  const { options, loading: optionsLoading } = useAgentFormOptions()
   const [agents, setAgents] = useState<AgentFileInfo[]>([])
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [content, setContent] = useState('')
+  const [form, setForm] = useState<AgentFormModel>(defaultAgentForm())
+  const [preserved, setPreserved] = useState<Record<string, unknown>>({})
+  const [hasWorkflowSteps, setHasWorkflowSteps] = useState(false)
+  const [editMode, setEditMode] = useState<EditMode>('form')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [creating, setCreating] = useState(false)
   const [newFilename, setNewFilename] = useState('my-agent.yaml')
   const [error, setError] = useState<string | null>(null)
+
+  const syncFormFromContent = useCallback(
+    (yaml: string) => {
+      const parsed = parseAgentYaml(yaml, options)
+      setForm(parsed.form)
+      setPreserved(parsed.preserved)
+      setHasWorkflowSteps(parsed.hasWorkflowSteps)
+    },
+    [options],
+  )
+
+  useEffect(() => {
+    if ((selectedFile || creating) && content) {
+      syncFormFromContent(content)
+    }
+    // Re-parse when catalog options finish loading so dropdown ids resolve.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -51,9 +114,21 @@ export function AgentsTab() {
       setSelectedFile(file)
       setContent(res.content)
       setCreating(false)
+      setEditMode('form')
+      syncFormFromContent(res.content)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load agent')
     }
+  }
+
+  const handleModeChange = (mode: EditMode) => {
+    if (mode === editMode) return
+    if (mode === 'yaml' && editMode === 'form') {
+      setContent(formToAgentYaml(form, options, preserved))
+    } else if (mode === 'form' && editMode === 'yaml') {
+      syncFormFromContent(content)
+    }
+    setEditMode(mode)
   }
 
   const save = async () => {
@@ -61,7 +136,10 @@ export function AgentsTab() {
     setSaving(true)
     setError(null)
     try {
-      await api.agents.save(selectedFile, content)
+      const yaml = editMode === 'form' ? formToAgentYaml(form, options, preserved) : content
+      await api.agents.save(selectedFile, yaml)
+      setContent(yaml)
+      if (editMode === 'form') syncFormFromContent(yaml)
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save')
@@ -74,7 +152,8 @@ export function AgentsTab() {
     setSaving(true)
     setError(null)
     try {
-      const info = await api.agents.create(newFilename, NEW_AGENT_TEMPLATE)
+      const yaml = editMode === 'form' ? formToAgentYaml(form, options, {}) : content
+      const info = await api.agents.create(newFilename, yaml)
       await load()
       setCreating(false)
       await openAgent(info.file)
@@ -93,6 +172,7 @@ export function AgentsTab() {
       if (selectedFile === file) {
         setSelectedFile(null)
         setContent('')
+        setForm(defaultAgentForm())
       }
       await load()
     } catch (e) {
@@ -100,28 +180,36 @@ export function AgentsTab() {
     }
   }
 
-  if (loading) {
+  const startCreate = () => {
+    setCreating(true)
+    setSelectedFile(null)
+    setEditMode('form')
+    setForm(defaultAgentForm())
+    setPreserved({})
+    setHasWorkflowSteps(false)
+    setContent(NEW_AGENT_TEMPLATE)
+    setNewFilename('my-agent.yaml')
+  }
+
+  const handleFormChange = (nextForm: AgentFormModel) => {
+    setForm(nextForm)
+  }
+
+  if (loading || optionsLoading) {
     return <p className="text-sm text-muted-foreground">Loading agents…</p>
   }
 
+  const editing = creating || selectedFile != null
+
   return (
-    <div className="customize-tab-content flex flex-col gap-4 min-h-0">
+    <div className="customize-tab-content flex flex-col gap-4 min-h-0 max-w-none">
       <p className="text-sm text-muted-foreground shrink-0">
         Agent definitions in <code className="text-xs">~/.loop/agents/</code> (ADL YAML).
       </p>
 
       <div className="flex flex-1 min-h-0 gap-4">
         <div className="w-56 shrink-0 flex flex-col gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="justify-start"
-            onClick={() => {
-              setCreating(true)
-              setSelectedFile(null)
-              setContent(NEW_AGENT_TEMPLATE)
-            }}
-          >
+          <Button variant="outline" size="sm" className="justify-start" onClick={startCreate}>
             <Plus className="size-3.5" />
             New agent
           </Button>
@@ -143,42 +231,66 @@ export function AgentsTab() {
         </div>
 
         <div className="flex-1 flex flex-col min-w-0 min-h-0 gap-3">
-          {creating ? (
-            <>
-              <div className="space-y-1.5">
-                <Label>Filename</Label>
-                <Input value={newFilename} onChange={(e) => setNewFilename(e.target.value)} />
-              </div>
-              <Textarea
-                className="flex-1 min-h-[320px] font-mono text-xs"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-              />
-              <div className="flex gap-2">
-                <Button size="sm" onClick={() => void create()} disabled={saving}>
-                  Create
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setCreating(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </>
-          ) : selectedFile ? (
+          {editing ? (
             <>
               <div className="flex items-center justify-between gap-2 shrink-0">
-                <p className="text-sm font-medium truncate">{selectedFile}</p>
-                <Button variant="ghost" size="sm" onClick={() => void remove(selectedFile)}>
-                  <Trash2 className="size-3.5" />
-                </Button>
+                <div className="min-w-0">
+                  {creating ? (
+                    <p className="text-sm font-medium">New agent</p>
+                  ) : (
+                    <p className="text-sm font-medium truncate">{selectedFile}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <ModeToggle mode={editMode} onChange={handleModeChange} />
+                  {!creating && selectedFile && (
+                    <Button variant="ghost" size="sm" onClick={() => void remove(selectedFile)}>
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  )}
+                </div>
               </div>
-              <Textarea
-                className="flex-1 min-h-[320px] font-mono text-xs"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-              />
-              <Button size="sm" onClick={() => void save()} disabled={saving}>
-                {saving ? 'Saving…' : 'Save changes'}
-              </Button>
+
+              {creating && (
+                <div className="space-y-1.5 shrink-0 max-w-md">
+                  <Label>Filename</Label>
+                  <Input value={newFilename} onChange={(e) => setNewFilename(e.target.value)} />
+                </div>
+              )}
+
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {editMode === 'form' ? (
+                  <AgentForm
+                    form={form}
+                    options={options}
+                    hasWorkflowSteps={hasWorkflowSteps}
+                    onChange={handleFormChange}
+                  />
+                ) : (
+                  <Textarea
+                    className="min-h-[420px] font-mono text-xs w-full"
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                  />
+                )}
+              </div>
+
+              <div className="flex gap-2 shrink-0">
+                {creating ? (
+                  <>
+                    <Button size="sm" onClick={() => void create()} disabled={saving}>
+                      {saving ? 'Creating…' : 'Create agent'}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setCreating(false)}>
+                      Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <Button size="sm" onClick={() => void save()} disabled={saving}>
+                    {saving ? 'Saving…' : 'Save changes'}
+                  </Button>
+                )}
+              </div>
             </>
           ) : (
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
