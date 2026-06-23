@@ -29,6 +29,7 @@ export interface AgentType {
   promptMode?: 'user' | 'auto'
   defaultPrompt?: string
   isBuiltin: boolean
+  source?: 'builtin' | 'user' | 'extension'
   available: boolean
 }
 

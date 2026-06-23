@@ -125,6 +125,7 @@ export default function App() {
         <div className="app-body">
           <AppSidebar
             sessions={sessions}
+            agentTypes={agentTypes}
             selectedId={selectedId}
             onSelect={handleSelect}
             onRefresh={loadSessions}

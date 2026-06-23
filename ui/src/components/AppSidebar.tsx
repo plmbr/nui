@@ -1,20 +1,25 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useEffect, useState } from 'react'
-import { FolderOpen, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronRight, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { cn } from '@/lib/utils'
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
+import { groupSessionsByAgentType, type SessionGroup } from '@/lib/sessionGroups'
 import {
   Dialog,
   DialogContent,
@@ -32,10 +37,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { NewSessionDialog } from '@/components/NewSessionDialog'
 import { SettingsSheet } from '@/components/SettingsSheet'
-import type { Session } from '@/types'
+import type { AgentType, Session } from '@/types'
 
 interface Props {
   sessions: Session[]
+  agentTypes: AgentType[]
   selectedId: string | null
   onSelect: (id: string) => void
   onRefresh: () => void
@@ -72,7 +78,6 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
     <>
       <SidebarMenuItem>
         <SidebarMenuButton isActive={isActive} onClick={onSelect} tooltip={session.name}>
-          <FolderOpen className="size-4 shrink-0" />
           <span className="truncate">{session.name}</span>
         </SidebarMenuButton>
         <DropdownMenu>
@@ -163,8 +168,68 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
   )
 }
 
-export function AppSidebar({ sessions, selectedId, onSelect, onRefresh, onRename, onDelete }: Props) {
+interface CollapsibleSessionGroupProps {
+  group: SessionGroup
+  selectedId: string | null
+  onSelect: (id: string) => void
+  onRename: (id: string, newName: string) => Promise<void>
+  onDelete: (id: string) => Promise<void>
+}
+
+function CollapsibleSessionGroup({
+  group,
+  selectedId,
+  onSelect,
+  onRename,
+  onDelete,
+}: CollapsibleSessionGroupProps) {
+  const hasSelected = group.sessions.some((s) => s.id === selectedId)
+  const [open, setOpen] = useState(true)
+
+  useEffect(() => {
+    if (hasSelected) setOpen(true)
+  }, [hasSelected])
+
+  return (
+    <SidebarGroup>
+      <SidebarGroupLabel
+        render={<button type="button" />}
+        className="h-9 cursor-pointer gap-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+      >
+        <ChevronRight
+          className={cn(
+            'size-4 shrink-0 text-muted-foreground transition-transform duration-200',
+            open && 'rotate-90',
+          )}
+        />
+        <span className="flex-1 truncate text-left">{group.label}</span>
+        <span className="text-xs font-normal text-muted-foreground tabular-nums">{group.sessions.length}</span>
+      </SidebarGroupLabel>
+      {open && (
+        <SidebarGroupContent>
+          <SidebarMenu className="pl-5">
+            {group.sessions.map((s) => (
+              <SessionListItem
+                key={s.id}
+                session={s}
+                isActive={s.id === selectedId}
+                onSelect={() => onSelect(s.id)}
+                onRename={(newName) => onRename(s.id, newName)}
+                onDelete={() => onDelete(s.id)}
+              />
+            ))}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      )}
+    </SidebarGroup>
+  )
+}
+
+export function AppSidebar({ sessions, agentTypes, selectedId, onSelect, onRefresh, onRename, onDelete }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false)
+  const groups = groupSessionsByAgentType(sessions, agentTypes)
 
   return (
     <>
@@ -182,23 +247,22 @@ export function AppSidebar({ sessions, selectedId, onSelect, onRefresh, onRename
         </SidebarHeader>
         <SidebarContent>
           <ScrollArea className="flex-1">
-            <SidebarMenu className="px-2">
-              {sessions.map((s) => (
-                <SessionListItem
-                  key={s.id}
-                  session={s}
-                  isActive={s.id === selectedId}
-                  onSelect={() => onSelect(s.id)}
-                  onRename={(newName) => onRename(s.id, newName)}
-                  onDelete={() => onDelete(s.id)}
+            {groups.length === 0 ? (
+              <p className="px-4 py-4 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+                No sessions yet.
+              </p>
+            ) : (
+              groups.map((group) => (
+                <CollapsibleSessionGroup
+                  key={group.id}
+                  group={group}
+                  selectedId={selectedId}
+                  onSelect={onSelect}
+                  onRename={onRename}
+                  onDelete={onDelete}
                 />
-              ))}
-              {sessions.length === 0 && (
-                <p className="px-2 py-4 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-                  No sessions yet.
-                </p>
-              )}
-            </SidebarMenu>
+              ))
+            )}
           </ScrollArea>
         </SidebarContent>
         <SidebarFooter className="p-2">
