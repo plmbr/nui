@@ -1,7 +1,7 @@
 adl: "1.0"
 
 # Single-step agent running inside a Docker container.
-# The container image implements the Loop HTTP/SSE extension protocol:
+# The container image implements the Loop HTTP/SSE harness protocol:
 #   GET  /info  → {"name","version","capabilities"}
 #   POST /run   → text/event-stream
 #   POST /cancel

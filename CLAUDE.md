@@ -108,7 +108,7 @@ On delete/shutdown, Loop calls `POST /shutdown` on managed containers, then `doc
 #### Reference code (not wired to Manager)
 
 - `ExtensionAgent` in `extension.go` — TCP JSON-RPC 2.0 client; implemented but not called by `Manager.GetAgent()`
-- `extensions/` and `dev/extension-examples/py|ts/` — reference TCP JSON-RPC frameworks for custom extension authors
+- `extensions/` and `dev/harness-examples/py|ts/` — reference TCP JSON-RPC frameworks for custom harness authors
 
 ### HTTP/SSE protocol (docker + remote)
 

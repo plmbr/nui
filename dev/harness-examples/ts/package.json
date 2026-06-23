@@ -1,5 +1,5 @@
 {
-  "name": "loop-extension-examples-ts",
+  "name": "loop-harness-examples-ts",
   "private": true,
   "scripts": {
     "echo-agent": "ts-node echo_agent.ts",

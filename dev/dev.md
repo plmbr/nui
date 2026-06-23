@@ -52,9 +52,9 @@ flowchart TB
 
 2. **Chat uses AG-UI, not raw SSE.** The UI (`useSessionChat.ts`) streams via `POST /api/sessions/:id/ag-ui` using the [AG-UI protocol](https://github.com/ag-ui-protocol/ag-ui). Tool calls, images, and MCP app frames are translated from agent `Event` types in `agui.go`. The legacy `POST /chat` endpoint still exists but the UI does not use it.
 
-3. **Two extension transports.**
+3. **Two custom harness transports.**
    - **Production path:** builtin harnesses are Go structs that manage CLI subprocesses; docker/remote use `HTTPExtensionAgent`.
-   - **Reference path:** TCP JSON-RPC 2.0 in `dev/extension-examples/py|ts/` and `ExtensionAgent` in Go — implemented but **not wired** to `Manager.GetAgent()`. For third-party custom agents.
+   - **Reference path:** TCP JSON-RPC 2.0 in `dev/harness-examples/py|ts/` and `ExtensionAgent` in Go — implemented but **not wired** to `Manager.GetAgent()`. For third-party custom harnesses.
 
 4. **Docker/remote via custom ADL.** There is no built-in "Docker" or "Remote" picker in the UI. Users select a custom ADL agent (e.g. `docker-echo` from `~/.loop/agents/docker-echo.yaml`). Loop validates the connector on session create.
 
@@ -266,7 +266,7 @@ type Agent interface {
 
 `ADLAgent` is the orchestrator. `Manager` caches one builtin agent per session ID and manages Docker container lifecycle (idle reaper at 30 min).
 
-### HTTP/SSE extension protocol
+### HTTP/SSE harness protocol
 
 Used by `docker`, `remote`, and builtin sandbox containers.
 
@@ -287,11 +287,11 @@ SSE events (JSON in `data:` lines):
 
 Also supported: `tool_call_start`, `tool_call_args`, `tool_call_end`, `tool_call_result`, `image` (see `extension.go`).
 
-Examples: `dev/extension-examples/docker/`, `dev/extension-examples/remote/`, `docker/http_loop_agent.py`.
+Examples: `dev/harness-examples/docker/`, `dev/harness-examples/remote/`, `docker/http_loop_agent.py`.
 
 ### TCP JSON-RPC protocol (reference only)
 
-For custom extension authors. Not connected to `Manager` today.
+For custom harness authors. Not connected to `Manager` today.
 
 | Method | Description |
 |---|---|
@@ -300,7 +300,7 @@ For custom extension authors. Not connected to `Manager` today.
 | `harness.cancel` | Cancel run |
 | `harness.shutdown` | Release resources |
 
-Framework: `extensions/loop_agent.py`, `dev/extension-examples/py/loop_agent.py`.
+Framework: `extensions/loop_agent.py`, `dev/harness-examples/py/loop_agent.py`.
 
 ---
 
@@ -408,9 +408,9 @@ Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-
 
 ## Open Questions
 
-1. **Wire TCP JSON-RPC extensions?** `ExtensionAgent` exists but is unused — adopt for a `custom` harness type, or remove?
+1. **Wire TCP JSON-RPC harnesses?** `ExtensionAgent` exists but is unused — adopt for a `custom` harness type, or remove?
 2. **ADL policy enforcement order** — policies before or after HITL?
 3. **Chat persistence scope** — persist tool calls/images in `sessionMessages` or separate store?
 4. **Docker security** — gVisor/Firecracker for untrusted agents?
 
-See also: [extension-design.md](extension-design.md), [adl/examples/README.md](adl/examples/README.md), [extension-examples/](extension-examples/).
+See also: [harness-design.md](harness-design.md), [adl/examples/README.md](adl/examples/README.md), [harness-examples/](harness-examples/).

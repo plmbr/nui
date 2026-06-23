@@ -123,7 +123,7 @@ steps:
     harness:
       type: remote
       host: ci.internal
-      port: 9090    # CI server running the Loop HTTP/SSE extension protocol
+      port: 9090    # CI server running the Loop HTTP/SSE harness protocol
     dependsOn: [human-signoff]
     inputs:
       - from: human-signoff.approvalDecision

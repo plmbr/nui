@@ -7,7 +7,7 @@ Loop is a self-hosted UI for interactive AI agent sessions. A Go backend embeds 
 ## Documentation
 
 - [Product & technical spec](dev/dev.md) — architecture, ADL schema, roadmap
-- [Extension protocols](dev/extension-design.md) — HTTP/SSE and TCP JSON-RPC for custom agents
+- [Harness protocols](dev/harness-design.md) — HTTP/SSE and TCP JSON-RPC for custom harnesses
 - [ADL examples](dev/adl/examples/) — sample agent/workflow YAML files
 
 ## Architecture
@@ -70,8 +70,8 @@ loop/
 ├── extensions/                # Reference TCP JSON-RPC framework (not wired to Manager)
 ├── dev/
 │   ├── dev.md                 # product spec
-│   ├── extension-design.md    # extension protocols
-│   ├── extension-examples/    # runnable docker/remote/TCP examples
+│   ├── harness-design.md      # custom harness protocols
+│   ├── harness-examples/      # runnable docker/remote/TCP examples
 │   └── adl/examples/          # sample ADL YAML
 └── ui/                        # Vite + React frontend
 ```
@@ -202,6 +202,6 @@ For `claude-code`, `pi`, `codex`, and `opencode` (set in ADL `harness.sandbox`):
 
 ### Docker / remote connectors
 
-Custom ADL agents with `harness.type: docker` or `remote` use the HTTP/SSE protocol. Loop validates connector configuration on session create; containers and remote connections start on the first message. See [extension examples](dev/extension-examples/).
+Custom ADL agents with `harness.type: docker` or `remote` use the HTTP/SSE protocol. Loop validates connector configuration on session create; containers and remote connections start on the first message. See [harness examples](dev/harness-examples/).
 
-**Port note:** builtin sandbox images in `docker/` listen on **8090**; user extension examples use **9090** (configured via ADL `containerPort`).
+**Port note:** builtin sandbox images in `docker/` listen on **8090**; custom harness examples use **9090** (configured via ADL `containerPort`).

@@ -1,4 +1,4 @@
-# Remote Agent Example
+# Remote Harness Example
 
 A standalone HTTP/SSE server — on the same machine or a remote host. Loop connects via a custom ADL agent; it does not start or stop the process.
 
@@ -10,7 +10,7 @@ A standalone HTTP/SSE server — on the same machine or a remote host. Loop conn
 ## Running
 
 ```sh
-python3 dev/extension-examples/remote/echo_agent.py --port 9090
+python3 dev/harness-examples/remote/echo_agent.py --port 9090
 
 curl http://127.0.0.1:9090/info
 

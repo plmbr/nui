@@ -1,6 +1,6 @@
-# Docker Agent Example
+# Docker Harness Example
 
-A Loop extension that runs inside a Docker container. The agent exposes an HTTP/SSE server; Loop maps the container port to a random host port at runtime.
+A custom Loop harness that runs inside a Docker container. The agent exposes an HTTP/SSE server; Loop maps the container port to a random host port at runtime.
 
 ## Files
 
@@ -11,7 +11,7 @@ A Loop extension that runs inside a Docker container. The agent exposes an HTTP/
 ## Setup
 
 ```sh
-cd dev/extension-examples/docker
+cd dev/harness-examples/docker
 docker build -t loop-echo-agent .
 ```
 
@@ -77,7 +77,7 @@ data: {"type":"error","error":"..."}
 
 | Image type | Container port |
 |---|---|
-| User extension examples (this directory) | **9090** |
+| Custom harness examples (this directory) | **9090** |
 | Builtin sandbox images (`docker/` in repo root) | **8090** |
 
 ## Writing your own Docker agent

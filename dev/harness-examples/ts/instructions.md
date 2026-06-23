@@ -1,17 +1,17 @@
-# TCP JSON-RPC Extension Examples — TypeScript (Reference)
+# TCP JSON-RPC Harness Examples — TypeScript (Reference)
 
-These examples demonstrate the TCP JSON-RPC 2.0 protocol for custom Loop extensions. **They are not wired to `Manager.GetAgent()` today.** See [extension-design.md](../../extension-design.md) for the production architecture.
+These examples demonstrate the TCP JSON-RPC 2.0 protocol for custom Loop harnesses. **They are not wired to `Manager.GetAgent()` today.** See [harness-design.md](../../harness-design.md) for the production architecture.
 
 ## Files
 
-- `loop_agent.ts` — extension framework base class
+- `loop_agent.ts` — harness framework base class
 - `echo_agent.ts` — minimal echo harness
 - `client.ts` — sample TCP client
 
 ## Setup
 
 ```sh
-cd dev/extension-examples/ts
+cd dev/harness-examples/ts
 npm install
 ```
 

@@ -197,7 +197,7 @@ harness:
 		"docker-echo.yaml": `adl: "1.0"
 id: docker-echo
 name: Docker Echo
-description: Echo agent in a Docker container (build dev/extension-examples/docker first)
+description: Echo agent in a Docker container (build dev/harness-examples/docker first)
 harness:
   type: docker
   image: loop-echo-agent
@@ -206,7 +206,7 @@ harness:
 		"remote-echo.yaml": `adl: "1.0"
 id: remote-echo
 name: Remote Echo
-description: Echo agent on a local HTTP/SSE server (start dev/extension-examples/remote/echo_agent.py)
+description: Echo agent on a local HTTP/SSE server (start dev/harness-examples/remote/echo_agent.py)
 harness:
   type: remote
   host: 127.0.0.1
