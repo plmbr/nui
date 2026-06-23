@@ -297,10 +297,27 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
             placeholder="Instructions for the agent…"
           />
         </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>Prompt mode</Label>
+            <Select
+              value={form.promptMode}
+              onValueChange={(v) => patch({ promptMode: (v ?? 'user') as 'user' | 'auto' })}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="user">User (interactive chat)</SelectItem>
+                <SelectItem value="auto">Auto (run default prompt on start)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
         <div className="space-y-1.5">
           <Label htmlFor="default-prompt">Default prompt</Label>
           <p className="text-xs text-muted-foreground">
-            Optional task run automatically when a session starts (sets prompt mode to auto).
+            Used when prompt mode is auto — sent when a session starts.
           </p>
           <Textarea
             id="default-prompt"
@@ -308,6 +325,7 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
             onChange={(e) => patch({ defaultPrompt: e.target.value })}
             rows={3}
             placeholder="Review the README and suggest improvements"
+            disabled={form.promptMode !== 'auto'}
           />
         </div>
       </section>

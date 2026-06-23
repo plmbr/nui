@@ -23,6 +23,7 @@ export interface AgentFormModel {
   name: string
   description: string
   systemPrompt: string
+  promptMode: 'user' | 'auto'
   defaultPrompt: string
   harnessOptionId: string
   harnessModel: string
@@ -86,6 +87,7 @@ export function defaultAgentForm(): AgentFormModel {
     name: 'My Agent',
     description: '',
     systemPrompt: '',
+    promptMode: 'user',
     defaultPrompt: '',
     harnessOptionId: 'builtin:claude-code',
     harnessModel: '',
@@ -205,6 +207,7 @@ export function parseAgentYaml(content: string, options: AgentFormOptions): Pars
     name: String(doc.name ?? doc.id ?? 'My Agent'),
     description: String(doc.description ?? ''),
     systemPrompt: String(doc.systemPrompt ?? ''),
+    promptMode: doc.promptMode === 'auto' ? 'auto' : 'user',
     defaultPrompt: String(doc.defaultPrompt ?? ''),
     harnessOptionId: harnessOptionIdFromDoc(harness, options.harnesses),
     harnessModel: String(harness?.model ?? ''),
@@ -372,13 +375,12 @@ export function mergeFormIntoAgentYaml(
   setMapKey(root, 'description', form.description.trim() || undefined)
   setMapKey(root, 'systemPrompt', form.systemPrompt.trim() || undefined)
 
-  if (form.defaultPrompt.trim()) {
+  if (form.promptMode === 'auto') {
     root.set('promptMode', 'auto')
-    root.set('defaultPrompt', form.defaultPrompt.trim())
   } else {
-    root.delete('defaultPrompt')
-    if (root.get('promptMode') === 'auto') root.delete('promptMode')
+    root.delete('promptMode')
   }
+  setMapKey(root, 'defaultPrompt', form.defaultPrompt.trim() || undefined)
 
   const env = entriesToMap(form.env)
   if (env) root.set('env', env)
