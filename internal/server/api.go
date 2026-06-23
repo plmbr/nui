@@ -141,6 +141,11 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/capabilities", handleCapabilities)
 	mux.HandleFunc("/api/extensions", handleExtensions)
 	mux.HandleFunc("/api/extensions/reload", handleExtensionsReload)
+	mux.HandleFunc("/api/mcp-servers", handleMCPServers)
+	mux.HandleFunc("/api/skills", handleSkills)
+	mux.HandleFunc("/api/skills/", handleSkill)
+	mux.HandleFunc("/api/agents", handleAgents)
+	mux.HandleFunc("/api/agents/", handleAgentFile)
 }
 
 var errDirectoryOutsideHome = errors.New("directory is outside the home directory")
@@ -692,6 +697,9 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		if patch.SidebarOpen != nil {
 			current.SidebarOpen = patch.SidebarOpen
+		}
+		if patch.DisabledExtensions != nil {
+			current.DisabledExtensions = patch.DisabledExtensions
 		}
 		if current.Theme == "" {
 			current.Theme = "light"

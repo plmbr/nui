@@ -19,7 +19,7 @@ func (r *Registry) ResolveMCPRef(ref string) (model.ADLMCPServer, error) {
 		return model.ADLMCPServer{}, fmt.Errorf("invalid mcp ref %q", ref)
 	}
 	ext, ok := r.Get(extName)
-	if !ok {
+	if !ok || r.isDisabled(extName) {
 		return model.ADLMCPServer{}, fmt.Errorf("extension %q not found", extName)
 	}
 	for _, s := range ext.MCPServers {
@@ -41,7 +41,7 @@ func (r *Registry) ResolveSkill(ref string) (model.ADLSkill, string, error) {
 		return model.ADLSkill{}, "", fmt.Errorf("invalid skill ref %q", ref)
 	}
 	ext, ok := r.Get(extName)
-	if !ok {
+	if !ok || r.isDisabled(extName) {
 		return model.ADLSkill{}, "", fmt.Errorf("extension %q not found", extName)
 	}
 	for _, s := range ext.Skills {
@@ -94,7 +94,10 @@ func skillDir(extDir string, skill model.ADLSkill) (string, error) {
 func (r *Registry) FindAgent(agentID string) (model.ADLDefinition, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	for _, ext := range r.extensions {
+	for name, ext := range r.extensions {
+		if r.isDisabled(name) {
+			continue
+		}
 		for _, a := range ext.Agents {
 			if a.ID == agentID || model.ADLAgentID(a) == agentID {
 				return a, true
@@ -107,7 +110,7 @@ func (r *Registry) FindAgent(agentID string) (model.ADLDefinition, bool) {
 		return model.ADLDefinition{}, false
 	}
 	ext, ok := r.extensions[extName]
-	if !ok {
+	if !ok || r.isDisabled(extName) {
 		return model.ADLDefinition{}, false
 	}
 	for _, a := range ext.Agents {
@@ -153,6 +156,9 @@ func (r *Registry) LoopMCPServerConfigs() map[string]map[string]any {
 	defer r.mu.RUnlock()
 	out := map[string]map[string]any{}
 	for extName, ext := range r.extensions {
+		if r.isDisabled(extName) {
+			continue
+		}
 		for _, s := range ext.MCPServers {
 			name := fmt.Sprintf("ext-%s-%s", extName, s.Name)
 			entry := map[string]any{}

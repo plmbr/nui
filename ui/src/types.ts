@@ -46,6 +46,51 @@ export interface Settings {
   lastAgentType?: string
   lastSessionId?: string
   sidebarOpen?: boolean
+  disabledExtensions?: string[]
+}
+
+export interface ExtensionInfo {
+  name: string
+  version?: string
+  displayName?: string
+  description?: string
+  disabled: boolean
+  harnesses?: string[]
+  mcpServers?: string[]
+  skills?: string[]
+  agents?: string[]
+}
+
+export interface MCPServer {
+  name: string
+  ref?: string
+  url?: string
+  command?: string
+  args?: string[]
+  type?: string
+  env?: Record<string, string>
+  headers?: Record<string, string>
+}
+
+export interface SkillEntry {
+  name: string
+  source: string
+  path?: string
+  git?: string
+  version?: string
+  installedAt: string
+}
+
+export interface AgentFileInfo {
+  file: string
+  id: string
+  name: string
+  description?: string
+}
+
+export interface AgentFileContent {
+  file: string
+  content: string
 }
 
 export interface Bootstrap {

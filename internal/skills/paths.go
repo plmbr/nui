@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"loop/internal/store"
 )
 
 const skillFileName = "SKILL.md"
@@ -71,6 +73,9 @@ func localSkillDir(path string) (string, error) {
 
 func refSearchPaths(ctx Context, ref string) []string {
 	var paths []string
+	if entry, err := store.SkillEntryDir(ref); err == nil {
+		paths = append(paths, entry)
+	}
 	if cache, err := cacheSkillDir(ref); err == nil {
 		paths = append(paths, cache)
 	}
@@ -81,4 +86,17 @@ func refSearchPaths(ctx Context, ref string) []string {
 		paths = append(paths, filepath.Join(wd, ".cursor", "skills", ref))
 	}
 	return paths
+}
+
+// skillDirInEntry returns the directory containing SKILL.md under ~/.loop/skills/<name>/.
+// Supports both ~/.loop/skills/<name>/SKILL.md and ~/.loop/skills/<name>/skill/SKILL.md.
+func skillDirInEntry(entryDir string) (string, bool) {
+	if err := validateSkillDir(entryDir); err == nil {
+		return entryDir, true
+	}
+	cache := filepath.Join(entryDir, "skill")
+	if err := validateSkillDir(cache); err == nil {
+		return cache, true
+	}
+	return "", false
 }

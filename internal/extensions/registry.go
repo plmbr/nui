@@ -260,12 +260,28 @@ func (r *Registry) Get(name string) (*Extension, bool) {
 	return e, ok
 }
 
+func disabledExtensions() map[string]bool {
+	settings, _ := store.LoadSettings()
+	out := map[string]bool{}
+	for _, name := range settings.DisabledExtensions {
+		out[name] = true
+	}
+	return out
+}
+
+func (r *Registry) isDisabled(name string) bool {
+	return disabledExtensions()[name]
+}
+
 // AllAgents returns extension-contributed ADL agents.
 func (r *Registry) AllAgents() []model.ADLDefinition {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	var out []model.ADLDefinition
-	for _, ext := range r.extensions {
+	for name, ext := range r.extensions {
+		if r.isDisabled(name) {
+			continue
+		}
 		out = append(out, ext.Agents...)
 	}
 	return out
@@ -280,7 +296,7 @@ func (r *Registry) ResolveHarness(agentID string) (HarnessRef, bool) {
 	r.mu.RLock()
 	ext, ok := r.extensions[extName]
 	r.mu.RUnlock()
-	if !ok {
+	if !ok || r.isDisabled(extName) {
 		return HarnessRef{}, false
 	}
 	for _, h := range ext.Harnesses {
@@ -328,7 +344,10 @@ func (r *Registry) HarnessOnlyAgentTypes() []model.ADLDefinition {
 		}
 	}
 	var out []model.ADLDefinition
-	for _, ext := range r.extensions {
+	for name, ext := range r.extensions {
+		if r.isDisabled(name) {
+			continue
+		}
 		for _, h := range ext.Harnesses {
 			agentID := HarnessAgentID(ext.Manifest.Name, h.ID)
 			if agentHarness[agentID] {
@@ -355,6 +374,7 @@ type ExtensionInfo struct {
 	Version     string   `json:"version,omitempty"`
 	DisplayName string   `json:"displayName,omitempty"`
 	Description string   `json:"description,omitempty"`
+	Disabled    bool     `json:"disabled"`
 	Harnesses   []string `json:"harnesses,omitempty"`
 	MCPServers  []string `json:"mcpServers,omitempty"`
 	Skills      []string `json:"skills,omitempty"`
@@ -365,6 +385,7 @@ type ExtensionInfo struct {
 func (r *Registry) Info() []ExtensionInfo {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+	disabled := disabledExtensions()
 	var out []ExtensionInfo
 	for name, ext := range r.extensions {
 		info := ExtensionInfo{
@@ -372,6 +393,7 @@ func (r *Registry) Info() []ExtensionInfo {
 			Version:     ext.Manifest.Version,
 			DisplayName: ext.Manifest.DisplayName,
 			Description: ext.Manifest.Description,
+			Disabled:    disabled[name],
 		}
 		for _, h := range ext.Harnesses {
 			info.Harnesses = append(info.Harnesses, h.ID)

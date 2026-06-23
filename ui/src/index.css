@@ -352,6 +352,27 @@
     }
   }
 
+  /* ─── Customize panel ────────────────────────────────────────── */
+  .customize-panel {
+    @apply bg-background;
+  }
+
+  .customize-tabs {
+    @apply flex flex-col gap-1;
+  }
+
+  .customize-tab-btn {
+    @apply w-full rounded-md px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground;
+  }
+
+  .customize-tab-btn--active {
+    @apply bg-muted font-medium text-foreground;
+  }
+
+  .customize-tab-content {
+    @apply max-w-3xl;
+  }
+
   /* ─── Chat panel ────────────────────────────────────────────── */
   .agui-chat {
     @apply min-h-0 bg-background;

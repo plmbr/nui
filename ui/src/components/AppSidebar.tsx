@@ -36,14 +36,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { NewSessionDialog } from '@/components/NewSessionDialog'
-import { SettingsSheet } from '@/components/SettingsSheet'
+import { CustomizeTrigger } from '@/components/customize/CustomizePanel'
 import type { AgentType, Session } from '@/types'
 
 interface Props {
   sessions: Session[]
   agentTypes: AgentType[]
   selectedId: string | null
+  customizeOpen: boolean
   onSelect: (id: string) => void
+  onOpenCustomize: () => void
   onRefresh: () => void
   onRename: (id: string, newName: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
@@ -228,7 +230,7 @@ function CollapsibleSessionGroup({
   )
 }
 
-export function AppSidebar({ sessions, agentTypes, selectedId, onSelect, onRefresh, onRename, onDelete }: Props) {
+export function AppSidebar({ sessions, agentTypes, selectedId, customizeOpen, onSelect, onOpenCustomize, onRefresh, onRename, onDelete }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false)
   const groups = groupSessionsByAgentType(sessions, agentTypes)
 
@@ -267,7 +269,7 @@ export function AppSidebar({ sessions, agentTypes, selectedId, onSelect, onRefre
           </ScrollArea>
         </SidebarContent>
         <SidebarFooter className="p-2">
-          <SettingsSheet />
+          <CustomizeTrigger active={customizeOpen} onOpen={onOpenCustomize} />
         </SidebarFooter>
       </Sidebar>
 

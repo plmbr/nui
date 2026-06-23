@@ -71,14 +71,45 @@ func cacheSkillDir(name string) (string, error) {
 	return store.SkillCacheDir(name)
 }
 
-// List returns skills recorded in the Loop catalog manifest.
+// List returns skills from the catalog manifest plus any skill directories under
+// ~/.loop/skills/<name>/ that contain SKILL.md (with or without a manifest entry).
 func List() ([]Entry, error) {
 	m, err := loadManifest()
 	if err != nil {
 		return nil, err
 	}
-	out := make([]Entry, 0, len(m.Skills))
-	for _, e := range m.Skills {
+	byName := make(map[string]Entry, len(m.Skills))
+	for name, e := range m.Skills {
+		byName[name] = e
+	}
+	dir, err := store.SkillsDir()
+	if err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if _, ok := byName[name]; ok {
+			continue
+		}
+		skillDir, ok := skillDirInEntry(filepath.Join(dir, name))
+		if !ok {
+			continue
+		}
+		byName[name] = Entry{
+			Name:   name,
+			Source: "local",
+			Path:   skillDir,
+		}
+	}
+	out := make([]Entry, 0, len(byName))
+	for _, e := range byName {
 		out = append(out, e)
 	}
 	return out, nil

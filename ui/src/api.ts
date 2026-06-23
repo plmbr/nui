@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, Bootstrap, Capabilities, ChatMessage, CreateSessionRequest, DirectorySuggestions, Session, Settings } from './types'
+import type { AgentType, AgentFileContent, AgentFileInfo, Bootstrap, Capabilities, ChatMessage, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, MCPServer, Session, Settings, SkillEntry } from './types'
 
 const BASE = '/api'
 
@@ -91,5 +91,55 @@ export const api = {
   capabilities: {
     get: (): Promise<Capabilities> =>
       request('/capabilities'),
+  },
+
+  extensions: {
+    list: (): Promise<ExtensionInfo[]> =>
+      request('/extensions'),
+
+    reload: (): Promise<{ ok: boolean }> =>
+      request('/extensions/reload', { method: 'POST' }),
+  },
+
+  mcpServers: {
+    list: (): Promise<{ mcpServers: MCPServer[] }> =>
+      request('/mcp-servers'),
+
+    save: (mcpServers: MCPServer[]): Promise<{ mcpServers: MCPServer[] }> =>
+      request('/mcp-servers', {
+        method: 'PUT',
+        body: JSON.stringify({ mcpServers }),
+      }),
+  },
+
+  skills: {
+    list: (): Promise<SkillEntry[]> =>
+      request('/skills'),
+
+    remove: (name: string): Promise<void> =>
+      request(`/skills/${encodeURIComponent(name)}`, { method: 'DELETE' }),
+  },
+
+  agents: {
+    list: (): Promise<AgentFileInfo[]> =>
+      request('/agents'),
+
+    get: (file: string): Promise<AgentFileContent> =>
+      request(`/agents/${encodeURIComponent(file)}`),
+
+    create: (file: string, content: string): Promise<AgentFileInfo> =>
+      request('/agents', {
+        method: 'POST',
+        body: JSON.stringify({ file, content }),
+      }),
+
+    save: (file: string, content: string): Promise<AgentFileInfo> =>
+      request(`/agents/${encodeURIComponent(file)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ content }),
+      }),
+
+    remove: (file: string): Promise<void> =>
+      request(`/agents/${encodeURIComponent(file)}`, { method: 'DELETE' }),
   },
 }

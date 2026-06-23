@@ -8,7 +8,60 @@ import (
 	"testing"
 
 	"loop/internal/model"
+	"loop/internal/store"
 )
+
+func TestListDiscoversSkillDirectories(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", filepath.Join(tmp, "home"))
+
+	skillsDir, err := store.SkillsDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"greeting", "greet-with-data"} {
+		dir := filepath.Join(skillsDir, name)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("# "+name+"\n"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	list, err := List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("list len = %d, want 2: %+v", len(list), list)
+	}
+}
+
+func TestResolveRefFromFlatSkillDirectory(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", filepath.Join(tmp, "home"))
+
+	skillsDir, err := store.SkillsDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(skillsDir, "greeting")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("# Hi\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := Resolve(Context{}, model.ADLSkill{Name: "greeting", Ref: "greeting"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != dir {
+		t.Fatalf("got %q, want %q", got, dir)
+	}
+}
 
 func TestResolveLocalSkill(t *testing.T) {
 	tmp := t.TempDir()

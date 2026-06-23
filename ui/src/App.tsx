@@ -5,6 +5,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppSidebar } from '@/components/AppSidebar'
 import { ConversationPanel } from '@/components/ConversationPanel'
+import { CustomizePanel } from '@/components/customize/CustomizePanel'
 import { ThemeProvider } from '@/contexts/theme'
 import { api } from '@/api'
 import { navigateToSession, sessionIdFromPath } from '@/lib/sessionUrl'
@@ -17,10 +18,21 @@ export default function App() {
   const [initialPrompt, setInitialPrompt] = useState<string | undefined>()
   const [hideInput, setHideInput] = useState(false)
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([])
+  const [customizeOpen, setCustomizeOpen] = useState(false)
   const [appReady, setAppReady] = useState(false)
   const initializedRef = useRef(false)
   const sessionsRef = useRef(sessions)
   sessionsRef.current = sessions
+
+  const loadAgentTypes = useCallback(async () => {
+    try {
+      const types = await api.agentTypes.list()
+      setAgentTypes(types)
+      return types
+    } catch {
+      return []
+    }
+  }, [])
 
   const loadSessions = useCallback(async () => {
     try {
@@ -41,7 +53,7 @@ export default function App() {
         loadSessions(),
         api.settings.get().catch(() => ({ theme: 'light' as const })),
         api.bootstrap.get().catch(() => ({})),
-        api.agentTypes.list().catch(() => []),
+        loadAgentTypes(),
       ])
 
       setAgentTypes(types)
@@ -88,7 +100,7 @@ export default function App() {
     }
 
     void init()
-  }, [loadSessions])
+  }, [loadSessions, loadAgentTypes])
 
   useEffect(() => {
     function onPopState() {
@@ -105,6 +117,7 @@ export default function App() {
   }, [])
 
   const handleSelect = useCallback((id: string) => {
+    setCustomizeOpen(false)
     setSelectedId(id)
     setInitialPrompt(undefined)
     setHideInput(false)
@@ -121,6 +134,18 @@ export default function App() {
   const selectedAgent = agentTypes.find((a) => a.id === selected?.agentType)
   const promptMode = selectedAgent?.promptMode ?? 'user'
   const effectiveHideInput = hideInput || promptMode === 'auto'
+
+  const handleOpenCustomize = useCallback(() => {
+    setCustomizeOpen(true)
+  }, [])
+
+  const handleCloseCustomize = useCallback(() => {
+    setCustomizeOpen(false)
+  }, [])
+
+  const handleExtensionsChanged = useCallback(() => {
+    void loadAgentTypes()
+  }, [loadAgentTypes])
 
   const handleDeleteSession = useCallback(async (id: string) => {
     await api.sessions.delete(id)
@@ -157,13 +182,20 @@ export default function App() {
             sessions={sessions}
             agentTypes={agentTypes}
             selectedId={selectedId}
+            customizeOpen={customizeOpen}
             onSelect={handleSelect}
+            onOpenCustomize={handleOpenCustomize}
             onRefresh={loadSessions}
             onRename={handleRenameSession}
             onDelete={handleDeleteSession}
           />
           <main className="flex flex-1 overflow-hidden">
-            {selected ? (
+            {customizeOpen ? (
+              <CustomizePanel
+                onClose={handleCloseCustomize}
+                onExtensionsChanged={handleExtensionsChanged}
+              />
+            ) : selected ? (
               <ConversationPanel
                 session={selected}
                 initialPrompt={initialPrompt}
