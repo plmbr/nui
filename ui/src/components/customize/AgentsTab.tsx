@@ -11,6 +11,7 @@ import { AgentForm } from '@/components/customize/AgentForm'
 import {
   defaultAgentForm,
   formToAgentYaml,
+  mergeFormIntoAgentYaml,
   parseAgentYaml,
   type AgentFormModel,
 } from '@/lib/adlAgentForm'
@@ -64,7 +65,6 @@ export function AgentsTab() {
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
   const [content, setContent] = useState('')
   const [form, setForm] = useState<AgentFormModel>(defaultAgentForm())
-  const [preserved, setPreserved] = useState<Record<string, unknown>>({})
   const [hasWorkflowSteps, setHasWorkflowSteps] = useState(false)
   const [editMode, setEditMode] = useState<EditMode>('form')
   const [loading, setLoading] = useState(true)
@@ -77,7 +77,6 @@ export function AgentsTab() {
     (yaml: string) => {
       const parsed = parseAgentYaml(yaml, options)
       setForm(parsed.form)
-      setPreserved(parsed.preserved)
       setHasWorkflowSteps(parsed.hasWorkflowSteps)
     },
     [options],
@@ -123,9 +122,7 @@ export function AgentsTab() {
 
   const handleModeChange = (mode: EditMode) => {
     if (mode === editMode) return
-    if (mode === 'yaml' && editMode === 'form') {
-      setContent(formToAgentYaml(form, options, preserved))
-    } else if (mode === 'form' && editMode === 'yaml') {
+    if (mode === 'form' && editMode === 'yaml') {
       syncFormFromContent(content)
     }
     setEditMode(mode)
@@ -136,10 +133,12 @@ export function AgentsTab() {
     setSaving(true)
     setError(null)
     try {
-      const yaml = editMode === 'form' ? formToAgentYaml(form, options, preserved) : content
+      const yaml = editMode === 'form'
+        ? mergeFormIntoAgentYaml(content, form, options)
+        : content
       await api.agents.save(selectedFile, yaml)
       setContent(yaml)
-      if (editMode === 'form') syncFormFromContent(yaml)
+      syncFormFromContent(yaml)
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save')
@@ -152,7 +151,7 @@ export function AgentsTab() {
     setSaving(true)
     setError(null)
     try {
-      const yaml = editMode === 'form' ? formToAgentYaml(form, options, {}) : content
+      const yaml = editMode === 'form' ? formToAgentYaml(form, options) : content
       const info = await api.agents.create(newFilename, yaml)
       await load()
       setCreating(false)
@@ -185,7 +184,6 @@ export function AgentsTab() {
     setSelectedFile(null)
     setEditMode('form')
     setForm(defaultAgentForm())
-    setPreserved({})
     setHasWorkflowSteps(false)
     setContent(NEW_AGENT_TEMPLATE)
     setNewFilename('my-agent.yaml')

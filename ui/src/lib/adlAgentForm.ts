@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { parse, stringify } from 'yaml'
+import { isMap, parse, parseDocument, YAMLMap } from 'yaml'
 import type { MCPServer } from '@/types'
 
 export interface KeyValue {
@@ -68,7 +68,6 @@ export interface MCPOption {
 
 export interface ParsedAgentDoc {
   form: AgentFormModel
-  preserved: Record<string, unknown>
   hasWorkflowSteps: boolean
 }
 
@@ -177,22 +176,27 @@ function findMCPOption(server: Record<string, unknown>, options: MCPOption[]): F
     return { optionId: match?.id ?? `custom:ref:${ref}`, name: match?.name ?? name }
   }
   const match = options.find((o) => o.server?.name === name && !o.ref)
-  return { optionId: match?.id ?? `custom:inline:${name}`, name }
+  if (match) return { optionId: match.id, name }
+  return { optionId: `custom:inline:${name}`, name }
 }
 
-export function parseAgentYaml(
-  content: string,
-  options: AgentFormOptions,
-): ParsedAgentDoc {
+function aiAssetsLists(doc: Record<string, unknown>) {
+  const aiAssets = doc.aiAssets as Record<string, unknown> | undefined
+  return {
+    skills: (aiAssets?.skills as Record<string, unknown>[] | undefined) ?? [],
+    mcpServers: (aiAssets?.mcpServers as Record<string, unknown>[] | undefined) ?? [],
+  }
+}
+
+/** Read supported form fields from YAML without modifying the source text. */
+export function parseAgentYaml(content: string, options: AgentFormOptions): ParsedAgentDoc {
   const doc = parse(content) as Record<string, unknown> | null
   if (!doc || typeof doc !== 'object') {
-    return { form: defaultAgentForm(), preserved: {}, hasWorkflowSteps: false }
+    return { form: defaultAgentForm(), hasWorkflowSteps: false }
   }
 
   const harness = doc.harness as Record<string, unknown> | undefined
-  const aiAssets = doc.aiAssets as Record<string, unknown> | undefined
-  const skillsRaw = (aiAssets?.skills as Record<string, unknown>[] | undefined) ?? []
-  const mcpRaw = (aiAssets?.mcpServers as Record<string, unknown>[] | undefined) ?? []
+  const { skills: skillsRaw, mcpServers: mcpRaw } = aiAssetsLists(doc)
   const steps = doc.steps as unknown[] | undefined
   const hasWorkflowSteps = Array.isArray(steps) && steps.length > 0
 
@@ -213,137 +217,188 @@ export function parseAgentYaml(
     mcpServers: mcpRaw.map((s) => findMCPOption(s, options.mcpServers)).filter(Boolean) as FormMCPServer[],
   }
 
-  const preserved: Record<string, unknown> = {}
-  if (doc.kind) preserved.kind = doc.kind
-  if (doc.version) preserved.version = doc.version
-  if (steps) preserved.steps = steps
-  if (doc.constraints) preserved.constraints = doc.constraints
-  if (doc.schedule) preserved.schedule = doc.schedule
-  if (doc.skill) preserved.skill = doc.skill
-  if (harness) {
-    const extras: Record<string, unknown> = {}
-    if (harness.sandbox != null) extras.sandbox = harness.sandbox
-    if (harness.env != null) extras.env = harness.env
-    if (Object.keys(extras).length > 0) preserved.harnessExtras = extras
-  }
-  if (doc.promptMode === 'auto' && !form.defaultPrompt.trim()) {
-    preserved.promptMode = 'auto'
-  }
-
-  return { form, preserved, hasWorkflowSteps }
+  return { form, hasWorkflowSteps }
 }
 
 function resolveHarnessOption(optionId: string, options: HarnessOption[]): HarnessOption | undefined {
   return options.find((o) => o.id === optionId)
 }
 
-function buildHarnessBlock(form: AgentFormModel, options: HarnessOption[]): Record<string, unknown> {
+function setMapKey(map: YAMLMap, key: string, value: unknown) {
+  if (value === undefined || value === null || value === '') {
+    map.delete(key)
+  } else {
+    map.set(key, value)
+  }
+}
+
+function ensureMap(root: YAMLMap, key: string): YAMLMap {
+  let child = root.get(key)
+  if (!isMap(child)) {
+    child = new YAMLMap()
+    root.set(key, child)
+  }
+  return child as YAMLMap
+}
+
+function mergeHarness(root: YAMLMap, form: AgentFormModel, options: HarnessOption[]) {
   const selected = resolveHarnessOption(form.harnessOptionId, options)
   const harnessType = selected?.harnessType ?? 'claude-code'
-  const block: Record<string, unknown> = { type: harnessType }
+  const harness = ensureMap(root, 'harness')
+
+  harness.set('type', harnessType)
 
   if (harnessType.startsWith('ext:')) {
-    return block
+    for (const key of ['model', 'image', 'containerPort', 'host', 'port']) harness.delete(key)
+    return
   }
 
   if (harnessType === 'docker') {
-    if (form.dockerImage.trim()) block.image = form.dockerImage.trim()
-    if (form.containerPort.trim()) block.containerPort = Number(form.containerPort)
-    return block
+    setMapKey(harness, 'image', form.dockerImage.trim() || undefined)
+    setMapKey(harness, 'containerPort', form.containerPort.trim() ? Number(form.containerPort) : undefined)
+    for (const key of ['model', 'host', 'port']) harness.delete(key)
+    return
   }
 
   if (harnessType === 'remote') {
-    if (form.remoteHost.trim()) block.host = form.remoteHost.trim()
-    if (form.remotePort.trim()) block.port = Number(form.remotePort)
-    return block
+    setMapKey(harness, 'host', form.remoteHost.trim() || undefined)
+    setMapKey(harness, 'port', form.remotePort.trim() ? Number(form.remotePort) : undefined)
+    for (const key of ['model', 'image', 'containerPort']) harness.delete(key)
+    return
   }
 
-  if (form.harnessModel.trim()) block.model = form.harnessModel.trim()
-  return block
+  setMapKey(harness, 'model', form.harnessModel.trim() || undefined)
+  for (const key of ['image', 'containerPort', 'host', 'port']) harness.delete(key)
 }
 
-function buildSkillsBlock(form: AgentFormModel, options: SkillOption[]): Record<string, unknown>[] {
-  return form.skills.map((s) => {
-    const opt = options.find((o) => o.id === s.optionId)
-    const name = s.name.trim() || opt?.name || 'skill'
-    if (opt?.ref) {
-      return { name, ref: opt.ref }
+function buildSkillEntry(
+  skill: FormSkill,
+  options: SkillOption[],
+  originalSkills: Record<string, unknown>[],
+): Record<string, unknown> {
+  if (skill.optionId === 'custom:content' || skill.optionId === 'custom:path' || skill.optionId === 'custom:unknown') {
+    const orig = originalSkills.find((s) => String(s.name ?? '') === skill.name)
+    if (orig) {
+      const next = { ...orig }
+      if (skill.name.trim()) next.name = skill.name.trim()
+      return next
     }
-    if (s.optionId.startsWith('custom:ref:')) {
-      return { name, ref: s.optionId.slice('custom:ref:'.length) }
-    }
-    if (s.optionId.startsWith('custom:path:')) {
-      return { name, path: s.optionId.slice('custom:path:'.length) }
-    }
-    return { name, ref: name }
-  })
+  }
+
+  const opt = options.find((o) => o.id === skill.optionId)
+  const name = skill.name.trim() || opt?.name || 'skill'
+  if (opt?.ref) return { name, ref: opt.ref }
+  if (skill.optionId.startsWith('custom:ref:')) {
+    return { name, ref: skill.optionId.slice('custom:ref:'.length) }
+  }
+  if (skill.optionId.startsWith('custom:path:')) {
+    return { name, path: skill.optionId.slice('custom:path:'.length) }
+  }
+  return { name, ref: name }
 }
 
-function buildMCPServersBlock(form: AgentFormModel, options: MCPOption[]): Record<string, unknown>[] {
-  return form.mcpServers.map((s) => {
-    const opt = options.find((o) => o.id === s.optionId)
-    const name = s.name.trim() || opt?.name || 'mcp-server'
-    if (opt?.ref) {
-      return { name, ref: opt.ref }
+function buildMCPEntry(
+  server: FormMCPServer,
+  options: MCPOption[],
+  originalServers: Record<string, unknown>[],
+): Record<string, unknown> {
+  if (server.optionId.startsWith('custom:inline:')) {
+    const origName = server.optionId.slice('custom:inline:'.length)
+    const orig = originalServers.find((s) => String(s.name ?? '') === origName)
+    if (orig) {
+      const next = { ...orig }
+      if (server.name.trim()) next.name = server.name.trim()
+      return next
     }
-    if (opt?.server) {
-      const server = { ...opt.server, name }
-      return Object.fromEntries(Object.entries(server).filter(([, v]) => v != null && v !== ''))
-    }
-    if (s.optionId.startsWith('custom:ref:')) {
-      return { name, ref: s.optionId.slice('custom:ref:'.length) }
-    }
-    return { name }
-  })
+  }
+
+  const opt = options.find((o) => o.id === server.optionId)
+  const name = server.name.trim() || opt?.name || 'mcp-server'
+  if (opt?.ref) return { name, ref: opt.ref }
+  if (opt?.server) {
+    return Object.fromEntries(
+      Object.entries({ ...opt.server, name }).filter(([, v]) => v != null && v !== ''),
+    )
+  }
+  if (server.optionId.startsWith('custom:ref:')) {
+    return { name, ref: server.optionId.slice('custom:ref:'.length) }
+  }
+  return { name }
 }
 
-export function formToAgentYaml(
+function mergeAiAssets(
+  root: YAMLMap,
   form: AgentFormModel,
   options: AgentFormOptions,
-  preserved: Record<string, unknown> = {},
+  original: Record<string, unknown>,
+) {
+  const { skills: originalSkills, mcpServers: originalMcp } = aiAssetsLists(original)
+  const skills = form.skills.map((s) => buildSkillEntry(s, options.skills, originalSkills))
+  const mcpServers = form.mcpServers.map((s) => buildMCPEntry(s, options.mcpServers, originalMcp))
+
+  if (skills.length === 0 && mcpServers.length === 0) {
+    root.delete('aiAssets')
+    return
+  }
+
+  const aiAssets = ensureMap(root, 'aiAssets')
+  if (skills.length > 0) aiAssets.set('skills', skills)
+  else aiAssets.delete('skills')
+  if (mcpServers.length > 0) aiAssets.set('mcpServers', mcpServers)
+  else aiAssets.delete('mcpServers')
+  if (aiAssets.items.length === 0) root.delete('aiAssets')
+}
+
+/** Apply form edits onto the original YAML document, preserving unsupported sections and formatting where possible. */
+export function mergeFormIntoAgentYaml(
+  originalContent: string,
+  form: AgentFormModel,
+  options: AgentFormOptions,
 ): string {
-  const doc: Record<string, unknown> = {
-    adl: '1.0',
-    id: form.id.trim() || 'my-agent',
-    name: form.name.trim() || form.id.trim() || 'My Agent',
-    harness: buildHarnessBlock(form, options.harnesses),
+  const original = parse(originalContent) as Record<string, unknown> | null
+  if (!original || typeof original !== 'object') {
+    return formToAgentYaml(form, options)
   }
 
-  const harnessExtras = preserved.harnessExtras as Record<string, unknown> | undefined
-  if (harnessExtras) {
-    doc.harness = { ...(doc.harness as Record<string, unknown>), ...harnessExtras }
+  const doc = parseDocument(originalContent)
+  if (!doc.contents || !isMap(doc.contents)) {
+    return formToAgentYaml(form, options)
   }
 
-  if (form.description.trim()) doc.description = form.description.trim()
-  doc.version = typeof preserved.version === 'string' && preserved.version.trim()
-    ? preserved.version.trim()
-    : '0.1.0'
-  if (form.systemPrompt.trim()) doc.systemPrompt = form.systemPrompt.trim()
+  const root = doc.contents as YAMLMap
+
+  setMapKey(root, 'id', form.id.trim() || undefined)
+  setMapKey(root, 'name', form.name.trim() || undefined)
+  setMapKey(root, 'description', form.description.trim() || undefined)
+  setMapKey(root, 'systemPrompt', form.systemPrompt.trim() || undefined)
+
   if (form.defaultPrompt.trim()) {
-    doc.promptMode = 'auto'
-    doc.defaultPrompt = form.defaultPrompt.trim()
-  } else if (preserved.promptMode === 'auto') {
-    doc.promptMode = 'auto'
+    root.set('promptMode', 'auto')
+    root.set('defaultPrompt', form.defaultPrompt.trim())
+  } else {
+    root.delete('defaultPrompt')
+    if (root.get('promptMode') === 'auto') root.delete('promptMode')
   }
 
   const env = entriesToMap(form.env)
-  if (env) doc.env = env
+  if (env) root.set('env', env)
+  else root.delete('env')
 
-  const skills = buildSkillsBlock(form, options.skills)
-  const mcpServers = buildMCPServersBlock(form, options.mcpServers)
-  if (skills.length > 0 || mcpServers.length > 0) {
-    doc.aiAssets = {
-      ...(skills.length > 0 ? { skills } : {}),
-      ...(mcpServers.length > 0 ? { mcpServers } : {}),
-    }
-  }
+  mergeHarness(root, form, options.harnesses)
+  mergeAiAssets(root, form, options, original)
 
-  for (const [key, value] of Object.entries(preserved)) {
-    if (key === 'harnessExtras' || key === 'promptMode' || key === 'version') continue
-    if (value !== undefined) doc[key] = value
-  }
+  if (!root.has('version')) root.set('version', '0.1.0')
 
-  return stringify(doc, { lineWidth: 0 })
+  return doc.toString()
+}
+
+/** Generate YAML for a brand-new agent (no original file). */
+export function formToAgentYaml(form: AgentFormModel, options: AgentFormOptions): string {
+  return mergeFormIntoAgentYaml(
+    `adl: "1.0"\nid: ${form.id.trim() || 'my-agent'}\nname: ${form.name.trim() || 'My Agent'}\nharness:\n  type: claude-code\n`,
+    form,
+    options,
+  )
 }
 
 export function slugFromName(name: string): string {
