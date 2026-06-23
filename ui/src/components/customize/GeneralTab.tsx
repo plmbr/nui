@@ -96,21 +96,42 @@ export function GeneralTab() {
         )}
       </div>
       <div>
-        <p className="text-sm font-medium mb-3">Theme</p>
-        <div className="flex gap-2">
+        <p className="text-sm font-medium mb-1">Theme</p>
+        <p className="text-xs text-muted-foreground mb-3">
+          Choose how Loop looks on your screen.
+        </p>
+        <div className="grid grid-cols-2 gap-3 max-w-sm">
           <button
+            type="button"
             onClick={() => setTheme('light')}
-            className="theme-btn"
+            className="theme-card"
             data-active={theme === 'light'}
+            aria-pressed={theme === 'light'}
           >
-            Light
+            <div className="theme-card__preview theme-card__preview--light">
+              <div className="theme-card__sidebar" />
+              <div className="theme-card__main">
+                <div className="theme-card__bubble theme-card__bubble--user" />
+                <div className="theme-card__bubble theme-card__bubble--agent" />
+              </div>
+            </div>
+            <span className="theme-card__label">Light</span>
           </button>
           <button
+            type="button"
             onClick={() => setTheme('dark')}
-            className="theme-btn"
+            className="theme-card"
             data-active={theme === 'dark'}
+            aria-pressed={theme === 'dark'}
           >
-            Dark
+            <div className="theme-card__preview theme-card__preview--dark">
+              <div className="theme-card__sidebar" />
+              <div className="theme-card__main">
+                <div className="theme-card__bubble theme-card__bubble--user" />
+                <div className="theme-card__bubble theme-card__bubble--agent" />
+              </div>
+            </div>
+            <span className="theme-card__label">Dark</span>
           </button>
         </div>
       </div>

@@ -175,7 +175,7 @@ export default function App() {
       <SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange}>
         <header className="app-header">
           <SidebarTrigger />
-          <span className="font-semibold text-sm shrink-0">The Loop</span>
+          <span className="app-brand shrink-0">The Loop</span>
         </header>
         <div className="app-body">
           <AppSidebar
