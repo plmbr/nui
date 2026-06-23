@@ -30,8 +30,9 @@ type AgentTypeInfo struct {
 	Description   string `json:"description,omitempty"`
 	Harness       string `json:"harness"`           // claude-code | pi | codex | opencode | docker | remote
 	Sandbox       string `json:"sandbox,omitempty"` // none | bubblewrap | docker
-	PromptMode    string `json:"promptMode,omitempty"`    // user | auto
-	DefaultPrompt string `json:"defaultPrompt,omitempty"`
+	PromptMode      string `json:"promptMode,omitempty"`      // user | auto
+	DefaultPrompt   string `json:"defaultPrompt,omitempty"`
+	WorkingDirInput bool   `json:"workingDirInput,omitempty"` // true = user picks working dir at session create
 	IsBuiltin     bool   `json:"isBuiltin"`
 	Source        string `json:"source,omitempty"` // builtin | user | extension
 	Available     bool   `json:"available"` // false when the required CLI is not installed
@@ -357,14 +358,15 @@ func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
 
 func agentTypeInfoFromDef(def model.ADLDefinition, builtin bool) AgentTypeInfo {
 	info := AgentTypeInfo{
-		ID:            model.ADLAgentID(def),
-		Label:         model.ADLAgentLabel(def),
-		Description:   def.Description,
-		Harness:       def.Harness.Type,
-		Sandbox:       def.Harness.Sandbox,
-		DefaultPrompt: def.DefaultPrompt,
-		IsBuiltin:     builtin,
-		Available:     true,
+		ID:              model.ADLAgentID(def),
+		Label:           model.ADLAgentLabel(def),
+		Description:     def.Description,
+		Harness:         def.Harness.Type,
+		Sandbox:         def.Harness.Sandbox,
+		DefaultPrompt:   def.DefaultPrompt,
+		WorkingDirInput: model.IsADLWorkingDirInput(def),
+		IsBuiltin:       builtin,
+		Available:       true,
 	}
 	if model.IsADLAutoPrompt(def) {
 		info.PromptMode = model.ADLPromptModeAuto
@@ -607,6 +609,9 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 		extensionManager.Stop(id)
 		if err := store.RemoveSessionConfigDir(id); err != nil {
 			fmt.Fprintf(os.Stderr, "warn: remove session config dir: %v\n", err)
+		}
+		if err := store.RemoveSessionWorkspace(id); err != nil {
+			fmt.Fprintf(os.Stderr, "warn: remove session workspace: %v\n", err)
 		}
 		if agentSessionID != "" {
 			var delErr error

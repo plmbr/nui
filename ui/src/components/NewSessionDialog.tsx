@@ -246,6 +246,7 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
             </div>
 
             {/* ── Working directory ─────────────────────────────────────── */}
+            {selected?.workingDirInput && (
             <div className="space-y-1.5">
               <Label htmlFor="workingDir">
                 Working Directory <span className="text-muted-foreground font-normal">(optional)</span>
@@ -301,6 +302,7 @@ export function NewSessionDialog({ open, onOpenChange, onCreated }: Props) {
                 </div>
               )}
             </div>
+            )}
 
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>

@@ -35,8 +35,9 @@ type ADLDefinition struct {
 	Skill        string         `yaml:"skill"        json:"skill,omitempty"`
 	AIAssets     ADLAIAssets    `yaml:"aiAssets"     json:"aiAssets,omitempty"`
 	Env          map[string]string `yaml:"env"          json:"env,omitempty"`
-	PromptMode   string            `yaml:"promptMode"   json:"promptMode,omitempty"`   // user | auto; default user
-	DefaultPrompt string           `yaml:"defaultPrompt" json:"defaultPrompt,omitempty"` // auto mode when no launch prompt
+	PromptMode      string `yaml:"promptMode"      json:"promptMode,omitempty"`      // user | auto; default user
+	DefaultPrompt   string `yaml:"defaultPrompt"   json:"defaultPrompt,omitempty"`   // auto mode when no launch prompt
+	WorkingDirInput bool   `yaml:"workingDirInput" json:"workingDirInput,omitempty"` // true = user picks working dir at session create
 	Steps        []ADLStep      `yaml:"steps"        json:"steps,omitempty"`
 	Constraints  ADLConstraints `yaml:"constraints"  json:"constraints,omitempty"`
 	Schedule     *ADLSchedule   `yaml:"schedule"     json:"schedule,omitempty"`

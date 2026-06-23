@@ -264,15 +264,24 @@ func createSession(name, workingDir, agentType string, agentConfig map[string]an
 		return model.Session{}, fmt.Errorf("unknown agent type: %s", agentType)
 	}
 
+	sessionID := uuid.NewString()
+	resolvedWorkingDir, err := resolveSessionWorkingDir(sessionID, def, workingDir)
+	if err != nil {
+		return model.Session{}, fmt.Errorf("prepare working directory: %w", err)
+	}
+
 	s := model.Session{
-		ID:          uuid.NewString(),
+		ID:          sessionID,
 		Name:        name,
-		WorkingDir:  workingDir,
+		WorkingDir:  resolvedWorkingDir,
 		AgentType:   model.ADLAgentID(def),
 		AgentConfig: agentConfig,
 		CreatedAt:   time.Now().UTC().Format(time.RFC3339),
 	}
 	if err := validateSessionConnector(s); err != nil {
+		if !model.IsADLWorkingDirInput(def) {
+			_ = store.RemoveSessionWorkspace(sessionID)
+		}
 		return model.Session{}, err
 	}
 
@@ -284,4 +293,11 @@ func createSession(name, workingDir, agentType string, agentConfig map[string]an
 		fmt.Fprintf(os.Stderr, "warn: save data after create: %v\n", err)
 	}
 	return s, nil
+}
+
+func resolveSessionWorkingDir(sessionID string, def model.ADLDefinition, requested string) (string, error) {
+	if model.IsADLWorkingDirInput(def) {
+		return strings.TrimSpace(requested), nil
+	}
+	return store.EnsureSessionWorkspace(sessionID)
 }

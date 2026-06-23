@@ -25,6 +25,7 @@ export interface AgentFormModel {
   systemPrompt: string
   promptMode: 'user' | 'auto'
   defaultPrompt: string
+  workingDirInput: boolean
   harnessOptionId: string
   harnessModel: string
   dockerImage: string
@@ -89,6 +90,7 @@ export function defaultAgentForm(): AgentFormModel {
     systemPrompt: '',
     promptMode: 'user',
     defaultPrompt: '',
+    workingDirInput: false,
     harnessOptionId: 'builtin:claude-code',
     harnessModel: '',
     dockerImage: '',
@@ -209,6 +211,7 @@ export function parseAgentYaml(content: string, options: AgentFormOptions): Pars
     systemPrompt: String(doc.systemPrompt ?? ''),
     promptMode: doc.promptMode === 'auto' ? 'auto' : 'user',
     defaultPrompt: String(doc.defaultPrompt ?? ''),
+    workingDirInput: doc.workingDirInput === true,
     harnessOptionId: harnessOptionIdFromDoc(harness, options.harnesses),
     harnessModel: String(harness?.model ?? ''),
     dockerImage: String(harness?.image ?? ''),
@@ -381,6 +384,12 @@ export function mergeFormIntoAgentYaml(
     root.delete('promptMode')
   }
   setMapKey(root, 'defaultPrompt', form.defaultPrompt.trim() || undefined)
+
+  if (form.workingDirInput) {
+    root.set('workingDirInput', true)
+  } else {
+    root.delete('workingDirInput')
+  }
 
   const env = entriesToMap(form.env)
   if (env) root.set('env', env)

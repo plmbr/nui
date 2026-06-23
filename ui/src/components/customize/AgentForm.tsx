@@ -331,6 +331,29 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
       </section>
 
       <section className="space-y-3">
+        <h3 className="text-sm font-semibold">Session</h3>
+        <div className="space-y-1.5">
+          <Label>Working directory</Label>
+          <p className="text-xs text-muted-foreground">
+            When enabled, users choose a project directory when creating a session.
+            Otherwise Loop uses an isolated workspace that is removed when the session is deleted.
+          </p>
+          <Select
+            value={form.workingDirInput ? 'true' : 'false'}
+            onValueChange={(v) => patch({ workingDirInput: v === 'true' })}
+          >
+            <SelectTrigger className="w-full max-w-md">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="false">Isolated workspace (default)</SelectItem>
+              <SelectItem value="true">User picks directory at session create</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </section>
+
+      <section className="space-y-3">
         <h3 className="text-sm font-semibold">Skills</h3>
         {form.skills.length > 0 && (
           <ul className="space-y-2">

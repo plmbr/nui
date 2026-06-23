@@ -28,6 +28,7 @@ export interface AgentType {
   sandbox?: 'none' | 'bubblewrap' | 'docker'
   promptMode?: 'user' | 'auto'
   defaultPrompt?: string
+  workingDirInput?: boolean
   isBuiltin: boolean
   source?: 'builtin' | 'user' | 'extension'
   available: boolean
