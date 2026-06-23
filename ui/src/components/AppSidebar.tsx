@@ -77,8 +77,8 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
   return (
     <>
       <SidebarMenuItem>
-        <SidebarMenuButton isActive={isActive} onClick={onSelect} tooltip={session.name}>
-          <span className="truncate">{session.name}</span>
+        <SidebarMenuButton isActive={isActive} onClick={onSelect} title={session.name}>
+          <span className="truncate flex-1">{session.name}</span>
         </SidebarMenuButton>
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -197,6 +197,7 @@ function CollapsibleSessionGroup({
         className="h-9 cursor-pointer gap-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
+        title={group.label}
       >
         <ChevronRight
           className={cn(
