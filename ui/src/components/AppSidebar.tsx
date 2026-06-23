@@ -35,7 +35,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { NewSessionDialog } from '@/components/NewSessionDialog'
 import { CustomizeTrigger } from '@/components/customize/CustomizePanel'
 import type { AgentType, Session } from '@/types'
 
@@ -44,9 +43,10 @@ interface Props {
   agentTypes: AgentType[]
   selectedId: string | null
   customizeOpen: boolean
+  newSessionOpen: boolean
   onSelect: (id: string) => void
   onOpenCustomize: () => void
-  onRefresh: () => void
+  onOpenNewSession: () => void
   onRename: (id: string, newName: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }
@@ -230,20 +230,33 @@ function CollapsibleSessionGroup({
   )
 }
 
-export function AppSidebar({ sessions, agentTypes, selectedId, customizeOpen, onSelect, onOpenCustomize, onRefresh, onRename, onDelete }: Props) {
-  const [dialogOpen, setDialogOpen] = useState(false)
+export function AppSidebar({
+  sessions,
+  agentTypes,
+  selectedId,
+  customizeOpen,
+  newSessionOpen,
+  onSelect,
+  onOpenCustomize,
+  onOpenNewSession,
+  onRename,
+  onDelete,
+}: Props) {
   const groups = groupSessionsByAgentType(sessions, agentTypes)
 
   return (
-    <>
-      <Sidebar collapsible="offcanvas" className="pt-12">
-        <SidebarHeader className="p-3">
-          <Button
-            variant="secondary"
-            size="sm"
-            className="w-full justify-start gap-2"
-            onClick={() => setDialogOpen(true)}
-          >
+    <Sidebar collapsible="offcanvas" className="pt-12">
+      <SidebarHeader className="p-3">
+        <Button
+          variant="secondary"
+          size="sm"
+          className={cn(
+            'w-full justify-start gap-2',
+            newSessionOpen && 'ring-1 ring-primary bg-primary/10',
+          )}
+          onClick={onOpenNewSession}
+          aria-pressed={newSessionOpen}
+        >
             <Plus className="size-4 shrink-0" />
             <span className="group-data-[collapsible=icon]:hidden">New Session</span>
           </Button>
@@ -272,12 +285,5 @@ export function AppSidebar({ sessions, agentTypes, selectedId, customizeOpen, on
           <CustomizeTrigger active={customizeOpen} onOpen={onOpenCustomize} />
         </SidebarFooter>
       </Sidebar>
-
-      <NewSessionDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onCreated={(session) => { onRefresh(); onSelect(session.id) }}
-      />
-    </>
   )
 }

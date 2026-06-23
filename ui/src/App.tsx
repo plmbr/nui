@@ -6,6 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppSidebar } from '@/components/AppSidebar'
 import { ConversationPanel } from '@/components/ConversationPanel'
 import { CustomizePanel } from '@/components/customize/CustomizePanel'
+import { NewSessionPanel } from '@/components/NewSessionPanel'
 import { ThemeProvider } from '@/contexts/theme'
 import { api } from '@/api'
 import { navigateToSession, sessionIdFromPath } from '@/lib/sessionUrl'
@@ -19,6 +20,7 @@ export default function App() {
   const [hideInput, setHideInput] = useState(false)
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([])
   const [customizeOpen, setCustomizeOpen] = useState(false)
+  const [newSessionOpen, setNewSessionOpen] = useState(false)
   const [appReady, setAppReady] = useState(false)
   const initializedRef = useRef(false)
   const sessionsRef = useRef(sessions)
@@ -118,6 +120,7 @@ export default function App() {
 
   const handleSelect = useCallback((id: string) => {
     setCustomizeOpen(false)
+    setNewSessionOpen(false)
     setSelectedId(id)
     setInitialPrompt(undefined)
     setHideInput(false)
@@ -136,12 +139,27 @@ export default function App() {
   const effectiveHideInput = hideInput || promptMode === 'auto'
 
   const handleOpenCustomize = useCallback(() => {
+    setNewSessionOpen(false)
     setCustomizeOpen(true)
   }, [])
 
   const handleCloseCustomize = useCallback(() => {
     setCustomizeOpen(false)
   }, [])
+
+  const handleOpenNewSession = useCallback(() => {
+    setCustomizeOpen(false)
+    setNewSessionOpen(true)
+  }, [])
+
+  const handleCloseNewSession = useCallback(() => {
+    setNewSessionOpen(false)
+  }, [])
+
+  const handleSessionCreated = useCallback(async (session: Session) => {
+    await loadSessions()
+    handleSelect(session.id)
+  }, [loadSessions, handleSelect])
 
   const handleExtensionsChanged = useCallback(() => {
     void loadAgentTypes()
@@ -183,17 +201,24 @@ export default function App() {
             agentTypes={agentTypes}
             selectedId={selectedId}
             customizeOpen={customizeOpen}
+            newSessionOpen={newSessionOpen}
             onSelect={handleSelect}
             onOpenCustomize={handleOpenCustomize}
-            onRefresh={loadSessions}
+            onOpenNewSession={handleOpenNewSession}
             onRename={handleRenameSession}
             onDelete={handleDeleteSession}
           />
-          <main className="flex flex-1 overflow-hidden">
+          <main className="flex min-h-0 flex-1 overflow-hidden">
             {customizeOpen ? (
               <CustomizePanel
                 onClose={handleCloseCustomize}
                 onExtensionsChanged={handleExtensionsChanged}
+              />
+            ) : newSessionOpen ? (
+              <NewSessionPanel
+                agentTypes={agentTypes}
+                onClose={handleCloseNewSession}
+                onCreated={handleSessionCreated}
               />
             ) : selected ? (
               <ConversationPanel

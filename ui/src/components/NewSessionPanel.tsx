@@ -1,0 +1,399 @@
+// Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
+
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Check, Folder, Plus, Search, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { api } from '@/api'
+import type { AgentType, CreateSessionRequest, Session } from '@/types'
+
+interface Props {
+  agentTypes: AgentType[]
+  onClose: () => void
+  onCreated: (session: Session) => void
+}
+
+function harnessLabel(harness: string, sandbox?: string): string {
+  if (sandbox === 'docker') return `${harness} · docker`
+  if (sandbox === 'bubblewrap') return `${harness} · bwrap`
+  return harness
+}
+
+function agentMatchesSearch(agent: AgentType, query: string): boolean {
+  const haystack = [
+    agent.label,
+    agent.id,
+    agent.description ?? '',
+    agent.harness,
+    agent.sandbox ?? '',
+  ].join(' ').toLowerCase()
+  return haystack.includes(query)
+}
+
+export function NewSessionPanel({ agentTypes, onClose, onCreated }: Props) {
+  const [name, setName] = useState('')
+  const [workingDir, setWorkingDir] = useState('')
+  const [selectedId, setSelectedId] = useState('')
+  const [customSearch, setCustomSearch] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [directorySuggestions, setDirectorySuggestions] = useState<string[]>([])
+  const [directoryInputFocused, setDirectoryInputFocused] = useState(false)
+  const [activeDirectoryIndex, setActiveDirectoryIndex] = useState(0)
+  const suppressDirectoryLookupForValue = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (agentTypes.length === 0) return
+    api.settings.get()
+      .then((settings) => {
+        const preferred = settings.lastAgentType
+          ? agentTypes.find((t) => t.id === settings.lastAgentType)
+          : undefined
+        setSelectedId((current) => {
+          if (current && agentTypes.some((t) => t.id === current)) return current
+          return preferred?.id ?? agentTypes[0].id
+        })
+      })
+      .catch(() => {
+        setSelectedId((current) => current || agentTypes[0]?.id || '')
+      })
+  }, [agentTypes])
+
+  useEffect(() => {
+    if (!directoryInputFocused || !workingDir.trim()) {
+      setDirectorySuggestions([])
+      return
+    }
+    if (suppressDirectoryLookupForValue.current === workingDir) {
+      suppressDirectoryLookupForValue.current = null
+      return
+    }
+    suppressDirectoryLookupForValue.current = null
+
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => {
+      api.directories.suggest(workingDir, controller.signal).then(({ directories }) => {
+        setDirectorySuggestions(directories)
+        setActiveDirectoryIndex(0)
+      }).catch((err) => {
+        if (!(err instanceof DOMException && err.name === 'AbortError')) {
+          setDirectorySuggestions([])
+        }
+      })
+    }, 150)
+
+    return () => {
+      window.clearTimeout(timeout)
+      controller.abort()
+    }
+  }, [directoryInputFocused, workingDir])
+
+  function reset() {
+    setName('')
+    setWorkingDir('')
+    setCustomSearch('')
+    setError('')
+    setDirectorySuggestions([])
+    setDirectoryInputFocused(false)
+  }
+
+  function handleClose() {
+    reset()
+    onClose()
+  }
+
+  const selected = agentTypes.find((a) => a.id === selectedId)
+  const builtins = agentTypes.filter((a) => a.isBuiltin && a.available)
+  const userDefined = agentTypes.filter((a) => !a.isBuiltin)
+  const searchQuery = customSearch.trim().toLowerCase()
+  const filteredCustom = useMemo(() => {
+    if (!searchQuery) return userDefined
+    return userDefined.filter((a) => agentMatchesSearch(a, searchQuery))
+  }, [searchQuery, userDefined])
+  const isBasicLoopSelected = builtins.some((a) => a.id === selectedId)
+  const directoryListOpen = directoryInputFocused && directorySuggestions.length > 0
+
+  function selectDirectory(path: string) {
+    suppressDirectoryLookupForValue.current = path
+    setWorkingDir(path)
+    setDirectorySuggestions([])
+    setActiveDirectoryIndex(0)
+  }
+
+  function handleDirectoryKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!directoryListOpen) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveDirectoryIndex((current) => (current + 1) % directorySuggestions.length)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveDirectoryIndex((current) => (current - 1 + directorySuggestions.length) % directorySuggestions.length)
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault()
+      selectDirectory(directorySuggestions[activeDirectoryIndex])
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setDirectorySuggestions([])
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedId) {
+      setError('Select an agent type.')
+      return
+    }
+    const displayLabel = selected?.label ?? selectedId
+    const sessionName = name.trim() || displayLabel
+    setLoading(true)
+    setError('')
+    try {
+      const req: CreateSessionRequest = {
+        name: sessionName,
+        workingDir: workingDir.trim(),
+        agentType: selectedId,
+      }
+      const session = await api.sessions.create(req)
+      api.settings.update({ lastAgentType: selectedId }).catch(() => {})
+      reset()
+      onCreated(session)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create session.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="customize-panel flex flex-1 min-h-0 flex-col overflow-hidden">
+      <div className="conversation-header justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          <Plus className="size-4 shrink-0 text-muted-foreground" />
+          <h1 className="text-sm font-semibold truncate">New Session</h1>
+        </div>
+        <Button variant="ghost" size="sm" onClick={handleClose} aria-label="Close new session panel">
+          <X className="size-4" />
+        </Button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-1 flex-col min-h-0">
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="customize-tab-content mx-auto w-full space-y-5">
+
+            <div className="space-y-2">
+              <Label>Built-in Agents</Label>
+              <div className="grid grid-cols-1 gap-1.5">
+                {builtins.length > 0 && (
+                  <div className={[
+                    'rounded-lg border px-3 py-2.5 transition-colors',
+                    isBasicLoopSelected
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border bg-background',
+                  ].join(' ')}>
+                    <span className="block text-sm font-medium leading-tight mb-2">Standard</span>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {builtins.map((a) => (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => setSelectedId(a.id)}
+                          className={[
+                            'rounded-md px-2.5 py-1 text-xs font-medium transition-colors border',
+                            selectedId === a.id
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border bg-background text-muted-foreground hover:bg-muted',
+                          ].join(' ')}
+                        >
+                          {a.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {userDefined.length > 0 && (
+                  <div className="space-y-2 mt-2">
+                    <Label>Custom Agents</Label>
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={customSearch}
+                        onChange={(e) => setCustomSearch(e.target.value)}
+                        placeholder="Search by name or description…"
+                        className="pl-8 pr-8"
+                        aria-label="Search custom agents"
+                      />
+                      {customSearch && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          onClick={() => setCustomSearch('')}
+                          aria-label="Clear search"
+                        >
+                          <X className="size-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      {filteredCustom.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-2">
+                          {searchQuery ? 'No agents match your search.' : 'No custom agents available.'}
+                        </p>
+                      ) : (
+                        filteredCustom.map((a) => (
+                          <AgentCard
+                            key={a.id}
+                            agent={a}
+                            selected={selectedId === a.id}
+                            onSelect={() => setSelectedId(a.id)}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="name">
+                Name <span className="text-muted-foreground font-normal">(optional)</span>
+              </Label>
+              <Input
+                id="name"
+                placeholder={selected?.label ?? 'my-session'}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+
+            {selected?.workingDirInput && (
+              <div className="space-y-1.5">
+                <Label htmlFor="workingDir">
+                  Working Directory <span className="text-muted-foreground font-normal">(optional)</span>
+                </Label>
+                <Input
+                  id="workingDir"
+                  placeholder="/path/to/project"
+                  value={workingDir}
+                  onChange={(e) => {
+                    setWorkingDir(e.target.value)
+                    setActiveDirectoryIndex(0)
+                  }}
+                  onFocus={() => setDirectoryInputFocused(true)}
+                  onBlur={() => {
+                    setDirectoryInputFocused(false)
+                    setDirectorySuggestions([])
+                  }}
+                  onKeyDown={handleDirectoryKeyDown}
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={directoryListOpen}
+                  aria-controls="workingDir-suggestions"
+                  aria-activedescendant={directoryListOpen ? `workingDir-option-${activeDirectoryIndex}` : undefined}
+                />
+                {directoryListOpen && (
+                  <div
+                    id="workingDir-suggestions"
+                    role="listbox"
+                    aria-label="Working directory suggestions"
+                    className="max-h-44 overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-md"
+                  >
+                    {directorySuggestions.map((path, index) => (
+                      <div
+                        id={`workingDir-option-${index}`}
+                        key={path}
+                        role="option"
+                        aria-selected={index === activeDirectoryIndex}
+                        title={path}
+                        className={[
+                          'flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none',
+                          index === activeDirectoryIndex ? 'bg-accent text-accent-foreground' : '',
+                        ].join(' ')}
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          selectDirectory(path)
+                        }}
+                        onMouseEnter={() => setActiveDirectoryIndex(index)}
+                      >
+                        <Folder className="size-4 shrink-0 text-muted-foreground" />
+                        <span className="truncate font-mono text-xs">{path}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
+          </div>
+        </div>
+
+        <div className="shrink-0 border-t px-6 py-4">
+          <div className="customize-tab-content mx-auto flex w-full items-center justify-between gap-4">
+            <div className="min-w-0">
+              {selected ? (
+                <p className="text-sm truncate">
+                  <span className="text-muted-foreground">Agent:</span>{' '}
+                  <span className="font-medium">{selected.label}</span>
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">Select an agent</p>
+              )}
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <Button type="button" variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading || !selectedId}>
+                {loading ? 'Creating…' : 'Create Session'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+interface AgentCardProps {
+  agent: AgentType
+  selected: boolean
+  onSelect: () => void
+}
+
+function AgentCard({ agent, selected, onSelect }: AgentCardProps) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={[
+        'flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
+        selected
+          ? 'border-primary bg-primary/5 text-foreground'
+          : 'border-border bg-background hover:bg-muted/60',
+      ].join(' ')}
+    >
+      <span className={[
+        'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border',
+        selected ? 'border-primary bg-primary' : 'border-muted-foreground/40',
+      ].join(' ')}>
+        {selected && <Check className="size-2.5 text-primary-foreground stroke-[3]" />}
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-medium leading-tight">{agent.label}</span>
+        {agent.description && (
+          <span className="block text-xs text-muted-foreground mt-0.5 leading-snug">
+            {agent.description}
+          </span>
+        )}
+      </span>
+      <span className="mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground bg-muted">
+        {harnessLabel(agent.harness, agent.sandbox)}
+      </span>
+    </button>
+  )
+}
