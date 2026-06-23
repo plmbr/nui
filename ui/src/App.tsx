@@ -7,6 +7,7 @@ import { AppSidebar } from '@/components/AppSidebar'
 import { ConversationPanel } from '@/components/ConversationPanel'
 import { ThemeProvider } from '@/contexts/theme'
 import { api } from '@/api'
+import { navigateToSession, sessionIdFromPath } from '@/lib/sessionUrl'
 import type { Session, AgentType } from '@/types'
 
 export default function App() {
@@ -18,6 +19,8 @@ export default function App() {
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([])
   const [appReady, setAppReady] = useState(false)
   const initializedRef = useRef(false)
+  const sessionsRef = useRef(sessions)
+  sessionsRef.current = sessions
 
   const loadSessions = useCallback(async () => {
     try {
@@ -50,7 +53,7 @@ export default function App() {
         setSidebarOpen(settings.sidebarOpen)
       }
 
-      let nextId = bootstrap.sessionId ?? settings.lastSessionId ?? null
+      let nextId = sessionIdFromPath() ?? bootstrap.sessionId ?? settings.lastSessionId ?? null
       if (nextId && !list.some((s) => s.id === nextId)) {
         nextId = null
       }
@@ -70,6 +73,10 @@ export default function App() {
       setSessions(list)
       setSelectedId(nextId)
 
+      if (nextId) {
+        navigateToSession(nextId, true)
+      }
+
       if (bootstrap.initialPrompt && nextId) {
         setInitialPrompt(bootstrap.initialPrompt)
       }
@@ -83,10 +90,25 @@ export default function App() {
     void init()
   }, [loadSessions])
 
+  useEffect(() => {
+    function onPopState() {
+      const id = sessionIdFromPath()
+      if (!id || !sessionsRef.current.some((s) => s.id === id)) return
+      setSelectedId(id)
+      setInitialPrompt(undefined)
+      setHideInput(false)
+      api.settings.update({ lastSessionId: id }).catch(() => {})
+    }
+
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
   const handleSelect = useCallback((id: string) => {
     setSelectedId(id)
     setInitialPrompt(undefined)
     setHideInput(false)
+    navigateToSession(id)
     api.settings.update({ lastSessionId: id }).catch(() => {})
   }, [])
 
@@ -102,8 +124,16 @@ export default function App() {
 
   const handleDeleteSession = useCallback(async (id: string) => {
     await api.sessions.delete(id)
-    if (selectedId === id) setSelectedId(null)
-    await loadSessions()
+    const list = await loadSessions()
+    if (selectedId === id) {
+      const nextId = list[0]?.id ?? null
+      setSelectedId(nextId)
+      if (nextId) {
+        navigateToSession(nextId, true)
+      } else {
+        window.history.replaceState(null, '', '/')
+      }
+    }
   }, [selectedId, loadSessions])
 
   const handleRenameSession = useCallback(async (id: string, newName: string) => {

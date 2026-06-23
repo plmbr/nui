@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -56,7 +57,7 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 	mux.HandleFunc("/health", handleHealth)
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
+		if !isUIRoute(r.URL.Path) {
 			http.NotFound(w, r)
 			return
 		}
@@ -98,6 +99,13 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 		return err
 	}
 	return nil
+}
+
+func isUIRoute(path string) bool {
+	if path == "/" {
+		return true
+	}
+	return strings.HasPrefix(path, "/sessions/")
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
