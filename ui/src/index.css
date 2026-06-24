@@ -458,6 +458,39 @@
     @apply max-w-3xl;
   }
 
+  /* ─── Sessions list table ────────────────────────────────────── */
+  .sessions-table {
+    @apply border-collapse;
+
+    th {
+      @apply border-b px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground;
+    }
+
+    td {
+      @apply border-b px-4 py-2.5 align-middle;
+    }
+  }
+
+  .sessions-table__checkbox {
+    @apply w-10 text-center;
+
+    input[type="checkbox"] {
+      @apply size-4 cursor-pointer accent-primary;
+    }
+  }
+
+  .sessions-table__row:hover {
+    @apply bg-muted/50;
+  }
+
+  .sessions-table__row--active {
+    background: color-mix(in oklch, var(--primary) 10%, var(--background));
+  }
+
+  .sessions-table__row--checked {
+    background: color-mix(in oklch, var(--primary) 6%, var(--background));
+  }
+
   /* ─── Chat panel ────────────────────────────────────────────── */
   .agui-chat {
     @apply min-h-0 bg-background;

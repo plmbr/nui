@@ -44,6 +44,12 @@ export const api = {
 
     delete: (id: string): Promise<void> =>
       request(`/sessions/${id}`, { method: 'DELETE' }),
+
+    bulkDelete: (ids: string[]): Promise<{ deleted: string[]; notFound: string[] }> =>
+      request('/sessions/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({ ids }),
+      }),
   },
 
   agentTypes: {

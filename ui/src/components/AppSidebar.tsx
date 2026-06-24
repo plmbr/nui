@@ -1,7 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useEffect, useState } from 'react'
-import { ChevronRight, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronRight, List, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -44,9 +44,11 @@ interface Props {
   selectedId: string | null
   customizeOpen: boolean
   newSessionOpen: boolean
+  sessionListGroupId: string | null
   onSelect: (id: string) => void
   onOpenCustomize: () => void
   onOpenNewSession: () => void
+  onOpenSessionList: (groupId: string) => void
   onRename: (id: string, newName: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }
@@ -160,7 +162,9 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
 interface CollapsibleSessionGroupProps {
   group: SessionGroup
   selectedId: string | null
+  listViewOpen: boolean
   onSelect: (id: string) => void
+  onOpenSessionList: (groupId: string) => void
   onRename: (id: string, newName: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }
@@ -168,7 +172,9 @@ interface CollapsibleSessionGroupProps {
 function CollapsibleSessionGroup({
   group,
   selectedId,
+  listViewOpen,
   onSelect,
+  onOpenSessionList,
   onRename,
   onDelete,
 }: CollapsibleSessionGroupProps) {
@@ -183,7 +189,10 @@ function CollapsibleSessionGroup({
     <SidebarGroup>
       <SidebarGroupLabel
         render={<button type="button" />}
-        className="h-9 cursor-pointer gap-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+        className={cn(
+          'group/label h-9 cursor-pointer gap-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
+          listViewOpen && 'bg-sidebar-accent/60 text-sidebar-accent-foreground',
+        )}
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         title={group.label}
@@ -195,6 +204,21 @@ function CollapsibleSessionGroup({
           )}
         />
         <span className="flex-1 truncate text-left">{group.label}</span>
+        <button
+          type="button"
+          className={cn(
+            'inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-hover/label:opacity-100',
+            listViewOpen && 'opacity-100 text-sidebar-accent-foreground',
+          )}
+          aria-label={`List ${group.label} sessions`}
+          title="List sessions"
+          onClick={(event) => {
+            event.stopPropagation()
+            onOpenSessionList(group.id)
+          }}
+        >
+          <List className="size-3.5" />
+        </button>
         <span className="text-xs font-normal text-muted-foreground tabular-nums">{group.sessions.length}</span>
       </SidebarGroupLabel>
       {open && (
@@ -223,9 +247,11 @@ export function AppSidebar({
   selectedId,
   customizeOpen,
   newSessionOpen,
+  sessionListGroupId,
   onSelect,
   onOpenCustomize,
   onOpenNewSession,
+  onOpenSessionList,
   onRename,
   onDelete,
 }: Props) {
@@ -260,7 +286,9 @@ export function AppSidebar({
                   key={group.id}
                   group={group}
                   selectedId={selectedId}
+                  listViewOpen={sessionListGroupId === group.id}
                   onSelect={onSelect}
+                  onOpenSessionList={onOpenSessionList}
                   onRename={onRename}
                   onDelete={onDelete}
                 />

@@ -7,8 +7,10 @@ import { AppSidebar } from '@/components/AppSidebar'
 import { ConversationPanel } from '@/components/ConversationPanel'
 import { CustomizePanel } from '@/components/customize/CustomizePanel'
 import { NewSessionPanel } from '@/components/NewSessionPanel'
+import { SessionsListPanel } from '@/components/SessionsListPanel'
 import { ThemeProvider } from '@/contexts/theme'
 import { api } from '@/api'
+import { groupSessionsByAgentType } from '@/lib/sessionGroups'
 import { navigateToSession, sessionIdFromPath } from '@/lib/sessionUrl'
 import type { Session, AgentType } from '@/types'
 
@@ -21,6 +23,7 @@ export default function App() {
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([])
   const [customizeOpen, setCustomizeOpen] = useState(false)
   const [newSessionOpen, setNewSessionOpen] = useState(false)
+  const [sessionListGroupId, setSessionListGroupId] = useState<string | null>(null)
   const [appReady, setAppReady] = useState(false)
   const initializedRef = useRef(false)
   const sessionsRef = useRef(sessions)
@@ -121,6 +124,7 @@ export default function App() {
   const handleSelect = useCallback((id: string) => {
     setCustomizeOpen(false)
     setNewSessionOpen(false)
+    setSessionListGroupId(null)
     setSelectedId(id)
     setInitialPrompt(undefined)
     setHideInput(false)
@@ -137,9 +141,14 @@ export default function App() {
   const selectedAgent = agentTypes.find((a) => a.id === selected?.agentType)
   const promptMode = selectedAgent?.promptMode ?? 'user'
   const effectiveHideInput = hideInput || promptMode === 'auto'
+  const sessionListGroup =
+    sessionListGroupId != null
+      ? groupSessionsByAgentType(sessions, agentTypes).find((group) => group.id === sessionListGroupId) ?? null
+      : null
 
   const handleOpenCustomize = useCallback(() => {
     setNewSessionOpen(false)
+    setSessionListGroupId(null)
     setCustomizeOpen(true)
   }, [])
 
@@ -149,11 +158,22 @@ export default function App() {
 
   const handleOpenNewSession = useCallback(() => {
     setCustomizeOpen(false)
+    setSessionListGroupId(null)
     setNewSessionOpen(true)
   }, [])
 
   const handleCloseNewSession = useCallback(() => {
     setNewSessionOpen(false)
+  }, [])
+
+  const handleOpenSessionList = useCallback((groupId: string) => {
+    setCustomizeOpen(false)
+    setNewSessionOpen(false)
+    setSessionListGroupId(groupId)
+  }, [])
+
+  const handleCloseSessionList = useCallback(() => {
+    setSessionListGroupId(null)
   }, [])
 
   const handleSessionCreated = useCallback(async (session: Session) => {
@@ -179,6 +199,26 @@ export default function App() {
     }
   }, [selectedId, loadSessions])
 
+  const handleBulkDeleteSessions = useCallback(async (ids: string[]) => {
+    await api.sessions.bulkDelete(ids)
+    const list = await loadSessions()
+    if (selectedId && ids.includes(selectedId)) {
+      const nextId = list[0]?.id ?? null
+      setSelectedId(nextId)
+      if (nextId) {
+        navigateToSession(nextId, true)
+      } else {
+        window.history.replaceState(null, '', '/')
+      }
+    }
+    if (sessionListGroupId) {
+      const groups = groupSessionsByAgentType(list, agentTypes)
+      if (!groups.some((group) => group.id === sessionListGroupId && group.sessions.length > 0)) {
+        setSessionListGroupId(null)
+      }
+    }
+  }, [selectedId, loadSessions, sessionListGroupId, agentTypes])
+
   const handleRenameSession = useCallback(async (id: string, newName: string) => {
     await api.sessions.rename(id, newName)
     await loadSessions()
@@ -202,9 +242,11 @@ export default function App() {
             selectedId={selectedId}
             customizeOpen={customizeOpen}
             newSessionOpen={newSessionOpen}
+            sessionListGroupId={sessionListGroupId}
             onSelect={handleSelect}
             onOpenCustomize={handleOpenCustomize}
             onOpenNewSession={handleOpenNewSession}
+            onOpenSessionList={handleOpenSessionList}
             onRename={handleRenameSession}
             onDelete={handleDeleteSession}
           />
@@ -219,6 +261,14 @@ export default function App() {
                 agentTypes={agentTypes}
                 onClose={handleCloseNewSession}
                 onCreated={handleSessionCreated}
+              />
+            ) : sessionListGroup ? (
+              <SessionsListPanel
+                group={sessionListGroup}
+                selectedId={selectedId}
+                onSelect={handleSelect}
+                onClose={handleCloseSessionList}
+                onBulkDelete={handleBulkDeleteSessions}
               />
             ) : selected ? (
               <ConversationPanel

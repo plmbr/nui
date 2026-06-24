@@ -313,6 +313,66 @@ func handleSessions(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleBulkDeleteSessions(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		IDs []string `json:"ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if len(req.IDs) == 0 {
+		http.Error(w, "ids is required", http.StatusBadRequest)
+		return
+	}
+
+	type pendingDelete struct {
+		id   string
+		info sessionDeleteInfo
+	}
+
+	var toCleanup []pendingDelete
+	deleted := make([]string, 0, len(req.IDs))
+	notFound := make([]string, 0)
+
+	mu.Lock()
+	for _, id := range req.IDs {
+		info, ok := sessionDeleteInfoFor(id)
+		if !ok {
+			notFound = append(notFound, id)
+			continue
+		}
+		if purgeSessionFromMemory(id) {
+			toCleanup = append(toCleanup, pendingDelete{id: id, info: info})
+			deleted = append(deleted, id)
+		}
+	}
+	var snapshot store.Data
+	if len(deleted) > 0 {
+		snapshot = snapshotData()
+	}
+	mu.Unlock()
+
+	if len(deleted) > 0 {
+		if err := store.SaveData(snapshot); err != nil {
+			fmt.Fprintf(os.Stderr, "warn: save data after bulk delete: %v\n", err)
+		}
+		for _, item := range toCleanup {
+			cleanupDeletedSession(item.id, item.info)
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"deleted":  deleted,
+		"notFound": notFound,
+	})
+}
+
 func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -499,6 +559,60 @@ func deleteSession(id string) bool {
 	return false
 }
 
+type sessionDeleteInfo struct {
+	agentSessionID string
+	workingDir     string
+	agentType      string
+}
+
+func sessionDeleteInfoFor(id string) (sessionDeleteInfo, bool) {
+	s, ok := findSession(id)
+	if !ok {
+		return sessionDeleteInfo{}, false
+	}
+	return sessionDeleteInfo{
+		agentSessionID: agentSessions[id],
+		workingDir:     s.WorkingDir,
+		agentType:      s.AgentType,
+	}, true
+}
+
+func purgeSessionFromMemory(id string) bool {
+	removed := deleteSession(id)
+	if removed {
+		delete(agentSessions, id)
+		delete(sessionMessages, id)
+	}
+	return removed
+}
+
+func cleanupDeletedSession(id string, info sessionDeleteInfo) {
+	extensionManager.Stop(id)
+	if err := store.RemoveSessionConfigDir(id); err != nil {
+		fmt.Fprintf(os.Stderr, "warn: remove session config dir: %v\n", err)
+	}
+	if err := store.RemoveSessionWorkspace(id); err != nil {
+		fmt.Fprintf(os.Stderr, "warn: remove session workspace: %v\n", err)
+	}
+	if info.agentSessionID == "" {
+		return
+	}
+	var delErr error
+	switch sessionHarnessType(model.Session{AgentType: info.agentType, WorkingDir: info.workingDir}) {
+	case "pi":
+		delErr = store.DeletePiSession(info.workingDir, info.agentSessionID)
+	case "codex":
+		delErr = store.DeleteCodexSession(info.workingDir, info.agentSessionID)
+	case "opencode":
+		delErr = store.DeleteOpenCodeSession(info.workingDir, info.agentSessionID)
+	default:
+		delErr = store.DeleteClaudeSession(info.workingDir, info.agentSessionID)
+	}
+	if delErr != nil {
+		fmt.Fprintf(os.Stderr, "warn: delete session file: %v\n", delErr)
+	}
+}
+
 func renameSession(id, name string) bool {
 	for i, s := range sessions {
 		if s.ID == id {
@@ -518,6 +632,11 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 
 	if path == "ensure-default" {
 		handleEnsureDefaultSession(w, r)
+		return
+	}
+
+	if path == "bulk-delete" {
+		handleBulkDeleteSessions(w, r)
 		return
 	}
 
@@ -583,16 +702,10 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 
 	case http.MethodDelete:
 		mu.Lock()
-		var agentSessionID, workingDir, agentType string
-		if s, ok := findSession(id); ok {
-			agentSessionID = agentSessions[id]
-			workingDir = s.WorkingDir
-			agentType = s.AgentType
-		}
-		removed := deleteSession(id)
-		if removed {
-			delete(agentSessions, id)
-			delete(sessionMessages, id)
+		info, found := sessionDeleteInfoFor(id)
+		removed := false
+		if found {
+			removed = purgeSessionFromMemory(id)
 		}
 		var snapshot store.Data
 		if removed {
@@ -606,29 +719,7 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 		if err := store.SaveData(snapshot); err != nil {
 			fmt.Fprintf(os.Stderr, "warn: save data after delete: %v\n", err)
 		}
-		extensionManager.Stop(id)
-		if err := store.RemoveSessionConfigDir(id); err != nil {
-			fmt.Fprintf(os.Stderr, "warn: remove session config dir: %v\n", err)
-		}
-		if err := store.RemoveSessionWorkspace(id); err != nil {
-			fmt.Fprintf(os.Stderr, "warn: remove session workspace: %v\n", err)
-		}
-		if agentSessionID != "" {
-			var delErr error
-			switch sessionHarnessType(model.Session{AgentType: agentType, WorkingDir: workingDir}) {
-			case "pi":
-				delErr = store.DeletePiSession(workingDir, agentSessionID)
-			case "codex":
-				delErr = store.DeleteCodexSession(workingDir, agentSessionID)
-			case "opencode":
-				delErr = store.DeleteOpenCodeSession(workingDir, agentSessionID)
-			default:
-				delErr = store.DeleteClaudeSession(workingDir, agentSessionID)
-			}
-			if delErr != nil {
-				fmt.Fprintf(os.Stderr, "warn: delete session file: %v\n", delErr)
-			}
-		}
+		cleanupDeletedSession(id, info)
 		w.WriteHeader(http.StatusNoContent)
 
 	default:
