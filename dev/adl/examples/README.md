@@ -209,4 +209,4 @@ When implemented, the executor will pause and wait for `POST /api/sessions/:id/a
 | `constraints` | Parsed only |
 | `schedule.cron` | Parsed only |
 
-See [dev/dev.md](../dev.md) for the full architecture and [orchestration-research.md](orchestration-research.md) for design research.
+See [dev/dev.md](../../dev.md) for the full architecture and [orchestration-research.md](../orchestration-research.md) for design research.
