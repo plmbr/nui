@@ -1,7 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useState } from 'react'
-import { SlidersHorizontal, X } from 'lucide-react'
+import { Settings, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { GeneralTab } from '@/components/customize/GeneralTab'
@@ -32,7 +32,7 @@ export function CustomizePanel({ onClose, onAgentTypesChanged }: Props) {
     <div className="customize-panel flex flex-1 flex-col overflow-hidden">
       <div className="conversation-header justify-between">
         <div className="flex items-center gap-2 min-w-0">
-          <SlidersHorizontal className="size-4 shrink-0 text-muted-foreground" />
+          <Settings className="size-4 shrink-0 text-muted-foreground" />
           <h1 className="text-sm font-semibold truncate">Customize</h1>
         </div>
         <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close customize panel">
@@ -79,7 +79,7 @@ export function CustomizeTrigger({ active, onOpen }: TriggerProps) {
       className="w-full justify-start gap-2"
       onClick={onOpen}
     >
-      <SlidersHorizontal className="size-4 shrink-0" />
+      <Settings className="size-4 shrink-0" />
       <span className="group-data-[collapsible=icon]:hidden">Customize</span>
     </Button>
   )
