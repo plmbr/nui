@@ -161,7 +161,7 @@ export default function App() {
     handleSelect(session.id)
   }, [loadSessions, handleSelect])
 
-  const handleExtensionsChanged = useCallback(() => {
+  const handleAgentTypesChanged = useCallback(() => {
     void loadAgentTypes()
   }, [loadAgentTypes])
 
@@ -212,7 +212,7 @@ export default function App() {
             {customizeOpen ? (
               <CustomizePanel
                 onClose={handleCloseCustomize}
-                onExtensionsChanged={handleExtensionsChanged}
+                onAgentTypesChanged={handleAgentTypesChanged}
               />
             ) : newSessionOpen ? (
               <NewSessionPanel

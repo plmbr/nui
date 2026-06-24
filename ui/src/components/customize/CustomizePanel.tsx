@@ -22,10 +22,10 @@ type TabId = (typeof TABS)[number]['id']
 
 interface Props {
   onClose: () => void
-  onExtensionsChanged?: () => void
+  onAgentTypesChanged?: () => void
 }
 
-export function CustomizePanel({ onClose, onExtensionsChanged }: Props) {
+export function CustomizePanel({ onClose, onAgentTypesChanged }: Props) {
   const [tab, setTab] = useState<TabId>('general')
 
   return (
@@ -56,10 +56,10 @@ export function CustomizePanel({ onClose, onExtensionsChanged }: Props) {
 
         <div className="flex-1 overflow-y-auto p-6">
           {tab === 'general' && <GeneralTab />}
-          {tab === 'extensions' && <ExtensionsTab onChanged={onExtensionsChanged} />}
+          {tab === 'extensions' && <ExtensionsTab onChanged={onAgentTypesChanged} />}
           {tab === 'mcp' && <MCPServersTab />}
           {tab === 'skills' && <SkillsTab />}
-          {tab === 'agents' && <AgentsTab />}
+          {tab === 'agents' && <AgentsTab onChanged={onAgentTypesChanged} />}
         </div>
       </div>
     </div>

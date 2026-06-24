@@ -59,7 +59,11 @@ function ModeToggle({ mode, onChange }: { mode: EditMode; onChange: (mode: EditM
   )
 }
 
-export function AgentsTab() {
+interface Props {
+  onChanged?: () => void
+}
+
+export function AgentsTab({ onChanged }: Props) {
   const { options, loading: optionsLoading } = useAgentFormOptions()
   const [agents, setAgents] = useState<AgentFileInfo[]>([])
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
@@ -140,6 +144,7 @@ export function AgentsTab() {
       setContent(yaml)
       syncFormFromContent(yaml)
       await load()
+      onChanged?.()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save')
     } finally {
@@ -154,6 +159,7 @@ export function AgentsTab() {
       const yaml = editMode === 'form' ? formToAgentYaml(form, options) : content
       const info = await api.agents.create(newFilename, yaml)
       await load()
+      onChanged?.()
       setCreating(false)
       await openAgent(info.file)
     } catch (e) {
@@ -174,6 +180,7 @@ export function AgentsTab() {
         setForm(defaultAgentForm())
       }
       await load()
+      onChanged?.()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete')
     }
