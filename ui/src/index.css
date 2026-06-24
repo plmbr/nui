@@ -500,6 +500,10 @@
     @apply flex-1 overflow-y-auto px-0 py-6 scroll-smooth;
   }
 
+  .agui-chat__scroll-spacer {
+    @apply shrink-0;
+  }
+
   .agui-chat__empty {
     @apply flex h-full flex-col items-center justify-center gap-2 text-muted-foreground;
   }

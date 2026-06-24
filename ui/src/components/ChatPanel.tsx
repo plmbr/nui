@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
@@ -11,6 +11,33 @@ import { normalizeMarkdown, stripInlineCodeDelimiters } from '@/lib/markdown'
 import type { Session } from '@/types'
 
 const AUTO_PROMPT_FALLBACK = 'Follow your system instructions and run.'
+
+function getContentHeightBelow(anchor: HTMLElement, endBefore: HTMLElement): number {
+  if (anchor.nextElementSibling === endBefore) return 0
+  return Math.max(0, endBefore.offsetTop - (anchor.offsetTop + anchor.offsetHeight))
+}
+
+function updateScrollSpacer(
+  container: HTMLElement,
+  anchor: HTMLElement,
+  spacer: HTMLElement,
+) {
+  const paddingTop = Number.parseFloat(getComputedStyle(container).paddingTop) || 0
+  const contentBelow = getContentHeightBelow(anchor, spacer)
+  const spacerHeight = Math.max(
+    0,
+    container.clientHeight - anchor.offsetHeight - contentBelow - paddingTop,
+  )
+  spacer.style.height = `${spacerHeight}px`
+}
+
+function scrollMessageToTop(container: HTMLElement, message: HTMLElement) {
+  const offset =
+    message.getBoundingClientRect().top -
+    container.getBoundingClientRect().top +
+    container.scrollTop
+  container.scrollTo({ top: offset, behavior: 'auto' })
+}
 
 interface Props {
   session: Session
@@ -29,9 +56,21 @@ export function ChatPanel({
 }: Props) {
   const { messages, sendMessage, isRunning, isLoading } = useSessionChat(session.id)
   const [input, setInput] = useState('')
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const scrollSpacerRef = useRef<HTMLDivElement>(null)
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const scrollPendingRef = useRef(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const initialPromptSentRef = useRef(false)
+
+  const setMessageRef = (id: string) => (el: HTMLDivElement | null) => {
+    if (el) messageRefs.current.set(id, el)
+    else messageRefs.current.delete(id)
+  }
+
+  const markScrollAnchor = () => {
+    scrollPendingRef.current = true
+  }
 
   useEffect(() => {
     if (hideInput) return
@@ -51,6 +90,7 @@ export function ChatPanel({
       const prompt =
         initialPrompt?.trim() || defaultPrompt?.trim() || AUTO_PROMPT_FALLBACK
       initialPromptSentRef.current = true
+      markScrollAnchor()
       sendMessage(prompt)
       return
     }
@@ -58,6 +98,7 @@ export function ChatPanel({
     const bootstrapPrompt = initialPrompt?.trim()
     if (!bootstrapPrompt) return
     initialPromptSentRef.current = true
+    markScrollAnchor()
     sendMessage(bootstrapPrompt)
   }, [
     initialPrompt,
@@ -88,14 +129,29 @@ export function ChatPanel({
     messages.length,
   ])
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isRunning])
+  useLayoutEffect(() => {
+    if (!scrollPendingRef.current) return
+
+    const container = messagesContainerRef.current
+    const spacer = scrollSpacerRef.current
+    if (!container || !spacer) return
+
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')
+    if (!lastUserMsg) return
+
+    const anchorEl = messageRefs.current.get(lastUserMsg.id)
+    if (!anchorEl) return
+
+    updateScrollSpacer(container, anchorEl, spacer)
+    scrollPendingRef.current = false
+    scrollMessageToTop(container, anchorEl)
+  }, [messages.length])
 
   const submit = () => {
     const text = input.trim()
     if (!text || isRunning) return
     setInput('')
+    markScrollAnchor()
     sendMessage(text)
   }
 
@@ -112,7 +168,7 @@ export function ChatPanel({
 
   return (
     <div className="agui-chat flex flex-col flex-1 min-h-0">
-      <div className="agui-chat__messages">
+      <div ref={messagesContainerRef} className="agui-chat__messages">
         {messages.length === 0 && (
           <div className="agui-chat__empty">
             <div className="agui-chat__empty-icon">✦</div>
@@ -128,7 +184,11 @@ export function ChatPanel({
           const isStreaming = isRunning && msg.id === streamingAssistantId
 
           return (
-            <div key={msg.id} className={`agui-message agui-message--${msg.role}`}>
+            <div
+              key={msg.id}
+              ref={setMessageRef(msg.id)}
+              className={`agui-message agui-message--${msg.role}`}
+            >
               <div className="agui-message__role">
                 {msg.role === 'user' ? 'You' : 'Agent'}
               </div>
@@ -193,8 +253,9 @@ export function ChatPanel({
             </div>
           )
         })}
-
-        <div ref={bottomRef} />
+        {messages.length > 0 && (
+          <div ref={scrollSpacerRef} className="agui-chat__scroll-spacer" aria-hidden="true" />
+        )}
       </div>
 
       {!hideInput && (
