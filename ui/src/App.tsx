@@ -10,7 +10,7 @@ import { NewSessionPanel } from '@/components/NewSessionPanel'
 import { SessionsListPanel } from '@/components/SessionsListPanel'
 import { ThemeProvider } from '@/contexts/theme'
 import { api } from '@/api'
-import { groupSessionsByAgentType } from '@/lib/sessionGroups'
+import { groupSessionsByAgentType, defaultAgentTypeForGroup } from '@/lib/sessionGroups'
 import { navigateToSession, sessionIdFromPath } from '@/lib/sessionUrl'
 import type { Session, AgentType } from '@/types'
 
@@ -23,6 +23,7 @@ export default function App() {
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([])
   const [customizeOpen, setCustomizeOpen] = useState(false)
   const [newSessionOpen, setNewSessionOpen] = useState(false)
+  const [newSessionAgentTypeId, setNewSessionAgentTypeId] = useState<string | null>(null)
   const [sessionListGroupId, setSessionListGroupId] = useState<string | null>(null)
   const [appReady, setAppReady] = useState(false)
   const initializedRef = useRef(false)
@@ -159,12 +160,23 @@ export default function App() {
   const handleOpenNewSession = useCallback(() => {
     setCustomizeOpen(false)
     setSessionListGroupId(null)
+    setNewSessionAgentTypeId(null)
     setNewSessionOpen(true)
   }, [])
 
   const handleCloseNewSession = useCallback(() => {
     setNewSessionOpen(false)
+    setNewSessionAgentTypeId(null)
   }, [])
+
+  const handleOpenNewSessionForGroup = useCallback((groupId: string) => {
+    const group = groupSessionsByAgentType(sessions, agentTypes).find((g) => g.id === groupId)
+    if (!group) return
+    setCustomizeOpen(false)
+    setSessionListGroupId(null)
+    setNewSessionAgentTypeId(defaultAgentTypeForGroup(group, agentTypes) ?? null)
+    setNewSessionOpen(true)
+  }, [sessions, agentTypes])
 
   const handleOpenSessionList = useCallback((groupId: string) => {
     setCustomizeOpen(false)
@@ -246,6 +258,7 @@ export default function App() {
             onSelect={handleSelect}
             onOpenCustomize={handleOpenCustomize}
             onOpenNewSession={handleOpenNewSession}
+            onOpenNewSessionForGroup={handleOpenNewSessionForGroup}
             onOpenSessionList={handleOpenSessionList}
             onRename={handleRenameSession}
             onDelete={handleDeleteSession}
@@ -259,6 +272,7 @@ export default function App() {
             ) : newSessionOpen ? (
               <NewSessionPanel
                 agentTypes={agentTypes}
+                initialAgentTypeId={newSessionAgentTypeId}
                 onClose={handleCloseNewSession}
                 onCreated={handleSessionCreated}
               />

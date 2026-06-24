@@ -10,6 +10,7 @@ import type { AgentType, CreateSessionRequest, Session } from '@/types'
 
 interface Props {
   agentTypes: AgentType[]
+  initialAgentTypeId?: string | null
   onClose: () => void
   onCreated: (session: Session) => void
 }
@@ -31,7 +32,7 @@ function agentMatchesSearch(agent: AgentType, query: string): boolean {
   return haystack.includes(query)
 }
 
-export function NewSessionPanel({ agentTypes, onClose, onCreated }: Props) {
+export function NewSessionPanel({ agentTypes, initialAgentTypeId, onClose, onCreated }: Props) {
   const [name, setName] = useState('')
   const [workingDir, setWorkingDir] = useState('')
   const [selectedId, setSelectedId] = useState('')
@@ -45,6 +46,10 @@ export function NewSessionPanel({ agentTypes, onClose, onCreated }: Props) {
 
   useEffect(() => {
     if (agentTypes.length === 0) return
+    if (initialAgentTypeId && agentTypes.some((t) => t.id === initialAgentTypeId)) {
+      setSelectedId(initialAgentTypeId)
+      return
+    }
     api.settings.get()
       .then((settings) => {
         const preferred = settings.lastAgentType
@@ -58,7 +63,7 @@ export function NewSessionPanel({ agentTypes, onClose, onCreated }: Props) {
       .catch(() => {
         setSelectedId((current) => current || agentTypes[0]?.id || '')
       })
-  }, [agentTypes])
+  }, [agentTypes, initialAgentTypeId])
 
   useEffect(() => {
     if (!directoryInputFocused || !workingDir.trim()) {

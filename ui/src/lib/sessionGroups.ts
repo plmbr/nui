@@ -42,6 +42,20 @@ function groupId(agentTypeId: string, agent: AgentType | undefined): string {
   return agentTypeId
 }
 
+export function defaultAgentTypeForGroup(
+  group: SessionGroup,
+  agentTypes: AgentType[],
+): string | undefined {
+  if (group.id !== STANDARD_GROUP_ID) {
+    return agentTypes.some((t) => t.id === group.id) ? group.id : undefined
+  }
+  if (group.sessions.length > 0) {
+    const agentTypeId = resolveAgentTypeId(group.sessions[0].agentType)
+    if (agentTypes.some((t) => t.id === agentTypeId)) return agentTypeId
+  }
+  return agentTypes.find((t) => t.isBuiltin && t.available)?.id
+}
+
 export function groupSessionsByAgentType(
   sessions: Session[],
   agentTypes: AgentType[],

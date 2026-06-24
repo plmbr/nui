@@ -48,6 +48,7 @@ interface Props {
   onSelect: (id: string) => void
   onOpenCustomize: () => void
   onOpenNewSession: () => void
+  onOpenNewSessionForGroup: (groupId: string) => void
   onOpenSessionList: (groupId: string) => void
   onRename: (id: string, newName: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
@@ -164,6 +165,7 @@ interface CollapsibleSessionGroupProps {
   selectedId: string | null
   listViewOpen: boolean
   onSelect: (id: string) => void
+  onOpenNewSessionForGroup: (groupId: string) => void
   onOpenSessionList: (groupId: string) => void
   onRename: (id: string, newName: string) => Promise<void>
   onDelete: (id: string) => Promise<void>
@@ -174,6 +176,7 @@ function CollapsibleSessionGroup({
   selectedId,
   listViewOpen,
   onSelect,
+  onOpenNewSessionForGroup,
   onOpenSessionList,
   onRename,
   onDelete,
@@ -204,21 +207,35 @@ function CollapsibleSessionGroup({
           )}
         />
         <span className="flex-1 truncate text-left">{group.label}</span>
-        <button
-          type="button"
-          className={cn(
-            'inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-hover/label:opacity-100',
-            listViewOpen && 'opacity-100 text-sidebar-accent-foreground',
-          )}
-          aria-label={`List ${group.label} sessions`}
-          title="List sessions"
-          onClick={(event) => {
-            event.stopPropagation()
-            onOpenSessionList(group.id)
-          }}
-        >
-          <List className="size-3.5" />
-        </button>
+        <span className="inline-flex shrink-0 items-center gap-0">
+          <button
+            type="button"
+            className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-hover/label:opacity-100"
+            aria-label={`New ${group.label} session`}
+            title="New session"
+            onClick={(event) => {
+              event.stopPropagation()
+              onOpenNewSessionForGroup(group.id)
+            }}
+          >
+            <Plus className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            className={cn(
+              'inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-hover/label:opacity-100',
+              listViewOpen && 'opacity-100 text-sidebar-accent-foreground',
+            )}
+            aria-label={`List ${group.label} sessions`}
+            title="List sessions"
+            onClick={(event) => {
+              event.stopPropagation()
+              onOpenSessionList(group.id)
+            }}
+          >
+            <List className="size-3.5" />
+          </button>
+        </span>
         <span className="text-xs font-normal text-muted-foreground tabular-nums">{group.sessions.length}</span>
       </SidebarGroupLabel>
       {open && (
@@ -251,6 +268,7 @@ export function AppSidebar({
   onSelect,
   onOpenCustomize,
   onOpenNewSession,
+  onOpenNewSessionForGroup,
   onOpenSessionList,
   onRename,
   onDelete,
@@ -288,6 +306,7 @@ export function AppSidebar({
                   selectedId={selectedId}
                   listViewOpen={sessionListGroupId === group.id}
                   onSelect={onSelect}
+                  onOpenNewSessionForGroup={onOpenNewSessionForGroup}
                   onOpenSessionList={onOpenSessionList}
                   onRename={onRename}
                   onDelete={onDelete}
