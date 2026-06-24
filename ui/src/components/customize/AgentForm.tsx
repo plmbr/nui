@@ -317,7 +317,7 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
         <div className="space-y-1.5">
           <Label htmlFor="default-prompt">Default prompt</Label>
           <p className="text-xs text-muted-foreground">
-            Used when prompt mode is auto — sent when a session starts.
+            Pre-filled in the chat input on session start; auto-sent when prompt mode is auto.
           </p>
           <Textarea
             id="default-prompt"
@@ -325,7 +325,6 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
             onChange={(e) => patch({ defaultPrompt: e.target.value })}
             rows={3}
             placeholder="Review the README and suggest improvements"
-            disabled={form.promptMode !== 'auto'}
           />
         </div>
       </section>

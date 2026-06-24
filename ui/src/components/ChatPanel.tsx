@@ -47,18 +47,18 @@ export function ChatPanel({
     if (initialPromptSentRef.current || isLoading || isRunning) return
     if (messages.length > 0) return
 
-    let prompt = initialPrompt?.trim()
     if (promptMode === 'auto') {
-      if (!prompt) {
-        prompt = defaultPrompt?.trim() || AUTO_PROMPT_FALLBACK
-      }
+      const prompt =
+        initialPrompt?.trim() || defaultPrompt?.trim() || AUTO_PROMPT_FALLBACK
       initialPromptSentRef.current = true
       sendMessage(prompt)
       return
     }
-    if (!prompt) return
+
+    const bootstrapPrompt = initialPrompt?.trim()
+    if (!bootstrapPrompt) return
     initialPromptSentRef.current = true
-    sendMessage(prompt)
+    sendMessage(bootstrapPrompt)
   }, [
     initialPrompt,
     defaultPrompt,
@@ -67,6 +67,25 @@ export function ChatPanel({
     isRunning,
     messages.length,
     sendMessage,
+  ])
+
+  useEffect(() => {
+    if (isLoading) return
+    if (messages.length > 0) {
+      setInput('')
+      return
+    }
+    if (promptMode !== 'user' || hideInput) return
+    if (initialPrompt?.trim()) return
+    setInput(defaultPrompt?.trim() ?? '')
+  }, [
+    session.id,
+    defaultPrompt,
+    initialPrompt,
+    promptMode,
+    hideInput,
+    isLoading,
+    messages.length,
   ])
 
   useEffect(() => {
