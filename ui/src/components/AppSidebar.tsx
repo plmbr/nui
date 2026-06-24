@@ -20,10 +20,10 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { groupSessionsByAgentType, type SessionGroup } from '@/lib/sessionGroups'
+import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -141,31 +141,18 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
         </DialogContent>
       </Dialog>
 
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete session?</DialogTitle>
-            <DialogDescription>
-              This will permanently delete <strong>{session.name}</strong> and its associated chat
-              history. This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={async () => {
-                setDeleteOpen(false)
-                await onDelete()
-              }}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Delete session?"
+        description={
+          <>
+            This will permanently delete <strong>{session.name}</strong> and its associated chat
+            history. This action cannot be undone.
+          </>
+        }
+        onConfirm={onDelete}
+      />
     </>
   )
 }

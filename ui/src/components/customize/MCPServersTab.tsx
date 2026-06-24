@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
+import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,6 +19,7 @@ export function MCPServersTab() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deleteIndex, setDeleteIndex] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -77,7 +79,7 @@ export function MCPServersTab() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setServers((prev) => prev.filter((_, i) => i !== index))}
+                  onClick={() => setDeleteIndex(index)}
                 >
                   <Trash2 className="size-3.5" />
                 </Button>
@@ -149,6 +151,26 @@ export function MCPServersTab() {
         </Button>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <ConfirmDeleteDialog
+        open={deleteIndex != null}
+        onOpenChange={(open) => { if (!open) setDeleteIndex(null) }}
+        title="Remove MCP server?"
+        description={
+          deleteIndex != null ? (
+            <>
+              This will remove{' '}
+              <strong>{servers[deleteIndex]?.name.trim() || `Server ${deleteIndex + 1}`}</strong>{' '}
+              from the list. Save changes to persist the removal.
+            </>
+          ) : null
+        }
+        confirmLabel="Remove"
+        onConfirm={() => {
+          if (deleteIndex == null) return
+          setServers((prev) => prev.filter((_, i) => i !== deleteIndex))
+        }}
+      />
     </div>
   )
 }

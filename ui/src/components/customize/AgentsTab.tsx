@@ -16,6 +16,7 @@ import {
   type AgentFormModel,
 } from '@/lib/adlAgentForm'
 import { useAgentFormOptions } from '@/lib/useAgentFormOptions'
+import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { api } from '@/api'
 import type { AgentFileInfo } from '@/types'
 
@@ -76,6 +77,7 @@ export function AgentsTab({ onChanged }: Props) {
   const [creating, setCreating] = useState(false)
   const [newFilename, setNewFilename] = useState('my-agent.yaml')
   const [error, setError] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
   const syncFormFromContent = useCallback(
     (yaml: string) => {
@@ -170,7 +172,6 @@ export function AgentsTab({ onChanged }: Props) {
   }
 
   const remove = async (file: string) => {
-    if (!confirm(`Delete agent file "${file}"?`)) return
     setError(null)
     try {
       await api.agents.remove(file)
@@ -249,7 +250,7 @@ export function AgentsTab({ onChanged }: Props) {
                 <div className="flex items-center gap-2 shrink-0">
                   <ModeToggle mode={editMode} onChange={handleModeChange} />
                   {!creating && selectedFile && (
-                    <Button variant="ghost" size="sm" onClick={() => void remove(selectedFile)}>
+                    <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(selectedFile)}>
                       <Trash2 className="size-3.5" />
                     </Button>
                   )}
@@ -306,6 +307,21 @@ export function AgentsTab({ onChanged }: Props) {
       </div>
 
       {error && <p className="text-sm text-destructive shrink-0">{error}</p>}
+
+      <ConfirmDeleteDialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        title="Delete agent?"
+        description={
+          <>
+            This will permanently delete the agent file <strong>{deleteTarget}</strong>. This action
+            cannot be undone.
+          </>
+        }
+        onConfirm={async () => {
+          if (deleteTarget) await remove(deleteTarget)
+        }}
+      />
     </div>
   )
 }

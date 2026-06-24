@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Trash2 } from 'lucide-react'
+import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { Button } from '@/components/ui/button'
 import { api } from '@/api'
 import type { SkillEntry } from '@/types'
@@ -10,6 +11,7 @@ export function SkillsTab() {
   const [skills, setSkills] = useState<SkillEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [removing, setRemoving] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -28,7 +30,6 @@ export function SkillsTab() {
   }, [load])
 
   const remove = async (name: string) => {
-    if (!confirm(`Remove skill "${name}"?`)) return
     setRemoving(name)
     try {
       await api.skills.remove(name)
@@ -72,7 +73,7 @@ export function SkillsTab() {
                 variant="ghost"
                 size="sm"
                 disabled={removing === skill.name}
-                onClick={() => void remove(skill.name)}
+                onClick={() => setDeleteTarget(skill.name)}
               >
                 <Trash2 className="size-3.5" />
               </Button>
@@ -80,6 +81,23 @@ export function SkillsTab() {
           ))}
         </ul>
       )}
+
+      <ConfirmDeleteDialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        title="Remove skill?"
+        description={
+          <>
+            This will permanently remove the skill <strong>{deleteTarget}</strong> from your Loop
+            installation. This action cannot be undone.
+          </>
+        }
+        confirmLabel="Remove"
+        confirming={deleteTarget != null && removing === deleteTarget}
+        onConfirm={async () => {
+          if (deleteTarget) await remove(deleteTarget)
+        }}
+      />
     </div>
   )
 }
