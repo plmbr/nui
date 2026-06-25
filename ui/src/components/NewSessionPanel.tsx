@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/api'
+import { harnessLabel } from '@/lib/agentDisplay'
 import type { AgentType, CreateSessionRequest, Session } from '@/types'
 
 interface Props {
@@ -13,12 +14,6 @@ interface Props {
   initialAgentTypeId?: string | null
   onClose: () => void
   onCreated: (session: Session) => void
-}
-
-function harnessLabel(harness: string, sandbox?: string): string {
-  if (sandbox === 'docker') return `${harness} · docker`
-  if (sandbox === 'bubblewrap') return `${harness} · bwrap`
-  return harness
 }
 
 function agentMatchesSearch(agent: AgentType, query: string): boolean {

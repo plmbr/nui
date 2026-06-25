@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { AgentHeader } from '@/components/AgentHeader'
 import { AppSidebar } from '@/components/AppSidebar'
 import { ConversationPanel } from '@/components/ConversationPanel'
 import { CustomizePanel } from '@/components/customize/CustomizePanel'
@@ -246,6 +247,12 @@ export default function App() {
         <header className="app-header">
           <SidebarTrigger />
           <span className="app-brand shrink-0">The Loop</span>
+          {selected && selectedAgent && !customizeOpen && !newSessionOpen && !sessionListGroup && (
+            <>
+              <span className="text-muted-foreground/35 shrink-0 select-none" aria-hidden="true">/</span>
+              <AgentHeader agent={selectedAgent} />
+            </>
+          )}
         </header>
         <div className="app-body">
           <AppSidebar
@@ -291,8 +298,6 @@ export default function App() {
                 hideInput={effectiveHideInput}
                 promptMode={promptMode}
                 defaultPrompt={selectedAgent?.defaultPrompt}
-                agentLabel={selectedAgent?.label}
-                agentDescription={selectedAgent?.description}
                 key={selected.id}
               />
             ) : (
