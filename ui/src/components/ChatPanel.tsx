@@ -240,7 +240,7 @@ export function ChatPanel({
                         >
                           {normalizeMarkdown(msg.content)}
                         </ReactMarkdown>
-                        {isStreaming && <span className="agui-stream-cursor" aria-hidden />}
+                        {isStreaming && <ThinkingIndicator variant="streaming" />}
                       </>
                     ) : isStreaming ? (
                       <ThinkingIndicator />
