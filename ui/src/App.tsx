@@ -250,7 +250,7 @@ export default function App() {
           {selected && selectedAgent && !customizeOpen && !newSessionOpen && !sessionListGroup && (
             <>
               <span className="text-muted-foreground/35 shrink-0 select-none" aria-hidden="true">/</span>
-              <AgentHeader agent={selectedAgent} />
+              <AgentHeader name={selected.name} agent={selectedAgent} />
             </>
           )}
         </header>

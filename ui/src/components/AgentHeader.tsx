@@ -5,19 +5,20 @@ import { harnessLabel } from '@/lib/agentDisplay'
 import type { AgentType } from '@/types'
 
 interface Props {
+  name: string
   agent: AgentType
 }
 
-export function AgentHeader({ agent }: Props) {
+export function AgentHeader({ name, agent }: Props) {
   const typeLabel = harnessLabel(agent.harness, agent.sandbox)
 
   return (
     <Tooltip>
       <TooltipTrigger
         className="app-agent-header min-w-0 max-w-[min(24rem,40vw)] truncate text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-        aria-label={`${agent.label}, ${typeLabel}${agent.description ? `, ${agent.description}` : ''}`}
+        aria-label={`${name}, ${agent.label}, ${typeLabel}${agent.description ? `, ${agent.description}` : ''}`}
       >
-        {agent.label}
+        {name}
       </TooltipTrigger>
       <TooltipContent
         side="bottom"
