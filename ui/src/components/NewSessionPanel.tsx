@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/api'
 import { harnessLabel } from '@/lib/agentDisplay'
+import { pickDefaultAgentTypeId, selectableAgentTypes } from '@/lib/agentTypes'
 import type { AgentType, CreateSessionRequest, Session } from '@/types'
 
 interface Props {
@@ -41,22 +42,21 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, onClose, onCre
 
   useEffect(() => {
     if (agentTypes.length === 0) return
-    if (initialAgentTypeId && agentTypes.some((t) => t.id === initialAgentTypeId)) {
+    const selectable = selectableAgentTypes(agentTypes)
+    if (selectable.length === 0) return
+    if (initialAgentTypeId && selectable.some((t) => t.id === initialAgentTypeId)) {
       setSelectedId(initialAgentTypeId)
       return
     }
     api.settings.get()
       .then((settings) => {
-        const preferred = settings.lastAgentType
-          ? agentTypes.find((t) => t.id === settings.lastAgentType)
-          : undefined
         setSelectedId((current) => {
-          if (current && agentTypes.some((t) => t.id === current)) return current
-          return preferred?.id ?? agentTypes[0].id
+          if (current && selectable.some((t) => t.id === current)) return current
+          return pickDefaultAgentTypeId(agentTypes, settings.lastAgentType)
         })
       })
       .catch(() => {
-        setSelectedId((current) => current || agentTypes[0]?.id || '')
+        setSelectedId((current) => current || pickDefaultAgentTypeId(agentTypes))
       })
   }, [agentTypes, initialAgentTypeId])
 
@@ -104,8 +104,8 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, onClose, onCre
   }
 
   const selected = agentTypes.find((a) => a.id === selectedId)
-  const builtins = agentTypes.filter((a) => a.isBuiltin && a.available)
-  const userDefined = agentTypes.filter((a) => !a.isBuiltin)
+  const builtins = selectableAgentTypes(agentTypes).filter((a) => a.isBuiltin)
+  const userDefined = selectableAgentTypes(agentTypes).filter((a) => !a.isBuiltin)
   const searchQuery = customSearch.trim().toLowerCase()
   const filteredCustom = useMemo(() => {
     if (!searchQuery) return userDefined
@@ -181,8 +181,9 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, onClose, onCre
         <div className="flex-1 overflow-y-auto p-6">
           <div className="customize-tab-content mx-auto w-full space-y-5">
 
+            {(builtins.length > 0 || userDefined.length > 0) && (
             <div className="space-y-2">
-              <Label>Built-in Agents</Label>
+              {builtins.length > 0 && <Label>Built-in Agents</Label>}
               <div className="grid grid-cols-1 gap-1.5">
                 {builtins.length > 0 && (
                   <div className={[
@@ -257,6 +258,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, onClose, onCre
                 )}
               </div>
             </div>
+            )}
 
             <div className="space-y-1.5">
               <Label htmlFor="name">

@@ -255,9 +255,6 @@ func defaultAgentTypeCandidates() []string {
 		seen[id] = true
 	}
 
-	if len(candidates) == 0 && len(builtinAgentDefs) > 0 {
-		candidates = append(candidates, model.ADLAgentID(builtinAgentDefs[0]))
-	}
 	return candidates
 }
 
@@ -266,7 +263,9 @@ func defaultAgentTypeCandidates() []string {
 func ensureDefaultAgentType(settings *store.Settings) string {
 	if settings.DefaultAgentType != "" {
 		if def, ok := findADLDef(settings.DefaultAgentType); ok {
-			return model.ADLAgentID(def)
+			if harnessAvailable(def) {
+				return model.ADLAgentID(def)
+			}
 		}
 	}
 

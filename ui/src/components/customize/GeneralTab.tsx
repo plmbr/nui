@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select'
 import { useTheme } from '@/contexts/theme'
 import { api } from '@/api'
+import { pickDefaultAgentTypeId, selectableAgentTypes } from '@/lib/agentTypes'
 import type { AgentType, Capabilities } from '@/types'
 
 export function GeneralTab() {
@@ -30,11 +31,7 @@ export function GeneralTab() {
       .then(([caps, types, settings]) => {
         setCapabilities(caps)
         setAgentTypes(types)
-        const preferred = settings.defaultAgentType
-          ? types.find((t) => t.id === settings.defaultAgentType)
-          : undefined
-        const fallback = types.find((t) => t.available) ?? types[0]
-        setDefaultAgentType(preferred?.id ?? fallback?.id ?? '')
+        setDefaultAgentType(pickDefaultAgentTypeId(types, settings.defaultAgentType))
       })
       .catch(() => {})
   }, [])
@@ -46,6 +43,8 @@ export function GeneralTab() {
   }
 
   const bwrapUnavailable = capabilities !== null && !capabilities.sandbox.bwrap.available
+
+  const selectableAgentTypesList = selectableAgentTypes(agentTypes)
 
   return (
     <div className="customize-tab-content space-y-6">
@@ -65,27 +64,27 @@ export function GeneralTab() {
         <p className="text-xs text-muted-foreground mb-3">
           Used when Loop creates a session on startup.
         </p>
-        {agentTypes.length > 0 && (
+        {selectableAgentTypesList.length > 0 && (
           <Select value={defaultAgentType} onValueChange={handleDefaultAgentChange}>
             <SelectTrigger className="w-full max-w-md">
               <SelectValue placeholder="Select agent" />
             </SelectTrigger>
             <SelectContent>
-              {agentTypes.some((a) => a.isBuiltin) && (
+              {selectableAgentTypesList.some((a) => a.isBuiltin) && (
                 <SelectGroup>
                   <SelectLabel>Built-in</SelectLabel>
-                  {agentTypes.filter((a) => a.isBuiltin).map((a) => (
-                    <SelectItem key={a.id} value={a.id} disabled={!a.available}>
+                  {selectableAgentTypesList.filter((a) => a.isBuiltin).map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
                       {a.label}
                     </SelectItem>
                   ))}
                 </SelectGroup>
               )}
-              {agentTypes.some((a) => !a.isBuiltin) && (
+              {selectableAgentTypesList.some((a) => !a.isBuiltin) && (
                 <SelectGroup>
                   <SelectLabel>Custom</SelectLabel>
-                  {agentTypes.filter((a) => !a.isBuiltin).map((a) => (
-                    <SelectItem key={a.id} value={a.id} disabled={!a.available}>
+                  {selectableAgentTypesList.filter((a) => !a.isBuiltin).map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
                       {a.label}
                     </SelectItem>
                   ))}

@@ -430,15 +430,22 @@ func agentTypeInfoFromDef(def model.ADLDefinition, builtin bool) AgentTypeInfo {
 		DefaultPrompt:   def.DefaultPrompt,
 		WorkingDirInput: model.IsADLWorkingDirInput(def),
 		IsBuiltin:       builtin,
-		Available:       true,
+		Available:       harnessAvailable(def),
 	}
 	if model.IsADLAutoPrompt(def) {
 		info.PromptMode = model.ADLPromptModeAuto
 	}
-	if builtin {
-		info.Available = agent.CLIAvailable(def.Harness.Type)
-	}
 	return info
+}
+
+// harnessAvailable reports whether the harness required by def can run on this system.
+func harnessAvailable(def model.ADLDefinition) bool {
+	switch def.Harness.Type {
+	case "claude-code", "pi", "codex", "opencode":
+		return agent.CLIAvailable(def.Harness.Type)
+	default:
+		return true
+	}
 }
 
 // findADLDef looks up an ADL definition by id from builtins and user-defined definitions.
@@ -489,6 +496,9 @@ func adlDefMatches(def model.ADLDefinition, key string) bool {
 
 func validateSessionConnector(s model.Session) error {
 	if def, ok := findADLDef(s.AgentType); ok {
+		if !harnessAvailable(def) {
+			return fmt.Errorf("%s harness is not available on this system", def.Harness.Type)
+		}
 		switch def.Harness.Type {
 		case "docker":
 			if strings.TrimSpace(def.Harness.Image) == "" {
