@@ -26,6 +26,11 @@ export function agentFromNewSessionSearch(search = window.location.search): stri
   return agent || null
 }
 
+export function cwdFromNewSessionSearch(search = window.location.search): string | null {
+  const cwd = new URLSearchParams(search).get('cwd')?.trim()
+  return cwd || null
+}
+
 function setPath(path: string, replace: boolean): void {
   if (window.location.pathname + window.location.search === path) return
   if (replace) {
@@ -43,9 +48,12 @@ export function navigateToCustomize(replace = false): void {
   setPath(CUSTOMIZE_PATH, replace)
 }
 
-export function navigateToNewSession(agent?: string, replace = false): void {
-  const query = agent?.trim() ? `?agent=${encodeURIComponent(agent.trim())}` : ''
-  setPath(`${NEW_SESSION_PATH}${query}`, replace)
+export function navigateToNewSession(opts?: { agent?: string; cwd?: string }, replace = false): void {
+  const params = new URLSearchParams()
+  if (opts?.agent?.trim()) params.set('agent', opts.agent.trim())
+  if (opts?.cwd?.trim()) params.set('cwd', opts.cwd.trim())
+  const query = params.toString()
+  setPath(`${NEW_SESSION_PATH}${query ? `?${query}` : ''}`, replace)
 }
 
 export function navigateToHome(replace = false): void {

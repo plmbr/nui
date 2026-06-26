@@ -33,10 +33,13 @@ export const api = {
         body: JSON.stringify(data),
       }),
 
-    createFromUrl: (agent?: string): Promise<Session> =>
-      request(`/sessions/new${agent ? `?agent=${encodeURIComponent(agent)}` : ''}`, {
-        method: 'POST',
-      }),
+    createFromUrl: (opts?: { agent?: string; cwd?: string }): Promise<Session> => {
+      const params = new URLSearchParams()
+      if (opts?.agent?.trim()) params.set('agent', opts.agent.trim())
+      if (opts?.cwd?.trim()) params.set('cwd', opts.cwd.trim())
+      const qs = params.toString()
+      return request(`/sessions/new${qs ? `?${qs}` : ''}`, { method: 'POST' })
+    },
 
     ensureDefault: (): Promise<Session> =>
       request('/sessions/ensure-default', { method: 'POST' }),

@@ -339,9 +339,11 @@ func handleNewSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	workingDir := ""
-	if cwd, err := os.Getwd(); err == nil {
-		workingDir = cwd
+	workingDir := strings.TrimSpace(r.URL.Query().Get("cwd"))
+	if workingDir == "" {
+		if cwd, err := os.Getwd(); err == nil {
+			workingDir = cwd
+		}
 	}
 
 	s, err := createSession(model.ADLAgentLabel(def), workingDir, model.ADLAgentID(def), nil)

@@ -14,6 +14,7 @@ import { api } from '@/api'
 import { groupSessionsByAgentType, defaultAgentTypeForGroup } from '@/lib/sessionGroups'
 import {
   agentFromNewSessionSearch,
+  cwdFromNewSessionSearch,
   isCustomizePath,
   isNewSessionPath,
   navigateToCustomize,
@@ -89,7 +90,10 @@ export default function App() {
 
       if (isNewSessionPath()) {
         try {
-          const session = await api.sessions.createFromUrl(agentFromNewSessionSearch() ?? undefined)
+          const session = await api.sessions.createFromUrl({
+            agent: agentFromNewSessionSearch() ?? undefined,
+            cwd: cwdFromNewSessionSearch() ?? undefined,
+          })
           list = await loadSessions()
           nextId = session.id
           navigateToSession(session.id, true)
@@ -148,7 +152,10 @@ export default function App() {
 
       if (isNewSessionPath()) {
         try {
-          const session = await api.sessions.createFromUrl(agentFromNewSessionSearch() ?? undefined)
+          const session = await api.sessions.createFromUrl({
+            agent: agentFromNewSessionSearch() ?? undefined,
+            cwd: cwdFromNewSessionSearch() ?? undefined,
+          })
           await loadSessions()
           setSelectedId(session.id)
           setInitialPrompt(undefined)
