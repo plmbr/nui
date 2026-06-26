@@ -44,28 +44,32 @@ type AgentTypeInfo struct {
 // Docker and remote harness types are configured via user ADL in ~/.loop/agents/*.yaml.
 var builtinAgentDefs = []model.ADLDefinition{
 	{
-		ID:          "claude-code",
-		Name:        "Claude Code",
-		Description: "Claude Code running as a local subprocess",
-		Harness:     model.ADLHarness{Type: "claude-code", Sandbox: "none"},
+		ID:              "claude-code",
+		Name:            "Claude Code",
+		Description:     "Claude Code running as a local subprocess",
+		Harness:         model.ADLHarness{Type: "claude-code", Sandbox: "none"},
+		WorkingDirInput: true,
 	},
 	{
-		ID:          "pi",
-		Name:        "Pi",
-		Description: "Pi running as a local subprocess",
-		Harness:     model.ADLHarness{Type: "pi", Sandbox: "none"},
+		ID:              "pi",
+		Name:            "Pi",
+		Description:     "Pi running as a local subprocess",
+		Harness:         model.ADLHarness{Type: "pi", Sandbox: "none"},
+		WorkingDirInput: true,
 	},
 	{
-		ID:          "codex",
-		Name:        "Codex",
-		Description: "Codex running as a local subprocess",
-		Harness:     model.ADLHarness{Type: "codex", Sandbox: "none"},
+		ID:              "codex",
+		Name:            "Codex",
+		Description:     "Codex running as a local subprocess",
+		Harness:         model.ADLHarness{Type: "codex", Sandbox: "none"},
+		WorkingDirInput: true,
 	},
 	{
-		ID:          "opencode",
-		Name:        "OpenCode",
-		Description: "OpenCode running as a local subprocess",
-		Harness:     model.ADLHarness{Type: "opencode", Sandbox: "none"},
+		ID:              "opencode",
+		Name:            "OpenCode",
+		Description:     "OpenCode running as a local subprocess",
+		Harness:         model.ADLHarness{Type: "opencode", Sandbox: "none"},
+		WorkingDirInput: true,
 	},
 }
 
