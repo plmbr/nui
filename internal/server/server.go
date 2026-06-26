@@ -107,7 +107,7 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 
 func isUIRoute(path string) bool {
 	switch path {
-	case "/", "/customize":
+	case "/", "/launch", "/customize":
 		return true
 	}
 	if strings.HasPrefix(path, "/sessions/") {

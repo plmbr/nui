@@ -7,6 +7,7 @@ import { AgentHeader } from '@/components/AgentHeader'
 import { AppSidebar } from '@/components/AppSidebar'
 import { ConversationPanel } from '@/components/ConversationPanel'
 import { CustomizePanel } from '@/components/customize/CustomizePanel'
+import { LandingPage } from '@/components/LandingPage'
 import { NewSessionPanel } from '@/components/NewSessionPanel'
 import { SessionsListPanel } from '@/components/SessionsListPanel'
 import { ThemeProvider } from '@/contexts/theme'
@@ -17,9 +18,11 @@ import {
   cwdFromNewSessionSearch,
   isCreateSessionPath,
   isCustomizePath,
+  isLaunchPath,
   isNewSessionPath,
   navigateToCustomize,
   navigateToHome,
+  navigateToLaunch,
   navigateToNewSession,
   navigateToSession,
   sessionIdFromPath,
@@ -35,6 +38,7 @@ export default function App() {
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([])
   const [customizeOpen, setCustomizeOpen] = useState(false)
   const [newSessionOpen, setNewSessionOpen] = useState(false)
+  const [landingOpen, setLandingOpen] = useState(false)
   const [sessionListGroupId, setSessionListGroupId] = useState<string | null>(null)
   const [appReady, setAppReady] = useState(false)
   const initializedRef = useRef(false)
@@ -71,6 +75,7 @@ export default function App() {
       setSelectedId(session.id)
       setNewSessionOpen(false)
       setCustomizeOpen(false)
+      setLandingOpen(false)
       setSessionListGroupId(null)
       setInitialPrompt(undefined)
       setHideInput(false)
@@ -107,11 +112,15 @@ export default function App() {
       const openCustomize = isCustomizePath()
       const openNewSession = isNewSessionPath()
       const openCreateSession = isCreateSessionPath()
+      const openLaunch = isLaunchPath()
       if (openCustomize) {
         setCustomizeOpen(true)
       }
       if (openNewSession) {
         setNewSessionOpen(true)
+      }
+      if (openLaunch) {
+        setLandingOpen(true)
       }
 
       let nextId: string | null = null
@@ -120,25 +129,16 @@ export default function App() {
         nextId = await createSessionFromUrl()
         list = await loadSessions()
       } else {
-        nextId = sessionIdFromPath() ?? bootstrap.sessionId ?? settings.lastSessionId ?? null
+        nextId = sessionIdFromPath() ?? bootstrap.sessionId ?? null
         if (nextId && !list.some((s) => s.id === nextId)) {
           nextId = null
         }
 
-        if (!nextId && !openNewSession) {
-          try {
-            const session = await api.sessions.ensureDefault()
-            list = await loadSessions()
-            nextId = session.id
-          } catch {
-            if (list.length > 0) {
-              nextId = list[0].id
-            }
-          }
-        }
-
-        if (nextId && !openCustomize && !openNewSession) {
+        if (nextId && !openCustomize && !openNewSession && !openLaunch) {
           navigateToSession(nextId, true)
+        } else if (!nextId && !openCustomize && !openNewSession && !openCreateSession && !openLaunch) {
+          navigateToLaunch(true)
+          setLandingOpen(true)
         }
       }
 
@@ -160,6 +160,16 @@ export default function App() {
 
   useEffect(() => {
     function onPopState() {
+      if (isLaunchPath()) {
+        setLandingOpen(true)
+        setCustomizeOpen(false)
+        setNewSessionOpen(false)
+        setSessionListGroupId(null)
+        return
+      }
+
+      setLandingOpen(false)
+
       if (isCustomizePath()) {
         setCustomizeOpen(true)
         setNewSessionOpen(false)
@@ -198,6 +208,7 @@ export default function App() {
   const handleSelect = useCallback((id: string) => {
     setCustomizeOpen(false)
     setNewSessionOpen(false)
+    setLandingOpen(false)
     setSessionListGroupId(null)
     setSelectedId(id)
     setInitialPrompt(undefined)
@@ -222,9 +233,18 @@ export default function App() {
 
   const handleOpenCustomize = useCallback(() => {
     setNewSessionOpen(false)
+    setLandingOpen(false)
     setSessionListGroupId(null)
     setCustomizeOpen(true)
     navigateToCustomize()
+  }, [])
+
+  const handleOpenLaunch = useCallback(() => {
+    setCustomizeOpen(false)
+    setNewSessionOpen(false)
+    setSessionListGroupId(null)
+    setLandingOpen(true)
+    navigateToLaunch()
   }, [])
 
   const handleCloseCustomize = useCallback(() => {
@@ -238,6 +258,7 @@ export default function App() {
 
   const handleOpenNewSession = useCallback(() => {
     setCustomizeOpen(false)
+    setLandingOpen(false)
     setSessionListGroupId(null)
     setNewSessionOpen(true)
     navigateToNewSession()
@@ -257,6 +278,7 @@ export default function App() {
     if (!group) return
     const agentId = defaultAgentTypeForGroup(group, agentTypes)
     setCustomizeOpen(false)
+    setLandingOpen(false)
     setSessionListGroupId(null)
     setNewSessionOpen(true)
     navigateToNewSession(agentId ? { agent: agentId } : undefined)
@@ -290,7 +312,8 @@ export default function App() {
       if (nextId) {
         navigateToSession(nextId, true)
       } else {
-        window.history.replaceState(null, '', '/')
+        navigateToHome(true)
+        setLandingOpen(true)
       }
     }
   }, [selectedId, loadSessions])
@@ -304,7 +327,8 @@ export default function App() {
       if (nextId) {
         navigateToSession(nextId, true)
       } else {
-        window.history.replaceState(null, '', '/')
+        navigateToHome(true)
+        setLandingOpen(true)
       }
     }
     if (sessionListGroupId) {
@@ -329,8 +353,10 @@ export default function App() {
       <SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange}>
         <header className="app-header">
           <SidebarTrigger />
-          <span className="app-brand shrink-0">The Loop</span>
-          {selected && selectedAgent && !customizeOpen && !newSessionOpen && !sessionListGroup && (
+          <button type="button" className="app-brand shrink-0" onClick={handleOpenLaunch}>
+            The Loop
+          </button>
+          {selected && selectedAgent && !customizeOpen && !newSessionOpen && !sessionListGroup && !landingOpen && (
             <>
               <span className="text-muted-foreground/35 shrink-0 select-none" aria-hidden="true">/</span>
               <AgentHeader name={selected.name} agent={selectedAgent} />
@@ -354,7 +380,12 @@ export default function App() {
             onDelete={handleDeleteSession}
           />
           <main className="flex min-h-0 flex-1 overflow-hidden">
-            {customizeOpen ? (
+            {landingOpen ? (
+              <LandingPage
+                onNewSession={handleOpenNewSession}
+                onCustomize={handleOpenCustomize}
+              />
+            ) : customizeOpen ? (
               <CustomizePanel
                 onClose={handleCloseCustomize}
                 onAgentTypesChanged={handleAgentTypesChanged}

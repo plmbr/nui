@@ -1,5 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
+export const LAUNCH_PATH = '/launch'
 export const CUSTOMIZE_PATH = '/customize'
 export const NEW_SESSION_PATH = '/sessions/new'
 export const CREATE_SESSION_PATH = '/sessions/create'
@@ -12,6 +13,10 @@ export function sessionIdFromPath(pathname = window.location.pathname): string |
   const match = pathname.match(/^\/sessions\/([^/]+)\/?$/)
   if (!match || match[1] === 'new' || match[1] === 'create') return null
   return match[1]
+}
+
+export function isLaunchPath(pathname = window.location.pathname): boolean {
+  return pathname === LAUNCH_PATH || pathname === `${LAUNCH_PATH}/`
 }
 
 export function isCustomizePath(pathname = window.location.pathname): boolean {
@@ -61,6 +66,10 @@ export function navigateToNewSession(opts?: { agent?: string; cwd?: string }, re
   setPath(`${NEW_SESSION_PATH}${query ? `?${query}` : ''}`, replace)
 }
 
+export function navigateToLaunch(replace = false): void {
+  setPath(LAUNCH_PATH, replace)
+}
+
 export function navigateToHome(replace = false): void {
-  setPath('/', replace)
+  navigateToLaunch(replace)
 }

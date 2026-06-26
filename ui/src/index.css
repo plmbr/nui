@@ -265,6 +265,46 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+
+    &:hover {
+      opacity: 0.85;
+    }
+  }
+
+  /* ─── Landing page ───────────────────────────────────────────── */
+  .landing-page {
+    @apply relative flex flex-1 flex-col items-center justify-center overflow-hidden;
+  }
+
+  .landing-page__content {
+    @apply flex flex-col items-center gap-6 px-6 text-center;
+    transform: translateY(-6vh);
+  }
+
+  .landing-page__title {
+    @apply text-4xl font-semibold tracking-tight sm:text-5xl;
+    background: var(--gradient-accent);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .landing-page__subtitle {
+    @apply max-w-md text-base text-muted-foreground sm:text-lg;
+  }
+
+  .landing-page__actions {
+    @apply flex flex-wrap items-center justify-center gap-3 pt-2;
+  }
+
+  .landing-page__btn-primary {
+    background: var(--gradient-accent);
+    box-shadow: 0 4px 20px var(--glow);
+
+    &:hover {
+      filter: brightness(1.06);
+      box-shadow: 0 6px 28px var(--glow);
+    }
   }
 
   /* ─── App shell ──────────────────────────────────────────────── */
