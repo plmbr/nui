@@ -41,6 +41,10 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 		extensionManager.SetExtensionRegistry(reg)
 	}
 
+	if err := applyStartSettings(opts); err != nil {
+		return fmt.Errorf("apply settings: %w", err)
+	}
+
 	if err := bootstrapFromCLI(opts); err != nil {
 		return fmt.Errorf("bootstrap session: %w", err)
 	}

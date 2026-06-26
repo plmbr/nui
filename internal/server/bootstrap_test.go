@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"loop/internal/store"
 )
 
 func TestResolveUserPromptAgentType_acceptsUserPrompt(t *testing.T) {
@@ -44,5 +46,54 @@ harness:
 	_, err := resolveUserPromptAgentType("auto-agent")
 	if err == nil {
 		t.Fatal("expected error for auto prompt agent")
+	}
+}
+
+func TestApplyStartSettings_theme(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	if err := applyStartSettings(StartOptions{Theme: "dark"}); err != nil {
+		t.Fatal(err)
+	}
+	settings, err := store.LoadSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.Theme != "dark" {
+		t.Fatalf("theme = %q, want dark", settings.Theme)
+	}
+}
+
+func TestApplyStartSettings_invalidTheme(t *testing.T) {
+	err := applyStartSettings(StartOptions{Theme: "sepia"})
+	if err == nil {
+		t.Fatal("expected error for invalid theme")
+	}
+}
+
+func TestApplyStartSettings_defaultAgent(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	if err := applyStartSettings(StartOptions{DefaultAgentType: "claude-code"}); err != nil {
+		t.Fatal(err)
+	}
+	settings, err := store.LoadSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.DefaultAgentType != "claude-code" {
+		t.Fatalf("defaultAgentType = %q, want claude-code", settings.DefaultAgentType)
+	}
+}
+
+func TestApplyStartSettings_unknownDefaultAgent(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	err := applyStartSettings(StartOptions{DefaultAgentType: "not-a-real-agent"})
+	if err == nil {
+		t.Fatal("expected error for unknown default agent")
 	}
 }

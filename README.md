@@ -123,6 +123,8 @@ loop ui -a pi -m "Summarize this repo" --open --hide-input
 | `--prompt` | `-m` | Initial prompt. The UI auto-sends it in the new session. Also starts with the sidebar closed. |
 | `--hide-input` | | Hide the chat input field (for one-off runs; use with `--prompt`). |
 | `--working-dir` | `-w` | Working directory for the session (defaults to the current directory). |
+| `--theme` | | UI theme: `light` or `dark` (saved to `~/.loop/settings.json`). |
+| `--default-agent` | | Default agent type for new sessions (ADL id or display name; saved to `~/.loop/settings.json`). |
 
 Agent type names match the New Session dialog — e.g. `Claude Code`, `pi`, `codex`, `opencode`, or a custom ADL name like `docker-echo`. Legacy aliases such as `claude-code` also work.
 

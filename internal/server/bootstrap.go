@@ -19,11 +19,13 @@ import (
 
 // StartOptions configures optional CLI-driven session bootstrap on server start.
 type StartOptions struct {
-	AgentType  string
-	Prompt     string
-	WorkingDir string
-	Open       bool // open the UI in the system default browser
-	HideInput  bool // hide the chat input in the UI (one-off runs)
+	AgentType        string
+	Prompt           string
+	WorkingDir       string
+	Open             bool // open the UI in the system default browser
+	HideInput        bool // hide the chat input in the UI (one-off runs)
+	Theme            string // "light" | "dark"; persisted to settings when set
+	DefaultAgentType string // ADL agent id; persisted to settings when set
 }
 
 type bootstrapState struct {
@@ -61,6 +63,41 @@ func takeBootstrap() bootstrapState {
 	out := bootstrap
 	bootstrap = bootstrapState{}
 	return out
+}
+
+// applyStartSettings persists CLI-provided theme and default agent type to settings.json.
+func applyStartSettings(opts StartOptions) error {
+	theme := strings.TrimSpace(opts.Theme)
+	defaultAgent := strings.TrimSpace(opts.DefaultAgentType)
+	if theme == "" && defaultAgent == "" {
+		return nil
+	}
+
+	settings, err := store.LoadSettings()
+	if err != nil {
+		settings = store.Settings{Theme: "light"}
+	}
+
+	if theme != "" {
+		if theme != "light" && theme != "dark" {
+			return fmt.Errorf("theme must be %q or %q", "light", "dark")
+		}
+		settings.Theme = theme
+	}
+	if defaultAgent != "" {
+		def, ok := findADLDef(defaultAgent)
+		if !ok {
+			return fmt.Errorf("unknown agent id %q", defaultAgent)
+		}
+		if def.Kind == "workflow" {
+			return fmt.Errorf("workflows cannot be used as the default agent type")
+		}
+		settings.DefaultAgentType = model.ADLAgentID(def)
+	}
+	if settings.Theme == "" {
+		settings.Theme = "light"
+	}
+	return store.SaveSettings(settings)
 }
 
 func handleBootstrap(w http.ResponseWriter, r *http.Request) {
