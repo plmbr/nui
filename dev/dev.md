@@ -95,11 +95,11 @@ kind: agent | workflow          # workflow = multi-step; omitted defaults to age
 
 promptMode: user | auto         # auto hides input and runs default or launch prompt
 defaultPrompt: string           # optional; auto mode when no launch prompt (default: built-in phrase)
+workingDirInput: bool           # true = user picks working dir at session create; default uses ~/.loop/workspaces/<session-id>
 
 harness:
   type: claude-code | pi | codex | opencode | docker | remote
   model: string
-  workingDir: string              # optional; defaults to session working dir
   sandbox: none | bubblewrap | docker   # subprocess harnesses only; default: none
   image: string                   # sandbox:docker or harness.type:docker
   containerPort: 9090             # harness.type:docker (user images; builtin sandbox images use 8090)

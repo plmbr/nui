@@ -61,7 +61,6 @@ type ADLHarness struct {
 	Type          string `yaml:"type"          json:"type"`
 	Model         string `yaml:"model"         json:"model,omitempty"`
 	Sandbox       string `yaml:"sandbox"       json:"sandbox,omitempty"`       // "none" | "bubblewrap" | "docker"
-	WorkingDir    string `yaml:"workingDir"    json:"workingDir,omitempty"`
 	Image         string `yaml:"image"         json:"image,omitempty"`          // Docker image (sandbox=docker or harness type=docker)
 	ContainerPort int    `yaml:"containerPort" json:"containerPort,omitempty"` // harness type=docker only
 	Host          string            `yaml:"host"          json:"host,omitempty"`           // harness type=remote only
