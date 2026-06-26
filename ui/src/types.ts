@@ -13,7 +13,10 @@ export interface CreateSessionRequest {
   name: string
   workingDir: string
   agentType: string
-  agentConfig?: Record<string, unknown>
+  agentConfig?: {
+    userScopeHarnessConfig?: boolean
+    [key: string]: unknown
+  }
 }
 
 export interface DirectorySuggestions {

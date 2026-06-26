@@ -109,6 +109,27 @@ func TestProvisionClaudeHarnessConfigLinksCredentials(t *testing.T) {
 	}
 }
 
+func TestProvisionClaudeHarnessConfigSkipsCredentialsWhenUserScope(t *testing.T) {
+	tmp := t.TempDir()
+	home := filepath.Join(tmp, "home")
+	claudeHome := filepath.Join(home, ".claude")
+	if err := os.MkdirAll(claudeHome, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(claudeHome, ".credentials.json"), []byte("test-credential\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", home)
+
+	configDir, err := ProvisionHarnessConfig("user-scope-session", "claude-code", HarnessDeps{UserScope: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(configDir, ".credentials.json")); err == nil {
+		t.Fatal("expected no credential symlink when user scope is enabled")
+	}
+}
+
 func TestProvisionCodexHarnessConfig(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", filepath.Join(tmp, "home"))
@@ -288,7 +309,7 @@ func TestHarnessConfigEnvVar(t *testing.T) {
 }
 
 func TestDockerSessionConfigArgs(t *testing.T) {
-	args := dockerSessionConfigArgs("codex", "/tmp/session")
+	args := dockerSessionConfigArgs("codex", "/tmp/session", false)
 	if len(args) != 4 {
 		t.Fatalf("args = %v", args)
 	}
@@ -299,13 +320,21 @@ func TestDockerSessionConfigArgs(t *testing.T) {
 		t.Fatalf("codex env: %v", args[2:])
 	}
 
-	piArgs := dockerSessionConfigArgs("pi", "/tmp/session")
+	piArgs := dockerSessionConfigArgs("pi", "/tmp/session", false)
 	wantPiEnv := envPiCodingAgentDir + "=" + dockerSessionConfigMount + "/" + piAgentSubdir
 	if piArgs[len(piArgs)-1] != wantPiEnv {
 		t.Fatalf("pi env: got %q want %q", piArgs[len(piArgs)-1], wantPiEnv)
 	}
-	if dockerSessionConfigArgs("claude-code", "") != nil {
+	if dockerSessionConfigArgs("claude-code", "", false) != nil {
 		t.Fatal("empty session dir should produce no args")
+	}
+
+	userScopeArgs := dockerSessionConfigArgs("claude-code", "/tmp/session", true)
+	if len(userScopeArgs) != 2 {
+		t.Fatalf("user scope args = %v", userScopeArgs)
+	}
+	if userScopeArgs[0] != "-v" || userScopeArgs[1] != "/tmp/session:"+dockerSessionConfigMount {
+		t.Fatalf("user scope volume = %v", userScopeArgs)
 	}
 }
 

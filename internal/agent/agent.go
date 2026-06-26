@@ -37,6 +37,9 @@ type RunRequest struct {
 	Model        string
 	// ConfigDir is ~/.loop/sessions/<sessionID> with provisioned harness config.
 	ConfigDir string
+	// UserScopeHarness loads harness user/project settings via native CLI flags
+	// instead of redirecting config through session-scoped env vars.
+	UserScopeHarness bool
 	// Env is merged ADL env (global + harness); applied to harness subprocesses.
 	Env map[string]string
 }

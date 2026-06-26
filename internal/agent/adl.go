@@ -61,9 +61,10 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 		msg := buildStepMessage(req.Message, step, stepOutputs)
 
 		stepReq := RunRequest{
-			WorkingDir:   req.WorkingDir,
-			Message:      msg,
-			SystemPrompt: systemPrompt,
+			WorkingDir:       req.WorkingDir,
+			Message:          msg,
+			SystemPrompt:     systemPrompt,
+			UserScopeHarness: req.UserScopeHarness,
 		}
 
 		// Collect this step's output so downstream steps can reference it.
@@ -79,7 +80,9 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 
 // runStep resolves the harness and runs the agent for a single step.
 func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.ADLHarness, systemPrompt string, step *model.ADLStep, events chan<- Event) error {
+	req.UserScopeHarness = effectiveUserScopeHarness(harness.Type, req.UserScopeHarness)
 	deps := harnessDepsFromADL(a.def, step, req.WorkingDir)
+	deps.UserScope = req.UserScopeHarness
 	deps, err := ExpandHarnessDeps(deps, a.manager.registry)
 	if err != nil {
 		return fmt.Errorf("expand harness deps: %w", err)
@@ -97,7 +100,7 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 	case "claude-code", "":
 		switch harness.Sandbox {
 		case "docker":
-			ag, err := a.manager.GetClaudeCodeDocker(a.projectID, harness.Image, req.WorkingDir, req.ConfigDir)
+			ag, err := a.manager.GetClaudeCodeDocker(a.projectID, harness.Image, req.WorkingDir, req.ConfigDir, req.UserScopeHarness)
 			if err != nil {
 				return fmt.Errorf("claude-code docker harness: %w", err)
 			}
@@ -141,7 +144,7 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 	case "codex":
 		switch harness.Sandbox {
 		case "docker":
-			ag, err := a.manager.GetCodexDocker(a.projectID, harness.Image, req.WorkingDir, req.ConfigDir)
+			ag, err := a.manager.GetCodexDocker(a.projectID, harness.Image, req.WorkingDir, req.ConfigDir, req.UserScopeHarness)
 			if err != nil {
 				return fmt.Errorf("codex docker harness: %w", err)
 			}

@@ -899,8 +899,9 @@ func handleSessionChat(w http.ResponseWriter, r *http.Request, sessionID string)
 	go func() {
 		defer close(events)
 		runReq := agent.RunRequest{
-			WorkingDir: session.WorkingDir,
-			Message:    req.Message,
+			WorkingDir:       session.WorkingDir,
+			Message:          req.Message,
+			UserScopeHarness: agent.UserScopeHarnessConfig(session.AgentConfig),
 		}
 		if !isADL {
 			runReq.SessionID = agentSessionID

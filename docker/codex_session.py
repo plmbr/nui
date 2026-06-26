@@ -94,7 +94,7 @@ class PersistentCodexSession:
         self._model = model
 
         thread_id = self._thread_id or resume_session_id
-        flags = self._build_flags(model)
+        flags = self._build_flags(model, kwargs)
         if not os.path.isfile(self._binary) and not shutil.which(self._binary):
             yield {
                 "type": "error",
@@ -156,13 +156,15 @@ class PersistentCodexSession:
         proc.wait()
         self._proc = None
 
-    def _build_flags(self, model: str) -> list[str]:
+    def _build_flags(self, model: str, kwargs: dict[str, Any] | None = None) -> list[str]:
         flags = [
             "--json",
             "--dangerously-bypass-approvals-and-sandbox",
             "--skip-git-repo-check",
         ]
-        if not os.environ.get("CODEX_HOME"):
+        if kwargs is None:
+            kwargs = {}
+        if not os.environ.get("CODEX_HOME") and not kwargs.get("userScopeHarness"):
             flags.append("--ignore-user-config")
         base_url = os.environ.get("OPENAI_BASE_URL", "")
         if base_url:

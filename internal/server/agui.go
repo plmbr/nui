@@ -120,8 +120,9 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 	go func() {
 		defer close(events)
 		runReq := agent.RunRequest{
-			WorkingDir: session.WorkingDir,
-			Message:    lastUserMessage,
+			WorkingDir:       session.WorkingDir,
+			Message:          lastUserMessage,
+			UserScopeHarness: agent.UserScopeHarnessConfig(session.AgentConfig),
 		}
 		if !isADL {
 			runReq.SessionID = agentSessionID

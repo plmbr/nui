@@ -24,8 +24,10 @@ func (claudeHarnessProvisioner) provision(configDir string, deps HarnessDeps) er
 	if err := writeClaudeMCPConfig(configDir, deps.MCPServers); err != nil {
 		return err
 	}
-	if err := linkClaudeAuthFromUser(configDir); err != nil {
-		return err
+	if !deps.UserScope {
+		if err := linkClaudeAuthFromUser(configDir); err != nil {
+			return err
+		}
 	}
 	if err := installHarnessSkills("claude-code", configDir, deps.WorkingDir, deps.Skills); err != nil {
 		return fmt.Errorf("install skills: %w", err)

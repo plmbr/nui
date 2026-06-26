@@ -76,7 +76,7 @@ func (s *persistentOpenCodeSession) runTurn(ctx context.Context, agent *OpenCode
 			cmd.Dir = wd
 		}
 	}
-	applyCmdEnv(cmd, "opencode", req.ConfigDir, req.Env)
+	applyCmdEnv(cmd, "opencode", req.ConfigDir, req.Env, req.UserScopeHarness)
 	cmd.Stdin = nil
 
 	stdout, err := cmd.StdoutPipe()
@@ -167,7 +167,7 @@ func (s *persistentOpenCodeSession) ensureServer(ctx context.Context, agent *Ope
 			cmd.Dir = wd
 		}
 	}
-	applyCmdEnv(cmd, "opencode", req.ConfigDir, req.Env)
+	applyCmdEnv(cmd, "opencode", req.ConfigDir, req.Env, req.UserScopeHarness)
 
 	cmd.Stdin = nil
 

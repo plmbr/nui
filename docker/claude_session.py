@@ -156,6 +156,11 @@ class PersistentClaudeSession:
         resume = self._claude_session_id or resume_session_id
         if resume:
             claude_args += ["--resume", resume]
+        if kwargs.get("userScopeHarness"):
+            claude_args += ["--setting-sources", "user,project,local"]
+            mcp_path = os.path.join("/home/loop/.loop/session-config", ".claude.json")
+            if os.path.isfile(mcp_path):
+                claude_args += ["--mcp-config", mcp_path]
 
         args = self._wrap_args(claude_args, wd)
         cwd = None if os.environ.get("LOOP_BWRAP_PATH") else wd

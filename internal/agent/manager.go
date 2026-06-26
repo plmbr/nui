@@ -105,11 +105,11 @@ func (m *Manager) touchActivity(projectID string) {
 
 // GetClaudeCodeDocker launches (or reuses) a Docker container running the claude-code HTTP agent.
 // When sessionConfigDir is set, ADL-provisioned ai assets are bind-mounted into the container.
-func (m *Manager) GetClaudeCodeDocker(projectID, image, workingDir, sessionConfigDir string) (Agent, error) {
+func (m *Manager) GetClaudeCodeDocker(projectID, image, workingDir, sessionConfigDir string, userScope bool) (Agent, error) {
 	if image == "" {
 		image = "loop-claude-code:latest"
 	}
-	baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "claude-code", sessionConfigDir, ".claude", true)
+	baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "claude-code", sessionConfigDir, ".claude", !userScope, userScope)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +126,7 @@ func (m *Manager) GetPiDocker(projectID, image, workingDir, sessionConfigDir str
 	home, _ := os.UserHomeDir()
 	piSessions := filepath.Join(home, ".pi", "agent", "sessions")
 	os.MkdirAll(piSessions, 0755) //nolint:errcheck
-	baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "pi", sessionConfigDir, "", false,
+	baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "pi", sessionConfigDir, "", false, false,
 		piSessions+":/home/loop/.pi/agent/sessions")
 	if err != nil {
 		return nil, err
@@ -143,7 +143,7 @@ func (m *Manager) GetOpenCodeDocker(projectID, image, workingDir, sessionConfigD
 	home, _ := os.UserHomeDir()
 	ocSessions := filepath.Join(home, ".loop", "opencode-sessions")
 	os.MkdirAll(ocSessions, 0755) //nolint:errcheck
-	baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "opencode", sessionConfigDir, "", false,
+	baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "opencode", sessionConfigDir, "", false, false,
 		ocSessions+":/home/loop/.local/share/opencode")
 	if err != nil {
 		return nil, err
@@ -154,11 +154,11 @@ func (m *Manager) GetOpenCodeDocker(projectID, image, workingDir, sessionConfigD
 
 // GetCodexDocker launches (or reuses) a Docker container running the codex HTTP agent.
 // Auth is forwarded via ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL from the host environment.
-func (m *Manager) GetCodexDocker(projectID, image, workingDir, sessionConfigDir string) (Agent, error) {
+func (m *Manager) GetCodexDocker(projectID, image, workingDir, sessionConfigDir string, userScope bool) (Agent, error) {
 	if image == "" {
 		image = "loop-codex:latest"
 	}
-	baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "codex", sessionConfigDir, "", false)
+	baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "codex", sessionConfigDir, ".codex", false, userScope)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[s
 		if image == "" {
 			image = "loop-claude-code:latest"
 		}
-		baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "claude-code", "", ".claude", true)
+		baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "claude-code", "", ".claude", true, false)
 		if err != nil {
 			return nil, err
 		}
@@ -195,7 +195,7 @@ func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[s
 		home, _ := os.UserHomeDir()
 		piSessions := filepath.Join(home, ".pi", "agent", "sessions")
 		os.MkdirAll(piSessions, 0755) //nolint:errcheck
-		baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "pi", "", "", false,
+		baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "pi", "", "", false, false,
 			piSessions+":/home/loop/.pi/agent/sessions")
 		if err != nil {
 			return nil, err
@@ -210,7 +210,7 @@ func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[s
 		home, _ := os.UserHomeDir()
 		ocSessions := filepath.Join(home, ".loop", "opencode-sessions")
 		os.MkdirAll(ocSessions, 0755) //nolint:errcheck
-		baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "opencode", "", "", false,
+		baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "opencode", "", "", false, false,
 			ocSessions+":/home/loop/.local/share/opencode")
 		if err != nil {
 			return nil, err
@@ -515,7 +515,7 @@ func (m *Manager) StopAll() {
 
 const builtinContainerPort = 8090
 
-func (m *Manager) ensureBuiltinDockerRunning(projectID, image, workingDir, harnessType, sessionConfigDir, agentConfigDir string, shadowSettings bool, extraVolumes ...string) (string, error) {
+func (m *Manager) ensureBuiltinDockerRunning(projectID, image, workingDir, harnessType, sessionConfigDir, agentConfigDir string, shadowSettings, userScope bool, extraVolumes ...string) (string, error) {
 	m.containerMu.Lock()
 	baseURL, exists := m.dockerURLs[projectID]
 	m.containerMu.Unlock()
@@ -534,7 +534,7 @@ func (m *Manager) ensureBuiltinDockerRunning(projectID, image, workingDir, harne
 	if exists && isHTTPAlive(baseURL) {
 		return baseURL, nil
 	}
-	return m.launchBuiltinDocker(projectID, image, workingDir, harnessType, sessionConfigDir, agentConfigDir, shadowSettings, extraVolumes...)
+	return m.launchBuiltinDocker(projectID, image, workingDir, harnessType, sessionConfigDir, agentConfigDir, shadowSettings, userScope, extraVolumes...)
 }
 
 // snapshotJSONFile copies src to <dir>/<name>, validates it is valid JSON, and returns
@@ -578,7 +578,7 @@ func loopbackAddHostArgs(baseURL string) []string {
 	return nil
 }
 
-func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, harnessType, sessionConfigDir, agentConfigDir string, shadowSettings bool, extraVolumes ...string) (string, error) {
+func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, harnessType, sessionConfigDir, agentConfigDir string, shadowSettings, userScope bool, extraVolumes ...string) (string, error) {
 	m.containerMu.Lock()
 	if oldID, ok := m.containers[projectID]; ok {
 		go exec.Command("docker", "stop", oldID).Run()
@@ -607,9 +607,12 @@ func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, harnessType,
 	if workingDir != "" {
 		args = append(args, "-v", workingDir+":"+workingDir)
 	}
-	if mountArgs := dockerSessionConfigArgs(harnessType, sessionConfigDir); len(mountArgs) > 0 {
+	mountArgs := dockerSessionConfigArgs(harnessType, sessionConfigDir, userScope)
+	if len(mountArgs) > 0 {
 		args = append(args, mountArgs...)
-	} else if agentConfigDir != "" {
+	}
+	mountUserConfig := agentConfigDir != "" && (sessionConfigDir == "" || userScope)
+	if mountUserConfig {
 		hostConfigDir := filepath.Join(home, agentConfigDir)
 		os.MkdirAll(hostConfigDir, 0700) //nolint:errcheck
 		args = append(args, "-v", hostConfigDir+":"+containerHome+"/"+agentConfigDir)

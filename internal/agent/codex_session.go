@@ -23,6 +23,7 @@ type persistentCodexSession struct {
 	useBwrap   bool
 	workingDir string
 	configDir  string
+	userScope  bool
 
 	threadID string
 }
@@ -36,7 +37,8 @@ func (s *persistentCodexSession) matches(agent *CodexAgent, req RunRequest) bool
 		s.sandbox == agent.Sandbox &&
 		s.useBwrap == agent.useBwrap() &&
 		s.workingDir == req.WorkingDir &&
-		s.configDir == req.ConfigDir
+		s.configDir == req.ConfigDir &&
+		s.userScope == req.UserScopeHarness
 }
 
 func (s *persistentCodexSession) runTurn(ctx context.Context, agent *CodexAgent, req RunRequest, events chan<- Event) error {
@@ -53,7 +55,7 @@ func (s *persistentCodexSession) runTurn(ctx context.Context, agent *CodexAgent,
 
 	bin := agent.binaryPath()
 	args := s.buildArgs(req)
-	bindDir := harnessConfigBindDir("codex", req.ConfigDir)
+	bindDir := effectiveHarnessConfigBindDir("codex", req.ConfigDir, req.UserScopeHarness)
 	var cmd *exec.Cmd
 	if agent.useBwrap() {
 		bwrap := GetBwrapStatus()
@@ -68,7 +70,7 @@ func (s *persistentCodexSession) runTurn(ctx context.Context, agent *CodexAgent,
 			cmd.Dir = req.WorkingDir
 		}
 	}
-	applyCmdEnv(cmd, "codex", req.ConfigDir, req.Env)
+	applyCmdEnv(cmd, "codex", req.ConfigDir, req.Env, req.UserScopeHarness)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -93,6 +95,7 @@ func (s *persistentCodexSession) runTurn(ctx context.Context, agent *CodexAgent,
 	s.useBwrap = agent.useBwrap()
 	s.workingDir = req.WorkingDir
 	s.configDir = req.ConfigDir
+	s.userScope = req.UserScopeHarness
 
 	go func() {
 		scanner := bufio.NewScanner(stderr)
@@ -149,7 +152,7 @@ func (s *persistentCodexSession) buildArgs(req RunRequest) []string {
 		"--dangerously-bypass-approvals-and-sandbox",
 		"--skip-git-repo-check",
 	)
-	if req.ConfigDir == "" {
+	if !req.UserScopeHarness && req.ConfigDir == "" {
 		args = append(args, "--ignore-user-config")
 	}
 	if baseURL := os.Getenv("OPENAI_BASE_URL"); baseURL != "" {

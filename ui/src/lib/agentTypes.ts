@@ -19,3 +19,14 @@ export function pickDefaultAgentTypeId(
   const builtin = selectable.find((t) => t.isBuiltin)
   return builtin?.id ?? selectable[0]?.id ?? ''
 }
+
+/** Harnesses that can load user/project settings via native CLI flags. */
+export function harnessSupportsUserScope(harness: AgentType['harness']): boolean {
+  return harness === 'claude-code' || harness === 'codex'
+}
+
+/** Default user-scope checkbox state for a newly selected agent type. */
+export function defaultUserScopeHarnessConfig(agent: AgentType | undefined): boolean {
+  if (!agent || !harnessSupportsUserScope(agent.harness)) return false
+  return agent.isBuiltin
+}

@@ -270,6 +270,9 @@ func (a *HTTPExtensionAgent) Run(ctx context.Context, req RunRequest, events cha
 	if len(req.Env) > 0 {
 		params["env"] = req.Env
 	}
+	if req.UserScopeHarness {
+		params["userScopeHarness"] = true
+	}
 
 	body, _ := json.Marshal(params)
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", a.baseURL+"/run", bytes.NewReader(body))

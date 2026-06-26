@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/api'
 import { harnessLabel } from '@/lib/agentDisplay'
-import { pickDefaultAgentTypeId, selectableAgentTypes } from '@/lib/agentTypes'
+import { pickDefaultAgentTypeId, selectableAgentTypes, harnessSupportsUserScope, defaultUserScopeHarnessConfig } from '@/lib/agentTypes'
 import type { AgentType, CreateSessionRequest, Session } from '@/types'
 
 interface Props {
@@ -36,6 +36,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   const [customSearch, setCustomSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [userScopeHarnessConfig, setUserScopeHarnessConfig] = useState(false)
   const [directorySuggestions, setDirectorySuggestions] = useState<string[]>([])
   const [directoryInputFocused, setDirectoryInputFocused] = useState(false)
   const [activeDirectoryIndex, setActiveDirectoryIndex] = useState(0)
@@ -101,6 +102,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
     setWorkingDir('')
     setCustomSearch('')
     setError('')
+    setUserScopeHarnessConfig(false)
     setDirectorySuggestions([])
     setDirectoryInputFocused(false)
   }
@@ -120,6 +122,12 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   }, [searchQuery, userDefined])
   const isBasicLoopSelected = builtins.some((a) => a.id === selectedId)
   const directoryListOpen = directoryInputFocused && directorySuggestions.length > 0
+  const showUserScopeOption = selected ? harnessSupportsUserScope(selected.harness) : false
+
+  useEffect(() => {
+    const agent = agentTypes.find((a) => a.id === selectedId)
+    setUserScopeHarnessConfig(defaultUserScopeHarnessConfig(agent))
+  }, [selectedId, agentTypes])
 
   function selectDirectory(path: string) {
     suppressDirectoryLookupForValue.current = path
@@ -160,6 +168,9 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
         name: sessionName,
         workingDir: workingDir.trim(),
         agentType: selectedId,
+      }
+      if (userScopeHarnessConfig) {
+        req.agentConfig = { userScopeHarnessConfig: true }
       }
       const session = await api.sessions.create(req)
       api.settings.update({ lastAgentType: selectedId }).catch(() => {})
@@ -336,6 +347,27 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {showUserScopeOption && (
+              <div className="shrink-0 flex items-start gap-2">
+                <input
+                  id="userScopeHarnessConfig"
+                  type="checkbox"
+                  checked={userScopeHarnessConfig}
+                  onChange={(e) => setUserScopeHarnessConfig(e.target.checked)}
+                  className="mt-1 size-4 shrink-0 rounded border border-input"
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="userScopeHarnessConfig" className="cursor-pointer">
+                    User-scope harness config
+                  </Label>
+                  <p className="text-xs text-muted-foreground leading-snug">
+                    Also load your harness user and project settings from the working directory.
+                    ADL MCP servers are still merged in when supported.
+                  </p>
+                </div>
               </div>
             )}
 

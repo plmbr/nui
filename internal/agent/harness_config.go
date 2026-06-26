@@ -28,6 +28,7 @@ type HarnessDeps struct {
 	MCPServers   []model.ADLMCPServer
 	Skills       []model.ADLSkill
 	WorkingDir   string
+	UserScope    bool
 }
 
 type harnessProvisioner interface {
@@ -67,11 +68,16 @@ func normalizeHarnessType(harnessType string) string {
 }
 
 // dockerSessionConfigArgs returns docker run -v/-e flags for a provisioned session config dir.
-func dockerSessionConfigArgs(harnessType, sessionConfigDir string) []string {
+// When userScope is true the session dir is still mounted for ADL files such as MCP config,
+// but harness config env vars are omitted so the container keeps user-scoped settings.
+func dockerSessionConfigArgs(harnessType, sessionConfigDir string, userScope bool) []string {
 	if sessionConfigDir == "" {
 		return nil
 	}
 	args := []string{"-v", sessionConfigDir + ":" + dockerSessionConfigMount}
+	if userScope {
+		return args
+	}
 	if envKey := harnessConfigEnvVar(harnessType); envKey != "" {
 		args = append(args, "-e", envKey+"="+dockerHarnessConfigEnvValue(harnessType))
 	}
@@ -173,15 +179,18 @@ func ProvisionHarnessConfig(sessionID, harnessType string, deps HarnessDeps) (st
 }
 
 // applyCmdEnv sets cmd.Env from the host environment, ADL overrides, and the harness config dir.
-func applyCmdEnv(cmd *exec.Cmd, harnessType, sessionConfigDir string, adlEnv map[string]string) {
+// When userScope is true, harness config env vars such as CLAUDE_CONFIG_DIR are omitted.
+func applyCmdEnv(cmd *exec.Cmd, harnessType, sessionConfigDir string, adlEnv map[string]string, userScope bool) {
 	overrides := make(map[string]string, len(adlEnv)+1)
 	for k, v := range adlEnv {
 		overrides[k] = v
 	}
-	bindDir := harnessConfigBindDir(harnessType, sessionConfigDir)
-	if bindDir != "" {
-		if envKey := harnessConfigEnvVar(harnessType); envKey != "" {
-			overrides[envKey] = bindDir
+	if !userScope {
+		bindDir := harnessConfigBindDir(harnessType, sessionConfigDir)
+		if bindDir != "" {
+			if envKey := harnessConfigEnvVar(harnessType); envKey != "" {
+				overrides[envKey] = bindDir
+			}
 		}
 	}
 	cmd.Env = envWithOverrides(overrides)

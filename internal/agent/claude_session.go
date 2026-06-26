@@ -28,6 +28,7 @@ type persistentClaudeSession struct {
 	useBwrap     bool
 	workingDir   string
 	configDir    string
+	userScope    bool
 
 	claudeSessionID string
 }
@@ -42,7 +43,8 @@ func (s *persistentClaudeSession) matches(agent *ClaudeCodeAgent, req RunRequest
 		s.sandbox == agent.Sandbox &&
 		s.useBwrap == agent.useBwrap() &&
 		s.workingDir == req.WorkingDir &&
-		s.configDir == req.ConfigDir
+		s.configDir == req.ConfigDir &&
+		s.userScope == req.UserScopeHarness
 }
 
 func processAlive(cmd *exec.Cmd) bool {
@@ -199,11 +201,17 @@ func (s *persistentClaudeSession) start(ctx context.Context, agent *ClaudeCodeAg
 	if resume != "" {
 		args = append(args, "--resume", resume)
 	}
+	if req.UserScopeHarness {
+		args = appendClaudeUserScopeArgs(args, req.ConfigDir)
+	}
 
 	var cmd *exec.Cmd
 	if useBwrap {
 		bwrap := GetBwrapStatus()
-		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, req.WorkingDir, ".claude", harnessConfigBindDir("claude-code", req.ConfigDir))
+		wrappedBin, wrappedArgs := WrapWithBwrap(
+			bwrap.Path, bin, args, req.WorkingDir, ".claude",
+			effectiveHarnessConfigBindDir("claude-code", req.ConfigDir, req.UserScopeHarness),
+		)
 		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
 	} else {
 		cmd = exec.CommandContext(ctx, bin, args...)
@@ -211,7 +219,7 @@ func (s *persistentClaudeSession) start(ctx context.Context, agent *ClaudeCodeAg
 			cmd.Dir = req.WorkingDir
 		}
 	}
-	applyCmdEnv(cmd, "claude-code", req.ConfigDir, req.Env)
+	applyCmdEnv(cmd, "claude-code", req.ConfigDir, req.Env, req.UserScopeHarness)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -251,6 +259,7 @@ func (s *persistentClaudeSession) start(ctx context.Context, agent *ClaudeCodeAg
 	s.useBwrap = useBwrap
 	s.workingDir = req.WorkingDir
 	s.configDir = req.ConfigDir
+	s.userScope = req.UserScopeHarness
 	return nil
 }
 
