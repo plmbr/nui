@@ -13,6 +13,7 @@ import type { AgentType, CreateSessionRequest, Session } from '@/types'
 interface Props {
   agentTypes: AgentType[]
   initialAgentTypeId?: string | null
+  initialWorkingDir?: string | null
   onClose: () => void
   onCreated: (session: Session) => void
 }
@@ -28,9 +29,9 @@ function agentMatchesSearch(agent: AgentType, query: string): boolean {
   return haystack.includes(query)
 }
 
-export function NewSessionPanel({ agentTypes, initialAgentTypeId, onClose, onCreated }: Props) {
+export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorkingDir, onClose, onCreated }: Props) {
   const [name, setName] = useState('')
-  const [workingDir, setWorkingDir] = useState('')
+  const [workingDir, setWorkingDir] = useState(initialWorkingDir ?? '')
   const [selectedId, setSelectedId] = useState('')
   const [customSearch, setCustomSearch] = useState('')
   const [loading, setLoading] = useState(false)
@@ -59,6 +60,12 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, onClose, onCre
         setSelectedId((current) => current || pickDefaultAgentTypeId(agentTypes))
       })
   }, [agentTypes, initialAgentTypeId])
+
+  useEffect(() => {
+    if (initialWorkingDir) {
+      setWorkingDir(initialWorkingDir)
+    }
+  }, [initialWorkingDir])
 
   useEffect(() => {
     if (!directoryInputFocused || !workingDir.trim()) {
@@ -178,16 +185,16 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, onClose, onCre
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-1 flex-col min-h-0">
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="customize-tab-content mx-auto w-full space-y-5">
+        <div className="flex flex-1 flex-col min-h-0 overflow-hidden p-6">
+          <div className="customize-tab-content mx-auto flex w-full min-h-0 flex-1 flex-col gap-5">
 
             {(builtins.length > 0 || userDefined.length > 0) && (
-            <div className="space-y-2">
-              {builtins.length > 0 && <Label>Built-in Agents</Label>}
-              <div className="grid grid-cols-1 gap-1.5">
+            <div className="flex min-h-0 flex-1 flex-col gap-2">
+              {builtins.length > 0 && <Label className="shrink-0">Built-in Agents</Label>}
+              <div className="flex min-h-0 flex-1 flex-col gap-1.5">
                 {builtins.length > 0 && (
                   <div className={[
-                    'rounded-lg border px-3 py-2.5 transition-colors',
+                    'shrink-0 rounded-lg border px-3 py-2.5 transition-colors',
                     isBasicLoopSelected
                       ? 'border-primary bg-primary/5'
                       : 'border-border bg-background',
@@ -214,9 +221,9 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, onClose, onCre
                 )}
 
                 {userDefined.length > 0 && (
-                  <div className="space-y-2 mt-2">
-                    <Label>Custom Agents</Label>
-                    <div className="relative">
+                  <div className="flex min-h-0 flex-1 flex-col gap-2">
+                    <Label className="shrink-0">Custom Agents</Label>
+                    <div className="relative shrink-0">
                       <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         value={customSearch}
@@ -238,21 +245,23 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, onClose, onCre
                         </Button>
                       )}
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                      {filteredCustom.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-2">
-                          {searchQuery ? 'No agents match your search.' : 'No custom agents available.'}
-                        </p>
-                      ) : (
-                        filteredCustom.map((a) => (
-                          <AgentCard
-                            key={a.id}
-                            agent={a}
-                            selected={selectedId === a.id}
-                            onSelect={() => setSelectedId(a.id)}
-                          />
-                        ))
-                      )}
+                    <div className="min-h-0 flex-1 overflow-y-auto">
+                      <div className="flex flex-col gap-1.5 pr-1">
+                        {filteredCustom.length === 0 ? (
+                          <p className="text-sm text-muted-foreground py-2">
+                            {searchQuery ? 'No agents match your search.' : 'No custom agents available.'}
+                          </p>
+                        ) : (
+                          filteredCustom.map((a) => (
+                            <AgentCard
+                              key={a.id}
+                              agent={a}
+                              selected={selectedId === a.id}
+                              onSelect={() => setSelectedId(a.id)}
+                            />
+                          ))
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -260,7 +269,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, onClose, onCre
             </div>
             )}
 
-            <div className="space-y-1.5">
+            <div className="shrink-0 space-y-1.5">
               <Label htmlFor="name">
                 Name <span className="text-muted-foreground font-normal">(optional)</span>
               </Label>
@@ -273,7 +282,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, onClose, onCre
             </div>
 
             {selected?.workingDirInput && (
-              <div className="space-y-1.5">
+              <div className="shrink-0 space-y-1.5">
                 <Label htmlFor="workingDir">
                   Working Directory <span className="text-muted-foreground font-normal">(optional)</span>
                 </Label>
@@ -330,7 +339,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, onClose, onCre
               </div>
             )}
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="shrink-0 text-sm text-destructive">{error}</p>}
           </div>
         </div>
 

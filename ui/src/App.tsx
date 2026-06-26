@@ -15,10 +15,12 @@ import { groupSessionsByAgentType, defaultAgentTypeForGroup } from '@/lib/sessio
 import {
   agentFromNewSessionSearch,
   cwdFromNewSessionSearch,
+  isCreateSessionPath,
   isCustomizePath,
   isNewSessionPath,
   navigateToCustomize,
   navigateToHome,
+  navigateToNewSession,
   navigateToSession,
   sessionIdFromPath,
 } from '@/lib/appUrl'
@@ -33,7 +35,6 @@ export default function App() {
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([])
   const [customizeOpen, setCustomizeOpen] = useState(false)
   const [newSessionOpen, setNewSessionOpen] = useState(false)
-  const [newSessionAgentTypeId, setNewSessionAgentTypeId] = useState<string | null>(null)
   const [sessionListGroupId, setSessionListGroupId] = useState<string | null>(null)
   const [appReady, setAppReady] = useState(false)
   const initializedRef = useRef(false)
@@ -60,6 +61,28 @@ export default function App() {
     }
   }, [])
 
+  const createSessionFromUrl = useCallback(async (): Promise<string | null> => {
+    try {
+      const session = await api.sessions.createFromUrl({
+        agent: agentFromNewSessionSearch() ?? undefined,
+        cwd: cwdFromNewSessionSearch() ?? undefined,
+      })
+      await loadSessions()
+      setSelectedId(session.id)
+      setNewSessionOpen(false)
+      setCustomizeOpen(false)
+      setSessionListGroupId(null)
+      setInitialPrompt(undefined)
+      setHideInput(false)
+      navigateToSession(session.id, true)
+      api.settings.update({ lastSessionId: session.id }).catch(() => {})
+      return session.id
+    } catch {
+      navigateToHome(true)
+      return null
+    }
+  }, [loadSessions])
+
   useEffect(() => {
     if (initializedRef.current) return
     initializedRef.current = true
@@ -82,31 +105,27 @@ export default function App() {
       }
 
       const openCustomize = isCustomizePath()
+      const openNewSession = isNewSessionPath()
+      const openCreateSession = isCreateSessionPath()
       if (openCustomize) {
         setCustomizeOpen(true)
+      }
+      if (openNewSession) {
+        setNewSessionOpen(true)
       }
 
       let nextId: string | null = null
 
-      if (isNewSessionPath()) {
-        try {
-          const session = await api.sessions.createFromUrl({
-            agent: agentFromNewSessionSearch() ?? undefined,
-            cwd: cwdFromNewSessionSearch() ?? undefined,
-          })
-          list = await loadSessions()
-          nextId = session.id
-          navigateToSession(session.id, true)
-        } catch {
-          navigateToHome(true)
-        }
+      if (openCreateSession) {
+        nextId = await createSessionFromUrl()
+        list = await loadSessions()
       } else {
         nextId = sessionIdFromPath() ?? bootstrap.sessionId ?? settings.lastSessionId ?? null
         if (nextId && !list.some((s) => s.id === nextId)) {
           nextId = null
         }
 
-        if (!nextId) {
+        if (!nextId && !openNewSession) {
           try {
             const session = await api.sessions.ensureDefault()
             list = await loadSessions()
@@ -118,7 +137,7 @@ export default function App() {
           }
         }
 
-        if (nextId && !openCustomize) {
+        if (nextId && !openCustomize && !openNewSession) {
           navigateToSession(nextId, true)
         }
       }
@@ -137,10 +156,10 @@ export default function App() {
     }
 
     void init()
-  }, [loadSessions, loadAgentTypes])
+  }, [loadSessions, loadAgentTypes, createSessionFromUrl])
 
   useEffect(() => {
-    async function onPopState() {
+    function onPopState() {
       if (isCustomizePath()) {
         setCustomizeOpen(true)
         setNewSessionOpen(false)
@@ -151,27 +170,21 @@ export default function App() {
       setCustomizeOpen(false)
 
       if (isNewSessionPath()) {
-        try {
-          const session = await api.sessions.createFromUrl({
-            agent: agentFromNewSessionSearch() ?? undefined,
-            cwd: cwdFromNewSessionSearch() ?? undefined,
-          })
-          await loadSessions()
-          setSelectedId(session.id)
-          setInitialPrompt(undefined)
-          setHideInput(false)
-          navigateToSession(session.id, true)
-          api.settings.update({ lastSessionId: session.id }).catch(() => {})
-        } catch {
-          navigateToHome(true)
-        }
+        setNewSessionOpen(true)
+        setSessionListGroupId(null)
         return
       }
+
+      if (isCreateSessionPath()) {
+        void createSessionFromUrl()
+        return
+      }
+
+      setNewSessionOpen(false)
 
       const id = sessionIdFromPath()
       if (!id || !sessionsRef.current.some((s) => s.id === id)) return
       setSelectedId(id)
-      setNewSessionOpen(false)
       setSessionListGroupId(null)
       setInitialPrompt(undefined)
       setHideInput(false)
@@ -180,7 +193,7 @@ export default function App() {
 
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
-  }, [loadSessions])
+  }, [createSessionFromUrl])
 
   const handleSelect = useCallback((id: string) => {
     setCustomizeOpen(false)
@@ -226,22 +239,27 @@ export default function App() {
   const handleOpenNewSession = useCallback(() => {
     setCustomizeOpen(false)
     setSessionListGroupId(null)
-    setNewSessionAgentTypeId(null)
     setNewSessionOpen(true)
+    navigateToNewSession()
   }, [])
 
   const handleCloseNewSession = useCallback(() => {
     setNewSessionOpen(false)
-    setNewSessionAgentTypeId(null)
-  }, [])
+    if (selectedId) {
+      navigateToSession(selectedId, true)
+    } else {
+      navigateToHome(true)
+    }
+  }, [selectedId])
 
   const handleOpenNewSessionForGroup = useCallback((groupId: string) => {
     const group = groupSessionsByAgentType(sessions, agentTypes).find((g) => g.id === groupId)
     if (!group) return
+    const agentId = defaultAgentTypeForGroup(group, agentTypes)
     setCustomizeOpen(false)
     setSessionListGroupId(null)
-    setNewSessionAgentTypeId(defaultAgentTypeForGroup(group, agentTypes) ?? null)
     setNewSessionOpen(true)
+    navigateToNewSession(agentId ? { agent: agentId } : undefined)
   }, [sessions, agentTypes])
 
   const handleOpenSessionList = useCallback((groupId: string) => {
@@ -344,7 +362,8 @@ export default function App() {
             ) : newSessionOpen ? (
               <NewSessionPanel
                 agentTypes={agentTypes}
-                initialAgentTypeId={newSessionAgentTypeId}
+                initialAgentTypeId={agentFromNewSessionSearch()}
+                initialWorkingDir={cwdFromNewSessionSearch()}
                 onClose={handleCloseNewSession}
                 onCreated={handleSessionCreated}
               />

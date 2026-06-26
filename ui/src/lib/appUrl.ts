@@ -2,6 +2,7 @@
 
 export const CUSTOMIZE_PATH = '/customize'
 export const NEW_SESSION_PATH = '/sessions/new'
+export const CREATE_SESSION_PATH = '/sessions/create'
 
 export function sessionPath(id: string): string {
   return `/sessions/${id}`
@@ -9,7 +10,7 @@ export function sessionPath(id: string): string {
 
 export function sessionIdFromPath(pathname = window.location.pathname): string | null {
   const match = pathname.match(/^\/sessions\/([^/]+)\/?$/)
-  if (!match || match[1] === 'new') return null
+  if (!match || match[1] === 'new' || match[1] === 'create') return null
   return match[1]
 }
 
@@ -19,6 +20,10 @@ export function isCustomizePath(pathname = window.location.pathname): boolean {
 
 export function isNewSessionPath(pathname = window.location.pathname): boolean {
   return pathname === NEW_SESSION_PATH || pathname === NEW_SESSION_PATH + '/'
+}
+
+export function isCreateSessionPath(pathname = window.location.pathname): boolean {
+  return pathname === CREATE_SESSION_PATH || pathname === CREATE_SESSION_PATH + '/'
 }
 
 export function agentFromNewSessionSearch(search = window.location.search): string | null {

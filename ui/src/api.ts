@@ -38,7 +38,7 @@ export const api = {
       if (opts?.agent?.trim()) params.set('agent', opts.agent.trim())
       if (opts?.cwd?.trim()) params.set('cwd', opts.cwd.trim())
       const qs = params.toString()
-      return request(`/sessions/new${qs ? `?${qs}` : ''}`, { method: 'POST' })
+      return request(`/sessions/create${qs ? `?${qs}` : ''}`, { method: 'POST' })
     },
 
     ensureDefault: (): Promise<Session> =>
