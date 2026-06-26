@@ -33,6 +33,11 @@ export const api = {
         body: JSON.stringify(data),
       }),
 
+    createFromUrl: (agent?: string): Promise<Session> =>
+      request(`/sessions/new${agent ? `?agent=${encodeURIComponent(agent)}` : ''}`, {
+        method: 'POST',
+      }),
+
     ensureDefault: (): Promise<Session> =>
       request('/sessions/ensure-default', { method: 'POST' }),
 

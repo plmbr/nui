@@ -301,3 +301,59 @@ func resolveSessionWorkingDir(sessionID string, def model.ADLDefinition, request
 	}
 	return store.EnsureSessionWorkspace(sessionID)
 }
+
+// resolveUserPromptAgentType picks an agent for URL-driven session creation.
+// Auto-prompt agents are rejected because URL sessions always wait for user input.
+func resolveUserPromptAgentType(preferred string) (model.ADLDefinition, error) {
+	preferred = strings.TrimSpace(preferred)
+	if preferred != "" {
+		def, ok := findADLDef(preferred)
+		if !ok {
+			return model.ADLDefinition{}, fmt.Errorf("unknown agent id %q", preferred)
+		}
+		if model.IsADLAutoPrompt(def) {
+			return model.ADLDefinition{}, fmt.Errorf("agent %q uses auto prompt mode and cannot be used for URL session creation", preferred)
+		}
+		return def, nil
+	}
+
+	for _, id := range defaultAgentTypeCandidates() {
+		def, ok := findADLDef(id)
+		if !ok || model.IsADLAutoPrompt(def) {
+			continue
+		}
+		return def, nil
+	}
+	return model.ADLDefinition{}, fmt.Errorf("no user-prompt agent available")
+}
+
+func handleNewSession(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	def, err := resolveUserPromptAgentType(r.URL.Query().Get("agent"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	workingDir := ""
+	if cwd, err := os.Getwd(); err == nil {
+		workingDir = cwd
+	}
+
+	s, err := createSession(model.ADLAgentLabel(def), workingDir, model.ADLAgentID(def), nil)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("agent unavailable: %v", err), http.StatusServiceUnavailable)
+		return
+	}
+
+	settings, loadErr := store.LoadSettings()
+	if loadErr != nil {
+		settings = store.Settings{Theme: "light"}
+	}
+	saveSessionPreferences(model.ADLAgentID(def), s.ID, settings)
+	writeJSON(w, http.StatusCreated, s)
+}

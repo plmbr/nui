@@ -102,10 +102,14 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 }
 
 func isUIRoute(path string) bool {
-	if path == "/" {
+	switch path {
+	case "/", "/customize":
 		return true
 	}
-	return strings.HasPrefix(path, "/sessions/")
+	if strings.HasPrefix(path, "/sessions/") {
+		return true
+	}
+	return false
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {

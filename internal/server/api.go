@@ -640,6 +640,11 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if path == "new" {
+		handleNewSession(w, r)
+		return
+	}
+
 	// Route /api/sessions/:id/<sub>
 	if id, rest, ok := strings.Cut(path, "/"); ok {
 		switch rest {

@@ -12,7 +12,15 @@ import { SessionsListPanel } from '@/components/SessionsListPanel'
 import { ThemeProvider } from '@/contexts/theme'
 import { api } from '@/api'
 import { groupSessionsByAgentType, defaultAgentTypeForGroup } from '@/lib/sessionGroups'
-import { navigateToSession, sessionIdFromPath } from '@/lib/sessionUrl'
+import {
+  agentFromNewSessionSearch,
+  isCustomizePath,
+  isNewSessionPath,
+  navigateToCustomize,
+  navigateToHome,
+  navigateToSession,
+  sessionIdFromPath,
+} from '@/lib/appUrl'
 import type { Session, AgentType } from '@/types'
 
 export default function App() {
@@ -72,29 +80,47 @@ export default function App() {
         setSidebarOpen(settings.sidebarOpen)
       }
 
-      let nextId = sessionIdFromPath() ?? bootstrap.sessionId ?? settings.lastSessionId ?? null
-      if (nextId && !list.some((s) => s.id === nextId)) {
-        nextId = null
+      const openCustomize = isCustomizePath()
+      if (openCustomize) {
+        setCustomizeOpen(true)
       }
 
-      if (!nextId) {
+      let nextId: string | null = null
+
+      if (isNewSessionPath()) {
         try {
-          const session = await api.sessions.ensureDefault()
+          const session = await api.sessions.createFromUrl(agentFromNewSessionSearch() ?? undefined)
           list = await loadSessions()
           nextId = session.id
+          navigateToSession(session.id, true)
         } catch {
-          if (list.length > 0) {
-            nextId = list[0].id
+          navigateToHome(true)
+        }
+      } else {
+        nextId = sessionIdFromPath() ?? bootstrap.sessionId ?? settings.lastSessionId ?? null
+        if (nextId && !list.some((s) => s.id === nextId)) {
+          nextId = null
+        }
+
+        if (!nextId) {
+          try {
+            const session = await api.sessions.ensureDefault()
+            list = await loadSessions()
+            nextId = session.id
+          } catch {
+            if (list.length > 0) {
+              nextId = list[0].id
+            }
           }
+        }
+
+        if (nextId && !openCustomize) {
+          navigateToSession(nextId, true)
         }
       }
 
       setSessions(list)
       setSelectedId(nextId)
-
-      if (nextId) {
-        navigateToSession(nextId, true)
-      }
 
       if (bootstrap.initialPrompt && nextId) {
         setInitialPrompt(bootstrap.initialPrompt)
@@ -110,10 +136,36 @@ export default function App() {
   }, [loadSessions, loadAgentTypes])
 
   useEffect(() => {
-    function onPopState() {
+    async function onPopState() {
+      if (isCustomizePath()) {
+        setCustomizeOpen(true)
+        setNewSessionOpen(false)
+        setSessionListGroupId(null)
+        return
+      }
+
+      setCustomizeOpen(false)
+
+      if (isNewSessionPath()) {
+        try {
+          const session = await api.sessions.createFromUrl(agentFromNewSessionSearch() ?? undefined)
+          await loadSessions()
+          setSelectedId(session.id)
+          setInitialPrompt(undefined)
+          setHideInput(false)
+          navigateToSession(session.id, true)
+          api.settings.update({ lastSessionId: session.id }).catch(() => {})
+        } catch {
+          navigateToHome(true)
+        }
+        return
+      }
+
       const id = sessionIdFromPath()
       if (!id || !sessionsRef.current.some((s) => s.id === id)) return
       setSelectedId(id)
+      setNewSessionOpen(false)
+      setSessionListGroupId(null)
       setInitialPrompt(undefined)
       setHideInput(false)
       api.settings.update({ lastSessionId: id }).catch(() => {})
@@ -121,7 +173,7 @@ export default function App() {
 
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
-  }, [])
+  }, [loadSessions])
 
   const handleSelect = useCallback((id: string) => {
     setCustomizeOpen(false)
@@ -152,11 +204,17 @@ export default function App() {
     setNewSessionOpen(false)
     setSessionListGroupId(null)
     setCustomizeOpen(true)
+    navigateToCustomize()
   }, [])
 
   const handleCloseCustomize = useCallback(() => {
     setCustomizeOpen(false)
-  }, [])
+    if (selectedId) {
+      navigateToSession(selectedId, true)
+    } else {
+      navigateToHome(true)
+    }
+  }, [selectedId])
 
   const handleOpenNewSession = useCallback(() => {
     setCustomizeOpen(false)
