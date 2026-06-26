@@ -287,12 +287,17 @@ export default function App() {
   const handleOpenSessionList = useCallback((groupId: string) => {
     setCustomizeOpen(false)
     setNewSessionOpen(false)
+    setLandingOpen(false)
     setSessionListGroupId(groupId)
   }, [])
 
   const handleCloseSessionList = useCallback(() => {
     setSessionListGroupId(null)
-  }, [])
+    if (!selectedId) {
+      setLandingOpen(true)
+      navigateToHome(true)
+    }
+  }, [selectedId])
 
   const handleSessionCreated = useCallback(async (session: Session) => {
     await loadSessions()
