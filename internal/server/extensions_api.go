@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"loop/internal/extensions"
+	"loop/internal/mentions"
 )
 
 func handleExtensions(w http.ResponseWriter, r *http.Request) {
@@ -39,5 +40,6 @@ func handleExtensionsReload(w http.ResponseWriter, r *http.Request) {
 	if extensionManager != nil {
 		extensionManager.SetExtensionRegistry(extensions.Default)
 	}
+	mentions.DefaultRegistry.SetExtensionSource(extensions.Default.MentionSource())
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"loop/internal/agent"
+	"loop/internal/mentions"
 	"loop/internal/model"
 	"loop/internal/store"
 )
@@ -59,10 +60,22 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 		return
 	}
 
+	workingDir, err := effectiveWorkingDir(session.WorkingDir)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	resolvedMessage, err := mentions.DefaultRegistry.ResolveMessage(r.Context(), workingDir, lastUserMessage)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("mention resolution failed: %v", err), http.StatusBadRequest)
+		return
+	}
+
 	userMsg := model.ChatMessage{
 		ID:        uuid.NewString(),
 		Role:      "user",
-		Content:   lastUserMessage,
+		Content:   resolvedMessage,
 		CreatedAt: time.Now().UTC().Format(time.RFC3339),
 	}
 	mu.Lock()
@@ -106,7 +119,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 		isADL = len(def.Steps) > 0 || def.Kind == "workflow"
 	} else {
 		var err error
-		ag, err = extensionManager.GetAgent(session.ID, session.AgentType, session.WorkingDir, session.AgentConfig)
+		ag, err = extensionManager.GetAgent(session.ID, session.AgentType, workingDir, session.AgentConfig)
 		if err != nil {
 			writeAGUIEvent(w, flusher, map[string]any{
 				"type":    "RUN_ERROR",
@@ -120,8 +133,8 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 	go func() {
 		defer close(events)
 		runReq := agent.RunRequest{
-			WorkingDir:       session.WorkingDir,
-			Message:          lastUserMessage,
+			WorkingDir:       workingDir,
+			Message:          resolvedMessage,
 			UserScopeHarness: agent.UserScopeHarnessConfig(session.AgentConfig),
 		}
 		if !isADL {

@@ -5,8 +5,10 @@ import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
 import { ThinkingIndicator } from '@/components/ThinkingIndicator'
+import { MentionMenu } from '@/components/MentionMenu'
 import { ToolCallBubble } from '@/components/ToolCallBubble'
 import { imageSrc, useSessionChat } from '@/hooks/useSessionChat'
+import { useMentionMenu } from '@/hooks/useMentionMenu'
 import { normalizeMarkdown, stripInlineCodeDelimiters } from '@/lib/markdown'
 import type { Session } from '@/types'
 
@@ -62,6 +64,14 @@ export function ChatPanel({
   const scrollPendingRef = useRef(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const initialPromptSentRef = useRef(false)
+
+  const mention = useMentionMenu({
+    sessionId: session.id,
+    input,
+    setInput,
+    inputRef,
+    disabled: isRunning || hideInput,
+  })
 
   const setMessageRef = (id: string) => (el: HTMLDivElement | null) => {
     if (el) messageRefs.current.set(id, el)
@@ -156,6 +166,7 @@ export function ChatPanel({
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mention.handleKeyDown(e)) return
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       submit()
@@ -260,16 +271,37 @@ export function ChatPanel({
 
       {!hideInput && (
       <div className="agui-chat__input-area">
-        <textarea
-          ref={inputRef}
-          className="agui-chat__input"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={onKeyDown}
-          placeholder="Message your agent… (Enter to send, Shift+Enter for newline)"
-          rows={1}
-          disabled={isRunning}
-        />
+        <div className="agui-chat__input-wrap">
+          <MentionMenu
+            open={mention.open}
+            items={mention.items}
+            breadcrumb={mention.breadcrumb}
+            activeIndex={mention.activeIndex}
+            loading={mention.loading}
+            parent={mention.parent}
+            onSelect={mention.applySelection}
+            onBack={mention.goBack}
+            onHover={mention.setActiveIndex}
+          />
+          <textarea
+            ref={inputRef}
+            className="agui-chat__input"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="Message your agent… (@ to mention, Enter to send)"
+            rows={1}
+            disabled={isRunning}
+            aria-autocomplete={mention.open ? 'list' : undefined}
+            aria-expanded={mention.open}
+            aria-controls={mention.open ? 'mention-menu' : undefined}
+            aria-activedescendant={
+              mention.open && mention.items.length > 0
+                ? `mention-option-${mention.activeIndex}`
+                : undefined
+            }
+          />
+        </div>
         <button
           type="button"
           className="agui-chat__send"

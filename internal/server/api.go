@@ -675,6 +675,8 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 			handleSessionHistory(w, r, id)
 		case "ag-ui":
 			handleSessionAGUI(w, r, id)
+		case "mentions":
+			handleSessionMentions(w, r, id)
 		default:
 			http.NotFound(w, r)
 		}
@@ -858,6 +860,12 @@ func handleSessionChat(w http.ResponseWriter, r *http.Request, sessionID string)
 		return
 	}
 
+	workingDir, err := effectiveWorkingDir(session.WorkingDir)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	userMsg := model.ChatMessage{
 		ID:        uuid.NewString(),
 		Role:      "user",
@@ -888,7 +896,7 @@ func handleSessionChat(w http.ResponseWriter, r *http.Request, sessionID string)
 	} else {
 		// Legacy fallback for "docker" and "remote" sessions that predate the ADL model.
 		var err error
-		ag, err = extensionManager.GetAgent(session.ID, session.AgentType, session.WorkingDir, session.AgentConfig)
+		ag, err = extensionManager.GetAgent(session.ID, session.AgentType, workingDir, session.AgentConfig)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("agent unavailable: %v", err), http.StatusServiceUnavailable)
 			return
@@ -899,7 +907,7 @@ func handleSessionChat(w http.ResponseWriter, r *http.Request, sessionID string)
 	go func() {
 		defer close(events)
 		runReq := agent.RunRequest{
-			WorkingDir:       session.WorkingDir,
+			WorkingDir:       workingDir,
 			Message:          req.Message,
 			UserScopeHarness: agent.UserScopeHarnessConfig(session.AgentConfig),
 		}
@@ -961,22 +969,26 @@ func handleSessionHistory(w http.ResponseWriter, r *http.Request, sessionID stri
 		http.NotFound(w, r)
 		return
 	}
+	workingDir, err := effectiveWorkingDir(session.WorkingDir)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	// Multi-step workflow sessions don't have a single agent history file.
 	if def, ok := findADLDef(session.AgentType); ok && (len(def.Steps) > 0 || def.Kind == "workflow") {
 		writeJSON(w, http.StatusOK, []model.ChatMessage{})
 		return
 	}
 	var msgs []model.ChatMessage
-	var err error
 	switch sessionHarnessType(session) {
 	case "pi":
-		msgs, err = store.LoadPiHistory(session.WorkingDir, agentSessionID)
+		msgs, err = store.LoadPiHistory(workingDir, agentSessionID)
 	case "codex":
-		msgs, err = store.LoadCodexHistory(session.WorkingDir, agentSessionID)
+		msgs, err = store.LoadCodexHistory(workingDir, agentSessionID)
 	case "opencode":
-		msgs, err = store.LoadOpenCodeHistory(session.WorkingDir, agentSessionID)
+		msgs, err = store.LoadOpenCodeHistory(workingDir, agentSessionID)
 	default:
-		msgs, err = store.LoadClaudeHistory(session.WorkingDir, agentSessionID)
+		msgs, err = store.LoadClaudeHistory(workingDir, agentSessionID)
 	}
 	if err != nil {
 		http.Error(w, "failed to load history", http.StatusInternalServerError)

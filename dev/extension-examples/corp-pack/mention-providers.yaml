@@ -1,0 +1,3 @@
+mentionProviders:
+  - id: corp-refs
+    displayName: Corp References

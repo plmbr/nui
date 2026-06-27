@@ -24,6 +24,8 @@ type Extension struct {
 	Agents           []model.ADLDefinition
 	CustomMCPServers []ExtensionCustomMCPServer
 	CustomSkills     []ExtensionCustomSkill
+	MentionProviders []MentionProviderEntry
+	mentionRuntime   *RuntimeConfig
 
 	defaultRuntime *RuntimeConfig
 }
@@ -38,10 +40,11 @@ type HarnessRef struct {
 
 // Registry indexes all installed extensions.
 type Registry struct {
-	mu          sync.RWMutex
-	extensions  map[string]*Extension // name → extension
-	catalogs    []*catalogProvider
-	loadErrors  []string
+	mu           sync.RWMutex
+	extensions   map[string]*Extension // name → extension
+	catalogs     []*catalogProvider
+	mentionCache *mentionClientCache
+	loadErrors   []string
 }
 
 // Default is the process-wide extension registry, set at server startup.
@@ -57,7 +60,7 @@ func LoadRegistry() (*Registry, error) {
 	if err != nil {
 		return nil, err
 	}
-	reg := &Registry{extensions: map[string]*Extension{}}
+	reg := &Registry{extensions: map[string]*Extension{}, mentionCache: newMentionClientCache()}
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
@@ -167,6 +170,21 @@ func loadExtension(extDir string, reg *Registry) (*Extension, error) {
 		ext.Agents = list
 	}
 
+	if c := manifest.Contributions.Mentions; c != nil {
+		list, err := loadContributionList(extDir, manifest.Name, c.Source, catalogCmd, resolveCatalog,
+			func(file string) ([]MentionProviderEntry, error) { return loadMentionProvidersFromFile(file) },
+			nil,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("mentionProviders: %w", err)
+		}
+		ext.MentionProviders = list
+		if c.Runtime != nil {
+			rt := *c.Runtime
+			ext.mentionRuntime = &rt
+		}
+	}
+
 	return ext, nil
 }
 
@@ -220,7 +238,7 @@ func (r *Registry) Reload() error {
 	if err != nil {
 		return err
 	}
-	next := &Registry{extensions: map[string]*Extension{}}
+	next := &Registry{extensions: map[string]*Extension{}, mentionCache: newMentionClientCache()}
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
@@ -247,9 +265,13 @@ func (r *Registry) Reload() error {
 func (r *Registry) Shutdown() {
 	r.mu.Lock()
 	catalogs := r.catalogs
+	cache := r.mentionCache
 	r.mu.Unlock()
 	for _, c := range catalogs {
 		_ = c.Close()
+	}
+	if cache != nil {
+		cache.closeAll()
 	}
 }
 

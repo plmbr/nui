@@ -58,3 +58,10 @@ contributions:
   agents:
     source:
       file: agents.yaml
+
+  mentionProviders:
+    source:
+      file: mention-providers.yaml
+    runtime:
+      transport: stdio
+      command: ["python3", "mention_host.py"]

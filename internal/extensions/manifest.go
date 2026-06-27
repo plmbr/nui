@@ -32,6 +32,7 @@ type Contributions struct {
 	MCPServers *MCPServersContribution `yaml:"mcpServers,omitempty"` // deprecated: use catalog.mcpServers
 	Skills     *SkillsContribution     `yaml:"skills,omitempty"`     // deprecated: use catalog.skills
 	Agents     *AgentsContribution     `yaml:"agents,omitempty"`
+	Mentions   *MentionProvidersContribution `yaml:"mentionProviders,omitempty"`
 }
 
 // AIAssetsContribution declares installable MCP servers and skills merged into harness sessions.

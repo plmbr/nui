@@ -67,6 +67,13 @@ contributions:
   agents:
     source:
       file: agents.yaml
+
+  mentionProviders:
+    source:
+      file: mention-providers.yaml
+    runtime:
+      transport: stdio
+      command: ["python3", "mention_host.py"]
 ```
 
 **Catalog source resolution** per list type: `source.file` → `source.command` → `catalog.command`.
@@ -132,6 +139,35 @@ aiAssets:
 ### Agents
 
 Full ADL agent definitions. IDs are namespaced as `ext:<extension>/<agent-id>`. Extension agents with `install: true` custom MCP servers receive those servers automatically in harness config.
+
+### Mention providers
+
+Extensions can contribute `@`-mention autocomplete sources for the chat input. Declared under `contributions.mentionProviders` with a list file and stdio runtime (same pattern as harnesses).
+
+`mention-providers.yaml`:
+
+```yaml
+mentionProviders:
+  - id: corp-refs
+    displayName: Corp References
+```
+
+Wire protocol (`mention.*` namespace):
+
+| Method | Params | Result |
+|--------|--------|--------|
+| `mention.info` | `{}` | `{id, name, version, capabilities}` |
+| `mention.list` | `{providerId, parent?, query?, limit?, workingDir?, sessionId?}` | `{items, breadcrumb?}` |
+| `mention.resolve` | `{providerId, value, workingDir?, sessionId?}` | `{text}` |
+| `mention.shutdown` | `{}` | `{ok: true}` |
+
+Each item: `{label, value, hasChildren?, icon?}`. Selecting a leaf inserts `@value` into chat; Loop resolves mentions server-side before sending to the harness.
+
+Built-in provider: **Files & folders** (`builtin:files`) lists files under the session working directory and resolves `file:<relative-path>` to the full absolute path.
+
+SDK: [`harness-sdk/loop_mention.py`](../harness-sdk/loop_mention.py) (auto-installed to `~/.loop/harness-sdk/` on first use, same as `loop_mcp_tools.py`). Example: [`dev/extension-examples/corp-pack/mention_host.py`](extension-examples/corp-pack/mention_host.py).
+
+Chat API: `GET /api/sessions/:id/mentions?parent=&query=`
 
 ## Catalog provider (dynamic lists)
 

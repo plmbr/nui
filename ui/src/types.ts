@@ -23,6 +23,23 @@ export interface DirectorySuggestions {
   directories: string[]
 }
 
+export interface MentionItem {
+  label: string
+  value: string
+  hasChildren: boolean
+  icon?: string
+}
+
+export interface MentionBreadcrumb {
+  label: string
+  parent: string
+}
+
+export interface MentionListResponse {
+  items: MentionItem[]
+  breadcrumb: MentionBreadcrumb[]
+}
+
 export interface AgentType {
   id: string
   label: string

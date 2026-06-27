@@ -16,6 +16,7 @@ import (
 	"loop/internal/agent"
 	"loop/internal/browser"
 	"loop/internal/extensions"
+	"loop/internal/mentions"
 )
 
 var extensionManager *agent.Manager
@@ -39,6 +40,7 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 		fmt.Fprintf(os.Stderr, "warning: load extensions: %v\n", err)
 	} else {
 		extensionManager.SetExtensionRegistry(reg)
+		mentions.DefaultRegistry.SetExtensionSource(reg.MentionSource())
 	}
 
 	if err := applyStartSettings(opts); err != nil {

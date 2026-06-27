@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, AgentFileContent, AgentFileInfo, Bootstrap, Capabilities, ChatMessage, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, MCPServer, Session, Settings, SkillEntry } from './types'
+import type { AgentType, AgentFileContent, AgentFileInfo, Bootstrap, Capabilities, ChatMessage, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, MCPServer, MentionListResponse, Session, Settings, SkillEntry } from './types'
 
 const BASE = '/api'
 
@@ -68,6 +68,20 @@ export const api = {
   directories: {
     suggest: (path: string, signal?: AbortSignal): Promise<DirectorySuggestions> =>
       request(`/directories?path=${encodeURIComponent(path)}`, { signal }),
+  },
+
+  mentions: {
+    list: (
+      sessionId: string,
+      opts: { parent?: string; query?: string },
+      signal?: AbortSignal,
+    ): Promise<MentionListResponse> => {
+      const params = new URLSearchParams()
+      if (opts.parent?.trim()) params.set('parent', opts.parent.trim())
+      if (opts.query?.trim()) params.set('query', opts.query.trim())
+      const qs = params.toString()
+      return request(`/sessions/${sessionId}/mentions${qs ? `?${qs}` : ''}`, { signal })
+    },
   },
 
   messages: {

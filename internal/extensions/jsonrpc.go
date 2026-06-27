@@ -107,17 +107,24 @@ func (c *StdioRPC) Call(method string, params any, result any) error {
 }
 
 func (c *StdioRPC) Close() error {
+	_ = c.Call("extension.shutdown", map[string]any{}, nil)
+	return c.killProcess()
+}
+
+func (c *StdioRPC) killProcess() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.closed {
 		return nil
 	}
 	c.closed = true
-	_ = c.Call("extension.shutdown", map[string]any{}, nil)
-	_ = c.stdin.Close()
-	if c.cmd.Process != nil {
-		_ = c.cmd.Process.Kill()
+	var err error
+	if c.stdin != nil {
+		_ = c.stdin.Close()
 	}
-	_, err := c.cmd.Process.Wait()
+	if c.cmd != nil && c.cmd.Process != nil {
+		_ = c.cmd.Process.Kill()
+		_, err = c.cmd.Process.Wait()
+	}
 	return err
 }
