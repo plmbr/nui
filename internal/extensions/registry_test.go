@@ -32,12 +32,13 @@ contributions:
     runtime:
       transport: stdio
       command: ["python3", "harness_host.py"]
-  mcpServers:
-    source:
-      file: mcp-servers.json
-  skills:
-    source:
-      file: skills.yaml
+  catalog:
+    mcpServers:
+      source:
+        file: mcp-servers.json
+    skills:
+      source:
+        file: skills.yaml
   agents:
     source:
       file: agents.yaml
@@ -71,7 +72,6 @@ contributions:
 		t.Fatal(err)
 	}
 
-	oldHome := os.Getenv("HOME")
 	t.Setenv("HOME", home)
 
 	reg, err := extensions.LoadRegistry()
@@ -118,13 +118,61 @@ contributions:
 	if ref.Runtime.Transport != "stdio" {
 		t.Fatalf("transport: %q", ref.Runtime.Transport)
 	}
-
-	_ = oldHome
 }
 
 func TestParseExtRef(t *testing.T) {
 	ext, item, ok := extensions.ParseExtRef("ext:corp-pack/echo")
 	if !ok || ext != "corp-pack" || item != "echo" {
 		t.Fatalf("parse: %q %q %v", ext, item, ok)
+	}
+}
+
+func TestLoadRegistryLegacyCatalogKeys(t *testing.T) {
+	home := t.TempDir()
+	extDir := filepath.Join(home, ".loop", "extensions", "legacy-pack")
+	if err := os.MkdirAll(extDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := `apiVersion: loop.dev/extension/v1
+name: legacy-pack
+version: 1.0.0
+contributions:
+  mcpServers:
+    source:
+      file: mcp-servers.json
+  skills:
+    source:
+      file: skills.yaml
+`
+	if err := os.WriteFile(filepath.Join(extDir, "extension.yaml"), []byte(manifest), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(extDir, "mcp-servers.json"), []byte(`{"mcpServers":[{"name":"x","url":"http://localhost/mcp","type":"http"}]}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(extDir, "skills.yaml"), []byte(`skills:
+  - name: s
+    content: |
+      ---
+      name: s
+      ---
+      hi
+`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", home)
+	reg, err := extensions.LoadRegistry()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ext, ok := reg.Get("legacy-pack")
+	if !ok {
+		t.Fatal("legacy-pack not loaded")
+	}
+	if len(ext.MCPServers) != 1 || ext.MCPServers[0].Name != "x" {
+		t.Fatalf("mcpServers: %+v", ext.MCPServers)
+	}
+	if len(ext.Skills) != 1 {
+		t.Fatalf("skills: %+v", ext.Skills)
 	}
 }

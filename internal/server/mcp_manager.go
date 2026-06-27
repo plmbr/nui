@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -37,6 +39,20 @@ type MCPManager struct {
 
 var mcpManager MCPManager
 
+const mcpConnectTimeout = 15 * time.Second
+
+func isValidMCPServerCfg(cfg mcpServerConfig) bool {
+	cmd := strings.TrimSpace(cfg.Command)
+	if cmd == "" {
+		return false
+	}
+	base := strings.ToLower(filepath.Base(cmd))
+	if (base == "python3" || base == "python" || base == "node") && len(cfg.Args) == 0 {
+		return false
+	}
+	return true
+}
+
 func (m *MCPManager) load(path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -60,22 +76,26 @@ func (m *MCPManager) load(path string) error {
 		m.toolServer = map[string]string{}
 	}
 
-	ctx := context.Background()
 	client := mcp.NewClient(&mcp.Implementation{Name: "loop", Version: "1.0.0"}, nil)
 
 	for name, serverCfg := range cfg.MCPServers {
-		if serverCfg.Command == "" {
+		if !isValidMCPServerCfg(serverCfg) {
+			fmt.Fprintf(os.Stderr, "[MCP] skipping %q: invalid or incomplete command config\n", name)
 			continue
 		}
-		cmd := exec.Command(serverCfg.Command, serverCfg.Args...)
+		ctx, cancel := context.WithTimeout(context.Background(), mcpConnectTimeout)
+		cmd := exec.CommandContext(ctx, serverCfg.Command, serverCfg.Args...)
 		transport := &mcp.CommandTransport{Command: cmd}
 		session, err := client.Connect(ctx, transport, nil)
+		cancel()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[MCP] failed to connect to %q: %v\n", name, err)
 			continue
 		}
 
-		tools, err := session.ListTools(ctx, &mcp.ListToolsParams{})
+		listCtx, listCancel := context.WithTimeout(context.Background(), mcpConnectTimeout)
+		tools, err := session.ListTools(listCtx, &mcp.ListToolsParams{})
+		listCancel()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[MCP] list tools for %q: %v\n", name, err)
 		} else {

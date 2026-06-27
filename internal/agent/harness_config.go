@@ -24,11 +24,12 @@ const (
 
 // HarnessDeps are ADL-derived files Loop materializes into a session config directory.
 type HarnessDeps struct {
-	SystemPrompt string
-	MCPServers   []model.ADLMCPServer
-	Skills       []model.ADLSkill
-	WorkingDir   string
-	UserScope    bool
+	SystemPrompt            string
+	MCPServers              []model.ADLMCPServer
+	Skills                  []model.ADLSkill
+	WorkingDir              string
+	UserScope               bool
+	PendingCustomMCPServers []extensions.PendingCustomMCPServer
 }
 
 type harnessProvisioner interface {
@@ -132,15 +133,65 @@ func adlMCPServersFromStep(step model.ADLStep) []model.ADLMCPServer {
 	return step.AIAssets.MCPServers
 }
 
-// ExpandHarnessDeps resolves extension refs in MCP servers and skills.
-func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry) (HarnessDeps, error) {
+// PrepareSessionHarnessConfig provisions harness config when a session is created so
+// MCP/skills are available before the first message.
+func PrepareSessionHarnessConfig(sessionID string, def model.ADLDefinition, reg *extensions.Registry) error {
+	deps, err := buildHarnessDeps(sessionID, def, nil, "", reg)
+	if err != nil {
+		return err
+	}
+	harnessType := def.Harness.Type
+	if harnessType == "" {
+		harnessType = "claude-code"
+	}
+	_, err = ProvisionHarnessConfig(sessionID, harnessType, deps)
+	return err
+}
+
+func buildHarnessDeps(sessionID string, def model.ADLDefinition, step *model.ADLStep, workingDir string, reg *extensions.Registry) (HarnessDeps, error) {
+	deps := harnessDepsFromADL(def, step, workingDir)
+	if reg != nil {
+		merged, err := reg.MergeInstallableAIAssetsForAgent(
+			extensions.AgentHarnessDepsInput{
+				MCPServers: deps.MCPServers,
+				Skills:     deps.Skills,
+			},
+			model.ADLAgentID(def),
+		)
+		if err != nil {
+			return deps, err
+		}
+		deps.MCPServers = merged.MCPServers
+		deps.Skills = merged.Skills
+		deps.PendingCustomMCPServers = merged.PendingCustomMCPServers
+	}
+	return ExpandHarnessDeps(deps, reg, sessionID)
+}
+
+func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID string) (HarnessDeps, error) {
+	if reg != nil {
+		var err error
+		deps.MCPServers, err = reg.ExpandMCPServers(deps.MCPServers)
+		if err != nil {
+			return deps, err
+		}
+	}
+	if len(deps.PendingCustomMCPServers) > 0 {
+		configDir, dirErr := store.SessionConfigDir(sessionID)
+		if dirErr != nil {
+			return deps, dirErr
+		}
+		for _, pending := range deps.PendingCustomMCPServers {
+			srv, matErr := extensions.MaterializeCustomMCPServer(configDir, pending)
+			if matErr != nil {
+				return deps, matErr
+			}
+			deps.MCPServers = append(deps.MCPServers, srv)
+		}
+		deps.PendingCustomMCPServers = nil
+	}
 	if reg == nil {
 		return deps, nil
-	}
-	var err error
-	deps.MCPServers, err = reg.ExpandMCPServers(deps.MCPServers)
-	if err != nil {
-		return deps, err
 	}
 	expandedSkills := make([]model.ADLSkill, 0, len(deps.Skills))
 	for _, skill := range deps.Skills {

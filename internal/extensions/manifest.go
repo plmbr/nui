@@ -20,20 +20,30 @@ type Manifest struct {
 	Version       string         `yaml:"version"`
 	DisplayName   string         `yaml:"displayName"`
 	Description   string         `yaml:"description"`
-	Contributions Contributions  `yaml:"contributions"`
+	MCPServers    []ExtensionCustomMCPServer `yaml:"mcpServers,omitempty"` // deprecated: use contributions.aiAssets.mcpServers
+	Contributions Contributions    `yaml:"contributions"`
 }
 
 // Contributions groups list sources for each contribution type.
 type Contributions struct {
+	AIAssets   *AIAssetsContribution   `yaml:"aiAssets,omitempty"`
 	Catalog    *CatalogContribution    `yaml:"catalog,omitempty"`
 	Harnesses  *HarnessesContribution  `yaml:"harnesses,omitempty"`
-	MCPServers *MCPServersContribution `yaml:"mcpServers,omitempty"`
-	Skills     *SkillsContribution     `yaml:"skills,omitempty"`
+	MCPServers *MCPServersContribution `yaml:"mcpServers,omitempty"` // deprecated: use catalog.mcpServers
+	Skills     *SkillsContribution     `yaml:"skills,omitempty"`     // deprecated: use catalog.skills
 	Agents     *AgentsContribution     `yaml:"agents,omitempty"`
 }
 
+// AIAssetsContribution declares installable MCP servers and skills merged into harness sessions.
+type AIAssetsContribution struct {
+	MCPServers []ExtensionCustomMCPServer `yaml:"mcpServers,omitempty"`
+	Skills     []ExtensionCustomSkill     `yaml:"skills,omitempty"`
+}
+
 type CatalogContribution struct {
-	Command []string `yaml:"command"`
+	Command    []string                `yaml:"command,omitempty"`
+	MCPServers *MCPServersContribution `yaml:"mcpServers,omitempty"`
+	Skills     *SkillsContribution     `yaml:"skills,omitempty"`
 }
 
 type HarnessesContribution struct {
@@ -102,6 +112,50 @@ func validateManifest(dir string, m Manifest) error {
 	}
 	if m.APIVersion != "" && m.APIVersion != "loop.dev/extension/v1" {
 		return fmt.Errorf("extension %s: unsupported apiVersion %q", m.Name, m.APIVersion)
+	}
+	if err := validateCustomMCPServers(m.aiAssetsMCPServers(), m.Name); err != nil {
+		return err
+	}
+	if err := validateCustomSkills(m.aiAssetsSkills(), m.Name); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m Manifest) aiAssetsMCPServers() []ExtensionCustomMCPServer {
+	if m.Contributions.AIAssets != nil && len(m.Contributions.AIAssets.MCPServers) > 0 {
+		return m.Contributions.AIAssets.MCPServers
+	}
+	return m.MCPServers
+}
+
+func (m Manifest) aiAssetsSkills() []ExtensionCustomSkill {
+	if m.Contributions.AIAssets != nil {
+		return m.Contributions.AIAssets.Skills
+	}
+	return nil
+}
+
+// catalogMCPSource returns the catalog MCP list source, falling back to legacy top-level key.
+func (m Manifest) catalogMCPSource() *MCPServersContribution {
+	if m.Contributions.Catalog != nil && m.Contributions.Catalog.MCPServers != nil {
+		return m.Contributions.Catalog.MCPServers
+	}
+	return m.Contributions.MCPServers
+}
+
+// catalogSkillsSource returns the catalog skills list source, falling back to legacy top-level key.
+func (m Manifest) catalogSkillsSource() *SkillsContribution {
+	if m.Contributions.Catalog != nil && m.Contributions.Catalog.Skills != nil {
+		return m.Contributions.Catalog.Skills
+	}
+	return m.Contributions.Skills
+}
+
+// catalogCommand returns the shared catalog RPC command when configured.
+func (m Manifest) catalogCommand() []string {
+	if m.Contributions.Catalog != nil {
+		return m.Contributions.Catalog.Command
 	}
 	return nil
 }

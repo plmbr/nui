@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-
-	"loop/internal/extensions"
 )
 
 type mcpCallToolRequest struct {
@@ -100,9 +98,11 @@ func initMCP() error {
 	if _, err := os.Stat(cfgPath); err != nil {
 		return nil
 	}
-	if err := mcpManager.load(cfgPath); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: MCP init: %v\n", err)
-	}
+	go func() {
+		if err := mcpManager.load(cfgPath); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: MCP init: %v\n", err)
+		}
+	}()
 	return nil
 }
 
@@ -134,45 +134,9 @@ func ensureMCPConfigFromClaude(loopCfgPath string) error {
 }
 
 func mergeExtensionMCPConfig(cfgPath string) error {
-	if extensions.Default == nil {
-		return nil
-	}
-	extServers := extensions.Default.LoopMCPServerConfigs()
-	if len(extServers) == 0 {
-		return nil
-	}
-	var cfg mcpConfigFile
-	if data, err := os.ReadFile(cfgPath); err == nil {
-		_ = json.Unmarshal(data, &cfg)
-	}
-	if cfg.MCPServers == nil {
-		cfg.MCPServers = map[string]mcpServerConfig{}
-	}
-	for name, entry := range extServers {
-		if _, exists := cfg.MCPServers[name]; exists {
-			continue
-		}
-		sc := mcpServerConfig{}
-		if cmd, ok := entry["command"].(string); ok {
-			sc.Command = cmd
-		}
-		if args, ok := entry["args"].([]any); ok {
-			for _, a := range args {
-				if s, ok := a.(string); ok {
-					sc.Args = append(sc.Args, s)
-				}
-			}
-		}
-		if sc.Command != "" {
-			cfg.MCPServers[name] = sc
-		}
-	}
-	encoded, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(cfgPath), 0755); err != nil {
-		return err
-	}
-	return os.WriteFile(cfgPath, encoded, 0644)
+	// Catalog extension MCP servers are provisioned into harness session config only.
+	// They must not be merged into ~/.loop/.mcp.json — invalid stubs (e.g. python3 with
+	// no args) block or pollute Loop UI MCP startup.
+	_ = cfgPath
+	return nil
 }

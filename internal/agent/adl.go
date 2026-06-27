@@ -81,12 +81,11 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 // runStep resolves the harness and runs the agent for a single step.
 func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.ADLHarness, systemPrompt string, step *model.ADLStep, events chan<- Event) error {
 	req.UserScopeHarness = effectiveUserScopeHarness(harness.Type, req.UserScopeHarness)
-	deps := harnessDepsFromADL(a.def, step, req.WorkingDir)
-	deps.UserScope = req.UserScopeHarness
-	deps, err := ExpandHarnessDeps(deps, a.manager.registry)
+	deps, err := buildHarnessDeps(a.projectID, a.def, step, req.WorkingDir, a.manager.registry)
 	if err != nil {
 		return fmt.Errorf("expand harness deps: %w", err)
 	}
+	deps.UserScope = req.UserScopeHarness
 	configDir, err := ProvisionHarnessConfig(a.projectID, harness.Type, deps)
 	if err != nil {
 		return fmt.Errorf("provision harness config: %w", err)

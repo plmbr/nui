@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"loop/internal/extensions"
 	"loop/internal/model"
 )
 
@@ -493,4 +494,62 @@ func TestProvisionHarnessConfigMCPEnvAndHeaders(t *testing.T) {
 			t.Fatalf("opencode local environment: %v", local)
 		}
 	})
+}
+
+func TestExpandHarnessDepsCustomMCP(t *testing.T) {
+	repoRoot, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	proxyPath := filepath.Join(repoRoot, "harness-sdk", "loop_mcp_tools.py")
+	if _, err := os.Stat(proxyPath); err != nil {
+		t.Skip("harness-sdk not found")
+	}
+	t.Setenv("LOOP_MCP_TOOLS_PATH", proxyPath)
+
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	sessionID := "custom-mcp-session"
+
+	deps := HarnessDeps{
+		PendingCustomMCPServers: []extensions.PendingCustomMCPServer{{
+			ExtensionName: "corp-pack",
+			ExtensionDir:  home,
+			Server: extensions.ExtensionCustomMCPServer{
+				Name: "corp-tools",
+				Tools: []extensions.ExtensionMCPTool{
+					{Name: "echo", Command: []string{"python3", "-c", "print('ok')"}},
+				},
+			},
+		}},
+	}
+	expanded, err := ExpandHarnessDeps(deps, nil, sessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(expanded.MCPServers) != 1 {
+		t.Fatalf("mcp servers: %+v", expanded.MCPServers)
+	}
+	if expanded.MCPServers[0].Name != "ext-corp-pack-corp-tools" || expanded.MCPServers[0].Type != "stdio" {
+		t.Fatalf("server: %+v", expanded.MCPServers[0])
+	}
+
+	configDir, err := ProvisionHarnessConfig(sessionID, "claude-code", expanded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfgData, err := os.ReadFile(filepath.Join(configDir, ".claude.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cfg struct {
+		MCPServers map[string]map[string]any `json:"mcpServers"`
+	}
+	if err := json.Unmarshal(cfgData, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	entry := cfg.MCPServers["ext-corp-pack-corp-tools"]
+	if entry == nil || entry["command"] == nil {
+		t.Fatalf("ext-corp-pack-corp-tools entry: %v", entry)
+	}
 }

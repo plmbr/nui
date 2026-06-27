@@ -1,6 +1,6 @@
 # Loop Extension API
 
-Extensions live under `~/.loop/extensions/<name>/` and contribute backend capabilities to Loop: **harnesses**, **mcpServers**, **skills**, and **agents**.
+Extensions live under `~/.loop/extensions/<name>/` and contribute backend capabilities to Loop: **harnesses**, **catalog** (MCP servers and skills), **custom MCP tool servers**, and **agents**.
 
 ## Layout
 
@@ -9,9 +9,10 @@ Extensions live under `~/.loop/extensions/<name>/` and contribute backend capabi
   corp-pack/
     extension.yaml       # manifest (required)
     harnesses.yaml       # list of harnesses (optional)
-    mcp-servers.json     # list of MCP servers (optional)
-    skills.yaml          # list of skills (optional)
+    mcp-servers.json     # catalog MCP servers (optional)
+    skills.yaml          # catalog skills (optional)
     agents.yaml          # list of ADL agents (optional)
+    tools/               # CLI scripts for custom MCP tools (optional)
     harness_host.py      # harness runtime process (when using harnesses)
 ```
 
@@ -26,34 +27,55 @@ version: 1.0.0
 displayName: Corp Pack
 
 contributions:
+  aiAssets:
+    mcpServers:
+      - name: corp-tools
+        install: true            # auto-merge into all harness sessions
+        tools:
+          - name: echo
+            description: Echo a message back
+            command: ["python3", "${LOOP_EXTENSION_DIR}/tools/echo.py"]
+          - name: reverse
+            description: Reverse a message
+            command: ["python3", "${LOOP_EXTENSION_DIR}/tools/reverse.py"]
+    skills:
+      - name: deploy-checklist
+        install: true            # auto-merge into all harness sessions
+        content: |
+          ---
+          name: deploy-checklist
+          description: Pre-deploy verification steps
+          ---
+          Run through the checklist before merging.
+
+  catalog:
+    mcpServers:
+      source:
+        file: mcp-servers.json
+    skills:
+      source:
+        file: skills.yaml
+    command: ["python3", "catalog.py"]   # optional shared list provider
+
   harnesses:
     source:
-      file: harnesses.yaml   # or command: ["python3", "catalog.py"]
+      file: harnesses.yaml
     runtime:
       transport: stdio       # stdio | tcp | http
       command: ["python3", "harness_host.py"]
 
-  mcpServers:
-    source:
-      file: mcp-servers.json
-
-  skills:
-    source:
-      file: skills.yaml
-
   agents:
     source:
       file: agents.yaml
-
-  catalog:
-    command: ["python3", "catalog.py"]   # optional shared list provider
 ```
 
-**Source resolution** per contribution type: `source.file` → `source.command` → `catalog.command`.
+**Catalog source resolution** per list type: `source.file` → `source.command` → `catalog.command`.
+
+Legacy root-level `mcpServers` and top-level `contributions.mcpServers` / `contributions.skills` are still supported but deprecated; use `contributions.aiAssets` and `contributions.catalog` instead.
 
 ## Contribution lists
 
-All contributions are **lists**. Files may be JSON or YAML with a top-level array key matching the type (`harnesses`, `mcpServers`, `skills`, `agents`).
+Catalog list files may be JSON or YAML with a top-level array key matching the type (`mcpServers`, `skills`). Harnesses and agents use their own contribution keys.
 
 ### Harnesses
 
@@ -61,9 +83,9 @@ Registered as agent types `ext:<extension>/<harness-id>`. Execution uses the har
 
 Framework: [`harness-sdk/loop_agent_stdio.py`](../harness-sdk/loop_agent_stdio.py)
 
-### MCP servers
+### Catalog MCP servers
 
-Same schema as ADL `aiAssets.mcpServers`. Referenced in ADL as:
+Standard MCP servers (stdio/http/sse). Same schema as ADL `aiAssets.mcpServers`. Referenced in ADL as:
 
 ```yaml
 aiAssets:
@@ -71,9 +93,35 @@ aiAssets:
     - ref: ext:corp-pack/echo-tool
 ```
 
-### Skills
+### Custom MCP servers (aiAssets)
 
-Same schema as ADL `aiAssets.skills`. Paths resolve relative to the extension directory. Referenced as:
+Command-tool MCP servers declared under `contributions.aiAssets.mcpServers`. Each server groups multiple tools; each tool runs a CLI command with MCP tool arguments passed as **JSON on stdin**.
+
+| Field | Description |
+|-------|-------------|
+| `name` | Server name in harness MCP config |
+| `install` | When `true`, auto-merge into **all** harness sessions (builtin and extension agents) |
+| `tools` | List of tools with `name`, `description`, `command`, and optional `inputSchema` |
+
+Each tool may define `inputSchema` as a JSON Schema object (MCP `tools/list` exposes it to the harness). When omitted, the proxy defaults to a single required `message` string parameter.
+
+Loop materializes these as stdio MCP servers using [`harness-sdk/loop_mcp_tools.py`](../harness-sdk/loop_mcp_tools.py) (copied to `~/.loop/harness-sdk/` on first use). Harness config is written when a session is created and refreshed on each run. Tool scripts read JSON from stdin:
+
+```python
+import json, sys
+args = json.load(sys.stdin)
+print(args.get("message", ""))
+```
+
+Set `LOOP_MCP_TOOLS_PATH` to override the proxy script location.
+
+### Installable skills (aiAssets)
+
+Skills declared under `contributions.aiAssets.skills` with `install: true` are auto-merged into all harness sessions (same as custom MCP servers with `install: true`). Use `name`, `path`, and/or `content` (same schema as ADL `aiAssets.skills`).
+
+### Catalog skills
+
+Catalog skills are listed under `contributions.catalog.skills` for ADL `ref:` discovery. Same schema as ADL `aiAssets.skills`. Paths resolve relative to the extension directory. Referenced as:
 
 ```yaml
 aiAssets:
@@ -83,7 +131,7 @@ aiAssets:
 
 ### Agents
 
-Full ADL agent definitions. IDs are namespaced as `ext:<extension>/<agent-id>`.
+Full ADL agent definitions. IDs are namespaced as `ext:<extension>/<agent-id>`. Extension agents with `install: true` custom MCP servers receive those servers automatically in harness config.
 
 ## Catalog provider (dynamic lists)
 

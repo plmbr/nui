@@ -18,10 +18,12 @@ type Extension struct {
 	Dir      string
 	Manifest Manifest
 
-	Harnesses  []HarnessEntry
-	MCPServers []model.ADLMCPServer
-	Skills     []model.ADLSkill
-	Agents     []model.ADLDefinition
+	Harnesses        []HarnessEntry
+	MCPServers       []model.ADLMCPServer
+	Skills           []model.ADLSkill
+	Agents           []model.ADLDefinition
+	CustomMCPServers []ExtensionCustomMCPServer
+	CustomSkills     []ExtensionCustomSkill
 
 	defaultRuntime *RuntimeConfig
 }
@@ -82,15 +84,24 @@ func loadExtension(extDir string, reg *Registry) (*Extension, error) {
 		Dir:      extDir,
 		Manifest: manifest,
 	}
+	if len(manifest.MCPServers) > 0 {
+		fmt.Fprintf(os.Stderr, "[extensions] %s: root mcpServers is deprecated; use contributions.aiAssets.mcpServers\n", manifest.Name)
+	}
+	ext.CustomMCPServers = expandCustomMCPServers(extDir, manifest.aiAssetsMCPServers())
+	ext.CustomSkills = expandCustomSkills(extDir, manifest.aiAssetsSkills())
+	if manifest.Contributions.MCPServers != nil {
+		fmt.Fprintf(os.Stderr, "[extensions] %s: contributions.mcpServers is deprecated; use contributions.catalog.mcpServers\n", manifest.Name)
+	}
+	if manifest.Contributions.Skills != nil {
+		fmt.Fprintf(os.Stderr, "[extensions] %s: contributions.skills is deprecated; use contributions.catalog.skills\n", manifest.Name)
+	}
 	if manifest.Contributions.Harnesses != nil && manifest.Contributions.Harnesses.Runtime != nil {
 		rt := *manifest.Contributions.Harnesses.Runtime
 		ext.defaultRuntime = &rt
 	}
 
 	var catalogCmd []string
-	if manifest.Contributions.Catalog != nil {
-		catalogCmd = manifest.Contributions.Catalog.Command
-	}
+	catalogCmd = manifest.catalogCommand()
 	var catalog *catalogProvider
 
 	resolveCatalog := func() (*catalogProvider, error) {
@@ -110,7 +121,7 @@ func loadExtension(extDir string, reg *Registry) (*Extension, error) {
 	}
 
 	if c := manifest.Contributions.Harnesses; c != nil {
-		list, err := loadContributionList(extDir, c.Source, catalogCmd, resolveCatalog,
+		list, err := loadContributionList(extDir, manifest.Name, c.Source, catalogCmd, resolveCatalog,
 			func(file string) ([]HarnessEntry, error) { return loadHarnessesFromFile(file) },
 			func(p *catalogProvider) ([]HarnessEntry, error) { return p.ListHarnesses() },
 		)
@@ -120,30 +131,30 @@ func loadExtension(extDir string, reg *Registry) (*Extension, error) {
 		ext.Harnesses = list
 	}
 
-	if c := manifest.Contributions.MCPServers; c != nil {
-		list, err := loadContributionList(extDir, c.Source, catalogCmd, resolveCatalog,
+	if c := manifest.catalogMCPSource(); c != nil {
+		list, err := loadContributionList(extDir, manifest.Name, c.Source, catalogCmd, resolveCatalog,
 			func(file string) ([]model.ADLMCPServer, error) { return loadMCPServersFromFile(file) },
 			func(p *catalogProvider) ([]model.ADLMCPServer, error) { return p.ListMCPServers() },
 		)
 		if err != nil {
-			return nil, fmt.Errorf("mcpServers: %w", err)
+			return nil, fmt.Errorf("catalog mcpServers: %w", err)
 		}
 		ext.MCPServers = list
 	}
 
-	if c := manifest.Contributions.Skills; c != nil {
-		list, err := loadContributionList(extDir, c.Source, catalogCmd, resolveCatalog,
+	if c := manifest.catalogSkillsSource(); c != nil {
+		list, err := loadContributionList(extDir, manifest.Name, c.Source, catalogCmd, resolveCatalog,
 			func(file string) ([]model.ADLSkill, error) { return loadSkillsFromFile(file) },
 			func(p *catalogProvider) ([]model.ADLSkill, error) { return p.ListSkills() },
 		)
 		if err != nil {
-			return nil, fmt.Errorf("skills: %w", err)
+			return nil, fmt.Errorf("catalog skills: %w", err)
 		}
 		ext.Skills = list
 	}
 
 	if c := manifest.Contributions.Agents; c != nil {
-		list, err := loadContributionList(extDir, c.Source, catalogCmd, resolveCatalog,
+		list, err := loadContributionList(extDir, manifest.Name, c.Source, catalogCmd, resolveCatalog,
 			func(file string) ([]model.ADLDefinition, error) { return loadAgentsFromFile(file) },
 			func(p *catalogProvider) ([]model.ADLDefinition, error) { return p.ListAgents() },
 		)
@@ -161,18 +172,27 @@ func loadExtension(extDir string, reg *Registry) (*Extension, error) {
 
 func loadContributionList[T any](
 	extDir string,
+	extName string,
 	source Source,
 	catalogCmd []string,
 	resolveCatalog func() (*catalogProvider, error),
 	fromFile func(string) ([]T, error),
 	fromCatalog func(*catalogProvider) ([]T, error),
 ) ([]T, error) {
-	file, _, err := source.resolved(extDir, catalogCmd)
+	file, listCmd, err := source.resolved(extDir, catalogCmd)
 	if err != nil {
 		return nil, err
 	}
 	if file != "" {
 		return fromFile(file)
+	}
+	if len(listCmd) > 0 {
+		p, err := newCatalogProvider(extDir, extName, listCmd)
+		if err != nil {
+			return nil, err
+		}
+		defer p.Close()
+		return fromCatalog(p)
 	}
 	p, err := resolveCatalog()
 	if err != nil {
@@ -401,8 +421,14 @@ func (r *Registry) Info() []ExtensionInfo {
 		for _, s := range ext.MCPServers {
 			info.MCPServers = append(info.MCPServers, s.Name)
 		}
+		for _, s := range ext.CustomMCPServers {
+			info.MCPServers = append(info.MCPServers, s.Name+"(custom)")
+		}
 		for _, s := range ext.Skills {
 			info.Skills = append(info.Skills, s.Name)
+		}
+		for _, s := range ext.CustomSkills {
+			info.Skills = append(info.Skills, s.Name+"(aiAssets)")
 		}
 		for _, a := range ext.Agents {
 			id := a.ID

@@ -5,20 +5,55 @@ displayName: Corp Pack
 description: Example extension with harnesses, MCP servers, skills, and agents
 
 contributions:
+  aiAssets:
+    mcpServers:
+      - name: corp-tools
+        install: true
+        tools:
+          - name: echo
+            description: Echo a message back
+            command: ["python3", "${LOOP_EXTENSION_DIR}/tools/echo.py"]
+            inputSchema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: Text to echo
+              required: [message]
+          - name: reverse
+            description: Reverse a message
+            command: ["python3", "${LOOP_EXTENSION_DIR}/tools/reverse.py"]
+            inputSchema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: Text to reverse
+              required: [message]
+    skills:
+      - name: deploy-checklist
+        install: true
+        content: |
+          ---
+          name: deploy-checklist
+          description: Pre-deploy verification steps
+          ---
+          Run through the checklist before merging.
+
+  catalog:
+    mcpServers:
+      source:
+        file: mcp-servers.json
+    skills:
+      source:
+        file: skills.yaml
+
   harnesses:
     source:
       file: harnesses.yaml
     runtime:
       transport: stdio
       command: ["python3", "harness_host.py"]
-
-  mcpServers:
-    source:
-      file: mcp-servers.json
-
-  skills:
-    source:
-      file: skills.yaml
 
   agents:
     source:

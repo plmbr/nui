@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"loop/internal/agent"
+	"loop/internal/extensions"
 	"loop/internal/model"
 	"loop/internal/store"
 
@@ -319,6 +320,10 @@ func createSession(name, workingDir, agentType string, agentConfig map[string]an
 			_ = store.RemoveSessionWorkspace(sessionID)
 		}
 		return model.Session{}, err
+	}
+
+	if err := agent.PrepareSessionHarnessConfig(sessionID, def, extensions.Default); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: provision session harness config: %v\n", err)
 	}
 
 	mu.Lock()
