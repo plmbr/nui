@@ -145,6 +145,53 @@ contributions:
 	}
 }
 
+func TestMergeInstallableAIAssetsInstructions(t *testing.T) {
+	home := t.TempDir()
+	extDir := filepath.Join(home, ".loop", "extensions", "guide-pack")
+	if err := os.MkdirAll(extDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(extDir, "guidelines.md"), []byte("Always run tests before merging.\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	manifest := `apiVersion: loop.dev/extension/v1
+name: guide-pack
+version: 1.0.0
+contributions:
+  aiAssets:
+    instructions:
+      - name: inline
+        install: true
+        content: |
+          Follow the style guide.
+      - name: from-file
+        install: true
+        path: ./guidelines.md
+      - name: optional
+        install: false
+        content: |
+          Not installed.
+`
+	if err := os.WriteFile(filepath.Join(extDir, "extension.yaml"), []byte(manifest), 0644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", home)
+	reg, err := extensions.LoadRegistry()
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := reg.MergeInstallableAIAssetsForAgent(extensions.AgentHarnessDepsInput{
+		SystemPrompt: "Base prompt.",
+	}, "adl:local-agent")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "Base prompt.\n\nFollow the style guide.\n\nAlways run tests before merging."
+	if out.SystemPrompt != want {
+		t.Fatalf("system prompt:\n%q\nwant:\n%q", out.SystemPrompt, want)
+	}
+}
+
 func TestMaterializeCustomMCPServer(t *testing.T) {
 	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

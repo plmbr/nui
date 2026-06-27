@@ -153,8 +153,9 @@ func buildHarnessDeps(sessionID string, def model.ADLDefinition, step *model.ADL
 	if reg != nil {
 		merged, err := reg.MergeInstallableAIAssetsForAgent(
 			extensions.AgentHarnessDepsInput{
-				MCPServers: deps.MCPServers,
-				Skills:     deps.Skills,
+				MCPServers:   deps.MCPServers,
+				Skills:       deps.Skills,
+				SystemPrompt: deps.SystemPrompt,
 			},
 			model.ADLAgentID(def),
 		)
@@ -163,6 +164,7 @@ func buildHarnessDeps(sessionID string, def model.ADLDefinition, step *model.ADL
 		}
 		deps.MCPServers = merged.MCPServers
 		deps.Skills = merged.Skills
+		deps.SystemPrompt = merged.SystemPrompt
 		deps.PendingCustomMCPServers = merged.PendingCustomMCPServers
 	}
 	return ExpandHarnessDeps(deps, reg, sessionID)

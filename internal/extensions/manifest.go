@@ -35,10 +35,11 @@ type Contributions struct {
 	Mentions   *MentionProvidersContribution `yaml:"mentionProviders,omitempty"`
 }
 
-// AIAssetsContribution declares installable MCP servers and skills merged into harness sessions.
+// AIAssetsContribution declares installable MCP servers, skills, and instructions merged into harness sessions.
 type AIAssetsContribution struct {
-	MCPServers []ExtensionCustomMCPServer `yaml:"mcpServers,omitempty"`
-	Skills     []ExtensionCustomSkill     `yaml:"skills,omitempty"`
+	MCPServers   []ExtensionCustomMCPServer   `yaml:"mcpServers,omitempty"`
+	Skills       []ExtensionCustomSkill       `yaml:"skills,omitempty"`
+	Instructions []ExtensionCustomInstruction `yaml:"instructions,omitempty"`
 }
 
 type CatalogContribution struct {
@@ -120,6 +121,9 @@ func validateManifest(dir string, m Manifest) error {
 	if err := validateCustomSkills(m.aiAssetsSkills(), m.Name); err != nil {
 		return err
 	}
+	if err := validateCustomInstructions(m.aiAssetsInstructions(), m.Name); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -133,6 +137,13 @@ func (m Manifest) aiAssetsMCPServers() []ExtensionCustomMCPServer {
 func (m Manifest) aiAssetsSkills() []ExtensionCustomSkill {
 	if m.Contributions.AIAssets != nil {
 		return m.Contributions.AIAssets.Skills
+	}
+	return nil
+}
+
+func (m Manifest) aiAssetsInstructions() []ExtensionCustomInstruction {
+	if m.Contributions.AIAssets != nil {
+		return m.Contributions.AIAssets.Instructions
 	}
 	return nil
 }

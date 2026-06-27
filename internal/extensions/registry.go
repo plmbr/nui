@@ -22,9 +22,10 @@ type Extension struct {
 	MCPServers       []model.ADLMCPServer
 	Skills           []model.ADLSkill
 	Agents           []model.ADLDefinition
-	CustomMCPServers []ExtensionCustomMCPServer
-	CustomSkills     []ExtensionCustomSkill
-	MentionProviders []MentionProviderEntry
+	CustomMCPServers   []ExtensionCustomMCPServer
+	CustomSkills       []ExtensionCustomSkill
+	CustomInstructions []ExtensionCustomInstruction
+	MentionProviders   []MentionProviderEntry
 	mentionRuntime   *RuntimeConfig
 
 	defaultRuntime *RuntimeConfig
@@ -92,6 +93,7 @@ func loadExtension(extDir string, reg *Registry) (*Extension, error) {
 	}
 	ext.CustomMCPServers = expandCustomMCPServers(extDir, manifest.aiAssetsMCPServers())
 	ext.CustomSkills = expandCustomSkills(extDir, manifest.aiAssetsSkills())
+	ext.CustomInstructions = expandCustomInstructions(extDir, manifest.aiAssetsInstructions())
 	if manifest.Contributions.MCPServers != nil {
 		fmt.Fprintf(os.Stderr, "[extensions] %s: contributions.mcpServers is deprecated; use contributions.catalog.mcpServers\n", manifest.Name)
 	}
@@ -418,9 +420,10 @@ type ExtensionInfo struct {
 	Description string   `json:"description,omitempty"`
 	Disabled    bool     `json:"disabled"`
 	Harnesses   []string `json:"harnesses,omitempty"`
-	MCPServers  []string `json:"mcpServers,omitempty"`
-	Skills      []string `json:"skills,omitempty"`
-	Agents      []string `json:"agents,omitempty"`
+	MCPServers    []string `json:"mcpServers,omitempty"`
+	Skills        []string `json:"skills,omitempty"`
+	Instructions  []string `json:"instructions,omitempty"`
+	Agents        []string `json:"agents,omitempty"`
 }
 
 // Info returns API metadata for all extensions.
@@ -451,6 +454,9 @@ func (r *Registry) Info() []ExtensionInfo {
 		}
 		for _, s := range ext.CustomSkills {
 			info.Skills = append(info.Skills, s.Name+"(aiAssets)")
+		}
+		for _, inst := range ext.CustomInstructions {
+			info.Instructions = append(info.Instructions, inst.Name)
 		}
 		for _, a := range ext.Agents {
 			id := a.ID

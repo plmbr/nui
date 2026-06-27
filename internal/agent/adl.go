@@ -28,7 +28,7 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 	steps := a.def.Steps
 	if len(steps) == 0 {
 		// Single-step definition — run the top-level harness directly.
-		return a.runStep(ctx, req, a.def.Harness, a.def.SystemPrompt, nil, events)
+		return a.runStep(ctx, req, a.def.Harness, nil, events)
 	}
 
 	sorted, err := topoSort(steps)
@@ -69,7 +69,7 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 
 		// Collect this step's output so downstream steps can reference it.
 		collecting := &collectingEvents{upstream: events}
-		if err := a.runStep(ctx, stepReq, harness, systemPrompt, &step, collecting.ch()); err != nil {
+		if err := a.runStep(ctx, stepReq, harness, &step, collecting.ch()); err != nil {
 			return err
 		}
 		stepOutputs[step.Name] = collecting.text
@@ -79,7 +79,7 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 }
 
 // runStep resolves the harness and runs the agent for a single step.
-func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.ADLHarness, systemPrompt string, step *model.ADLStep, events chan<- Event) error {
+func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.ADLHarness, step *model.ADLStep, events chan<- Event) error {
 	req.UserScopeHarness = effectiveUserScopeHarness(harness.Type, req.UserScopeHarness)
 	deps, err := buildHarnessDeps(a.projectID, a.def, step, req.WorkingDir, a.manager.registry)
 	if err != nil {
@@ -91,7 +91,7 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 		return fmt.Errorf("provision harness config: %w", err)
 	}
 	req.ConfigDir = configDir
-	req.SystemPrompt = systemPrompt
+	req.SystemPrompt = deps.SystemPrompt
 	req.Model = harness.Model
 	req.Env = mergeADLEnv(a.def, harness)
 

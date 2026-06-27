@@ -171,26 +171,114 @@ func (ext *Extension) InstallableCustomSkills() []ExtensionCustomSkill {
 	return out
 }
 
+// ExtensionCustomInstruction is a system-prompt block declared under contributions.aiAssets.instructions.
+type ExtensionCustomInstruction struct {
+	Name    string `yaml:"name"`
+	Install bool   `yaml:"install,omitempty"`
+	Path    string `yaml:"path,omitempty"`
+	Content string `yaml:"content,omitempty"`
+}
+
+func validateCustomInstructions(instructions []ExtensionCustomInstruction, extName string) error {
+	seen := map[string]bool{}
+	for i, inst := range instructions {
+		name := strings.TrimSpace(inst.Name)
+		if name == "" {
+			return fmt.Errorf("extension %s: aiAssets.instructions[%d]: name is required", extName, i)
+		}
+		if seen[name] {
+			return fmt.Errorf("extension %s: duplicate aiAssets instruction name %q", extName, name)
+		}
+		seen[name] = true
+		hasPath := strings.TrimSpace(inst.Path) != ""
+		hasContent := strings.TrimSpace(inst.Content) != ""
+		switch {
+		case hasContent && !hasPath:
+		case hasPath && !hasContent:
+		default:
+			return fmt.Errorf("extension %s: aiAssets.instructions[%q]: requires exactly one source (path or content)", extName, name)
+		}
+	}
+	return nil
+}
+
+func expandCustomInstructions(extDir string, instructions []ExtensionCustomInstruction) []ExtensionCustomInstruction {
+	if len(instructions) == 0 {
+		return nil
+	}
+	out := make([]ExtensionCustomInstruction, len(instructions))
+	copy(out, instructions)
+	for i := range out {
+		if p := strings.TrimSpace(out[i].Path); p != "" && !filepath.IsAbs(p) {
+			out[i].Path = filepath.Join(extDir, p)
+		}
+	}
+	return out
+}
+
+// ResolveCustomInstruction returns the instruction body from inline content or a file path.
+func ResolveCustomInstruction(inst ExtensionCustomInstruction) (string, error) {
+	if content := strings.TrimSpace(inst.Content); content != "" {
+		return content, nil
+	}
+	path := strings.TrimSpace(inst.Path)
+	if path == "" {
+		return "", fmt.Errorf("instruction %q: empty source", inst.Name)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+// InstallableCustomInstructions returns aiAssets instructions with install: true.
+func (ext *Extension) InstallableCustomInstructions() []ExtensionCustomInstruction {
+	var out []ExtensionCustomInstruction
+	for _, inst := range ext.CustomInstructions {
+		if inst.Install {
+			out = append(out, inst)
+		}
+	}
+	return out
+}
+
+func appendSystemPromptInstructions(base string, blocks []string) string {
+	var parts []string
+	if trimmed := strings.TrimSpace(base); trimmed != "" {
+		parts = append(parts, trimmed)
+	}
+	for _, block := range blocks {
+		if trimmed := strings.TrimSpace(block); trimmed != "" {
+			parts = append(parts, trimmed)
+		}
+	}
+	return strings.Join(parts, "\n\n")
+}
+
 // AgentHarnessDepsInput is passed from the agent package for aiAssets merge.
 type AgentHarnessDepsInput struct {
-	MCPServers []model.ADLMCPServer
-	Skills     []model.ADLSkill
+	MCPServers   []model.ADLMCPServer
+	Skills       []model.ADLSkill
+	SystemPrompt string
 }
 
 // AgentHarnessDepsOutput carries merged aiAssets state back to the agent package.
 type AgentHarnessDepsOutput struct {
 	MCPServers              []model.ADLMCPServer
 	Skills                  []model.ADLSkill
+	SystemPrompt            string
 	PendingCustomMCPServers []PendingCustomMCPServer
 }
 
-// MergeInstallableAIAssetsForAgent merges installable aiAssets MCP servers and skills from all
+// MergeInstallableAIAssetsForAgent merges installable aiAssets MCP servers, skills, and instructions from all
 // enabled extensions (install: true) into harness deps.
 func (r *Registry) MergeInstallableAIAssetsForAgent(in AgentHarnessDepsInput, agentID string) (AgentHarnessDepsOutput, error) {
 	_ = agentID
 	out := AgentHarnessDepsOutput{
-		MCPServers: in.MCPServers,
-		Skills:     in.Skills,
+		MCPServers:   in.MCPServers,
+		Skills:       in.Skills,
+		SystemPrompt: in.SystemPrompt,
 	}
 	if r == nil {
 		return out, nil
@@ -204,6 +292,8 @@ func (r *Registry) MergeInstallableAIAssetsForAgent(in AgentHarnessDepsInput, ag
 	for _, s := range out.Skills {
 		existingSkills[strings.TrimSpace(s.Name)] = true
 	}
+	existingInstructions := map[string]bool{}
+	var instructionBlocks []string
 
 	r.mu.RLock()
 	extList := make([]*Extension, 0, len(r.extensions))
@@ -240,6 +330,20 @@ func (r *Registry) MergeInstallableAIAssetsForAgent(in AgentHarnessDepsInput, ag
 			out.Skills = append(out.Skills, resolved)
 			existingSkills[skill.Name] = true
 		}
+		for _, inst := range ext.InstallableCustomInstructions() {
+			if existingInstructions[inst.Name] {
+				continue
+			}
+			body, err := ResolveCustomInstruction(inst)
+			if err != nil {
+				return out, fmt.Errorf("extension %s instruction %q: %w", extName, inst.Name, err)
+			}
+			instructionBlocks = append(instructionBlocks, body)
+			existingInstructions[inst.Name] = true
+		}
+	}
+	if len(instructionBlocks) > 0 {
+		out.SystemPrompt = appendSystemPromptInstructions(out.SystemPrompt, instructionBlocks)
 	}
 	return out, nil
 }

@@ -94,6 +94,9 @@ export function ExtensionsTab({ onChanged }: Props) {
                 {ext.skills && ext.skills.length > 0 && (
                   <span>{ext.skills.length} skill{ext.skills.length === 1 ? '' : 's'}</span>
                 )}
+                {ext.instructions && ext.instructions.length > 0 && (
+                  <span>{ext.instructions.length} instruction{ext.instructions.length === 1 ? '' : 's'}</span>
+                )}
                 {ext.agents && ext.agents.length > 0 && (
                   <span>{ext.agents.length} agent{ext.agents.length === 1 ? '' : 's'}</span>
                 )}

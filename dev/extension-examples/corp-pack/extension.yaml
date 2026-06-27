@@ -39,6 +39,11 @@ contributions:
           description: Pre-deploy verification steps
           ---
           Run through the checklist before merging.
+    instructions:
+      - name: corp-guidelines
+        install: true
+        content: |
+          Follow corporate security guidelines. Never commit secrets.
 
   catalog:
     mcpServers:

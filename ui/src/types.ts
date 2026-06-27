@@ -79,6 +79,7 @@ export interface ExtensionInfo {
   harnesses?: string[]
   mcpServers?: string[]
   skills?: string[]
+  instructions?: string[]
   agents?: string[]
 }
 

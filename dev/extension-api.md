@@ -47,6 +47,11 @@ contributions:
           description: Pre-deploy verification steps
           ---
           Run through the checklist before merging.
+    instructions:
+      - name: corp-guidelines
+        install: true            # auto-merge into all harness system prompts
+        content: |
+          Follow corporate security guidelines. Never commit secrets.
 
   catalog:
     mcpServers:
@@ -125,6 +130,17 @@ Set `LOOP_MCP_TOOLS_PATH` to override the proxy script location.
 ### Installable skills (aiAssets)
 
 Skills declared under `contributions.aiAssets.skills` with `install: true` are auto-merged into all harness sessions (same as custom MCP servers with `install: true`). Use `name`, `path`, and/or `content` (same schema as ADL `aiAssets.skills`).
+
+### Installable instructions (aiAssets)
+
+Instructions declared under `contributions.aiAssets.instructions` with `install: true` are auto-appended to the harness system prompt for all sessions (builtin and extension agents). Use `name`, `path`, and/or `content` — exactly one source is required.
+
+| Field | Description |
+|-------|-------------|
+| `name` | Instruction identifier (used for deduplication across extensions) |
+| `install` | When `true`, auto-merge into **all** harness sessions |
+| `content` | Inline instruction text appended to the system prompt |
+| `path` | File path relative to the extension directory |
 
 ### Catalog skills
 
