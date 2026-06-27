@@ -10,7 +10,7 @@ export function ThinkingIndicator({
   variant = 'waiting',
 }: Props) {
   const resolvedLabel =
-    label ?? (variant === 'streaming' ? 'Writing…' : 'Agent is responding')
+    label ?? (variant === 'streaming' ? 'Generating…' : 'Agent is responding')
 
   return (
     <span
