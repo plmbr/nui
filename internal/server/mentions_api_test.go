@@ -67,6 +67,27 @@ func TestEffectiveWorkingDir(t *testing.T) {
 	if got, err := effectiveWorkingDir(dir); err != nil || got != dir {
 		t.Fatalf("explicit = %q, err = %v", got, err)
 	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := effectiveWorkingDir("~/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != home {
+		t.Fatalf("tilde home = %q, want %q", got, home)
+	}
+	got, err = effectiveWorkingDir(filepath.Join("~", ".loop", "extensions", "nbi"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(home, ".loop", "extensions", "nbi")
+	if got != want {
+		t.Fatalf("tilde path = %q, want %q", got, want)
+	}
+
 	orig, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -75,7 +96,7 @@ func TestEffectiveWorkingDir(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chdir(orig) })
-	got, err := effectiveWorkingDir("")
+	got, err = effectiveWorkingDir("")
 	if err != nil {
 		t.Fatal(err)
 	}

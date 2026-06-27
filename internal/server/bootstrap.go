@@ -13,6 +13,7 @@ import (
 	"loop/internal/agent"
 	"loop/internal/extensions"
 	"loop/internal/model"
+	"loop/internal/pathutil"
 	"loop/internal/store"
 
 	"github.com/google/uuid"
@@ -338,7 +339,7 @@ func createSession(name, workingDir, agentType string, agentConfig map[string]an
 
 func resolveSessionWorkingDir(sessionID string, def model.ADLDefinition, requested string) (string, error) {
 	if model.IsADLWorkingDirInput(def) {
-		return strings.TrimSpace(requested), nil
+		return pathutil.ExpandHome(requested)
 	}
 	return store.EnsureSessionWorkspace(sessionID)
 }
