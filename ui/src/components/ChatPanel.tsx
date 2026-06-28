@@ -10,6 +10,7 @@ import {
 import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
+import { CodeBlock } from '@/components/CodeBlock'
 import { ThinkingIndicator } from '@/components/ThinkingIndicator'
 import { MentionMenu } from '@/components/MentionMenu'
 import { ToolCallBubble } from '@/components/ToolCallBubble'
@@ -217,6 +218,9 @@ export function ChatPanel({
       remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeHighlight]}
       components={{
+        pre: ({ children, ...props }) => (
+          <CodeBlock {...props}>{children}</CodeBlock>
+        ),
         code: ({ className, children, ...props }) => {
           const isBlock = className?.includes('language-')
           if (isBlock) {

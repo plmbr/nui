@@ -854,12 +854,20 @@
   }
 
   /* ─── Syntax highlighting (theme-aware) ──────────────────────── */
-  .agui-message--assistant pre {
-    @apply my-3 overflow-x-auto rounded-lg border bg-muted/50 p-3;
+  .agui-code-block {
+    @apply relative my-3;
+  }
+
+  .agui-code-block pre {
+    @apply my-0 overflow-x-auto rounded-lg border bg-muted/50 p-4 pt-10;
+  }
+
+  .agui-code-block__copy {
+    @apply absolute top-2 right-2 z-10 text-muted-foreground opacity-80 hover:bg-muted hover:text-foreground hover:opacity-100;
   }
 
   .agui-message--assistant pre code.hljs {
-    @apply bg-transparent p-0 text-[0.82em] leading-relaxed;
+    @apply bg-transparent p-0 text-sm leading-relaxed;
     font-family: var(--font-mono);
   }
 
