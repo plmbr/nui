@@ -587,7 +587,7 @@
   }
 
   .agui-message--assistant .agui-message__bubble {
-    @apply prose max-w-none rounded-2xl rounded-bl-md border bg-card/60 px-4 py-3 text-[0.95rem] leading-relaxed text-foreground backdrop-blur-sm;
+    @apply prose max-w-none px-0 py-1 text-[0.95rem] leading-relaxed text-foreground;
     .dark & { @apply prose-invert; }
   }
 
