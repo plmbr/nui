@@ -6,12 +6,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { api } from '@/api'
 
-export interface SessionChatMessage {
+export interface ToolCallPart {
+  type: 'tool'
   id: string
-  role: 'user' | 'assistant' | 'tool'
-  content: string
-  error?: boolean
-  images?: ChatImage[]
   toolCallId?: string
   toolName?: string
   toolArgs?: Record<string, unknown>
@@ -19,6 +16,73 @@ export interface SessionChatMessage {
   mcpAppResourceUri?: string
   mcpAppServerName?: string
   mcpAppToolInput?: Record<string, unknown>
+}
+
+export interface TextPart {
+  type: 'text'
+  content: string
+}
+
+export type AssistantPart = TextPart | ToolCallPart
+
+export interface SessionChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  parts?: AssistantPart[]
+  error?: boolean
+  images?: ChatImage[]
+  /** @deprecated tool fields on the message root; use parts instead */
+  toolCallId?: string
+  toolName?: string
+  toolArgs?: Record<string, unknown>
+  toolResult?: unknown
+  mcpAppResourceUri?: string
+  mcpAppServerName?: string
+  mcpAppToolInput?: Record<string, unknown>
+}
+
+function assistantTextContent(msg: SessionChatMessage): string {
+  if (msg.parts?.length) {
+    return msg.parts
+      .filter((part): part is TextPart => part.type === 'text')
+      .map((part) => part.content)
+      .join('')
+  }
+  return msg.content
+}
+
+function appendTextPart(parts: AssistantPart[], delta: string): AssistantPart[] {
+  const next = [...parts]
+  const last = next[next.length - 1]
+  if (last?.type === 'text') {
+    next[next.length - 1] = { ...last, content: last.content + delta }
+  } else {
+    next.push({ type: 'text', content: delta })
+  }
+  return next
+}
+
+function updateToolPart(
+  parts: AssistantPart[],
+  partId: string,
+  update: Partial<ToolCallPart>,
+): AssistantPart[] {
+  return parts.map((part) =>
+    part.type === 'tool' && part.id === partId ? { ...part, ...update } : part,
+  )
+}
+
+function applyAssistantError(msg: SessionChatMessage, text: string): SessionChatMessage {
+  const content = text || assistantTextContent(msg) || 'An error occurred.'
+  if (!msg.parts?.length) {
+    return { ...msg, content, error: true }
+  }
+  if (assistantTextContent(msg).trim()) {
+    return { ...msg, content: assistantTextContent(msg), error: true }
+  }
+  const parts = appendTextPart(msg.parts, content)
+  return { ...msg, parts, content, error: true }
 }
 
 export interface ChatImage {
@@ -91,6 +155,7 @@ export function useSessionChat(sessionId: string) {
         id: assistantMsgId,
         role: 'assistant',
         content: '',
+        parts: [],
       }
 
       setMessages((prev) => [...prev, userMsg, assistantMsg])
@@ -99,8 +164,8 @@ export function useSessionChat(sessionId: string) {
 
       const history = [
         ...messages.map((m) => ({
-          role: m.role === 'tool' ? ('assistant' as const) : (m.role as 'user' | 'assistant'),
-          content: m.content,
+          role: m.role as 'user' | 'assistant',
+          content: m.role === 'assistant' ? assistantTextContent(m) : m.content,
           id: m.id,
         })),
         { role: 'user' as const, content: text, id: userMsg.id },
@@ -122,41 +187,50 @@ export function useSessionChat(sessionId: string) {
             const chunk = event as { delta?: string }
             if (chunk.delta) {
               setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId ? { ...m, content: m.content + chunk.delta } : m,
-                ),
+                prev.map((m) => {
+                  if (m.id !== assistantMsgId) return m
+                  const parts = appendTextPart(m.parts ?? [], chunk.delta!)
+                  return { ...m, parts, content: assistantTextContent({ ...m, parts }) }
+                }),
               )
             }
           } else if (event.type === EventType.TOOL_CALL_START) {
             const e = event as { toolCallId?: string; toolCallName?: string }
-            const toolMsgId = uuidv4()
+            const partId = uuidv4()
             if (e.toolCallId) {
-              pendingToolsRef.current[e.toolCallId] = toolMsgId
+              pendingToolsRef.current[e.toolCallId] = partId
             }
-            const toolMsg: SessionChatMessage = {
-              id: toolMsgId,
-              role: 'tool',
-              content: '',
+            const toolPart: ToolCallPart = {
+              type: 'tool',
+              id: partId,
               toolCallId: e.toolCallId,
               toolName: e.toolCallName,
               toolArgs: {},
             }
-            setMessages((prev) => {
-              const idx = prev.findIndex((m) => m.id === assistantMsgId)
-              if (idx === -1) return [...prev, toolMsg]
-              return [...prev.slice(0, idx), toolMsg, ...prev.slice(idx)]
-            })
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsgId
+                  ? { ...m, parts: [...(m.parts ?? []), toolPart] }
+                  : m,
+              ),
+            )
           } else if (event.type === EventType.TOOL_CALL_ARGS) {
             const e = event as { toolCallId?: string; delta?: string }
             if (!e.toolCallId) return
-            const msgId = pendingToolsRef.current[e.toolCallId]
-            if (!msgId || !e.delta) return
+            const partId = pendingToolsRef.current[e.toolCallId]
+            if (!partId || !e.delta) return
             try {
               const args = JSON.parse(e.delta) as Record<string, unknown>
               setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === msgId ? { ...m, toolArgs: { ...m.toolArgs, ...args } } : m,
-                ),
+                prev.map((m) => {
+                  if (m.id !== assistantMsgId || !m.parts) return m
+                  const parts = m.parts.map((part) =>
+                    part.type === 'tool' && part.id === partId
+                      ? { ...part, toolArgs: { ...part.toolArgs, ...args } }
+                      : part,
+                  )
+                  return { ...m, parts }
+                }),
               )
             } catch {
               /* ignore partial JSON */
@@ -164,8 +238,8 @@ export function useSessionChat(sessionId: string) {
           } else if (event.type === EventType.TOOL_CALL_RESULT) {
             const e = event as { toolCallId?: string; content?: string }
             if (!e.toolCallId) return
-            const msgId = pendingToolsRef.current[e.toolCallId]
-            if (!msgId) return
+            const partId = pendingToolsRef.current[e.toolCallId]
+            if (!partId) return
             let result: unknown = e.content
             try {
               result = JSON.parse(e.content ?? '')
@@ -173,7 +247,10 @@ export function useSessionChat(sessionId: string) {
               /* keep as string */
             }
             setMessages((prev) =>
-              prev.map((m) => (m.id === msgId ? { ...m, toolResult: result } : m)),
+              prev.map((m) => {
+                if (m.id !== assistantMsgId || !m.parts) return m
+                return { ...m, parts: updateToolPart(m.parts, partId, { toolResult: result }) }
+              }),
             )
           } else if (event.type === EventType.CUSTOM) {
             const e = event as { name?: string; value?: Record<string, unknown> }
@@ -208,19 +285,20 @@ export function useSessionChat(sessionId: string) {
               toolInput?: Record<string, unknown>
             }
             if (!toolCallId || !serverName || !resourceUri) return
-            const msgId = pendingToolsRef.current[toolCallId]
-            if (!msgId) return
+            const partId = pendingToolsRef.current[toolCallId]
+            if (!partId) return
             setMessages((prev) =>
-              prev.map((m) =>
-                m.id === msgId
-                  ? {
-                      ...m,
-                      mcpAppResourceUri: resourceUri,
-                      mcpAppServerName: serverName,
-                      mcpAppToolInput: toolInput,
-                    }
-                  : m,
-              ),
+              prev.map((m) => {
+                if (m.id !== assistantMsgId || !m.parts) return m
+                return {
+                  ...m,
+                  parts: updateToolPart(m.parts, partId, {
+                    mcpAppResourceUri: resourceUri,
+                    mcpAppServerName: serverName,
+                    mcpAppToolInput: toolInput,
+                  }),
+                }
+              }),
             )
           } else if (event.type === EventType.RUN_FINISHED) {
             setIsRunning(false)
@@ -228,11 +306,9 @@ export function useSessionChat(sessionId: string) {
             const errEvent = event as { message?: string }
             const errText = errEvent.message?.trim()
             setMessages((prev) =>
-              prev.map((m) => {
-                if (m.id !== assistantMsgId) return m
-                const content = errText || m.content || 'An error occurred.'
-                return { ...m, content, error: true }
-              }),
+              prev.map((m) =>
+                m.id === assistantMsgId ? applyAssistantError(m, errText ?? '') : m,
+              ),
             )
             setIsRunning(false)
           }
@@ -241,11 +317,10 @@ export function useSessionChat(sessionId: string) {
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantMsgId
-                ? {
-                    ...m,
-                    content: `Connection error: ${err instanceof Error ? err.message : String(err)}`,
-                    error: true,
-                  }
+                ? applyAssistantError(
+                    m,
+                    `Connection error: ${err instanceof Error ? err.message : String(err)}`,
+                  )
                 : m,
             ),
           )

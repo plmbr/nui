@@ -591,6 +591,22 @@
     .dark & { @apply prose-invert; }
   }
 
+  .agui-message--assistant .agui-message__text-part + .agui-message__text-part {
+    @apply mt-3;
+  }
+
+  .agui-message--assistant .tool-call {
+    @apply mx-0 mb-0.5 max-w-none px-0;
+  }
+
+  .agui-message--assistant .tool-call__header {
+    @apply py-0.5;
+  }
+
+  .agui-message--assistant .tool-call:last-child {
+    @apply mb-0;
+  }
+
   .agui-message--assistant .agui-message__bubble :where(p, li, ul, ol, blockquote, td, th) {
     font-size: inherit;
     line-height: inherit;

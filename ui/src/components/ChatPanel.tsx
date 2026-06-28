@@ -7,7 +7,7 @@ import remarkGfm from 'remark-gfm'
 import { ThinkingIndicator } from '@/components/ThinkingIndicator'
 import { MentionMenu } from '@/components/MentionMenu'
 import { ToolCallBubble } from '@/components/ToolCallBubble'
-import { imageSrc, useSessionChat } from '@/hooks/useSessionChat'
+import { imageSrc, useSessionChat, type AssistantPart } from '@/hooks/useSessionChat'
 import { useMentionMenu } from '@/hooks/useMentionMenu'
 import { normalizeMarkdown, stripInlineCodeDelimiters } from '@/lib/markdown'
 import type { Session } from '@/types'
@@ -177,6 +177,53 @@ export function ChatPanel({
     ? [...messages].reverse().find((m) => m.role === 'assistant')?.id
     : undefined
 
+  const renderAssistantText = (content: string) => (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      rehypePlugins={[rehypeHighlight]}
+      components={{
+        code: ({ className, children, ...props }) => {
+          const isBlock = className?.includes('language-')
+          if (isBlock) {
+            return (
+              <code className={className} {...props}>
+                {children}
+              </code>
+            )
+          }
+          const text = stripInlineCodeDelimiters(String(children ?? ''))
+          return (
+            <code className="agui-inline-code" {...props}>
+              {text}
+            </code>
+          )
+        },
+        img: ({ src, alt }) => (
+          <img
+            src={src}
+            alt={alt ?? 'image'}
+            className="agui-message__image"
+            loading="lazy"
+          />
+        ),
+      }}
+    >
+      {normalizeMarkdown(content)}
+    </ReactMarkdown>
+  )
+
+  const renderAssistantPart = (part: AssistantPart, partIndex: number, msgId: string) => {
+    if (part.type === 'tool') {
+      return <ToolCallBubble key={part.id} part={part} />
+    }
+
+    return (
+      <div key={`${msgId}-text-${partIndex}`} className="agui-message__text-part">
+        {renderAssistantText(part.content)}
+      </div>
+    )
+  }
+
   return (
     <div className="agui-chat flex flex-col flex-1 min-h-0">
       <div ref={messagesContainerRef} className="agui-chat__messages">
@@ -188,11 +235,9 @@ export function ChatPanel({
         )}
 
         {messages.map((msg) => {
-          if (msg.role === 'tool') {
-            return <ToolCallBubble key={msg.id} msg={msg} />
-          }
-
           const isStreaming = isRunning && msg.id === streamingAssistantId
+          const parts = msg.parts
+          const hasParts = msg.role === 'assistant' && parts && parts.length > 0
 
           return (
             <div
@@ -217,45 +262,12 @@ export function ChatPanel({
                         loading="lazy"
                       />
                     ))}
-                    {msg.content ? (
-                      <>
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeHighlight]}
-                          components={{
-                            code: ({ className, children, ...props }) => {
-                              const isBlock = className?.includes('language-')
-                              if (isBlock) {
-                                return (
-                                  <code className={className} {...props}>
-                                    {children}
-                                  </code>
-                                )
-                              }
-                              const text = stripInlineCodeDelimiters(String(children ?? ''))
-                              return (
-                                <code className="agui-inline-code" {...props}>
-                                  {text}
-                                </code>
-                              )
-                            },
-                            img: ({ src, alt }) => (
-                              <img
-                                src={src}
-                                alt={alt ?? 'image'}
-                                className="agui-message__image"
-                                loading="lazy"
-                              />
-                            ),
-                          }}
-                        >
-                          {normalizeMarkdown(msg.content)}
-                        </ReactMarkdown>
-                        {isStreaming && <ThinkingIndicator variant="streaming" />}
-                      </>
-                    ) : isStreaming ? (
-                      <ThinkingIndicator />
+                    {hasParts ? (
+                      parts!.map((part, index) => renderAssistantPart(part, index, msg.id))
+                    ) : msg.content ? (
+                      renderAssistantText(msg.content)
                     ) : null}
+                    {isStreaming && <ThinkingIndicator variant="streaming" />}
                   </>
                 ) : (
                   <p>{msg.content}</p>

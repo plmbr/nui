@@ -2,14 +2,14 @@
 
 import { useState } from 'react'
 import { McpAppFrame } from '@/components/McpAppFrame'
-import { imageSrc, type SessionChatMessage } from '@/hooks/useSessionChat'
+import { imageSrc, type ToolCallPart } from '@/hooks/useSessionChat'
 import { extractImagesFromValue } from '@/lib/images'
 
 interface Props {
-  msg: SessionChatMessage
+  part: ToolCallPart
 }
 
-export function ToolCallBubble({ msg }: Props) {
+export function ToolCallBubble({ part: msg }: Props) {
   const [expanded, setExpanded] = useState(false)
   const baseName = msg.toolName?.split(':').pop() ?? msg.toolName ?? 'tool'
   const toolImages =
