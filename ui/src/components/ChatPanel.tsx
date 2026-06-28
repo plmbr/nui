@@ -11,12 +11,15 @@ import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
 import { CodeBlock } from '@/components/CodeBlock'
+import { DiffBlock } from '@/components/DiffBlock'
 import { ThinkingIndicator } from '@/components/ThinkingIndicator'
 import { MentionMenu } from '@/components/MentionMenu'
 import { ToolCallBubble } from '@/components/ToolCallBubble'
 import { imageSrc, useSessionChat, type AssistantPart } from '@/hooks/useSessionChat'
 import { useMentionMenu } from '@/hooks/useMentionMenu'
+import { looksLikeDiff } from '@/lib/diff'
 import { normalizeMarkdown, stripInlineCodeDelimiters } from '@/lib/markdown'
+import { getCodeBlockInfo } from '@/lib/reactNodeText'
 import type { PromptSuggestion, Session } from '@/types'
 
 const AUTO_PROMPT_FALLBACK = 'Follow your system instructions and run.'
@@ -218,9 +221,13 @@ export function ChatPanel({
       remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeHighlight]}
       components={{
-        pre: ({ children, ...props }) => (
-          <CodeBlock {...props}>{children}</CodeBlock>
-        ),
+        pre: ({ children, ...props }) => {
+          const { text, className } = getCodeBlockInfo(children)
+          if (looksLikeDiff(text, className)) {
+            return <DiffBlock text={text} className={className} />
+          }
+          return <CodeBlock {...props}>{children}</CodeBlock>
+        },
         code: ({ className, children, ...props }) => {
           const isBlock = className?.includes('language-')
           if (isBlock) {

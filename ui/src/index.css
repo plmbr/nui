@@ -888,4 +888,90 @@
   .dark .hljs-title, .dark .hljs-section, .dark .hljs-name { color: oklch(0.82 0.12 295); }
   .dark .hljs-variable, .dark .hljs-template-variable { color: oklch(0.78 0.10 25); }
   .dark .hljs-type, .dark .hljs-class { color: oklch(0.78 0.10 200); }
+
+  /* ─── Diff blocks ───────────────────────────────────────────── */
+  .agui-diff {
+    @apply relative my-3 overflow-hidden rounded-lg border font-mono text-sm;
+    background: color-mix(in oklch, var(--muted) 55%, var(--background));
+  }
+
+  .agui-diff__copy {
+    @apply absolute top-2 right-2 z-10 text-muted-foreground opacity-80 hover:bg-muted hover:text-foreground hover:opacity-100;
+  }
+
+  .agui-diff__table {
+    @apply overflow-x-auto pt-10;
+  }
+
+  .agui-diff__row {
+    @apply grid min-h-[1.4rem] items-stretch leading-relaxed;
+    grid-template-columns: 3rem 3rem 1.25rem minmax(0, 1fr);
+  }
+
+  .agui-diff__gutter {
+    @apply select-none px-2 text-right text-[11px] tabular-nums text-muted-foreground/70;
+    padding-top: 0.05rem;
+    padding-bottom: 0.05rem;
+  }
+
+  .agui-diff__sign {
+    @apply select-none px-0.5 text-center text-muted-foreground;
+    padding-top: 0.05rem;
+    padding-bottom: 0.05rem;
+  }
+
+  .agui-diff__content {
+    @apply whitespace-pre px-2;
+    padding-top: 0.05rem;
+    padding-bottom: 0.05rem;
+  }
+
+  .agui-diff__row--meta {
+    grid-template-columns: minmax(0, 1fr);
+    background: color-mix(in oklch, var(--muted) 70%, var(--background));
+  }
+
+  .agui-diff__row--meta .agui-diff__content {
+    @apply px-3 text-xs text-muted-foreground;
+  }
+
+  .agui-diff__row--add {
+    background: color-mix(in oklch, oklch(0.72 0.14 145) 16%, transparent);
+  }
+
+  .agui-diff__row--add .agui-diff__sign,
+  .agui-diff__row--add .agui-diff__content {
+    color: color-mix(in oklch, oklch(0.45 0.14 145) 85%, var(--foreground));
+  }
+
+  .dark .agui-diff__row--add {
+    background: color-mix(in oklch, oklch(0.55 0.12 145) 22%, transparent);
+  }
+
+  .dark .agui-diff__row--add .agui-diff__sign,
+  .dark .agui-diff__row--add .agui-diff__content {
+    color: color-mix(in oklch, oklch(0.78 0.12 155) 90%, var(--foreground));
+  }
+
+  .agui-diff__row--delete {
+    background: color-mix(in oklch, oklch(0.62 0.18 25) 14%, transparent);
+  }
+
+  .agui-diff__row--delete .agui-diff__sign,
+  .agui-diff__row--delete .agui-diff__content {
+    color: color-mix(in oklch, oklch(0.48 0.16 25) 85%, var(--foreground));
+  }
+
+  .dark .agui-diff__row--delete {
+    background: color-mix(in oklch, oklch(0.52 0.14 25) 20%, transparent);
+  }
+
+  .dark .agui-diff__row--delete .agui-diff__sign,
+  .dark .agui-diff__row--delete .agui-diff__content {
+    color: color-mix(in oklch, oklch(0.78 0.10 25) 90%, var(--foreground));
+  }
+
+  .agui-diff__row--context .agui-diff__content {
+    @apply text-foreground/90;
+  }
 }
