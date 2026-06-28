@@ -587,16 +587,30 @@
   }
 
   .agui-message--assistant .agui-message__bubble {
-    @apply prose prose-sm max-w-none rounded-2xl rounded-bl-md border bg-card/60 px-4 py-3 text-foreground backdrop-blur-sm;
+    @apply prose max-w-none rounded-2xl rounded-bl-md border bg-card/60 px-4 py-3 text-[0.95rem] leading-relaxed text-foreground backdrop-blur-sm;
     .dark & { @apply prose-invert; }
+  }
+
+  .agui-message--assistant .agui-message__bubble :where(p, li, ul, ol, blockquote, td, th) {
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  .agui-message--assistant .agui-message__bubble :where(p) {
+    margin-top: 0.35em;
+    margin-bottom: 0.35em;
+  }
+
+  .agui-message--assistant .agui-message__bubble :where(p:first-child) {
+    margin-top: 0;
+  }
+
+  .agui-message--assistant .agui-message__bubble :where(p:last-child) {
+    margin-bottom: 0;
   }
 
   .agui-message__bubble--error {
     @apply text-destructive;
-  }
-
-  .agui-message__bubble p:last-child {
-    @apply mb-0;
   }
 
   .agui-message__image {

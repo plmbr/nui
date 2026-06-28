@@ -4,9 +4,12 @@ package agent
 
 import (
 	"encoding/json"
+	"strings"
 )
 
 type piStreamParser struct {
+	emittedText     bool
+	needsTextSep    bool
 	seenToolStarts  map[string]bool
 	seenToolEnds    map[string]bool
 	seenToolResults map[string]bool
@@ -18,6 +21,24 @@ func newPiStreamParser() *piStreamParser {
 		seenToolEnds:    map[string]bool{},
 		seenToolResults: map[string]bool{},
 	}
+}
+
+func (p *piStreamParser) markTextSepNeeded() {
+	if p.emittedText {
+		p.needsTextSep = true
+	}
+}
+
+func (p *piStreamParser) emitText(text string, events chan<- Event) {
+	if text == "" {
+		return
+	}
+	if p.emittedText && p.needsTextSep && !strings.HasPrefix(text, "\n") {
+		text = "\n\n" + text
+	}
+	p.needsTextSep = false
+	p.emittedText = true
+	events <- Event{Type: EventText, Content: text}
 }
 
 func (p *piStreamParser) handleLine(line []byte, events chan<- Event) {
@@ -41,6 +62,7 @@ func (p *piStreamParser) handleLine(line []byte, events chan<- Event) {
 	case "message_update":
 		p.handleMessageUpdate(obj.AssistantMessageEvent, events)
 	case "tool_execution_start":
+		p.markTextSepNeeded()
 		if obj.ToolCallID != "" && !p.seenToolStarts[obj.ToolCallID] {
 			p.seenToolStarts[obj.ToolCallID] = true
 			events <- Event{
@@ -105,9 +127,10 @@ func (p *piStreamParser) handleMessageUpdate(raw json.RawMessage, events chan<- 
 	switch ev.Type {
 	case "text_delta":
 		if ev.Delta != "" {
-			events <- Event{Type: EventText, Content: ev.Delta}
+			p.emitText(ev.Delta, events)
 		}
 	case "toolcall_start":
+		p.markTextSepNeeded()
 		if ev.ToolCall.ID != "" && !p.seenToolStarts[ev.ToolCall.ID] {
 			p.seenToolStarts[ev.ToolCall.ID] = true
 			events <- Event{
@@ -129,6 +152,8 @@ func (p *piStreamParser) emitTool(toolID, toolName string, args, result json.Raw
 	if toolID == "" {
 		return
 	}
+
+	p.markTextSepNeeded()
 
 	if !p.seenToolStarts[toolID] {
 		p.seenToolStarts[toolID] = true

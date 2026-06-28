@@ -27,9 +27,24 @@ def new_pi_stream_parser() -> "_PiStreamParser":
 
 class _PiStreamParser:
     def __init__(self) -> None:
+        self.emitted_text = False
+        self.needs_text_sep = False
         self.seen_tool_starts: set[str] = set()
         self.seen_tool_ends: set[str] = set()
         self.seen_tool_results: set[str] = set()
+
+    def _mark_text_sep_needed(self) -> None:
+        if self.emitted_text:
+            self.needs_text_sep = True
+
+    def _emit_text(self, text: str) -> Generator[dict[str, Any], None, None]:
+        if not text:
+            return
+        if self.emitted_text and self.needs_text_sep and not text.startswith("\n"):
+            text = "\n\n" + text
+        self.needs_text_sep = False
+        self.emitted_text = True
+        yield {"type": "text", "content": text}
 
     def handle(self, obj: dict[str, Any]) -> Generator[dict[str, Any], None, None]:
         t = obj.get("type")
@@ -45,6 +60,7 @@ class _PiStreamParser:
             return
 
         if t == "tool_execution_start":
+            self._mark_text_sep_needed()
             tool_id = obj.get("toolCallId") or ""
             tool_name = obj.get("toolName") or ""
             if tool_id and tool_id not in self.seen_tool_starts:
@@ -77,10 +93,11 @@ class _PiStreamParser:
         if et == "text_delta":
             delta = ev.get("delta") or ""
             if delta:
-                yield {"type": "text", "content": delta}
+                yield from self._emit_text(delta)
             return
 
         if et == "toolcall_start":
+            self._mark_text_sep_needed()
             tool_call = ev.get("toolCall") or {}
             tool_id = tool_call.get("id") or ""
             tool_name = tool_call.get("name") or ""
@@ -105,6 +122,8 @@ class _PiStreamParser:
     ) -> Generator[dict[str, Any], None, None]:
         if not tool_id:
             return
+
+        self._mark_text_sep_needed()
 
         if tool_id not in self.seen_tool_starts:
             self.seen_tool_starts.add(tool_id)

@@ -8,11 +8,12 @@ import (
 )
 
 type claudeStreamParser struct {
-	emittedText      bool
-	seenToolStarts   map[string]bool
-	seenToolEnds     map[string]bool
-	seenToolResults  map[string]bool
-	blocks           map[int]*claudeBlockState
+	emittedText     bool
+	needsTextSep    bool
+	seenToolStarts  map[string]bool
+	seenToolEnds    map[string]bool
+	seenToolResults map[string]bool
+	blocks          map[int]*claudeBlockState
 }
 
 type claudeBlockState struct {
@@ -29,6 +30,24 @@ func newClaudeStreamParser() *claudeStreamParser {
 		seenToolResults: map[string]bool{},
 		blocks:          map[int]*claudeBlockState{},
 	}
+}
+
+func (p *claudeStreamParser) markTextSepNeeded() {
+	if p.emittedText {
+		p.needsTextSep = true
+	}
+}
+
+func (p *claudeStreamParser) emitText(text string, events chan<- Event) {
+	if text == "" {
+		return
+	}
+	if p.emittedText && p.needsTextSep && !strings.HasPrefix(text, "\n") {
+		text = "\n\n" + text
+	}
+	p.needsTextSep = false
+	p.emittedText = true
+	events <- Event{Type: EventText, Content: text}
 }
 
 func (p *claudeStreamParser) handleLine(line []byte, events chan<- Event) {
@@ -93,14 +112,18 @@ func (p *claudeStreamParser) handleStreamEvent(raw json.RawMessage, events chan<
 	switch ev.Type {
 	case "content_block_delta":
 		if ev.Delta.Type == "text_delta" && ev.Delta.Text != "" {
-			p.emittedText = true
-			events <- Event{Type: EventText, Content: ev.Delta.Text}
+			p.emitText(ev.Delta.Text, events)
 		}
 	case "content_block_start":
 		block := ev.ContentBlock
+		if block.Type == "text" {
+			p.markTextSepNeeded()
+			return
+		}
 		if block.Type != "tool_use" || block.ID == "" {
 			return
 		}
+		p.markTextSepNeeded()
 		p.blocks[ev.Index] = &claudeBlockState{
 			kind:     "tool_use",
 			toolID:   block.ID,
@@ -138,6 +161,7 @@ func (p *claudeStreamParser) handleStreamEvent(raw json.RawMessage, events chan<
 				ToolArgs:   args,
 			}
 		}
+		p.markTextSepNeeded()
 		delete(p.blocks, ev.Index)
 	}
 
@@ -170,9 +194,10 @@ func (p *claudeStreamParser) handleAssistant(raw json.RawMessage, events chan<- 
 				Text string `json:"text"`
 			}
 			if json.Unmarshal(blockRaw, &block) == nil && block.Text != "" && !p.emittedText {
-				events <- Event{Type: EventText, Content: block.Text}
+				p.emitText(block.Text, events)
 			}
 		case "tool_use":
+			p.markTextSepNeeded()
 			var block struct {
 				ID    string         `json:"id"`
 				Name  string         `json:"name"`

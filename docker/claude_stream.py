@@ -26,10 +26,24 @@ def new_claude_stream_parser() -> "_ClaudeStreamParser":
 class _ClaudeStreamParser:
     def __init__(self) -> None:
         self.emitted_text = False
+        self.needs_text_sep = False
         self.seen_tool_starts: set[str] = set()
         self.seen_tool_ends: set[str] = set()
         self.seen_tool_results: set[str] = set()
         self.blocks: dict[int, dict[str, Any]] = {}
+
+    def _mark_text_sep_needed(self) -> None:
+        if self.emitted_text:
+            self.needs_text_sep = True
+
+    def _emit_text(self, text: str) -> Generator[dict[str, Any], None, None]:
+        if not text:
+            return
+        if self.emitted_text and self.needs_text_sep and not text.startswith("\n"):
+            text = "\n\n" + text
+        self.needs_text_sep = False
+        self.emitted_text = True
+        yield {"type": "text", "content": text}
 
     def handle_envelope(self, envelope: dict[str, Any]) -> Generator[dict[str, Any], None, None]:
         t = envelope.get("type")
@@ -52,8 +66,7 @@ class _ClaudeStreamParser:
         if ev_type == "content_block_delta":
             delta = ev.get("delta") or {}
             if delta.get("type") == "text_delta" and delta.get("text"):
-                self.emitted_text = True
-                yield {"type": "text", "content": delta["text"]}
+                yield from self._emit_text(delta["text"])
             elif delta.get("type") == "input_json_delta" and delta.get("partial_json"):
                 idx = ev.get("index")
                 state = self.blocks.get(idx)
@@ -61,8 +74,12 @@ class _ClaudeStreamParser:
                     state["args"] += delta["partial_json"]
         elif ev_type == "content_block_start":
             block = ev.get("content_block") or {}
+            if block.get("type") == "text":
+                self._mark_text_sep_needed()
+                return
             if block.get("type") != "tool_use" or not block.get("id"):
                 return
+            self._mark_text_sep_needed()
             idx = ev.get("index")
             self.blocks[idx] = {
                 "kind": "tool_use",
@@ -98,6 +115,7 @@ class _ClaudeStreamParser:
                     "toolName": state["tool_name"],
                     "toolArgs": args,
                 }
+            self._mark_text_sep_needed()
 
     def _handle_assistant(self, blocks: list[Any]) -> Generator[dict[str, Any], None, None]:
         for block in blocks:
@@ -105,8 +123,9 @@ class _ClaudeStreamParser:
                 continue
             btype = block.get("type")
             if btype == "text" and block.get("text") and not self.emitted_text:
-                yield {"type": "text", "content": block["text"]}
+                yield from self._emit_text(block["text"])
             elif btype == "tool_use" and block.get("id"):
+                self._mark_text_sep_needed()
                 tool_id = block["id"]
                 args = json.dumps(block.get("input") or {})
                 if tool_id not in self.seen_tool_starts:
