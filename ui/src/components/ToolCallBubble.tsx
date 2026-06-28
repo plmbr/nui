@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { McpAppFrame } from '@/components/McpAppFrame'
 import { imageSrc, type ToolCallPart } from '@/hooks/useSessionChat'
+import { formatToolCallSummary } from '@/lib/toolCallSummary'
 import { extractImagesFromValue } from '@/lib/images'
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 export function ToolCallBubble({ part: msg }: Props) {
   const [expanded, setExpanded] = useState(false)
   const baseName = msg.toolName?.split(':').pop() ?? msg.toolName ?? 'tool'
+  const detail = formatToolCallSummary(msg.toolName, msg.toolArgs)
   const toolImages =
     msg.toolResult !== undefined ? extractImagesFromValue(msg.toolResult) : []
 
@@ -23,7 +25,10 @@ export function ToolCallBubble({ part: msg }: Props) {
         onClick={() => setExpanded((e) => !e)}
       >
         <span className="tool-call__icon">⚙</span>
-        <span className="tool-call__name">{baseName}</span>
+        <div className="tool-call__summary">
+          <span className="tool-call__name">{baseName}</span>
+          {detail && <span className="tool-call__detail">{detail}</span>}
+        </div>
         <span className="tool-call__status">
           {msg.toolResult !== undefined ? '✓ done' : '⋯ running'}
         </span>

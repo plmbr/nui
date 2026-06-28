@@ -600,7 +600,11 @@
   }
 
   .agui-message--assistant .tool-call__header {
-    @apply py-0.5;
+    @apply w-1/2 max-w-[50%] py-0.5;
+  }
+
+  .agui-message--assistant .tool-call__body {
+    @apply w-full;
   }
 
   .agui-message--assistant .tool-call:last-child {
@@ -777,21 +781,29 @@
     @apply flex w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-0 py-1.5 text-left text-[13px] text-muted-foreground;
   }
 
+  .tool-call__summary {
+    @apply flex min-w-0 flex-1 items-baseline gap-2 overflow-hidden;
+  }
+
   .tool-call__icon {
-    @apply text-sm opacity-70;
+    @apply shrink-0 text-sm opacity-70;
   }
 
   .tool-call__name {
-    @apply flex-1 font-medium;
+    @apply shrink-0 font-medium;
     color: color-mix(in oklch, var(--primary) 60%, var(--foreground));
   }
 
+  .tool-call__detail {
+    @apply min-w-0 truncate text-xs font-normal text-muted-foreground/70;
+  }
+
   .tool-call__status {
-    @apply text-xs text-green-600 dark:text-green-400;
+    @apply shrink-0 text-xs text-green-600 dark:text-green-400;
   }
 
   .tool-call__toggle {
-    @apply text-[10px] opacity-50;
+    @apply shrink-0 text-[10px] opacity-50;
   }
 
   .tool-call__body {
