@@ -59,3 +59,34 @@ func TestAgentTypeInfoFromDef_userAgentCLIHarnessUsesAvailability(t *testing.T) 
 		t.Fatalf("Available = %v, want %v", info.Available, harnessAvailable(def))
 	}
 }
+
+func TestAgentTypeInfoFromDef_promptSuggestions(t *testing.T) {
+	def := model.ADLDefinition{
+		ID:      "suggest-agent",
+		Name:    "Suggest Agent",
+		Harness: model.ADLHarness{Type: "claude-code"},
+		PromptSuggestions: []model.ADLPromptSuggestion{
+			{Title: "Review", Prompt: "Review the code."},
+		},
+	}
+	info := agentTypeInfoFromDef(def, false)
+	if len(info.PromptSuggestions) != 1 {
+		t.Fatalf("PromptSuggestions = %+v", info.PromptSuggestions)
+	}
+	if info.PromptSuggestions[0].Title != "Review" || info.PromptSuggestions[0].Prompt != "Review the code." {
+		t.Fatalf("PromptSuggestions[0] = %+v", info.PromptSuggestions[0])
+	}
+}
+
+func TestBuiltinAgentDefs_havePromptSuggestions(t *testing.T) {
+	for _, def := range builtinAgentDefs {
+		if len(def.PromptSuggestions) < 2 {
+			t.Fatalf("%q: expected at least 2 promptSuggestions, got %d", def.ID, len(def.PromptSuggestions))
+		}
+		for _, s := range def.PromptSuggestions {
+			if s.Title == "" || s.Prompt == "" {
+				t.Fatalf("%q: suggestion missing title or prompt: %+v", def.ID, s)
+			}
+		}
+	}
+}

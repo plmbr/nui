@@ -1,6 +1,12 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  Flame,
+  Gamepad2,
+  Sparkles,
+  type LucideIcon,
+} from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
@@ -10,9 +16,21 @@ import { ToolCallBubble } from '@/components/ToolCallBubble'
 import { imageSrc, useSessionChat, type AssistantPart } from '@/hooks/useSessionChat'
 import { useMentionMenu } from '@/hooks/useMentionMenu'
 import { normalizeMarkdown, stripInlineCodeDelimiters } from '@/lib/markdown'
-import type { Session } from '@/types'
+import type { PromptSuggestion, Session } from '@/types'
 
 const AUTO_PROMPT_FALLBACK = 'Follow your system instructions and run.'
+
+const SUGGESTION_ICONS: Record<string, LucideIcon> = {
+  sparkles: Sparkles,
+  flame: Flame,
+  'gamepad-2': Gamepad2,
+  gamepad2: Gamepad2,
+}
+
+function SuggestionPillIcon({ icon }: { icon?: string }) {
+  const Icon = (icon && SUGGESTION_ICONS[icon.toLowerCase()]) || Sparkles
+  return <Icon className="agui-chat__suggestion-pill-icon" aria-hidden />
+}
 
 function getContentHeightBelow(anchor: HTMLElement, endBefore: HTMLElement): number {
   if (anchor.nextElementSibling === endBefore) return 0
@@ -47,6 +65,7 @@ interface Props {
   hideInput?: boolean
   promptMode?: 'user' | 'auto'
   defaultPrompt?: string
+  promptSuggestions?: PromptSuggestion[]
 }
 
 export function ChatPanel({
@@ -55,6 +74,7 @@ export function ChatPanel({
   hideInput,
   promptMode = 'user',
   defaultPrompt,
+  promptSuggestions,
 }: Props) {
   const { messages, sendMessage, isRunning, isLoading } = useSessionChat(session.id)
   const [input, setInput] = useState('')
@@ -164,6 +184,21 @@ export function ChatPanel({
     markScrollAnchor()
     sendMessage(text)
   }
+
+  const submitPrompt = (text: string) => {
+    const trimmed = text.trim()
+    if (!trimmed || isRunning) return
+    setInput('')
+    markScrollAnchor()
+    sendMessage(trimmed)
+  }
+
+  const showPromptSuggestions =
+    !hideInput &&
+    promptMode === 'user' &&
+    messages.length === 0 &&
+    !initialPrompt?.trim() &&
+    (promptSuggestions?.length ?? 0) > 0
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (mention.handleKeyDown(e)) return
@@ -283,6 +318,24 @@ export function ChatPanel({
 
       {!hideInput && (
       <div className="agui-chat__input-area">
+        {showPromptSuggestions && (
+          <div className="agui-chat__suggestions" role="list">
+            {promptSuggestions!.map((suggestion) => (
+              <button
+                key={suggestion.title}
+                type="button"
+                role="listitem"
+                className="agui-chat__suggestion-pill"
+                disabled={isRunning}
+                onClick={() => submitPrompt(suggestion.prompt)}
+              >
+                <SuggestionPillIcon icon={suggestion.icon} />
+                {suggestion.title}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="agui-chat__input-row">
         <div className="agui-chat__input-wrap">
           <MentionMenu
             open={mention.open}
@@ -329,6 +382,7 @@ export function ChatPanel({
             </svg>
           )}
         </button>
+        </div>
       </div>
       )}
     </div>

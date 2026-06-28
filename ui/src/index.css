@@ -683,7 +683,29 @@
   }
 
   .agui-chat__input-area {
-    @apply mx-auto flex w-full max-w-[800px] shrink-0 items-end gap-2.5 border-t bg-background/80 px-5 py-3.5 backdrop-blur-md;
+    @apply mx-auto flex w-full max-w-[800px] shrink-0 flex-col gap-3.5 border-t bg-background/80 px-5 py-3.5 backdrop-blur-md;
+  }
+
+  .agui-chat__input-area:has(.agui-chat__suggestions) {
+    @apply border-t-0;
+  }
+
+  .agui-chat__suggestions {
+    @apply flex flex-wrap gap-1.5;
+  }
+
+  .agui-chat__suggestion-pill {
+    @apply inline-flex items-center gap-1 rounded-full border bg-muted/50 px-2 py-0.5 text-xs text-foreground transition-colors;
+    @apply hover:bg-accent hover:text-accent-foreground;
+    @apply disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .agui-chat__suggestion-pill-icon {
+    @apply size-3 shrink-0 opacity-75;
+  }
+
+  .agui-chat__input-row {
+    @apply flex items-end gap-2.5;
   }
 
   .agui-chat__input-wrap {

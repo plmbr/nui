@@ -1,7 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { ChatPanel } from '@/components/ChatPanel'
-import type { Session } from '@/types'
+import type { PromptSuggestion, Session } from '@/types'
 
 interface Props {
   session: Session
@@ -9,6 +9,7 @@ interface Props {
   hideInput?: boolean
   promptMode?: 'user' | 'auto'
   defaultPrompt?: string
+  promptSuggestions?: PromptSuggestion[]
 }
 
 export function ConversationPanel({
@@ -17,6 +18,7 @@ export function ConversationPanel({
   hideInput,
   promptMode,
   defaultPrompt,
+  promptSuggestions,
 }: Props) {
   return (
     <ChatPanel
@@ -25,6 +27,7 @@ export function ConversationPanel({
       hideInput={hideInput}
       promptMode={promptMode}
       defaultPrompt={defaultPrompt}
+      promptSuggestions={promptSuggestions}
     />
   )
 }

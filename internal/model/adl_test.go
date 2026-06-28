@@ -58,6 +58,34 @@ aiAssets:
 	}
 }
 
+func TestADLDefinitionYAML_promptSuggestions(t *testing.T) {
+	raw := []byte(`adl: "1.0"
+id: suggest-agent
+name: Suggest Agent
+harness:
+  type: claude-code
+promptSuggestions:
+  - title: Review code
+    prompt: Review the latest changes and suggest improvements.
+  - title: Write tests
+    prompt: Add unit tests for the main package.
+`)
+
+	var def ADLDefinition
+	if err := yaml.Unmarshal(raw, &def); err != nil {
+		t.Fatal(err)
+	}
+	if len(def.PromptSuggestions) != 2 {
+		t.Fatalf("promptSuggestions: %+v", def.PromptSuggestions)
+	}
+	if def.PromptSuggestions[0].Title != "Review code" {
+		t.Fatalf("title = %q", def.PromptSuggestions[0].Title)
+	}
+	if def.PromptSuggestions[1].Prompt != "Add unit tests for the main package." {
+		t.Fatalf("prompt = %q", def.PromptSuggestions[1].Prompt)
+	}
+}
+
 func TestADLDefinitionYAML_env(t *testing.T) {
 	raw := []byte(`adl: "1.0"
 id: env-agent

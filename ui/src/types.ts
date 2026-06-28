@@ -40,6 +40,12 @@ export interface MentionListResponse {
   breadcrumb: MentionBreadcrumb[]
 }
 
+export interface PromptSuggestion {
+  title: string
+  prompt: string
+  icon?: string
+}
+
 export interface AgentType {
   id: string
   label: string
@@ -48,6 +54,7 @@ export interface AgentType {
   sandbox?: 'none' | 'bubblewrap' | 'docker'
   promptMode?: 'user' | 'auto'
   defaultPrompt?: string
+  promptSuggestions?: PromptSuggestion[]
   workingDirInput?: boolean
   isBuiltin: boolean
   source?: 'builtin' | 'user' | 'extension'

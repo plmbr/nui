@@ -35,12 +35,20 @@ type ADLDefinition struct {
 	Skill        string         `yaml:"skill"        json:"skill,omitempty"`
 	AIAssets     ADLAIAssets    `yaml:"aiAssets"     json:"aiAssets,omitempty"`
 	Env          map[string]string `yaml:"env"          json:"env,omitempty"`
-	PromptMode      string `yaml:"promptMode"      json:"promptMode,omitempty"`      // user | auto; default user
-	DefaultPrompt   string `yaml:"defaultPrompt"   json:"defaultPrompt,omitempty"`   // auto mode when no launch prompt
-	WorkingDirInput bool   `yaml:"workingDirInput" json:"workingDirInput,omitempty"` // true = user picks working dir at session create
+	PromptMode        string               `yaml:"promptMode"        json:"promptMode,omitempty"`        // user | auto; default user
+	DefaultPrompt     string               `yaml:"defaultPrompt"     json:"defaultPrompt,omitempty"`     // auto mode when no launch prompt
+	PromptSuggestions []ADLPromptSuggestion `yaml:"promptSuggestions" json:"promptSuggestions,omitempty"` // quick-start pills in chat UI
+	WorkingDirInput   bool                 `yaml:"workingDirInput"   json:"workingDirInput,omitempty"`   // true = user picks working dir at session create
 	Steps        []ADLStep      `yaml:"steps"        json:"steps,omitempty"`
 	Constraints  ADLConstraints `yaml:"constraints"  json:"constraints,omitempty"`
 	Schedule     *ADLSchedule   `yaml:"schedule"     json:"schedule,omitempty"`
+}
+
+// ADLPromptSuggestion is a quick-start prompt shown as a pill above the chat input.
+type ADLPromptSuggestion struct {
+	Title  string `yaml:"title"  json:"title"`
+	Prompt string `yaml:"prompt" json:"prompt"`
+	Icon   string `yaml:"icon"   json:"icon,omitempty"` // lucide icon name, e.g. sparkles
 }
 
 // ADLHarness specifies how a step executes.

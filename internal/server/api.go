@@ -30,9 +30,10 @@ type AgentTypeInfo struct {
 	Description   string `json:"description,omitempty"`
 	Harness       string `json:"harness"`           // claude-code | pi | codex | opencode | docker | remote
 	Sandbox       string `json:"sandbox,omitempty"` // none | bubblewrap | docker
-	PromptMode      string `json:"promptMode,omitempty"`      // user | auto
-	DefaultPrompt   string `json:"defaultPrompt,omitempty"`
-	WorkingDirInput bool   `json:"workingDirInput,omitempty"` // true = user picks working dir at session create
+	PromptMode        string                     `json:"promptMode,omitempty"`        // user | auto
+	DefaultPrompt     string                     `json:"defaultPrompt,omitempty"`
+	PromptSuggestions []model.ADLPromptSuggestion `json:"promptSuggestions,omitempty"`
+	WorkingDirInput   bool                       `json:"workingDirInput,omitempty"` // true = user picks working dir at session create
 	IsBuiltin     bool   `json:"isBuiltin"`
 	Source        string `json:"source,omitempty"` // builtin | user | extension
 	Available     bool   `json:"available"` // false when the required CLI is not installed
@@ -42,34 +43,56 @@ type AgentTypeInfo struct {
 // They are expressed in the same ADL format as user-defined agents in ~/.loop/agents/*.yaml.
 // Four builtin CLI harnesses (claude-code, pi, codex, opencode).
 // Docker and remote harness types are configured via user ADL in ~/.loop/agents/*.yaml.
+var builtinPromptSuggestions = []model.ADLPromptSuggestion{
+	{
+		Title:  "Surprise me",
+		Icon:   "sparkles",
+		Prompt: "Surprise me with something fun you can do right now. Keep it short and cheerful.",
+	},
+	{
+		Title:  "Hot take",
+		Icon:   "flame",
+		Prompt: "Share a playful hot take about anything, then argue the opposite side just as passionately.",
+	},
+	{
+		Title:  "Play a game",
+		Icon:   "gamepad-2",
+		Prompt: "Invent a silly chat game we can play together. Explain the rules in one paragraph.",
+	},
+}
+
 var builtinAgentDefs = []model.ADLDefinition{
 	{
-		ID:              "claude-code",
-		Name:            "Claude Code",
-		Description:     "Claude Code running as a local subprocess",
-		Harness:         model.ADLHarness{Type: "claude-code", Sandbox: "none"},
-		WorkingDirInput: true,
+		ID:                "claude-code",
+		Name:              "Claude Code",
+		Description:       "Claude Code running as a local subprocess",
+		Harness:           model.ADLHarness{Type: "claude-code", Sandbox: "none"},
+		WorkingDirInput:   true,
+		PromptSuggestions: builtinPromptSuggestions,
 	},
 	{
-		ID:              "pi",
-		Name:            "Pi",
-		Description:     "Pi running as a local subprocess",
-		Harness:         model.ADLHarness{Type: "pi", Sandbox: "none"},
-		WorkingDirInput: true,
+		ID:                "pi",
+		Name:              "Pi",
+		Description:       "Pi running as a local subprocess",
+		Harness:           model.ADLHarness{Type: "pi", Sandbox: "none"},
+		WorkingDirInput:   true,
+		PromptSuggestions: builtinPromptSuggestions,
 	},
 	{
-		ID:              "codex",
-		Name:            "Codex",
-		Description:     "Codex running as a local subprocess",
-		Harness:         model.ADLHarness{Type: "codex", Sandbox: "none"},
-		WorkingDirInput: true,
+		ID:                "codex",
+		Name:              "Codex",
+		Description:       "Codex running as a local subprocess",
+		Harness:           model.ADLHarness{Type: "codex", Sandbox: "none"},
+		WorkingDirInput:   true,
+		PromptSuggestions: builtinPromptSuggestions,
 	},
 	{
-		ID:              "opencode",
-		Name:            "OpenCode",
-		Description:     "OpenCode running as a local subprocess",
-		Harness:         model.ADLHarness{Type: "opencode", Sandbox: "none"},
-		WorkingDirInput: true,
+		ID:                "opencode",
+		Name:              "OpenCode",
+		Description:       "OpenCode running as a local subprocess",
+		Harness:           model.ADLHarness{Type: "opencode", Sandbox: "none"},
+		WorkingDirInput:   true,
+		PromptSuggestions: builtinPromptSuggestions,
 	},
 }
 
@@ -427,8 +450,9 @@ func agentTypeInfoFromDef(def model.ADLDefinition, builtin bool) AgentTypeInfo {
 		Description:     def.Description,
 		Harness:         def.Harness.Type,
 		Sandbox:         def.Harness.Sandbox,
-		DefaultPrompt:   def.DefaultPrompt,
-		WorkingDirInput: model.IsADLWorkingDirInput(def),
+		DefaultPrompt:     def.DefaultPrompt,
+		PromptSuggestions: def.PromptSuggestions,
+		WorkingDirInput:   model.IsADLWorkingDirInput(def),
 		IsBuiltin:       builtin,
 		Available:       harnessAvailable(def),
 	}

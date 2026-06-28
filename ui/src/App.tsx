@@ -418,6 +418,7 @@ export default function App() {
                 hideInput={effectiveHideInput}
                 promptMode={promptMode}
                 defaultPrompt={selectedAgent?.defaultPrompt}
+                promptSuggestions={selectedAgent?.promptSuggestions}
                 key={selected.id}
               />
             ) : (
