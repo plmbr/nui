@@ -7,8 +7,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api } from '@/api'
 import { harnessLabel } from '@/lib/agentDisplay'
+import {
+  buildCustomAgentSourceOptions,
+  filterCustomAgentsBySources,
+  sortCustomAgentsByName,
+} from '@/lib/agentSources'
 import { pickDefaultAgentTypeId, selectableAgentTypes, harnessSupportsUserScope, defaultUserScopeHarnessConfig } from '@/lib/agentTypes'
-import type { AgentType, CreateSessionRequest, Session } from '@/types'
+import type { AgentType, CreateSessionRequest, ExtensionInfo, Session } from '@/types'
 
 interface Props {
   agentTypes: AgentType[]
@@ -34,6 +39,8 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   const [workingDir, setWorkingDir] = useState(initialWorkingDir ?? '')
   const [selectedId, setSelectedId] = useState('')
   const [customSearch, setCustomSearch] = useState('')
+  const [selectedSourceKeys, setSelectedSourceKeys] = useState<Set<string>>(() => new Set())
+  const [extensions, setExtensions] = useState<ExtensionInfo[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [userScopeHarnessConfig, setUserScopeHarnessConfig] = useState(false)
@@ -61,6 +68,12 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
         setSelectedId((current) => current || pickDefaultAgentTypeId(agentTypes))
       })
   }, [agentTypes, initialAgentTypeId])
+
+  useEffect(() => {
+    api.extensions.list()
+      .then(setExtensions)
+      .catch(() => setExtensions([]))
+  }, [])
 
   useEffect(() => {
     if (initialWorkingDir) {
@@ -101,6 +114,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
     setName('')
     setWorkingDir('')
     setCustomSearch('')
+    setSelectedSourceKeys(new Set())
     setError('')
     setUserScopeHarnessConfig(false)
     setDirectorySuggestions([])
@@ -114,12 +128,54 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
 
   const selected = agentTypes.find((a) => a.id === selectedId)
   const builtins = selectableAgentTypes(agentTypes).filter((a) => a.isBuiltin)
-  const userDefined = selectableAgentTypes(agentTypes).filter((a) => !a.isBuiltin)
+  const userDefined = useMemo(
+    () => sortCustomAgentsByName(
+      selectableAgentTypes(agentTypes).filter((a) => !a.isBuiltin),
+    ),
+    [agentTypes],
+  )
+  const customSourceOptions = useMemo(
+    () => buildCustomAgentSourceOptions(userDefined, extensions),
+    [userDefined, extensions],
+  )
+  const allSourceKeys = useMemo(
+    () => customSourceOptions.map((option) => option.key),
+    [customSourceOptions],
+  )
+  const allSourcesActive = selectedSourceKeys.size === 0
+    || (allSourceKeys.length > 0 && allSourceKeys.every((key) => selectedSourceKeys.has(key)))
   const searchQuery = customSearch.trim().toLowerCase()
   const filteredCustom = useMemo(() => {
-    if (!searchQuery) return userDefined
-    return userDefined.filter((a) => agentMatchesSearch(a, searchQuery))
-  }, [searchQuery, userDefined])
+    const bySource = filterCustomAgentsBySources(userDefined, selectedSourceKeys)
+    if (!searchQuery) return bySource
+    return bySource.filter((a) => agentMatchesSearch(a, searchQuery))
+  }, [searchQuery, userDefined, selectedSourceKeys])
+
+  useEffect(() => {
+    const validKeys = new Set(customSourceOptions.map((option) => option.key))
+    setSelectedSourceKeys((current) => {
+      const next = new Set([...current].filter((key) => validKeys.has(key)))
+      return next.size === current.size ? current : next
+    })
+  }, [customSourceOptions])
+
+  function toggleSourceFilter(sourceKey: string) {
+    setSelectedSourceKeys((current) => {
+      const next = new Set(current)
+      if (next.has(sourceKey)) next.delete(sourceKey)
+      else next.add(sourceKey)
+      return next
+    })
+  }
+
+  function toggleAllSourceFilters() {
+    const allOn = allSourceKeys.length > 0 && allSourceKeys.every((key) => selectedSourceKeys.has(key))
+    if (allOn) {
+      setSelectedSourceKeys(new Set())
+      return
+    }
+    setSelectedSourceKeys(new Set(allSourceKeys))
+  }
   const isBasicLoopSelected = builtins.some((a) => a.id === selectedId)
   const directoryListOpen = directoryInputFocused && directorySuggestions.length > 0
   const showUserScopeOption = selected ? harnessSupportsUserScope(selected.harness) : false
@@ -234,6 +290,45 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
                 {userDefined.length > 0 && (
                   <div className="flex min-h-0 flex-1 flex-col gap-2">
                     <Label className="shrink-0">Custom Agents</Label>
+                    {customSourceOptions.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 shrink-0">
+                        <Label className="shrink-0 text-muted-foreground">Source</Label>
+                        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by agent source">
+                          <button
+                            type="button"
+                            aria-pressed={allSourcesActive}
+                            onClick={toggleAllSourceFilters}
+                            className={[
+                              'rounded-md px-2.5 py-1 text-xs font-medium transition-colors border',
+                              allSourcesActive
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-border bg-background text-muted-foreground hover:bg-muted',
+                            ].join(' ')}
+                          >
+                            All
+                          </button>
+                          {customSourceOptions.map((option) => {
+                            const active = selectedSourceKeys.has(option.key)
+                            return (
+                              <button
+                                key={option.key}
+                                type="button"
+                                aria-pressed={active}
+                                onClick={() => toggleSourceFilter(option.key)}
+                                className={[
+                                  'rounded-md px-2.5 py-1 text-xs font-medium transition-colors border',
+                                  active
+                                    ? 'border-primary bg-primary text-primary-foreground'
+                                    : 'border-border bg-background text-muted-foreground hover:bg-muted',
+                                ].join(' ')}
+                              >
+                                {option.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <div className="relative shrink-0">
                       <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
@@ -260,7 +355,9 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
                       <div className="flex flex-col gap-1.5 pr-1">
                         {filteredCustom.length === 0 ? (
                           <p className="text-sm text-muted-foreground py-2">
-                            {searchQuery ? 'No agents match your search.' : 'No custom agents available.'}
+                            {searchQuery || selectedSourceKeys.size > 0
+                              ? 'No agents match your filters.'
+                              : 'No custom agents available.'}
                           </p>
                         ) : (
                           filteredCustom.map((a) => (
