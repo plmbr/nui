@@ -16,7 +16,36 @@ Extensions live under `~/.loop/extensions/<name>/` and contribute backend capabi
     harness_host.py      # harness runtime process (when using harnesses)
 ```
 
-Copy the example from [`dev/extension-examples/corp-pack/`](extension-examples/corp-pack/) into `~/.loop/extensions/corp-pack/` to try it.
+Copy the example from [`dev/extension-examples/corp-pack/`](extension-examples/corp-pack/) into `~/.loop/extensions/corp-pack/` to try it, or install it with the CLI:
+
+```sh
+loop extension add dev/extension-examples/corp-pack
+```
+
+## Install
+
+```sh
+loop extension add <url-or-path>     # install from git URL, directory, or .zip
+loop extension remove <ext-id>     # remove by extension name (manifest id)
+```
+
+**Sources:**
+
+| Source | Example |
+|--------|---------|
+| Local directory | `loop extension add ./my-extension` |
+| Zip archive | `loop extension add ./corp-pack.zip` |
+| Git repository | `loop extension add https://github.com/example/my-extension.git` |
+
+For a **directory** or **zip**, Loop looks for `extension.yaml` at the root or in exactly one immediate subdirectory.
+
+For a **git URL**, Loop shallow-clones the repo to a temporary directory, copies the extension into `~/.loop/extensions/<name>/`, then deletes the clone. The repository root (or a single top-level subdirectory containing `extension.yaml`) must be the extension package.
+
+Re-installing replaces the existing copy under `~/.loop/extensions/<name>/`. Restart the UI or call `POST /api/extensions/reload` to pick up changes without restarting.
+
+```sh
+loop extension remove corp-pack
+```
 
 ## Manifest
 

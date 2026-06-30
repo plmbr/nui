@@ -89,6 +89,14 @@ type HarnessEntry struct {
 }
 
 func LoadManifest(dir string) (Manifest, error) {
+	return loadManifestFromDir(dir, true)
+}
+
+func loadManifestForInstall(dir string) (Manifest, error) {
+	return loadManifestFromDir(dir, false)
+}
+
+func loadManifestFromDir(dir string, matchDirName bool) (Manifest, error) {
 	path := filepath.Join(dir, manifestName)
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -98,18 +106,18 @@ func LoadManifest(dir string) (Manifest, error) {
 	if err := yaml.Unmarshal(data, &m); err != nil {
 		return Manifest{}, fmt.Errorf("parse %s: %w", path, err)
 	}
-	if err := validateManifest(dir, m); err != nil {
+	if err := validateManifest(dir, m, matchDirName); err != nil {
 		return Manifest{}, err
 	}
 	return m, nil
 }
 
-func validateManifest(dir string, m Manifest) error {
+func validateManifest(dir string, m Manifest, matchDirName bool) error {
 	dirName := filepath.Base(dir)
 	if m.Name == "" {
 		return fmt.Errorf("extension %s: name is required", dirName)
 	}
-	if m.Name != dirName {
+	if matchDirName && m.Name != dirName {
 		return fmt.Errorf("extension %s: name %q must match directory name", dirName, m.Name)
 	}
 	if m.APIVersion != "" && m.APIVersion != "loop.dev/extension/v1" {

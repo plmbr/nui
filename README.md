@@ -60,7 +60,7 @@ flowchart TB
 ```
 loop/
 ├── main.go, embed.go          # entrypoint; embeds ui/dist
-├── cmd/                       # cobra CLI (`loop ui`)
+├── cmd/                       # cobra CLI (`loop ui`, `loop extension`, `loop skills`)
 ├── internal/
 │   ├── model/                 # Session, ChatMessage, ADL structs
 │   ├── agent/                 # Agent interface, harness implementations, ADL executor
@@ -105,6 +105,8 @@ loop ui              # start web server on :8080
 loop ui --port 3000  # custom port
 loop ui -p 3000      # shorthand
 loop ui --open       # open http://localhost:8080 with a new blank session
+loop extension add   # install extension from git URL, directory, or zip
+loop extension remove # remove installed extension by id
 ```
 
 ### Launch an agent from the CLI
@@ -135,6 +137,19 @@ On startup Loop:
 3. Exposes the prompt once via `GET /api/bootstrap` for the UI to consume
 
 If no sessions exist when the server starts (and `--agent-type` was not passed), Loop automatically creates one using `lastAgentType` from settings, or the first available built-in agent (`Claude Code`, `pi`, `codex`, or `opencode`).
+
+### Extensions
+
+Install backend extensions (harnesses, MCP servers, skills, agents) into `~/.loop/extensions/`:
+
+```sh
+loop extension add dev/extension-examples/corp-pack
+loop extension add https://github.com/example/my-extension.git
+loop extension add ./corp-pack.zip
+loop extension remove corp-pack
+```
+
+Sources: local directory, `.zip` file, or git URL. See [`dev/extension-api.md`](dev/extension-api.md) for the manifest format.
 
 ### User preferences
 
