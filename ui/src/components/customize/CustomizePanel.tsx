@@ -69,9 +69,25 @@ export function CustomizePanel({ onClose, onAgentTypesChanged }: Props) {
 interface TriggerProps {
   active: boolean
   onOpen: () => void
+  compact?: boolean
 }
 
-export function CustomizeTrigger({ active, onOpen }: TriggerProps) {
+export function CustomizeTrigger({ active, onOpen, compact = false }: TriggerProps) {
+  if (compact) {
+    return (
+      <Button
+        type="button"
+        variant={active ? 'secondary' : 'ghost'}
+        size="icon-sm"
+        onClick={onOpen}
+        aria-pressed={active}
+        aria-label="Customize"
+      >
+        <Settings className="size-4" />
+      </Button>
+    )
+  }
+
   return (
     <Button
       variant={active ? 'secondary' : 'ghost'}

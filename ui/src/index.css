@@ -315,6 +315,15 @@
     -webkit-backdrop-filter: blur(12px) saturate(1.4);
   }
 
+  .app-header__actions {
+    @apply ml-auto flex shrink-0 items-center gap-1;
+  }
+
+  .app-header__theme-switch {
+    @apply flex items-center rounded-lg border border-border/60 p-0.5;
+    background: color-mix(in oklch, var(--muted) 40%, transparent);
+  }
+
   .app-body {
     @apply flex h-screen w-full overflow-hidden pt-12;
   }

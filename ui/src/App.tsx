@@ -6,7 +6,8 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AgentHeader } from '@/components/AgentHeader'
 import { AppSidebar } from '@/components/AppSidebar'
 import { ConversationPanel } from '@/components/ConversationPanel'
-import { CustomizePanel } from '@/components/customize/CustomizePanel'
+import { CustomizePanel, CustomizeTrigger } from '@/components/customize/CustomizePanel'
+import { ThemeSwitch } from '@/components/ThemeSwitch'
 import { LandingPage } from '@/components/LandingPage'
 import { NewSessionPanel } from '@/components/NewSessionPanel'
 import { SessionsListPanel } from '@/components/SessionsListPanel'
@@ -367,17 +368,19 @@ export default function App() {
               <AgentHeader name={selected.name} agent={selectedAgent} />
             </>
           )}
+          <div className="app-header__actions">
+            <ThemeSwitch />
+            <CustomizeTrigger active={customizeOpen} onOpen={handleOpenCustomize} compact />
+          </div>
         </header>
         <div className="app-body">
           <AppSidebar
             sessions={sessions}
             agentTypes={agentTypes}
             selectedId={selectedId}
-            customizeOpen={customizeOpen}
             newSessionOpen={newSessionOpen}
             sessionListGroupId={sessionListGroupId}
             onSelect={handleSelect}
-            onOpenCustomize={handleOpenCustomize}
             onOpenNewSession={handleOpenNewSession}
             onOpenNewSessionForGroup={handleOpenNewSessionForGroup}
             onOpenSessionList={handleOpenSessionList}

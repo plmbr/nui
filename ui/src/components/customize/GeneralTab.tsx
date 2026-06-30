@@ -11,13 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useTheme } from '@/contexts/theme'
 import { api } from '@/api'
 import { pickDefaultAgentTypeId, selectableAgentTypes } from '@/lib/agentTypes'
 import type { AgentType, Capabilities } from '@/types'
 
 export function GeneralTab() {
-  const { theme, setTheme } = useTheme()
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null)
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([])
   const [defaultAgentType, setDefaultAgentType] = useState('')
@@ -93,46 +91,6 @@ export function GeneralTab() {
             </SelectContent>
           </Select>
         )}
-      </div>
-      <div>
-        <p className="text-sm font-medium mb-1">Theme</p>
-        <p className="text-xs text-muted-foreground mb-3">
-          Choose how Loop looks on your screen.
-        </p>
-        <div className="grid grid-cols-2 gap-3 max-w-sm">
-          <button
-            type="button"
-            onClick={() => setTheme('light')}
-            className="theme-card"
-            data-active={theme === 'light'}
-            aria-pressed={theme === 'light'}
-          >
-            <div className="theme-card__preview theme-card__preview--light">
-              <div className="theme-card__sidebar" />
-              <div className="theme-card__main">
-                <div className="theme-card__bubble theme-card__bubble--user" />
-                <div className="theme-card__bubble theme-card__bubble--agent" />
-              </div>
-            </div>
-            <span className="theme-card__label">Light</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setTheme('dark')}
-            className="theme-card"
-            data-active={theme === 'dark'}
-            aria-pressed={theme === 'dark'}
-          >
-            <div className="theme-card__preview theme-card__preview--dark">
-              <div className="theme-card__sidebar" />
-              <div className="theme-card__main">
-                <div className="theme-card__bubble theme-card__bubble--user" />
-                <div className="theme-card__bubble theme-card__bubble--agent" />
-              </div>
-            </div>
-            <span className="theme-card__label">Dark</span>
-          </button>
-        </div>
       </div>
     </div>
   )

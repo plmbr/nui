@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils'
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -35,18 +34,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { CustomizeTrigger } from '@/components/customize/CustomizePanel'
 import type { AgentType, Session } from '@/types'
 
 interface Props {
   sessions: Session[]
   agentTypes: AgentType[]
   selectedId: string | null
-  customizeOpen: boolean
   newSessionOpen: boolean
   sessionListGroupId: string | null
   onSelect: (id: string) => void
-  onOpenCustomize: () => void
   onOpenNewSession: () => void
   onOpenNewSessionForGroup: (groupId: string) => void
   onOpenSessionList: (groupId: string) => void
@@ -262,11 +258,9 @@ export function AppSidebar({
   sessions,
   agentTypes,
   selectedId,
-  customizeOpen,
   newSessionOpen,
   sessionListGroupId,
   onSelect,
-  onOpenCustomize,
   onOpenNewSession,
   onOpenNewSessionForGroup,
   onOpenSessionList,
@@ -315,9 +309,6 @@ export function AppSidebar({
             )}
           </ScrollArea>
         </SidebarContent>
-        <SidebarFooter className="p-2">
-          <CustomizeTrigger active={customizeOpen} onOpen={onOpenCustomize} />
-        </SidebarFooter>
       </Sidebar>
   )
 }
