@@ -23,6 +23,7 @@ import { getCodeBlockInfo } from '@/lib/reactNodeText'
 import type { PromptSuggestion, Session } from '@/types'
 
 const AUTO_PROMPT_FALLBACK = 'Follow your system instructions and run.'
+const SCROLL_ANCHOR_TOP_GAP = 12
 
 const SUGGESTION_ICONS: Record<string, LucideIcon> = {
   sparkles: Sparkles,
@@ -50,7 +51,7 @@ function updateScrollSpacer(
   const contentBelow = getContentHeightBelow(anchor, spacer)
   const spacerHeight = Math.max(
     0,
-    container.clientHeight - anchor.offsetHeight - contentBelow - paddingTop,
+    container.clientHeight - anchor.offsetHeight - contentBelow - paddingTop - SCROLL_ANCHOR_TOP_GAP,
   )
   spacer.style.height = `${spacerHeight}px`
 }
@@ -60,7 +61,10 @@ function scrollMessageToTop(container: HTMLElement, message: HTMLElement) {
     message.getBoundingClientRect().top -
     container.getBoundingClientRect().top +
     container.scrollTop
-  container.scrollTo({ top: offset, behavior: 'auto' })
+  container.scrollTo({
+    top: Math.max(0, offset - SCROLL_ANCHOR_TOP_GAP),
+    behavior: 'auto',
+  })
 }
 
 interface Props {
@@ -86,6 +90,7 @@ export function ChatPanel({
   const scrollSpacerRef = useRef<HTMLDivElement>(null)
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const scrollPendingRef = useRef(false)
+  const anchoredUserMsgIdRef = useRef<string | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const initialPromptSentRef = useRef(false)
 
@@ -164,8 +169,6 @@ export function ChatPanel({
   ])
 
   useLayoutEffect(() => {
-    if (!scrollPendingRef.current) return
-
     const container = messagesContainerRef.current
     const spacer = scrollSpacerRef.current
     if (!container || !spacer) return
@@ -176,10 +179,18 @@ export function ChatPanel({
     const anchorEl = messageRefs.current.get(lastUserMsg.id)
     if (!anchorEl) return
 
+    if (scrollPendingRef.current) {
+      updateScrollSpacer(container, anchorEl, spacer)
+      scrollPendingRef.current = false
+      anchoredUserMsgIdRef.current = lastUserMsg.id
+      scrollMessageToTop(container, anchorEl)
+      return
+    }
+
+    if (anchoredUserMsgIdRef.current !== lastUserMsg.id) return
+
     updateScrollSpacer(container, anchorEl, spacer)
-    scrollPendingRef.current = false
-    scrollMessageToTop(container, anchorEl)
-  }, [messages.length])
+  }, [messages, isRunning])
 
   const submit = () => {
     const text = input.trim()
@@ -291,9 +302,6 @@ export function ChatPanel({
               ref={setMessageRef(msg.id)}
               className={`agui-message agui-message--${msg.role}`}
             >
-              <div className="agui-message__role">
-                {msg.role === 'user' ? 'You' : 'Agent'}
-              </div>
               <div
                 className={`agui-message__bubble${msg.error ? ' agui-message__bubble--error' : ''}`}
               >

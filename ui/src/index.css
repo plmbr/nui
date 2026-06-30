@@ -569,18 +569,7 @@
   .agui-message,
   .tool-call {
     @apply mx-auto mb-5 max-w-[760px] px-5;
-  }
-
-  .agui-message__role {
-    @apply mb-1.5 text-[0.72rem] font-semibold uppercase tracking-wide;
-  }
-
-  .agui-message--user .agui-message__role {
-    @apply text-right text-muted-foreground;
-  }
-
-  .agui-message--assistant .agui-message__role {
-    color: color-mix(in oklch, var(--primary) 75%, var(--foreground));
+    margin-bottom: var(--spacing);
   }
 
   .agui-message__bubble {
