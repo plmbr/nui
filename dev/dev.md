@@ -210,10 +210,10 @@ For each Loop session, ADL dependencies are materialized under `~/.loop/sessions
 
 | Harness | Env var | Provisioned files (examples) |
 |---|---|---|
-| `claude-code` | `CLAUDE_CONFIG_DIR` | `CLAUDE.md`, `.claude.json`, `skills/…` |
-| `codex` | `CODEX_HOME` | `AGENTS.md`, `config.toml`, `skills/…` |
-| `pi` | `PI_CODING_AGENT_DIR` | `pi-agent/SYSTEM.md`, `pi-agent/mcp.json`, `pi-agent/skills/…` |
-| `opencode` | `OPENCODE_CONFIG_DIR` | `INSTRUCTIONS.md`, `opencode.json`, `skills/…` |
+| `claude-code` | `CLAUDE_CONFIG_DIR` | `CLAUDE.md`, `rules/…`, `.claude.json`, `skills/…` |
+| `codex` | `CODEX_HOME` | `AGENTS.md`, `rules/…`, `config.toml`, `skills/…` |
+| `pi` | `PI_CODING_AGENT_DIR` | `pi-agent/SYSTEM.md`, `pi-agent/rules/…`, `pi-agent/mcp.json`, `pi-agent/skills/…` |
+| `opencode` | `OPENCODE_CONFIG_DIR` | `INSTRUCTIONS.md`, `rules/…`, `opencode.json`, `skills/…` |
 
 ADL `env` (global) and `harness.env` are merged and set on harness subprocess environments. Harness keys override global keys. Host environment variables are inherited unless overridden.
 

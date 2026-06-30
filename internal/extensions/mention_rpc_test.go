@@ -66,10 +66,27 @@ contributions:
 		t.Fatalf("roots: %+v", roots)
 	}
 
-	regResp, err := mentions.NewRegistry(reg.MentionSource()).List(context.Background(), mentions.ListRequest{
+	mentionReg := mentions.NewRegistry(reg.MentionSource())
+	if resp, err := mentionReg.List(context.Background(), mentions.ListRequest{
 		WorkingDir: t.TempDir(),
-		Parent:     "ext:mention-pack:refs",
+		Parent:     "",
 		Limit:      20,
+	}); err != nil {
+		t.Fatal(err)
+	} else {
+		for _, item := range resp.Items {
+			if strings.HasPrefix(item.Value, "ext:") {
+				t.Fatalf("extension roots should not appear without agent refs: %+v", resp.Items)
+			}
+		}
+	}
+
+	allowed := map[string]bool{"ext:mention-pack:refs": true}
+	regResp, err := mentionReg.List(context.Background(), mentions.ListRequest{
+		WorkingDir:            t.TempDir(),
+		Parent:                "ext:mention-pack:refs",
+		Limit:                 20,
+		AllowedExtensionRoots: allowed,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -127,8 +144,9 @@ contributions:
 		t.Fatal(err)
 	}
 	mentionReg := mentions.NewRegistry(reg.MentionSource())
+	allowed := map[string]bool{"ext:mention-pack:refs": true}
 	msg := "please @ext:mention-pack:refs:runbooks/deploy now"
-	got, err := mentionReg.ResolveMessage(context.Background(), t.TempDir(), msg)
+	got, err := mentionReg.ResolveMessage(context.Background(), t.TempDir(), msg, allowed)
 	if err != nil {
 		t.Fatal(err)
 	}

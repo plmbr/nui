@@ -77,8 +77,24 @@ type ADLHarness struct {
 }
 
 type ADLAIAssets struct {
-	MCPServers []ADLMCPServer `yaml:"mcpServers" json:"mcpServers,omitempty"`
-	Skills     []ADLSkill     `yaml:"skills"     json:"skills,omitempty"`
+	MCPServers       []ADLMCPServer       `yaml:"mcpServers"       json:"mcpServers,omitempty"`
+	Skills           []ADLSkill           `yaml:"skills"           json:"skills,omitempty"`
+	Rules            []ADLRule            `yaml:"rules"            json:"rules,omitempty"`
+	MentionProviders []ADLMentionProvider `yaml:"mentionProviders" json:"mentionProviders,omitempty"`
+}
+
+// ADLRule references a harness rule file by ref or inline path/content.
+type ADLRule struct {
+	Name    string `yaml:"name"              json:"name"`
+	Ref     string `yaml:"ref,omitempty"     json:"ref,omitempty"` // ext:<extension>/<rule-name>
+	Path    string `yaml:"path,omitempty"    json:"path,omitempty"`
+	Content string `yaml:"content,omitempty" json:"content,omitempty"`
+}
+
+// ADLMentionProvider references an extension mention provider for @-mention autocomplete.
+type ADLMentionProvider struct {
+	Name string `yaml:"name,omitempty" json:"name,omitempty"`
+	Ref  string `yaml:"ref"            json:"ref"` // ext:<extension>/<provider-id>
 }
 
 // ADLSkill configures one agent skill under aiAssets.skills.

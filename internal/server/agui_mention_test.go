@@ -20,7 +20,7 @@ func TestAGUIMentionResolution(t *testing.T) {
 
 	reg := mentions.NewRegistry(nil)
 	msg := "read @file:note.txt please"
-	got, err := reg.ResolveMessage(context.Background(), dir, msg)
+	got, err := reg.ResolveMessage(context.Background(), dir, msg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

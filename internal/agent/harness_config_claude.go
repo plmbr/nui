@@ -32,8 +32,12 @@ func (claudeHarnessProvisioner) provision(configDir string, deps HarnessDeps) er
 	if err := installHarnessSkills("claude-code", configDir, deps.WorkingDir, deps.Skills); err != nil {
 		return fmt.Errorf("install skills: %w", err)
 	}
+	if _, err := installHarnessRules("claude-code", configDir, deps.ResolvedRules); err != nil {
+		return fmt.Errorf("install rules: %w", err)
+	}
 	return writeHarnessManifest(configDir, "claude-code", deps, map[string]any{
 		"systemPromptFile": claudeSystemPromptFile,
+		"rulesDir":         "rules",
 		"configEnv":        envClaudeConfigDir,
 	})
 }

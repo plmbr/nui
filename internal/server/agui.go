@@ -66,7 +66,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 		return
 	}
 
-	resolvedMessage, err := mentions.DefaultRegistry.ResolveMessage(r.Context(), workingDir, lastUserMessage)
+	resolvedMessage, err := mentions.DefaultRegistry.ResolveMessage(r.Context(), workingDir, lastUserMessage, mentionAllowedRoots(session))
 	if err != nil {
 		http.Error(w, fmt.Sprintf("mention resolution failed: %v", err), http.StatusBadRequest)
 		return

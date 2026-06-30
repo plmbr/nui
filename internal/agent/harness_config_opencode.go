@@ -21,7 +21,11 @@ func (opencodeHarnessProvisioner) provision(configDir string, deps HarnessDeps) 
 	if err := writeOpenCodeInstructions(configDir, deps.SystemPrompt); err != nil {
 		return err
 	}
-	if err := writeOpenCodeConfig(configDir, deps); err != nil {
+	rulePaths, err := installHarnessRules("opencode", configDir, deps.ResolvedRules)
+	if err != nil {
+		return fmt.Errorf("install rules: %w", err)
+	}
+	if err := writeOpenCodeConfig(configDir, deps, rulePaths); err != nil {
 		return err
 	}
 	if err := installHarnessSkills("opencode", configDir, deps.WorkingDir, deps.Skills); err != nil {
@@ -30,6 +34,7 @@ func (opencodeHarnessProvisioner) provision(configDir string, deps HarnessDeps) 
 	return writeHarnessManifest(configDir, "opencode", deps, map[string]any{
 		"configFile":       opencodeConfigFile,
 		"instructionsFile": opencodeInstructionsFile,
+		"rulesDir":         "rules",
 		"configEnv":        envOpenCodeConfigDir,
 	})
 }
@@ -43,13 +48,20 @@ func writeOpenCodeInstructions(configDir, systemPrompt string) error {
 	return os.WriteFile(path, []byte(strings.TrimSpace(systemPrompt)+"\n"), 0644)
 }
 
-func writeOpenCodeConfig(configDir string, deps HarnessDeps) error {
+func writeOpenCodeConfig(configDir string, deps HarnessDeps, rulePaths []string) error {
 	cfg := map[string]any{
 		"$schema": "https://opencode.ai/config.json",
 	}
 
+	var instructions []string
 	if strings.TrimSpace(deps.SystemPrompt) != "" {
-		cfg["instructions"] = []string{"./" + opencodeInstructionsFile}
+		instructions = append(instructions, "./"+opencodeInstructionsFile)
+	}
+	for _, p := range rulePaths {
+		instructions = append(instructions, "./"+p)
+	}
+	if len(instructions) > 0 {
+		cfg["instructions"] = instructions
 	}
 
 	if len(deps.MCPServers) > 0 {

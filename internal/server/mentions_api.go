@@ -35,11 +35,12 @@ func handleSessionMentions(w http.ResponseWriter, r *http.Request, sessionID str
 		return
 	}
 	resp, err := mentions.DefaultRegistry.List(r.Context(), mentions.ListRequest{
-		SessionID:  sessionID,
-		WorkingDir: workingDir,
-		Parent:     parent,
-		Query:      strings.TrimSpace(query.Get("query")),
-		Limit:      limit,
+		SessionID:             sessionID,
+		WorkingDir:            workingDir,
+		Parent:                parent,
+		Query:                 strings.TrimSpace(query.Get("query")),
+		Limit:                 limit,
+		AllowedExtensionRoots: mentionAllowedRoots(session),
 	})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)

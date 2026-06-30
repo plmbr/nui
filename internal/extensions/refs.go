@@ -48,3 +48,13 @@ func MCPRef(extensionName, serverName string) string {
 func SkillRef(extensionName, skillName string) string {
 	return HarnessAgentID(extensionName, skillName)
 }
+
+// MentionRef returns an ADL mention provider ref for an extension provider.
+func MentionRef(extensionName, providerID string) string {
+	return HarnessAgentID(extensionName, providerID)
+}
+
+// RuleRef returns an ADL rule ref for an extension rule.
+func RuleRef(extensionName, ruleName string) string {
+	return HarnessAgentID(extensionName, ruleName)
+}

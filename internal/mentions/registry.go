@@ -60,6 +60,9 @@ func (r *Registry) List(ctx context.Context, req ListRequest) (ListResponse, err
 	}
 	if r.extension != nil {
 		if extName, providerID, ok := r.extension.MatchExtensionParent(parent); ok {
+			if !allowedExtensionMention(parent, req.AllowedExtensionRoots) {
+				return ListResponse{}, fmt.Errorf("mention provider not enabled for this agent")
+			}
 			return r.extension.ListExtension(ctx, extName, providerID, req)
 		}
 	}
@@ -73,7 +76,12 @@ func (r *Registry) listRoots(ctx context.Context, req ListRequest) (ListResponse
 	}
 	items := append([]Item(nil), resp.Items...)
 	if r.extension != nil {
-		items = append(items, r.extension.ListExtensionRoots()...)
+		for _, item := range r.extension.ListExtensionRoots() {
+			if !allowedExtensionMention(item.Value, req.AllowedExtensionRoots) {
+				continue
+			}
+			items = append(items, item)
+		}
 	}
 	items = filterItems(items, req.Query, req.Limit)
 	return ListResponse{
@@ -103,7 +111,7 @@ func filterItems(items []Item, query string, limit int) []Item {
 	return filtered
 }
 
-func (r *Registry) ResolveMessage(ctx context.Context, workingDir, message string) (string, error) {
+func (r *Registry) ResolveMessage(ctx context.Context, workingDir, message string, allowed map[string]bool) (string, error) {
 	if strings.TrimSpace(message) == "" {
 		return message, nil
 	}
@@ -119,8 +127,9 @@ func (r *Registry) ResolveMessage(ctx context.Context, workingDir, message strin
 		b.WriteString(message[last:start])
 		value := message[valueStart:valueEnd]
 		resolved, err := r.Resolve(ctx, ResolveRequest{
-			WorkingDir: workingDir,
-			Value:      value,
+			WorkingDir:            workingDir,
+			Value:                 value,
+			AllowedExtensionRoots: allowed,
 		})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[mentions] resolve %q: %v\n", value, err)
@@ -147,8 +156,23 @@ func (r *Registry) Resolve(ctx context.Context, req ResolveRequest) (string, err
 	}
 	if r.extension != nil {
 		if extName, providerID, ok := r.extension.MatchExtensionValue(value); ok {
+			if !allowedExtensionMention(value, req.AllowedExtensionRoots) {
+				return "", fmt.Errorf("mention provider not enabled for this agent")
+			}
 			return r.extension.ResolveExtension(ctx, extName, providerID, req)
 		}
 	}
 	return "", fmt.Errorf("unknown mention value %q", value)
+}
+
+func allowedExtensionMention(value string, allowed map[string]bool) bool {
+	if len(allowed) == 0 {
+		return false
+	}
+	for root := range allowed {
+		if value == root || strings.HasPrefix(value, root+":") {
+			return true
+		}
+	}
+	return false
 }

@@ -6,7 +6,7 @@ agents:
       type: ext:corp-pack/echo
   - id: reviewer
     name: Code Reviewer
-    description: Claude with corp extension skills, catalog MCP, and auto-installed corp-tools
+    description: Claude with corp extension skills, catalog MCP, and corp-tools
     harness:
       type: claude-code
       model: claude-sonnet-4-6
@@ -15,3 +15,6 @@ agents:
         - ref: ext:corp-pack/code-review
       mcpServers:
         - ref: ext:corp-pack/echo-tool
+        - ref: ext:corp-pack/corp-tools
+      rules:
+        - ref: ext:corp-pack/corp-guidelines

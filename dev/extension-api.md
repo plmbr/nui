@@ -1,6 +1,6 @@
 # Loop Extension API
 
-Extensions live under `~/.loop/extensions/<name>/` and contribute backend capabilities to Loop: **harnesses**, **catalog** (MCP servers and skills), **custom MCP tool servers**, and **agents**.
+Extensions live under `~/.loop/extensions/<name>/` and contribute backend capabilities to Loop: **harnesses**, **catalog** (MCP servers and skills), **custom MCP tool servers**, **rules**, and **agents**.
 
 ## Layout
 
@@ -30,7 +30,6 @@ contributions:
   aiAssets:
     mcpServers:
       - name: corp-tools
-        install: true            # auto-merge into all harness sessions
         tools:
           - name: echo
             description: Echo a message back
@@ -40,16 +39,14 @@ contributions:
             command: ["python3", "${LOOP_EXTENSION_DIR}/tools/reverse.py"]
     skills:
       - name: deploy-checklist
-        install: true            # auto-merge into all harness sessions
         content: |
           ---
           name: deploy-checklist
           description: Pre-deploy verification steps
           ---
           Run through the checklist before merging.
-    instructions:
+    rules:
       - name: corp-guidelines
-        install: true            # auto-merge into all harness system prompts
         content: |
           Follow corporate security guidelines. Never commit secrets.
 
@@ -107,12 +104,17 @@ aiAssets:
 
 ### Custom MCP servers (aiAssets)
 
-Command-tool MCP servers declared under `contributions.aiAssets.mcpServers`. Each server groups multiple tools; each tool runs a CLI command with MCP tool arguments passed as **JSON on stdin**.
+Command-tool MCP servers declared under `contributions.aiAssets.mcpServers`. Each server groups multiple tools; each tool runs a CLI command with MCP tool arguments passed as **JSON on stdin**. Referenced in agent ADL as:
+
+```yaml
+aiAssets:
+  mcpServers:
+    - ref: ext:corp-pack/corp-tools
+```
 
 | Field | Description |
 |-------|-------------|
-| `name` | Server name in harness MCP config |
-| `install` | When `true`, auto-merge into **all** harness sessions (builtin and extension agents) |
+| `name` | Server name used in `ref: ext:<extension>/<name>` |
 | `tools` | List of tools with `name`, `description`, `command`, and optional `inputSchema` |
 
 Each tool may define `inputSchema` as a JSON Schema object (MCP `tools/list` exposes it to the harness). When omitted, the proxy defaults to a single required `message` string parameter.
@@ -127,19 +129,39 @@ print(args.get("message", ""))
 
 Set `LOOP_MCP_TOOLS_PATH` to override the proxy script location.
 
-### Installable skills (aiAssets)
+### Custom skills (aiAssets)
 
-Skills declared under `contributions.aiAssets.skills` with `install: true` are auto-merged into all harness sessions (same as custom MCP servers with `install: true`). Use `name`, `path`, and/or `content` (same schema as ADL `aiAssets.skills`).
+Skills declared under `contributions.aiAssets.skills`. Use `name`, `path`, and/or `content` (same schema as ADL `aiAssets.skills`). Referenced as:
 
-### Installable instructions (aiAssets)
+```yaml
+aiAssets:
+  skills:
+    - ref: ext:corp-pack/deploy-checklist
+```
 
-Instructions declared under `contributions.aiAssets.instructions` with `install: true` are auto-appended to the harness system prompt for all sessions (builtin and extension agents). Use `name`, `path`, and/or `content` — exactly one source is required.
+### Rules (aiAssets)
+
+Rules are markdown instruction files declared under `contributions.aiAssets.rules`. Use `name`, `path`, and/or `content` — exactly one source is required. Referenced in agent ADL as:
+
+```yaml
+aiAssets:
+  rules:
+    - ref: ext:corp-pack/corp-guidelines
+```
+
+Loop materializes rules into harness-specific rule files under the session config directory:
+
+| Harness | Rule files | Registration |
+|---------|------------|--------------|
+| `claude-code` | `rules/<name>.md` | Auto-discovered by Claude Code |
+| `codex` | `rules/<name>.md` | Listed in `config.toml` `instructions` |
+| `pi` | `pi-agent/rules/<name>.md` | Claude-compatible layout under agent dir |
+| `opencode` | `rules/<name>.md` | Listed in `opencode.json` `instructions` |
 
 | Field | Description |
 |-------|-------------|
-| `name` | Instruction identifier (used for deduplication across extensions) |
-| `install` | When `true`, auto-merge into **all** harness sessions |
-| `content` | Inline instruction text appended to the system prompt |
+| `name` | Rule identifier used in `ref: ext:<extension>/<name>` and the output filename |
+| `content` | Inline rule markdown |
 | `path` | File path relative to the extension directory |
 
 ### Catalog skills
@@ -154,11 +176,19 @@ aiAssets:
 
 ### Agents
 
-Full ADL agent definitions. IDs are namespaced as `ext:<extension>/<agent-id>`. Extension agents with `install: true` custom MCP servers receive those servers automatically in harness config.
+Full ADL agent definitions. IDs are namespaced as `ext:<extension>/<agent-id>`. Agents reference extension MCP servers, skills, and rules explicitly via `ref:` in `aiAssets`.
 
 ### Mention providers
 
-Extensions can contribute `@`-mention autocomplete sources for the chat input. Declared under `contributions.mentionProviders` with a list file and stdio runtime (same pattern as harnesses).
+Extensions can contribute `@`-mention autocomplete sources for the chat input. Declared under `contributions.mentionProviders` with a list file and stdio runtime (same pattern as harnesses). Mention providers are **not** active globally — agents opt in via `aiAssets.mentionProviders`:
+
+```yaml
+aiAssets:
+  mentionProviders:
+    - ref: ext:corp-pack/corp-refs
+```
+
+When a session uses an agent with one or more mention provider refs, only those providers appear in the `@` menu (in addition to the built-in **Files & folders** provider).
 
 `mention-providers.yaml`:
 

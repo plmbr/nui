@@ -20,15 +20,20 @@ func (codexHarnessProvisioner) provision(configDir string, deps HarnessDeps) err
 	if err := writeCodexSystemPrompt(configDir, deps.SystemPrompt); err != nil {
 		return err
 	}
-	if err := writeCodexConfig(configDir, deps); err != nil {
-		return err
-	}
 	if err := installHarnessSkills("codex", configDir, deps.WorkingDir, deps.Skills); err != nil {
 		return fmt.Errorf("install skills: %w", err)
+	}
+	rulePaths, err := installHarnessRules("codex", configDir, deps.ResolvedRules)
+	if err != nil {
+		return fmt.Errorf("install rules: %w", err)
+	}
+	if err := writeCodexConfig(configDir, deps, rulePaths); err != nil {
+		return err
 	}
 	return writeHarnessManifest(configDir, "codex", deps, map[string]any{
 		"systemPromptFile": codexSystemPromptFile,
 		"configFile":       codexConfigFile,
+		"rulesDir":         "rules",
 		"configEnv":        envCodexHome,
 	})
 }
@@ -42,13 +47,21 @@ func writeCodexSystemPrompt(configDir, systemPrompt string) error {
 	return os.WriteFile(path, []byte(strings.TrimSpace(systemPrompt)+"\n"), 0644)
 }
 
-func writeCodexConfig(configDir string, deps HarnessDeps) error {
+func writeCodexConfig(configDir string, deps HarnessDeps, rulePaths []string) error {
 	cfgPath := filepath.Join(configDir, codexConfigFile)
 	var sections []string
 
 	if sp := strings.TrimSpace(deps.SystemPrompt); sp != "" {
 		sections = append(sections, fmt.Sprintf("developer_instructions = \"\"\"\n%s\n\"\"\"",
 			escapeTOMLMultiline(sp)))
+	}
+
+	if len(rulePaths) > 0 {
+		items := make([]string, len(rulePaths))
+		for i, p := range rulePaths {
+			items[i] = fmt.Sprintf("%q", "./"+p)
+		}
+		sections = append(sections, "instructions = ["+strings.Join(items, ", ")+"]")
 	}
 
 	for _, srv := range deps.MCPServers {

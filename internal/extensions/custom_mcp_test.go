@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"loop/internal/extensions"
+	"loop/internal/model"
 )
 
 func TestCustomMCPServerValidation(t *testing.T) {
@@ -24,7 +25,6 @@ contributions:
   aiAssets:
     mcpServers:
       - name: tools
-        install: true
         tools:
           - name: echo
             description: Echo input
@@ -45,16 +45,9 @@ contributions:
 	if len(ext.CustomMCPServers) != 1 {
 		t.Fatalf("custom mcp: %+v", ext.CustomMCPServers)
 	}
-	if !ext.CustomMCPServers[0].Install {
-		t.Fatal("expected install: true")
-	}
-	installable := ext.InstallableCustomMCPServers()
-	if len(installable) != 1 || installable[0].Name != "tools" {
-		t.Fatalf("installable: %+v", installable)
-	}
 }
 
-func TestMergeInstallableMCPServersForAgent(t *testing.T) {
+func TestExpandMCPServersCustomRef(t *testing.T) {
 	home := t.TempDir()
 	extDir := filepath.Join(home, ".loop", "extensions", "tool-pack")
 	if err := os.MkdirAll(extDir, 0755); err != nil {
@@ -67,15 +60,9 @@ contributions:
   aiAssets:
     mcpServers:
       - name: tools
-        install: true
         tools:
           - name: echo
             command: ["python3", "echo.py"]
-      - name: opt-in
-        install: false
-        tools:
-          - name: hidden
-            command: ["python3", "hidden.py"]
 `
 	if err := os.WriteFile(filepath.Join(extDir, "extension.yaml"), []byte(manifest), 0644); err != nil {
 		t.Fatal(err)
@@ -85,20 +72,21 @@ contributions:
 	if err != nil {
 		t.Fatal(err)
 	}
-	out := reg.MergeInstallableMCPServersForAgent(extensions.AgentHarnessDepsInput{}, "ext:tool-pack/reviewer")
-	if len(out.PendingCustomMCPServers) != 1 {
-		t.Fatalf("pending: %+v", out.PendingCustomMCPServers)
+	expanded, pending, err := reg.ExpandMCPServers([]model.ADLMCPServer{
+		{Ref: "ext:tool-pack/tools"},
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if out.PendingCustomMCPServers[0].Server.Name != "tools" {
-		t.Fatalf("server name: %q", out.PendingCustomMCPServers[0].Server.Name)
+	if len(expanded) != 0 {
+		t.Fatalf("expanded: %+v", expanded)
 	}
-	out = reg.MergeInstallableMCPServersForAgent(extensions.AgentHarnessDepsInput{}, "adl:local-agent")
-	if len(out.PendingCustomMCPServers) != 1 {
-		t.Fatalf("install:true servers merge for all sessions: %+v", out.PendingCustomMCPServers)
+	if len(pending) != 1 || pending[0].Server.Name != "tools" {
+		t.Fatalf("pending: %+v", pending)
 	}
 }
 
-func TestMergeInstallableAIAssetsSkills(t *testing.T) {
+func TestResolveSkillCustomRef(t *testing.T) {
 	home := t.TempDir()
 	extDir := filepath.Join(home, ".loop", "extensions", "skill-pack")
 	skillDir := filepath.Join(extDir, "skills", "lint")
@@ -115,15 +103,7 @@ contributions:
   aiAssets:
     skills:
       - name: lint
-        install: true
         path: ./skills/lint
-      - name: optional
-        install: false
-        content: |
-          ---
-          name: optional
-          ---
-          Not installed.
 `
 	if err := os.WriteFile(filepath.Join(extDir, "extension.yaml"), []byte(manifest), 0644); err != nil {
 		t.Fatal(err)
@@ -133,19 +113,16 @@ contributions:
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := reg.MergeInstallableAIAssetsForAgent(extensions.AgentHarnessDepsInput{}, "adl:local-agent")
+	skill, dir, err := reg.ResolveSkill("ext:skill-pack/lint")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(out.Skills) != 1 || out.Skills[0].Name != "lint" {
-		t.Fatalf("skills: %+v", out.Skills)
-	}
-	if out.Skills[0].Path == "" {
-		t.Fatalf("expected resolved path, got %+v", out.Skills[0])
+	if skill.Name != "lint" || dir == "" {
+		t.Fatalf("skill: %+v dir=%q", skill, dir)
 	}
 }
 
-func TestMergeInstallableAIAssetsInstructions(t *testing.T) {
+func TestResolveRuleRef(t *testing.T) {
 	home := t.TempDir()
 	extDir := filepath.Join(home, ".loop", "extensions", "guide-pack")
 	if err := os.MkdirAll(extDir, 0755); err != nil {
@@ -159,18 +136,12 @@ name: guide-pack
 version: 1.0.0
 contributions:
   aiAssets:
-    instructions:
+    rules:
       - name: inline
-        install: true
         content: |
           Follow the style guide.
       - name: from-file
-        install: true
         path: ./guidelines.md
-      - name: optional
-        install: false
-        content: |
-          Not installed.
 `
 	if err := os.WriteFile(filepath.Join(extDir, "extension.yaml"), []byte(manifest), 0644); err != nil {
 		t.Fatal(err)
@@ -180,15 +151,19 @@ contributions:
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := reg.MergeInstallableAIAssetsForAgent(extensions.AgentHarnessDepsInput{
-		SystemPrompt: "Base prompt.",
-	}, "adl:local-agent")
+	inline, err := reg.ResolveRule("ext:guide-pack/inline")
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "Base prompt.\n\nFollow the style guide.\n\nAlways run tests before merging."
-	if out.SystemPrompt != want {
-		t.Fatalf("system prompt:\n%q\nwant:\n%q", out.SystemPrompt, want)
+	if inline != "Follow the style guide." {
+		t.Fatalf("inline: %q", inline)
+	}
+	fromFile, err := reg.ResolveRule("ext:guide-pack/from-file")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fromFile != "Always run tests before merging.\n" {
+		t.Fatalf("from-file: %q", fromFile)
 	}
 }
 

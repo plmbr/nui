@@ -27,6 +27,8 @@ type HarnessDeps struct {
 	SystemPrompt            string
 	MCPServers              []model.ADLMCPServer
 	Skills                  []model.ADLSkill
+	Rules                   []model.ADLRule
+	ResolvedRules           []ResolvedRule
 	WorkingDir              string
 	UserScope               bool
 	PendingCustomMCPServers []extensions.PendingCustomMCPServer
@@ -101,6 +103,7 @@ func harnessDepsFromADL(def model.ADLDefinition, step *model.ADLStep, workingDir
 		SystemPrompt: defCopy.SystemPrompt,
 		MCPServers:   adlMCPServersFromDef(defCopy),
 		Skills:       adlSkillsFromDef(defCopy),
+		Rules:        adlRulesFromDef(defCopy),
 		WorkingDir:   workingDir,
 	}
 	if step != nil {
@@ -113,6 +116,9 @@ func harnessDepsFromADL(def model.ADLDefinition, step *model.ADLStep, workingDir
 		if stepSkills := adlSkillsFromStep(*step); len(stepSkills) > 0 {
 			deps.Skills = stepSkills
 		}
+		if stepRules := adlRulesFromStep(*step); len(stepRules) > 0 {
+			deps.Rules = stepRules
+		}
 	}
 	return deps
 }
@@ -123,6 +129,14 @@ func adlSkillsFromDef(def model.ADLDefinition) []model.ADLSkill {
 
 func adlSkillsFromStep(step model.ADLStep) []model.ADLSkill {
 	return step.AIAssets.Skills
+}
+
+func adlRulesFromDef(def model.ADLDefinition) []model.ADLRule {
+	return def.AIAssets.Rules
+}
+
+func adlRulesFromStep(step model.ADLStep) []model.ADLRule {
+	return step.AIAssets.Rules
 }
 
 func adlMCPServersFromDef(def model.ADLDefinition) []model.ADLMCPServer {
@@ -150,33 +164,18 @@ func PrepareSessionHarnessConfig(sessionID string, def model.ADLDefinition, reg 
 
 func buildHarnessDeps(sessionID string, def model.ADLDefinition, step *model.ADLStep, workingDir string, reg *extensions.Registry) (HarnessDeps, error) {
 	deps := harnessDepsFromADL(def, step, workingDir)
-	if reg != nil {
-		merged, err := reg.MergeInstallableAIAssetsForAgent(
-			extensions.AgentHarnessDepsInput{
-				MCPServers:   deps.MCPServers,
-				Skills:       deps.Skills,
-				SystemPrompt: deps.SystemPrompt,
-			},
-			model.ADLAgentID(def),
-		)
-		if err != nil {
-			return deps, err
-		}
-		deps.MCPServers = merged.MCPServers
-		deps.Skills = merged.Skills
-		deps.SystemPrompt = merged.SystemPrompt
-		deps.PendingCustomMCPServers = merged.PendingCustomMCPServers
-	}
 	return ExpandHarnessDeps(deps, reg, sessionID)
 }
 
 func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID string) (HarnessDeps, error) {
 	if reg != nil {
+		var pending []extensions.PendingCustomMCPServer
 		var err error
-		deps.MCPServers, err = reg.ExpandMCPServers(deps.MCPServers)
+		deps.MCPServers, pending, err = reg.ExpandMCPServers(deps.MCPServers)
 		if err != nil {
 			return deps, err
 		}
+		deps.PendingCustomMCPServers = append(deps.PendingCustomMCPServers, pending...)
 	}
 	if len(deps.PendingCustomMCPServers) > 0 {
 		configDir, dirErr := store.SessionConfigDir(sessionID)
@@ -193,6 +192,12 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 		deps.PendingCustomMCPServers = nil
 	}
 	if reg == nil {
+		resolved, err := resolveHarnessRules(deps.Rules, nil)
+		if err != nil {
+			return deps, err
+		}
+		deps.ResolvedRules = resolved
+		deps.Rules = nil
 		return deps, nil
 	}
 	expandedSkills := make([]model.ADLSkill, 0, len(deps.Skills))
@@ -209,6 +214,13 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 		expandedSkills = append(expandedSkills, skill)
 	}
 	deps.Skills = expandedSkills
+
+	resolved, err := resolveHarnessRules(deps.Rules, reg)
+	if err != nil {
+		return deps, err
+	}
+	deps.ResolvedRules = resolved
+	deps.Rules = nil
 	return deps, nil
 }
 
@@ -277,6 +289,7 @@ func writeHarnessManifest(configDir, harness string, deps HarnessDeps, extra map
 			"systemPrompt": deps.SystemPrompt != "",
 			"skills":       len(deps.Skills),
 			"mcpServers":   len(deps.MCPServers),
+			"rules":        len(deps.ResolvedRules),
 		},
 	}
 	for k, v := range extra {

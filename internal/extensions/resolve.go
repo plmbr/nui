@@ -31,7 +31,34 @@ func (r *Registry) ResolveMCPRef(ref string) (model.ADLMCPServer, error) {
 			return out, nil
 		}
 	}
+	for _, s := range ext.CustomMCPServers {
+		if s.Name == serverName {
+			return model.ADLMCPServer{}, fmt.Errorf("mcp server %q is a custom aiAssets server; reference it via ref in agent aiAssets.mcpServers", serverName)
+		}
+	}
 	return model.ADLMCPServer{}, fmt.Errorf("mcp server %q not found in extension %q", serverName, extName)
+}
+
+// ResolveCustomMCPRef resolves ext:<extension>/<server-name> to a pending custom MCP server.
+func (r *Registry) ResolveCustomMCPRef(ref string) (PendingCustomMCPServer, error) {
+	extName, serverName, ok := ParseExtRef(ref)
+	if !ok {
+		return PendingCustomMCPServer{}, fmt.Errorf("invalid mcp ref %q", ref)
+	}
+	ext, ok := r.Get(extName)
+	if !ok || r.isDisabled(extName) {
+		return PendingCustomMCPServer{}, fmt.Errorf("extension %q not found", extName)
+	}
+	for _, s := range ext.CustomMCPServers {
+		if s.Name == serverName {
+			return PendingCustomMCPServer{
+				ExtensionName: extName,
+				ExtensionDir:  ext.Dir,
+				Server:        s,
+			}, nil
+		}
+	}
+	return PendingCustomMCPServer{}, fmt.Errorf("custom mcp server %q not found in extension %q", serverName, extName)
 }
 
 // ResolveSkill returns skill metadata and directory path for ext:<extension>/<skill-name>.
@@ -54,7 +81,36 @@ func (r *Registry) ResolveSkill(ref string) (model.ADLSkill, string, error) {
 		}
 		return s, dir, nil
 	}
+	for _, s := range ext.CustomSkills {
+		if s.Name != skillName {
+			continue
+		}
+		resolved, err := ResolveCustomSkill(ext.Dir, s)
+		if err != nil {
+			return model.ADLSkill{}, "", err
+		}
+		dir := strings.TrimSpace(resolved.Path)
+		return resolved, dir, nil
+	}
 	return model.ADLSkill{}, "", fmt.Errorf("skill %q not found in extension %q", skillName, extName)
+}
+
+// ResolveRule returns rule body for ext:<extension>/<rule-name>.
+func (r *Registry) ResolveRule(ref string) (string, error) {
+	extName, ruleName, ok := ParseExtRef(ref)
+	if !ok {
+		return "", fmt.Errorf("invalid rule ref %q", ref)
+	}
+	ext, ok := r.Get(extName)
+	if !ok || r.isDisabled(extName) {
+		return "", fmt.Errorf("extension %q not found", extName)
+	}
+	for _, rule := range ext.CustomRules {
+		if rule.Name == ruleName {
+			return ResolveCustomRule(rule)
+		}
+	}
+	return "", fmt.Errorf("rule %q not found in extension %q", ruleName, extName)
 }
 
 func skillDir(extDir string, skill model.ADLSkill) (string, error) {
@@ -126,28 +182,33 @@ func (r *Registry) FindAgent(agentID string) (model.ADLDefinition, bool) {
 	return model.ADLDefinition{}, false
 }
 
-// ExpandMCPServers resolves ref-only MCP entries in place.
-func (r *Registry) ExpandMCPServers(servers []model.ADLMCPServer) ([]model.ADLMCPServer, error) {
+// ExpandMCPServers resolves ref-only MCP entries. Custom aiAssets servers are returned as pending.
+func (r *Registry) ExpandMCPServers(servers []model.ADLMCPServer) ([]model.ADLMCPServer, []PendingCustomMCPServer, error) {
 	if len(servers) == 0 {
-		return servers, nil
+		return servers, nil, nil
 	}
 	out := make([]model.ADLMCPServer, 0, len(servers))
+	var pending []PendingCustomMCPServer
 	for _, s := range servers {
 		ref := strings.TrimSpace(s.Ref)
 		if ref == "" {
 			out = append(out, s)
 			continue
 		}
+		if custom, err := r.ResolveCustomMCPRef(ref); err == nil {
+			pending = append(pending, custom)
+			continue
+		}
 		resolved, err := r.ResolveMCPRef(ref)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if strings.TrimSpace(s.Name) != "" {
 			resolved.Name = s.Name
 		}
 		out = append(out, resolved)
 	}
-	return out, nil
+	return out, pending, nil
 }
 
 // LoopMCPServerConfigs returns MCP server configs from all extensions for Loop-side MCP manager.

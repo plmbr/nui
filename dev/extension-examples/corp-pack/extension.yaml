@@ -8,7 +8,6 @@ contributions:
   aiAssets:
     mcpServers:
       - name: corp-tools
-        install: true
         tools:
           - name: echo
             description: Echo a message back
@@ -32,16 +31,14 @@ contributions:
               required: [message]
     skills:
       - name: deploy-checklist
-        install: true
         content: |
           ---
           name: deploy-checklist
           description: Pre-deploy verification steps
           ---
           Run through the checklist before merging.
-    instructions:
+    rules:
       - name: corp-guidelines
-        install: true
         content: |
           Follow corporate security guidelines. Never commit secrets.
 

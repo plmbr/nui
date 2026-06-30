@@ -30,9 +30,13 @@ func (piHarnessProvisioner) provision(sessionConfigDir string, deps HarnessDeps)
 	if err := installHarnessSkills("pi", sessionConfigDir, deps.WorkingDir, deps.Skills); err != nil {
 		return fmt.Errorf("install skills: %w", err)
 	}
+	if _, err := installHarnessRules("pi", sessionConfigDir, deps.ResolvedRules); err != nil {
+		return fmt.Errorf("install rules: %w", err)
+	}
 	return writeHarnessManifest(sessionConfigDir, "pi", deps, map[string]any{
 		"agentDir":         agentDir,
 		"systemPromptFile": piSystemPromptFile,
+		"rulesDir":         filepath.Join(piAgentSubdir, "rules"),
 		"configEnv":        envPiCodingAgentDir,
 	})
 }

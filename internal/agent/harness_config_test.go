@@ -553,3 +553,87 @@ func TestExpandHarnessDepsCustomMCP(t *testing.T) {
 		t.Fatalf("ext-corp-pack-corp-tools entry: %v", entry)
 	}
 }
+
+func TestProvisionHarnessRules(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", filepath.Join(tmp, "home"))
+
+	deps := HarnessDeps{
+		SystemPrompt: "Base system prompt.",
+		ResolvedRules: []ResolvedRule{
+			{Name: "corp-guidelines", Content: "Never commit secrets."},
+			{Name: "style", Content: "Use gofmt."},
+		},
+	}
+
+	t.Run("claude-code", func(t *testing.T) {
+		configDir, err := ProvisionHarnessConfig("rules-claude", "claude-code", deps)
+		if err != nil {
+			t.Fatal(err)
+		}
+		claudeMD, err := os.ReadFile(filepath.Join(configDir, claudeSystemPromptFile))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(claudeMD), "Never commit secrets.") {
+			t.Fatalf("rules should not be merged into CLAUDE.md: %q", string(claudeMD))
+		}
+		ruleData, err := os.ReadFile(filepath.Join(configDir, "rules", "corp-guidelines.md"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(ruleData), "Never commit secrets.") {
+			t.Fatalf("rule file: %q", string(ruleData))
+		}
+	})
+
+	t.Run("opencode", func(t *testing.T) {
+		configDir, err := ProvisionHarnessConfig("rules-opencode", "opencode", deps)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(filepath.Join(configDir, opencodeConfigFile))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var cfg map[string]any
+		if err := json.Unmarshal(data, &cfg); err != nil {
+			t.Fatal(err)
+		}
+		instructions, ok := cfg["instructions"].([]any)
+		if !ok || len(instructions) != 3 {
+			t.Fatalf("instructions: %v", cfg["instructions"])
+		}
+		if _, err := os.Stat(filepath.Join(configDir, "rules", "style.md")); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("pi", func(t *testing.T) {
+		configDir, err := ProvisionHarnessConfig("rules-pi", "pi", deps)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rulePath := filepath.Join(piAgentConfigDir(configDir), "rules", "corp-guidelines.md")
+		if _, err := os.Stat(rulePath); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("codex", func(t *testing.T) {
+		configDir, err := ProvisionHarnessConfig("rules-codex", "codex", deps)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cfg, err := os.ReadFile(filepath.Join(configDir, codexConfigFile))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(cfg), "instructions = [") {
+			t.Fatalf("config.toml missing instructions: %s", string(cfg))
+		}
+		if _, err := os.Stat(filepath.Join(configDir, "rules", "corp-guidelines.md")); err != nil {
+			t.Fatal(err)
+		}
+	})
+}

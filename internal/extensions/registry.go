@@ -24,7 +24,7 @@ type Extension struct {
 	Agents           []model.ADLDefinition
 	CustomMCPServers   []ExtensionCustomMCPServer
 	CustomSkills       []ExtensionCustomSkill
-	CustomInstructions []ExtensionCustomInstruction
+	CustomRules        []ExtensionCustomRule
 	MentionProviders   []MentionProviderEntry
 	mentionRuntime   *RuntimeConfig
 
@@ -93,7 +93,7 @@ func loadExtension(extDir string, reg *Registry) (*Extension, error) {
 	}
 	ext.CustomMCPServers = expandCustomMCPServers(extDir, manifest.aiAssetsMCPServers())
 	ext.CustomSkills = expandCustomSkills(extDir, manifest.aiAssetsSkills())
-	ext.CustomInstructions = expandCustomInstructions(extDir, manifest.aiAssetsInstructions())
+	ext.CustomRules = expandCustomRules(extDir, manifest.aiAssetsRules())
 	if manifest.Contributions.MCPServers != nil {
 		fmt.Fprintf(os.Stderr, "[extensions] %s: contributions.mcpServers is deprecated; use contributions.catalog.mcpServers\n", manifest.Name)
 	}
@@ -422,7 +422,8 @@ type ExtensionInfo struct {
 	Harnesses   []string `json:"harnesses,omitempty"`
 	MCPServers    []string `json:"mcpServers,omitempty"`
 	Skills        []string `json:"skills,omitempty"`
-	Instructions  []string `json:"instructions,omitempty"`
+	Rules            []string `json:"rules,omitempty"`
+	MentionProviders []string `json:"mentionProviders,omitempty"`
 	Agents        []string `json:"agents,omitempty"`
 }
 
@@ -447,16 +448,19 @@ func (r *Registry) Info() []ExtensionInfo {
 			info.MCPServers = append(info.MCPServers, s.Name)
 		}
 		for _, s := range ext.CustomMCPServers {
-			info.MCPServers = append(info.MCPServers, s.Name+"(custom)")
+			info.MCPServers = append(info.MCPServers, s.Name)
 		}
 		for _, s := range ext.Skills {
 			info.Skills = append(info.Skills, s.Name)
 		}
 		for _, s := range ext.CustomSkills {
-			info.Skills = append(info.Skills, s.Name+"(aiAssets)")
+			info.Skills = append(info.Skills, s.Name)
 		}
-		for _, inst := range ext.CustomInstructions {
-			info.Instructions = append(info.Instructions, inst.Name)
+		for _, rule := range ext.CustomRules {
+			info.Rules = append(info.Rules, rule.Name)
+		}
+		for _, mp := range ext.MentionProviders {
+			info.MentionProviders = append(info.MentionProviders, mp.ID)
 		}
 		for _, a := range ext.Agents {
 			id := a.ID

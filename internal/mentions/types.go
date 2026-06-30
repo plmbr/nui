@@ -23,24 +23,26 @@ type Breadcrumb struct {
 
 // ListRequest is passed to mention providers for lazy listing.
 type ListRequest struct {
-	SessionID  string
-	WorkingDir string
-	Parent     string
-	Query      string
-	Limit      int
+	SessionID             string
+	WorkingDir            string
+	Parent                string
+	Query                 string
+	Limit                 int
+	AllowedExtensionRoots map[string]bool
+}
+
+// ResolveRequest is passed to mention providers to expand a token value.
+type ResolveRequest struct {
+	SessionID             string
+	WorkingDir            string
+	Value                 string
+	AllowedExtensionRoots map[string]bool
 }
 
 // ListResponse is returned from mention list operations.
 type ListResponse struct {
 	Items      []Item
 	Breadcrumb []Breadcrumb
-}
-
-// ResolveRequest is passed to mention providers to expand a token value.
-type ResolveRequest struct {
-	SessionID  string
-	WorkingDir string
-	Value      string
 }
 
 // Provider lists and resolves mention items for one source.

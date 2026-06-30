@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"loop/internal/mentions"
+	"loop/internal/model"
 )
 
 const extMentionPrefix = "ext:"
@@ -26,6 +27,45 @@ type MentionProviderEntry struct {
 	ID          string `yaml:"id"                    json:"id"`
 	DisplayName string `yaml:"displayName"           json:"displayName"`
 	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+}
+
+// MentionRootValue returns the mention menu root value for an extension provider.
+func MentionRootValue(extensionName, providerID string) string {
+	return extMentionRootValue(extensionName, providerID)
+}
+
+// ExpandMentionProviders resolves ADL mention provider refs to menu root values.
+func (r *Registry) ExpandMentionProviders(providers []model.ADLMentionProvider) ([]string, error) {
+	if len(providers) == 0 {
+		return nil, nil
+	}
+	out := make([]string, 0, len(providers))
+	for _, p := range providers {
+		ref := strings.TrimSpace(p.Ref)
+		if ref == "" {
+			continue
+		}
+		extName, providerID, ok := ParseExtRef(ref)
+		if !ok {
+			return nil, fmt.Errorf("invalid mention provider ref %q", ref)
+		}
+		ext, ok := r.Get(extName)
+		if !ok || r.isDisabled(extName) {
+			return nil, fmt.Errorf("extension %q not found", extName)
+		}
+		found := false
+		for _, mp := range ext.MentionProviders {
+			if mp.ID == providerID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("mention provider %q not found in extension %q", providerID, extName)
+		}
+		out = append(out, extMentionRootValue(extName, providerID))
+	}
+	return out, nil
 }
 
 func extMentionRootValue(extName, providerID string) string {
