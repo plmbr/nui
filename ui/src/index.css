@@ -870,13 +870,22 @@
     @apply relative my-3;
   }
 
-  .agui-code-block pre {
-    @apply my-0 overflow-x-auto rounded-lg border bg-muted/50 p-4 pt-10 text-[0.8125rem] leading-relaxed;
+  .agui-message--assistant .agui-code-block pre {
+    @apply my-0 overflow-x-auto rounded-lg border p-4 pr-10 text-[0.8125rem] leading-relaxed;
+    background-color: color-mix(in oklch, var(--muted) 55%, var(--background));
+    color: var(--foreground);
     font-family: var(--font-mono);
   }
 
   .agui-code-block__copy {
-    @apply absolute top-2 right-2 z-10 text-muted-foreground opacity-80 hover:bg-muted hover:text-foreground hover:opacity-100;
+    @apply absolute top-1.5 right-1.5 z-10 size-7 text-muted-foreground opacity-90;
+    background-color: color-mix(in oklch, var(--background) 72%, transparent);
+  }
+
+  @media (hover: hover) {
+    .agui-code-block__copy:hover {
+      @apply bg-muted text-foreground opacity-100;
+    }
   }
 
   .agui-message--assistant pre code.hljs {
@@ -886,14 +895,14 @@
     line-height: inherit;
   }
 
-  :root .hljs { color: oklch(0.30 0.03 285); background: transparent; }
-  :root .hljs-comment, :root .hljs-quote { color: oklch(0.52 0.02 285); font-style: italic; }
-  :root .hljs-keyword, :root .hljs-selector-tag, :root .hljs-built_in { color: oklch(0.48 0.20 275); }
-  :root .hljs-string, :root .hljs-attr, :root .hljs-symbol { color: oklch(0.45 0.14 160); }
-  :root .hljs-number, :root .hljs-literal { color: oklch(0.50 0.16 50); }
-  :root .hljs-title, :root .hljs-section, :root .hljs-name { color: oklch(0.42 0.18 295); }
-  :root .hljs-variable, :root .hljs-template-variable { color: oklch(0.42 0.12 25); }
-  :root .hljs-type, :root .hljs-class { color: oklch(0.48 0.14 200); }
+  :root:not(.dark) .hljs { color: oklch(0.30 0.03 285); background: transparent; }
+  :root:not(.dark) .hljs-comment, :root:not(.dark) .hljs-quote { color: oklch(0.52 0.02 285); font-style: italic; }
+  :root:not(.dark) .hljs-keyword, :root:not(.dark) .hljs-selector-tag, :root:not(.dark) .hljs-built_in { color: oklch(0.48 0.20 275); }
+  :root:not(.dark) .hljs-string, :root:not(.dark) .hljs-attr, :root:not(.dark) .hljs-symbol { color: oklch(0.45 0.14 160); }
+  :root:not(.dark) .hljs-number, :root:not(.dark) .hljs-literal { color: oklch(0.50 0.16 50); }
+  :root:not(.dark) .hljs-title, :root:not(.dark) .hljs-section, :root:not(.dark) .hljs-name { color: oklch(0.42 0.18 295); }
+  :root:not(.dark) .hljs-variable, :root:not(.dark) .hljs-template-variable { color: oklch(0.42 0.12 25); }
+  :root:not(.dark) .hljs-type, :root:not(.dark) .hljs-class { color: oklch(0.48 0.14 200); }
 
   .dark .hljs { color: oklch(0.88 0.01 285); background: transparent; }
   .dark .hljs-comment, .dark .hljs-quote { color: oklch(0.58 0.02 285); font-style: italic; }
@@ -911,11 +920,18 @@
   }
 
   .agui-diff__copy {
-    @apply absolute top-2 right-2 z-10 text-muted-foreground opacity-80 hover:bg-muted hover:text-foreground hover:opacity-100;
+    @apply absolute top-1.5 right-1.5 z-10 size-7 text-muted-foreground opacity-90;
+    background-color: color-mix(in oklch, var(--background) 72%, transparent);
+  }
+
+  @media (hover: hover) {
+    .agui-diff__copy:hover {
+      @apply bg-muted text-foreground opacity-100;
+    }
   }
 
   .agui-diff__table {
-    @apply overflow-x-auto pt-10;
+    @apply overflow-x-auto p-4 pr-10;
   }
 
   .agui-diff__row {

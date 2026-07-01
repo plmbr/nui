@@ -59,11 +59,11 @@ export function DiffBlock({ text, className }: Props) {
   }
 
   return (
-    <div ref={containerRef} className="agui-diff">
+    <div ref={containerRef} className="agui-diff not-prose">
       <Button
         type="button"
         variant="ghost"
-        size="icon"
+        size="icon-sm"
         className="agui-diff__copy"
         onClick={handleCopy}
         aria-label={copied ? 'Copied' : 'Copy diff'}

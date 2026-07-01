@@ -26,11 +26,11 @@ export function CodeBlock({ children, className, ...props }: Props) {
   }
 
   return (
-    <div className="agui-code-block">
+    <div className="agui-code-block not-prose">
       <Button
         type="button"
         variant="ghost"
-        size="icon"
+        size="icon-sm"
         className="agui-code-block__copy"
         onClick={handleCopy}
         aria-label={copied ? 'Copied' : 'Copy code'}
