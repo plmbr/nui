@@ -5,6 +5,10 @@ import { EventType } from '@ag-ui/core'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { api } from '@/api'
+import {
+  registerSessionRun,
+  unregisterSessionRun,
+} from '@/lib/sessionRunRegistry'
 
 export interface ToolCallPart {
   type: 'tool'
@@ -123,6 +127,53 @@ export function useSessionChat(sessionId: string) {
     }),
   )
   const pendingToolsRef = useRef<Record<string, string>>({})
+  const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null)
+  const assistantMsgIdRef = useRef<string | null>(null)
+
+  const finishRun = useCallback(() => {
+    subscriptionRef.current?.unsubscribe()
+    subscriptionRef.current = null
+    assistantMsgIdRef.current = null
+    unregisterSessionRun(sessionId)
+    setIsRunning(false)
+  }, [sessionId])
+
+  const stopRun = useCallback(async () => {
+    if (!subscriptionRef.current && !assistantMsgIdRef.current) return
+
+    subscriptionRef.current?.unsubscribe()
+    subscriptionRef.current = null
+
+    const cancelledAssistantId = assistantMsgIdRef.current
+    assistantMsgIdRef.current = null
+    unregisterSessionRun(sessionId)
+    setIsRunning(false)
+
+    try {
+      await api.sessions.stop(sessionId)
+    } catch {
+      /* best-effort */
+    }
+
+    if (cancelledAssistantId) {
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id !== cancelledAssistantId) return m
+          if (assistantTextContent(m).trim()) {
+            return { ...m, error: true }
+          }
+          return applyAssistantError(m, 'Stopped.')
+        }),
+      )
+    }
+  }, [sessionId])
+
+  useEffect(() => {
+    return () => {
+      subscriptionRef.current?.unsubscribe()
+      unregisterSessionRun(sessionId)
+    }
+  }, [sessionId])
 
   useEffect(() => {
     agentRef.current = new HttpAgent({
@@ -160,7 +211,9 @@ export function useSessionChat(sessionId: string) {
 
       setMessages((prev) => [...prev, userMsg, assistantMsg])
       setIsRunning(true)
+      assistantMsgIdRef.current = assistantMsgId
       pendingToolsRef.current = {}
+      registerSessionRun(sessionId, stopRun)
 
       const history = [
         ...messages.map((m) => ({
@@ -181,7 +234,7 @@ export function useSessionChat(sessionId: string) {
         forwardedProps: {},
       })
 
-      obs.subscribe({
+      const sub = obs.subscribe({
         next(event) {
           if (event.type === EventType.TEXT_MESSAGE_CHUNK) {
             const chunk = event as { delta?: string }
@@ -301,16 +354,24 @@ export function useSessionChat(sessionId: string) {
               }),
             )
           } else if (event.type === EventType.RUN_FINISHED) {
-            setIsRunning(false)
+            finishRun()
           } else if (event.type === EventType.RUN_ERROR) {
             const errEvent = event as { message?: string }
             const errText = errEvent.message?.trim()
+            const isCancelled = errText?.toLowerCase() === 'cancelled'
             setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMsgId ? applyAssistantError(m, errText ?? '') : m,
-              ),
+              prev.map((m) => {
+                if (m.id !== assistantMsgId) return m
+                if (isCancelled) {
+                  if (assistantTextContent(m).trim()) {
+                    return { ...m, error: true }
+                  }
+                  return applyAssistantError(m, 'Stopped.')
+                }
+                return applyAssistantError(m, errText ?? '')
+              }),
             )
-            setIsRunning(false)
+            finishRun()
           }
         },
         error(err) {
@@ -324,12 +385,13 @@ export function useSessionChat(sessionId: string) {
                 : m,
             ),
           )
-          setIsRunning(false)
+          finishRun()
         },
       })
+      subscriptionRef.current = sub
     },
-    [messages, isRunning, sessionId],
+    [messages, isRunning, sessionId, stopRun, finishRun],
   )
 
-  return { messages, sendMessage, isRunning, isLoading }
+  return { messages, sendMessage, stopRun, isRunning, isLoading }
 }

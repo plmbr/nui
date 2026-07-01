@@ -3,6 +3,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -129,6 +130,10 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 		}
 	}
 
+	runCtx, cancelRun := context.WithCancel(r.Context())
+	registerActiveRun(sessionID, cancelRun)
+	defer unregisterActiveRun(sessionID)
+
 	events := make(chan agent.Event, 64)
 	go func() {
 		defer close(events)
@@ -140,8 +145,8 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 		if !isADL {
 			runReq.SessionID = agentSessionID
 		}
-		err := ag.Run(r.Context(), runReq, events)
-		if err != nil && r.Context().Err() == nil {
+		err := ag.Run(runCtx, runReq, events)
+		if err != nil && runCtx.Err() == nil {
 			events <- agent.Event{Type: agent.EventError, Error: err.Error()}
 		}
 	}()
@@ -234,7 +239,12 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 		}
 	}
 
-	if !runErrored {
+	if runCtx.Err() != nil {
+		writeAGUIEvent(w, flusher, map[string]any{
+			"type":    "RUN_ERROR",
+			"message": "cancelled",
+		})
+	} else if !runErrored {
 		writeAGUIEvent(w, flusher, map[string]any{
 			"type":     "RUN_FINISHED",
 			"threadId": threadID,

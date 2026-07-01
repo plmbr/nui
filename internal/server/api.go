@@ -701,6 +701,8 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 			handleSessionAGUI(w, r, id)
 		case "mentions":
 			handleSessionMentions(w, r, id)
+		case "stop":
+			handleSessionStop(w, r, id)
 		default:
 			http.NotFound(w, r)
 		}

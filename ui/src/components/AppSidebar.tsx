@@ -1,7 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useEffect, useState } from 'react'
-import { ChevronRight, List, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { ChevronRight, List, MoreHorizontal, Pencil, Plus, Square, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -19,6 +19,11 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { groupSessionsByAgentType, type SessionGroup } from '@/lib/sessionGroups'
+import {
+  getRunningSessionsSnapshot,
+  stopSessionRun,
+  subscribeSessionRuns,
+} from '@/lib/sessionRunRegistry'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import {
   Dialog,
@@ -58,10 +63,24 @@ interface SessionListItemProps {
   onDelete: () => Promise<void>
 }
 
+function useRunningSessions(): Set<string> {
+  const snapshot = useSyncExternalStore(
+    subscribeSessionRuns,
+    getRunningSessionsSnapshot,
+    getRunningSessionsSnapshot,
+  )
+  return useMemo(
+    () => new Set(snapshot ? snapshot.split(',').filter(Boolean) : []),
+    [snapshot],
+  )
+}
+
 function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: SessionListItemProps) {
   const [renameOpen, setRenameOpen] = useState(false)
   const [nameValue, setNameValue] = useState(session.name)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const runningSessions = useRunningSessions()
+  const sessionRunning = runningSessions.has(session.id)
 
   useEffect(() => {
     setNameValue(session.name)
@@ -88,6 +107,15 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
             <MoreHorizontal className="size-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64">
+            {sessionRunning && (
+              <>
+                <DropdownMenuItem onClick={() => void stopSessionRun(session.id)}>
+                  <Square className="size-3.5 text-muted-foreground" />
+                  Stop Agent
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem onClick={() => { setNameValue(session.name); setRenameOpen(true) }}>
               <Pencil className="size-3.5 text-muted-foreground" />
               Rename

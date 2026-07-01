@@ -764,6 +764,20 @@
     }
   }
 
+  .agui-chat__stop {
+    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-0 text-primary-foreground transition-all;
+    background: var(--destructive);
+    box-shadow: 0 2px 12px color-mix(in oklch, var(--destructive) 35%, transparent);
+
+    &:hover:not(:disabled) {
+      filter: brightness(1.08);
+    }
+
+    &:active:not(:disabled) {
+      transform: scale(0.96);
+    }
+  }
+
   .agui-chat__send {
     @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-0 text-primary-foreground transition-all;
     background: var(--gradient-accent);

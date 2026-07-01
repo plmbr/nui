@@ -53,6 +53,9 @@ export const api = {
     delete: (id: string): Promise<void> =>
       request(`/sessions/${id}`, { method: 'DELETE' }),
 
+    stop: (id: string): Promise<{ ok: boolean }> =>
+      request(`/sessions/${id}/stop`, { method: 'POST' }),
+
     bulkDelete: (ids: string[]): Promise<{ deleted: string[]; notFound: string[] }> =>
       request('/sessions/bulk-delete', {
         method: 'POST',
