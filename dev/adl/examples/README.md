@@ -114,8 +114,9 @@ Legacy top-level `skill:` still works (mapped to a single `aiAssets.skills` entr
 Install catalog skills ahead of time:
 
 ```sh
-loop skills install ./skills/code-review --name code-review
-loop skills install --git https://github.com/example/agent-skills.git --path skills/shared-style --name shared-style
+loop skills add ./skills/code-review
+loop skills add https://github.com/example/agent-skills/tree/main/skills/shared-style
+loop skills add --git https://github.com/example/agent-skills.git --path skills/shared-style
 loop skills list
 ```
 

@@ -401,7 +401,7 @@ Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-
 - [ ] Slack/webhook HITL channels
 - [x] ADL `skill` references (SKILL.md) → session harness config
 - [x] ADL `aiAssets.skills` (path, ref, content, git+path) → catalog + session harness config
-- [x] `loop skills install|list|remove` CLI
+- [x] `loop skills add|list|remove` CLI
 - [x] `loop extension add|remove` CLI
 - [x] ADL `aiAssets.mcpServers` → session harness config
 

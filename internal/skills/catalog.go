@@ -128,84 +128,108 @@ func recordEntry(e Entry) error {
 }
 
 // InstallLocal copies a local skill directory into ~/.loop/skills/<name>/skill/.
-func InstallLocal(name, srcPath string) error {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return fmt.Errorf("skill name is required")
-	}
+func InstallLocal(name, srcPath string) (string, error) {
 	src, err := localSkillDir(srcPath)
 	if err != nil {
-		return err
+		return "", err
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		name = filepath.Base(src)
+	}
+	if name == "" {
+		return "", fmt.Errorf("skill name is required")
 	}
 	dst, err := cacheSkillDir(name)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err := replaceDirContents(src, dst); err != nil {
-		return err
+		return "", err
 	}
-	return recordEntry(Entry{
+	if err := recordEntry(Entry{
 		Name:   name,
 		Source: "local",
 		Path:   srcPath,
-	})
+	}); err != nil {
+		return "", err
+	}
+	return name, nil
 }
 
 // InstallContent writes inline SKILL.md content into the catalog.
-func InstallContent(name, content string) error {
+func InstallContent(name, content string) (string, error) {
+	if strings.TrimSpace(content) == "" {
+		return "", fmt.Errorf("skill content is required")
+	}
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return fmt.Errorf("skill name is required")
-	}
-	if strings.TrimSpace(content) == "" {
-		return fmt.Errorf("skill content is required")
+		var err error
+		name, err = defaultNameFromContent(content)
+		if err != nil {
+			return "", err
+		}
 	}
 	dst, err := cacheSkillDir(name)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err := writeSkillContent(dst, content); err != nil {
-		return err
+		return "", err
 	}
-	return recordEntry(Entry{
+	if err := recordEntry(Entry{
 		Name:   name,
 		Source: "content",
-	})
+	}); err != nil {
+		return "", err
+	}
+	return name, nil
 }
 
 // InstallGit clones a repo and copies the skill subdirectory into the catalog.
-func InstallGit(name, gitURL, repoPath, version string) error {
-	name = strings.TrimSpace(name)
+func InstallGit(name, gitURL, repoPath, version string) (string, error) {
 	gitURL = strings.TrimSpace(gitURL)
 	repoPath = strings.TrimSpace(repoPath)
-	if name == "" {
-		return fmt.Errorf("skill name is required")
-	}
 	if gitURL == "" {
-		return fmt.Errorf("git url is required")
+		return "", fmt.Errorf("git url is required")
 	}
+	repoPath = normalizeRepoSkillPath(repoPath)
 	if repoPath == "" {
-		return fmt.Errorf("path (relative skill directory in repo) is required")
+		return "", fmt.Errorf("path (relative skill directory or SKILL.md in repo) is required")
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		var err error
+		name, err = DefaultSkillNameFromPath(repoPath)
+		if err != nil {
+			name = repoNameFromGitURL(gitURL)
+		}
+	}
+	if name == "" {
+		return "", fmt.Errorf("skill name is required")
 	}
 
 	skillDir, err := ensureGitSkill(name, gitURL, repoPath, version)
 	if err != nil {
-		return err
+		return "", err
 	}
 	dst, err := cacheSkillDir(name)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err := replaceDirContents(skillDir, dst); err != nil {
-		return err
+		return "", err
 	}
-	return recordEntry(Entry{
+	if err := recordEntry(Entry{
 		Name:    name,
 		Source:  "git",
 		Git:     gitURL,
 		Path:    repoPath,
 		Version: version,
-	})
+	}); err != nil {
+		return "", err
+	}
+	return name, nil
 }
 
 // Remove deletes a skill from the catalog.

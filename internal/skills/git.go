@@ -23,6 +23,7 @@ func ensureGitSkill(name, gitURL, repoPath, version string) (string, error) {
 	if err := cloneOrUpdateRepo(repoDir, gitURL, version); err != nil {
 		return "", err
 	}
+	repoPath = normalizeRepoSkillPath(repoPath)
 	skillDir := filepath.Join(repoDir, filepath.FromSlash(repoPath))
 	if err := validateSkillDir(skillDir); err != nil {
 		return "", fmt.Errorf("git skill %q at %q: %w", name, repoPath, err)

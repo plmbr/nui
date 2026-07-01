@@ -98,8 +98,10 @@ func TestInstallLocalAndResolveRef(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := InstallLocal("code-style", src); err != nil {
+	if added, err := InstallLocal("code-style", src); err != nil {
 		t.Fatal(err)
+	} else if added != "code-style" {
+		t.Fatalf("added name = %q, want code-style", added)
 	}
 
 	got, err := Resolve(Context{}, model.ADLSkill{Name: "code-style", Ref: "code-style"})
@@ -135,6 +137,84 @@ func TestMaterializeSkillsClaude(t *testing.T) {
 	dest := filepath.Join(configDir, "skills", "greeter", "SKILL.md")
 	if _, err := os.Stat(dest); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestInstallLocalDefaultName(t *testing.T) {
+	tmp := t.TempDir()
+	home := filepath.Join(tmp, "home")
+	t.Setenv("HOME", home)
+
+	src := filepath.Join(tmp, "code-review")
+	if err := os.MkdirAll(src, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(src, "SKILL.md"), []byte("# Review\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	added, err := InstallLocal("", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if added != "code-review" {
+		t.Fatalf("added name = %q, want code-review", added)
+	}
+}
+
+func TestInstallLocalDefaultNameFromSKILLFile(t *testing.T) {
+	tmp := t.TempDir()
+	home := filepath.Join(tmp, "home")
+	t.Setenv("HOME", home)
+
+	src := filepath.Join(tmp, "code-review")
+	if err := os.MkdirAll(src, 0755); err != nil {
+		t.Fatal(err)
+	}
+	skillFile := filepath.Join(src, "SKILL.md")
+	if err := os.WriteFile(skillFile, []byte("# Review\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	added, err := InstallLocal("", skillFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if added != "code-review" {
+		t.Fatalf("added name = %q, want code-review", added)
+	}
+}
+
+func TestDefaultSkillNameFromPath(t *testing.T) {
+	tests := []struct {
+		in, want string
+	}{
+		{"skills/code-review", "code-review"},
+		{"skills/code-review/SKILL.md", "code-review"},
+		{"./skills/foo", "foo"},
+	}
+	for _, tt := range tests {
+		got, err := DefaultSkillNameFromPath(tt.in)
+		if err != nil {
+			t.Fatalf("DefaultSkillNameFromPath(%q): %v", tt.in, err)
+		}
+		if got != tt.want {
+			t.Errorf("DefaultSkillNameFromPath(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}
+
+func TestInstallContentDefaultName(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", filepath.Join(tmp, "home"))
+
+	content := "---\nname: greeting\n---\nSay hi.\n"
+	added, err := InstallContent("", content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if added != "greeting" {
+		t.Fatalf("added name = %q, want greeting", added)
 	}
 }
 
