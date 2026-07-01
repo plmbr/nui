@@ -16,6 +16,7 @@ type catalogProvider struct {
 }
 
 func newCatalogProvider(extDir, extName string, command []string) (*catalogProvider, error) {
+	fmt.Fprintf(os.Stderr, "[extensions] initializing catalog for %q\n", extName)
 	env := append(os.Environ(),
 		"LOOP_EXTENSION_DIR="+extDir,
 		"LOOP_EXTENSION_NAME="+extName,
@@ -34,6 +35,11 @@ func newCatalogProvider(extDir, extName string, command []string) (*catalogProvi
 	}, &initResult); err != nil {
 		rpc.Close()
 		return nil, fmt.Errorf("catalog %s initialize: %w", extName, err)
+	}
+	if initResult.APIVersion != "" {
+		fmt.Fprintf(os.Stderr, "[extensions] catalog for %q ready (api %s)\n", extName, initResult.APIVersion)
+	} else {
+		fmt.Fprintf(os.Stderr, "[extensions] catalog for %q ready\n", extName)
 	}
 	return p, nil
 }

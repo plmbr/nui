@@ -32,6 +32,8 @@ type mcpSession struct {
 
 type MCPManager struct {
 	mu         sync.RWMutex
+	loadOnce   sync.Once
+	loadErr    error
 	sessions   map[string]*mcpSession
 	toolUI     map[string]string
 	toolServer map[string]string
@@ -51,6 +53,13 @@ func isValidMCPServerCfg(cfg mcpServerConfig) bool {
 		return false
 	}
 	return true
+}
+
+func (m *MCPManager) ensureLoaded() error {
+	m.loadOnce.Do(func() {
+		m.loadErr = bootstrapMCPLoad(m)
+	})
+	return m.loadErr
 }
 
 func (m *MCPManager) load(path string) error {
@@ -78,9 +87,10 @@ func (m *MCPManager) load(path string) error {
 
 	client := mcp.NewClient(&mcp.Implementation{Name: "loop", Version: "1.0.0"}, nil)
 
+	var skippedInvalid int
 	for name, serverCfg := range cfg.MCPServers {
 		if !isValidMCPServerCfg(serverCfg) {
-			fmt.Fprintf(os.Stderr, "[MCP] skipping %q: invalid or incomplete command config\n", name)
+			skippedInvalid++
 			continue
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), mcpConnectTimeout)
@@ -109,6 +119,10 @@ func (m *MCPManager) load(path string) error {
 
 		m.sessions[name] = &mcpSession{name: name, session: session}
 		fmt.Fprintf(os.Stderr, "[MCP] connected to %q\n", name)
+	}
+
+	if skippedInvalid > 0 {
+		fmt.Fprintf(os.Stderr, "[MCP] skipped %d server(s) with invalid or incomplete config\n", skippedInvalid)
 	}
 
 	return nil
@@ -141,6 +155,9 @@ func (m *MCPManager) session(name string) (*mcp.ClientSession, error) {
 }
 
 func (m *MCPManager) readResource(ctx context.Context, serverName, uri string) (string, error) {
+	if err := m.ensureLoaded(); err != nil {
+		return "", err
+	}
 	session, err := m.session(serverName)
 	if err != nil {
 		return "", err
@@ -158,6 +175,9 @@ func (m *MCPManager) readResource(ctx context.Context, serverName, uri string) (
 }
 
 func (m *MCPManager) callTool(ctx context.Context, serverName, name string, args map[string]any) (any, error) {
+	if err := m.ensureLoaded(); err != nil {
+		return nil, err
+	}
 	session, err := m.session(serverName)
 	if err != nil {
 		return nil, err
@@ -193,6 +213,9 @@ func mcpCallToolResult(result *mcp.CallToolResult) map[string]any {
 }
 
 func (m *MCPManager) LookupToolUI(toolName string) (resourceURI, serverName string, ok bool) {
+	if err := m.ensureLoaded(); err != nil {
+		return "", "", false
+	}
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	if uri, found := m.toolUI[toolName]; found {

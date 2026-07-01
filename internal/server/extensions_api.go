@@ -3,7 +3,9 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 
 	"loop/internal/extensions"
 	"loop/internal/mentions"
@@ -37,6 +39,7 @@ func handleExtensionsReload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	fmt.Fprintln(os.Stderr, "[extensions] reload complete")
 	if extensionManager != nil {
 		extensionManager.SetExtensionRegistry(extensions.Default)
 	}

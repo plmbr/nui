@@ -82,7 +82,9 @@ func handleMCPCallTool(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
-func initMCP() error {
+// bootstrapMCPLoad ensures ~/.loop/.mcp.json exists and connects configured servers.
+// Called lazily on first MCP UI use, not at server startup.
+func bootstrapMCPLoad(m *MCPManager) error {
 	cfgPath := mcpConfigPath()
 	if cfgPath == "" {
 		return nil
@@ -98,12 +100,7 @@ func initMCP() error {
 	if _, err := os.Stat(cfgPath); err != nil {
 		return nil
 	}
-	go func() {
-		if err := mcpManager.load(cfgPath); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: MCP init: %v\n", err)
-		}
-	}()
-	return nil
+	return m.load(cfgPath)
 }
 
 func ensureMCPConfigFromClaude(loopCfgPath string) error {

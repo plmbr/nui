@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"loop/internal/model"
 	"loop/internal/store"
 )
 
@@ -95,5 +96,68 @@ func TestApplyStartSettings_unknownDefaultAgent(t *testing.T) {
 	err := applyStartSettings(StartOptions{DefaultAgentType: "not-a-real-agent"})
 	if err == nil {
 		t.Fatal("expected error for unknown default agent")
+	}
+}
+
+func TestBootstrapFromCLI_noAgentTypeDoesNotCreateSession(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := initStore(); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := bootstrapFromCLI(StartOptions{}); err != nil {
+		t.Fatalf("bootstrapFromCLI: %v", err)
+	}
+
+	mu.RLock()
+	count := len(sessions)
+	mu.RUnlock()
+	if count != 0 {
+		t.Fatalf("sessions = %d, want 0", count)
+	}
+}
+
+func TestGetDefaultSession_returnsLastSession(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := initStore(); err != nil {
+		t.Fatal(err)
+	}
+
+	mu.Lock()
+	sessions = []model.Session{
+		{ID: "sess-1", Name: "First", AgentType: "claude-code"},
+		{ID: "sess-2", Name: "Second", AgentType: "claude-code"},
+	}
+	mu.Unlock()
+
+	if err := store.SaveSettings(store.Settings{
+		Theme:          "light",
+		LastSessionID:  "sess-2",
+		DefaultAgentType: "claude-code",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	s, err := getDefaultSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s.ID != "sess-2" {
+		t.Fatalf("session id = %q, want sess-2", s.ID)
+	}
+}
+
+func TestGetDefaultSession_noSessions(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := initStore(); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := getDefaultSession()
+	if err == nil {
+		t.Fatal("expected error when no sessions exist")
 	}
 }

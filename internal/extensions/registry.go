@@ -57,6 +57,16 @@ func LoadRegistry() (*Registry, error) {
 	if err != nil {
 		return nil, err
 	}
+	reg, err := scanExtensions(dir)
+	if err != nil {
+		return nil, err
+	}
+	Default = reg
+	return reg, nil
+}
+
+func scanExtensions(dir string) (*Registry, error) {
+	fmt.Fprintf(os.Stderr, "[extensions] scanning %s\n", dir)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -67,16 +77,56 @@ func LoadRegistry() (*Registry, error) {
 			continue
 		}
 		extDir := filepath.Join(dir, e.Name())
+		fmt.Fprintf(os.Stderr, "[extensions] loading %q\n", e.Name())
 		ext, err := loadExtension(extDir, reg)
 		if err != nil {
 			reg.loadErrors = append(reg.loadErrors, fmt.Sprintf("%s: %v", e.Name(), err))
-			fmt.Fprintf(os.Stderr, "[extensions] skip %s: %v\n", e.Name(), err)
+			fmt.Fprintf(os.Stderr, "[extensions] skip %q: %v\n", e.Name(), err)
 			continue
 		}
 		reg.extensions[ext.Manifest.Name] = ext
+		logExtensionLoaded(ext)
 	}
-	Default = reg
+	logRegistrySummary(reg)
 	return reg, nil
+}
+
+func logExtensionLoaded(ext *Extension) {
+	var parts []string
+	addCount := func(n int, label string) {
+		if n > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", n, label))
+		}
+	}
+	addCount(len(ext.Harnesses), "harnesses")
+	addCount(len(ext.MCPServers)+len(ext.CustomMCPServers), "mcp servers")
+	addCount(len(ext.Skills)+len(ext.CustomSkills), "skills")
+	addCount(len(ext.CustomRules), "rules")
+	addCount(len(ext.Agents), "agents")
+	addCount(len(ext.MentionProviders), "mention providers")
+
+	summary := "no contributions"
+	if len(parts) > 0 {
+		summary = strings.Join(parts, ", ")
+	}
+	if v := ext.Manifest.Version; v != "" {
+		fmt.Fprintf(os.Stderr, "[extensions] loaded %q v%s: %s\n", ext.Manifest.Name, v, summary)
+		return
+	}
+	fmt.Fprintf(os.Stderr, "[extensions] loaded %q: %s\n", ext.Manifest.Name, summary)
+}
+
+func logRegistrySummary(reg *Registry) {
+	n := len(reg.extensions)
+	skipped := len(reg.loadErrors)
+	switch {
+	case n == 0 && skipped == 0:
+		fmt.Fprintln(os.Stderr, "[extensions] ready: no extensions installed")
+	case skipped > 0:
+		fmt.Fprintf(os.Stderr, "[extensions] ready: %d loaded, %d skipped\n", n, skipped)
+	default:
+		fmt.Fprintf(os.Stderr, "[extensions] ready: %d extension(s) loaded\n", n)
+	}
 }
 
 func loadExtension(extDir string, reg *Registry) (*Extension, error) {
@@ -231,33 +281,21 @@ func namespaceAgent(def *model.ADLDefinition, extName string) {
 
 // Reload rescans the extensions directory.
 func (r *Registry) Reload() error {
+	fmt.Fprintln(os.Stderr, "[extensions] reloading")
 	r.Shutdown()
 	dir, err := store.ExtensionsDir()
 	if err != nil {
 		return err
 	}
-	entries, err := os.ReadDir(dir)
+	next, err := scanExtensions(dir)
 	if err != nil {
 		return err
-	}
-	next := &Registry{extensions: map[string]*Extension{}, mentionCache: newMentionClientCache()}
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		extDir := filepath.Join(dir, e.Name())
-		ext, err := loadExtension(extDir, next)
-		if err != nil {
-			next.loadErrors = append(next.loadErrors, fmt.Sprintf("%s: %v", e.Name(), err))
-			fmt.Fprintf(os.Stderr, "[extensions] skip %s: %v\n", e.Name(), err)
-			continue
-		}
-		next.extensions[ext.Manifest.Name] = ext
 	}
 	r.mu.Lock()
 	r.extensions = next.extensions
 	r.catalogs = next.catalogs
 	r.loadErrors = next.loadErrors
+	r.mentionCache = next.mentionCache
 	r.mu.Unlock()
 	Default = r
 	return nil

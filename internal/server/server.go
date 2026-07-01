@@ -37,7 +37,7 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 	extensionManager = agent.NewManager()
 
 	if reg, err := extensions.LoadRegistry(); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: load extensions: %v\n", err)
+		fmt.Fprintf(os.Stderr, "[extensions] failed to load: %v\n", err)
 	} else {
 		extensionManager.SetExtensionRegistry(reg)
 		mentions.DefaultRegistry.SetExtensionSource(reg.MentionSource())
@@ -51,14 +51,8 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 		return fmt.Errorf("bootstrap session: %w", err)
 	}
 
-	ensureDefaultSession()
-
 	registerAPIRoutes(mux)
 	registerMCPRoutes(mux)
-
-	if err := initMCP(); err != nil {
-		return fmt.Errorf("initializing MCP: %w", err)
-	}
 
 	mux.HandleFunc("/health", handleHealth)
 
