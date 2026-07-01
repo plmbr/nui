@@ -40,8 +40,6 @@ type ADLDefinition struct {
 	PromptSuggestions []ADLPromptSuggestion `yaml:"promptSuggestions" json:"promptSuggestions,omitempty"` // quick-start pills in chat UI
 	WorkingDirInput   bool                 `yaml:"workingDirInput"   json:"workingDirInput,omitempty"`   // true = user picks working dir at session create
 	Steps        []ADLStep      `yaml:"steps"        json:"steps,omitempty"`
-	Constraints  ADLConstraints `yaml:"constraints"  json:"constraints,omitempty"`
-	Schedule     *ADLSchedule   `yaml:"schedule"     json:"schedule,omitempty"`
 }
 
 // ADLPromptSuggestion is a quick-start prompt shown as a pill above the chat input.
@@ -132,26 +130,11 @@ type ADLInput struct {
 }
 
 type ADLStep struct {
-	Name            string      `yaml:"name"            json:"name"`
-	Policy          string      `yaml:"policy"          json:"policy,omitempty"`
-	Harness         *ADLHarness `yaml:"harness"         json:"harness,omitempty"`
-	SystemPrompt    string      `yaml:"systemPrompt"    json:"systemPrompt,omitempty"`
-	DependsOn       []string    `yaml:"dependsOn"       json:"dependsOn,omitempty"`
-	AIAssets        ADLAIAssets `yaml:"aiAssets"        json:"aiAssets,omitempty"`
-	Outputs         []ADLOutput `yaml:"outputs"         json:"outputs,omitempty"`
-	Inputs          []ADLInput  `yaml:"inputs"          json:"inputs,omitempty"`
-	Approval        string      `yaml:"approval"        json:"approval,omitempty"`
-	ApprovalTimeout string      `yaml:"approvalTimeout" json:"approvalTimeout,omitempty"`
-}
-
-type ADLConstraints struct {
-	MaxTokens      int    `yaml:"maxTokens"      json:"maxTokens,omitempty"`
-	Timeout        string `yaml:"timeout"        json:"timeout,omitempty"`
-	Retries        int    `yaml:"retries"        json:"retries,omitempty"`
-	MaxConcurrency int    `yaml:"maxConcurrency" json:"maxConcurrency,omitempty"`
-}
-
-type ADLSchedule struct {
-	Cron     string `yaml:"cron"     json:"cron"`
-	Timezone string `yaml:"timezone" json:"timezone,omitempty"`
+	Name         string      `yaml:"name"         json:"name"`
+	Harness      *ADLHarness `yaml:"harness"      json:"harness,omitempty"`
+	SystemPrompt string      `yaml:"systemPrompt" json:"systemPrompt,omitempty"`
+	DependsOn    []string    `yaml:"dependsOn"    json:"dependsOn,omitempty"`
+	AIAssets     ADLAIAssets `yaml:"aiAssets"     json:"aiAssets,omitempty"`
+	Outputs      []ADLOutput `yaml:"outputs"      json:"outputs,omitempty"`
+	Inputs       []ADLInput  `yaml:"inputs"       json:"inputs,omitempty"`
 }

@@ -24,4 +24,3 @@ systemPrompt: |
 
 steps:
   - name: greet
-    policy: react

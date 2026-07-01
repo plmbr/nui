@@ -4,7 +4,7 @@
 
 ## Vision
 
-The Loop is a self-hosted Go application with a bundled React web UI for creating and running AI agent sessions. It supports interactive chat today, with semi-autonomous (HITL) and fully autonomous modes on the roadmap. Agent types are declared in ADL (Agent Definition Language); harnesses run as local subprocesses, Docker containers, or remote HTTP/SSE servers.
+The Loop is a self-hosted Go application with a bundled React web UI for creating and running AI agent sessions. Agent types are declared in ADL (Agent Definition Language); harnesses run as local subprocesses, Docker containers, or remote HTTP/SSE servers.
 
 ---
 
@@ -62,23 +62,13 @@ flowchart TB
 
 ---
 
-## Project Modes
-
-| Mode | Description | Status |
-|---|---|---|
-| **Interactive** | Back-and-forth chat session | **Implemented** |
-| **Semi-autonomous** | Agent pauses at approval gates | *Planned* (ADL fields exist, not enforced) |
-| **Autonomous** | Runs on schedule or event trigger | *Planned* |
-
----
-
 ## Agent Definition Language (ADL)
 
 ADL is a YAML format for declaring an agent type or multi-step workflow. It is a **static definition** — it describes *what* an agent is, not *how* Loop executes it internally.
 
 ### Three-layer architecture
 
-- **ADL** — agent identity, steps, harness, schedule, `aiAssets` (*this layer*)
+- **ADL** — agent identity, steps, harness, `aiAssets` (*this layer*)
 - **MCP** — runtime tool protocol; ADL `aiAssets.mcpServers` is provisioned into per-session harness config; Loop UI MCP tool frames also use `~/.loop/.mcp.json`
 - **SKILL.md** — referenced via ADL `skill` (path to skill directory or `SKILL.md`); copied into session harness config
 
@@ -142,13 +132,8 @@ aiAssets:
       path: skills/shared-style  # required with git; relative skill dir in repo
       version: v1.0.0            # optional tag/commit
 
-schedule:                         # *planned — not enforced*
-  cron: "0 9 * * 1-5"
-  timezone: America/Los_Angeles
-
 steps:                            # omit for single-step agents
   - name: research
-    policy: react                 # *parsed, not enforced — all steps run sequentially*
     harness:                      # optional per-step override
       type: claude-code
       model: claude-opus-4-8
@@ -166,14 +151,6 @@ steps:                            # omit for single-step agents
     inputs:
       - from: other.report
         as: alias
-    approval: none                # *planned*
-    approvalTimeout: "30m"
-
-constraints:                      # *parsed, not enforced*
-  maxTokens: 100000
-  timeout: "30m"
-  retries: 3
-  maxConcurrency: 4
 ```
 
 Example
@@ -232,7 +209,7 @@ ADL `env` (global) and `harness.env` are merged and set on harness subprocess en
 
 Sandbox config flows: ADL `harness.sandbox` → `harnessBuiltinConfig()` → `Manager.getBuiltinAgent()` → agent struct `Sandbox` field.
 
-### ADL executor (implemented vs planned)
+### ADL executor
 
 | Feature | Status |
 |---|---|
@@ -246,10 +223,6 @@ Sandbox config flows: ADL `harness.sandbox` → `harnessBuiltinConfig()` → `Ma
 | `aiAssets.skills` → resolve + install into session | Done |
 | `env` / `harness.env` → subprocess environment | Done |
 | `promptMode` / `defaultPrompt` → UI auto-run | Done |
-| Step `policy` (parallel/loop/batch) | Parsed only |
-| `approval` / `approvalTimeout` | Parsed only |
-| `constraints` | Parsed only |
-| `schedule.cron` | Parsed only |
 
 ---
 
@@ -318,12 +291,6 @@ Offset-based durable stream with `Last-Event-ID` replay is designed but not impl
 
 ---
 
-## Human-in-the-Loop (*planned*)
-
-When `approval: required` is enforced, the executor will pause, emit an approval event, and wait for `POST /api/sessions/:id/approve`. Deny-on-timeout (`approvalTimeout`) is the intended default.
-
----
-
 ## Persistence
 
 | Store | Format | Location | Status |
@@ -362,8 +329,6 @@ Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-
 
 | Method | Path | Purpose |
 |---|---|---|
-| `POST` | `/api/sessions/:id/approve` | HITL approval response |
-| `POST` | `/api/events/:name` | Trigger autonomous agents |
 | `GET` | `/api/sessions/:id/runs` | Run history |
 
 ---
@@ -383,22 +348,14 @@ Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-
 - [x] Default ADL templates (docker-echo, remote-echo, opencode-docker)
 - [x] Docker/remote reachability check on session create
 
-### Phase 2 — ADL workflows (partial)
+### Phase 2 — ADL workflows ✅
 - [x] ADL YAML schema + parser
 - [x] Multi-step DAG (`dependsOn`, topo sort)
 - [x] Named outputs / inputs between steps
 - [x] Per-step harness override + sandbox propagation
-- [ ] HITL approval gates
-- [ ] Step execution policies (parallel, loop, batch)
-- [ ] Constraints enforcement (timeout, maxTokens)
 - [ ] Durable run log + SSE reconnection
 
-### Phase 3 — Autonomous (*planned*)
-- [ ] Cron + event triggers
-- [ ] `loop` and `batch` policies
-
-### Phase 4 — External integrations (*planned*)
-- [ ] Slack/webhook HITL channels
+### Phase 3 — External integrations
 - [x] ADL `skill` references (SKILL.md) → session harness config
 - [x] ADL `aiAssets.skills` (path, ref, content, git+path) → catalog + session harness config
 - [x] `loop skills add|list|remove` CLI
@@ -410,8 +367,7 @@ Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-
 ## Open Questions
 
 1. **Wire TCP JSON-RPC harnesses?** `ExtensionAgent` exists but is unused — adopt for a `custom` harness type, or remove?
-2. **ADL policy enforcement order** — policies before or after HITL?
-3. **Chat persistence scope** — persist tool calls/images in `sessionMessages` or separate store?
-4. **Docker security** — gVisor/Firecracker for untrusted agents?
+2. **Chat persistence scope** — persist tool calls/images in `sessionMessages` or separate store?
+3. **Docker security** — gVisor/Firecracker for untrusted agents?
 
 See also: [harness-design.md](harness-design.md), [adl/examples/README.md](adl/examples/README.md), [harness-examples/](harness-examples/).

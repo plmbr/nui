@@ -4,30 +4,24 @@ ADL (Agent Definition Language) is a YAML format for declaring agent types and m
 
 Each agent requires an `id` (stable identifier used by the CLI and sessions) and a `name` (display label). The UI shows the name with the description below it.
 
-The executor in `internal/agent/adl.go` runs multi-step pipelines today. Examples marked *planned* in the table below have ADL fields that parse correctly but are **not enforced** at runtime.
+The executor in `internal/agent/adl.go` runs multi-step pipelines in topological order.
 
 ## Examples
 
-| File | Complexity | Demonstrates | Runnable today? |
-|---|---|---|---|
-| `01-hello-world.yaml` | Trivial | Single step, default harness | Yes |
-| `02-sequential-research-write.yaml` | Basic | `dependsOn`, named outputs, per-step `systemPrompt` | Yes |
-| `03-docker-code-runner.yaml` | Basic | Docker harness | Yes (build image first) |
-| `04-remote-agent.yaml` | Basic | Remote harness | Yes (start remote agent first) |
-| `05-parallel-research-fan-out.yaml` | Intermediate | Parallel steps, fan-in | Steps run sequentially* |
-| `06-hitl-approval-gate.yaml` | Intermediate | `approval: required` | No — HITL not implemented |
-| `07-loop-policy.yaml` | Intermediate | `loop` policy | No — policy not enforced |
-| `08-batch-processing.yaml` | Intermediate | `batch` policy | No — policy not enforced |
-| `09-multi-harness-pipeline.yaml` | Advanced | Per-step harness/model override | Yes |
-| `10-autonomous-scheduled.yaml` | Advanced | `schedule.cron`, `aiAssets.mcpServers` | Schedule not enforced |
-| `11-complex-research-pipeline.yaml` | Complex | All features combined | Partial |
-| `12-codex-sandbox-variants.yaml` | Basic | codex: none / bubblewrap / docker | Yes |
-| `13-opencode-sandbox-variants.yaml` | Basic | opencode: none / bubblewrap / docker | Yes |
-| `14-ai-assets-mcp.yaml` | Basic | `aiAssets.mcpServers` (HTTP + stdio) | Yes |
-| `15-env-vars.yaml` | Basic | Global `env` + `harness.env` | Yes |
-| `16-ai-assets-skills.yaml` | Basic | `aiAssets.skills` (path, ref, content, git) | Yes |
-
-\*All steps execute in topological order regardless of `policy` field today.
+| File | Complexity | Demonstrates |
+|---|---|---|
+| `01-hello-world.yaml` | Trivial | Single step, default harness |
+| `02-sequential-research-write.yaml` | Basic | `dependsOn`, named outputs, per-step `systemPrompt` |
+| `03-docker-code-runner.yaml` | Basic | Docker harness |
+| `04-remote-agent.yaml` | Basic | Remote harness |
+| `05-parallel-research-fan-out.yaml` | Intermediate | Fan-in via `dependsOn`, multiple inputs |
+| `09-multi-harness-pipeline.yaml` | Advanced | Per-step harness/model override |
+| `11-complex-research-pipeline.yaml` | Complex | Multi-harness pipeline with MCP and verification |
+| `12-codex-sandbox-variants.yaml` | Basic | codex: none / bubblewrap / docker |
+| `13-opencode-sandbox-variants.yaml` | Basic | opencode: none / bubblewrap / docker |
+| `14-ai-assets-mcp.yaml` | Basic | `aiAssets.mcpServers` (HTTP + stdio) |
+| `15-env-vars.yaml` | Basic | Global `env` + `harness.env` |
+| `16-ai-assets-skills.yaml` | Basic | `aiAssets.skills` (path, ref, content, git) |
 
 ## Harness types
 
@@ -181,16 +175,6 @@ harness:
   image: loop-codex:latest   # builtin image, port 8090
 ```
 
-### Approval gates (*planned*)
-
-```yaml
-- name: review
-  approval: required
-  approvalTimeout: 30m
-```
-
-When implemented, the executor will pause and wait for `POST /api/sessions/:id/approve`.
-
 ## Executor status
 
 | Feature | Status |
@@ -205,9 +189,5 @@ When implemented, the executor will pause and wait for `POST /api/sessions/:id/a
 | `skill` + `systemPrompt` → harness config | Done |
 | `env` / `harness.env` → subprocess env | Done |
 | `promptMode` / `defaultPrompt` | Done |
-| Step `policy` (parallel/loop/batch) | Parsed only |
-| `approval` / `approvalTimeout` | Parsed only |
-| `constraints` | Parsed only |
-| `schedule.cron` | Parsed only |
 
 See [dev/dev.md](../../dev.md) for the full architecture and [orchestration-research.md](../orchestration-research.md) for design research.

@@ -22,4 +22,3 @@ harness:
 
 steps:
   - name: infer
-    policy: react

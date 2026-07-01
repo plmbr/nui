@@ -172,12 +172,6 @@ Implemented in `internal/agent/adl.go`:
 - All six harness types + sandbox variants
 - `aiAssets.mcpServers`, `aiAssets.skills`, legacy `skill`, `systemPrompt`, `env`/`harness.env`, and `promptMode` provisioned to harness subprocesses / UI via `~/.loop/sessions/<session-id>/`
 
-**Not yet enforced** (parsed from YAML but ignored at runtime):
-- Step `policy` (`parallel`, `loop`, `batch`, etc.) — all steps run sequentially
-- `approval` / `approvalTimeout` (HITL gates)
-- `constraints` (timeout, maxTokens, retries)
-- `schedule.cron` (autonomous mode)
-
 ### UI stack
 
 Tailwind CSS v4, shadcn/ui on Base UI (`@base-ui/react`), `react-markdown` + `rehype-highlight`, `@ag-ui/client` for streaming.

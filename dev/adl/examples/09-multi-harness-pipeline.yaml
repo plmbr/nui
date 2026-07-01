@@ -7,18 +7,17 @@ adl: "1.0"
 #
 #   plan (claude-code, opus)
 #     → execute (docker, sandboxed runner)
-#     → security-scan (codex, local)   ← parallel with review
+#     → security-scan (codex, local)
 #     → review (claude-code, sonnet)
-#     → [approval gate]
 #     → deploy (remote, CI server)
 #
 # Real-world analogy: AI pair programmer — plans in Claude, executes in a
-# sandbox, security-scans with Codex, reviews the output, gets human sign-off,
-# then triggers a remote CI deploy.
+# sandbox, security-scans with Codex, reviews the output, then triggers
+# a remote CI deploy.
 
 id: ai-dev-pipeline
 name: AI Dev Pipeline
-description: Plan → sandbox execute → security-scan + review → approve → remote deploy.
+description: Plan → sandbox execute → security-scan → review → remote deploy.
 version: 0.1.0
 
 # Top-level harness is the default for steps that don't override it.
@@ -31,13 +30,8 @@ harness:
   env:
     ANTHROPIC_API_KEY: your-api-key
 
-constraints:
-  maxTokens: 150000
-  timeout: 45m
-
 steps:
   - name: plan
-    policy: react
     harness:
       type: claude-code
       model: claude-opus-4-8    # best model for planning
@@ -53,7 +47,6 @@ steps:
         type: text
 
   - name: execute
-    policy: react
     harness:
       type: docker
       image: loop-dev-sandbox:latest    # pre-built image with the project code
@@ -70,7 +63,6 @@ steps:
         type: text
 
   - name: security-scan
-    policy: react
     harness:
       type: codex
       model: claude-sonnet-4-6    # codex auto-detects model from env; explicit override here
@@ -87,7 +79,6 @@ steps:
         type: text
 
   - name: review
-    policy: react
     harness:
       type: claude-code
       model: claude-sonnet-4-6
@@ -107,26 +98,14 @@ steps:
       - name: verdict
         type: text
 
-  - name: human-signoff
-    policy: react
-    dependsOn: [review]
-    inputs:
-      - from: review.verdict
-    approval: required
-    approvalTimeout: 60m
-    systemPrompt: |
-      Present the automated review verdict to the human.
-      Ask: "The automated review says <verdict>. Approve deployment? APPROVE or REJECT."
-
   - name: deploy
-    policy: react
     harness:
       type: remote
       host: ci.internal
       port: 9090    # CI server running the Loop HTTP/SSE harness protocol
-    dependsOn: [human-signoff]
+    dependsOn: [review]
     inputs:
-      - from: human-signoff.approvalDecision
+      - from: review.verdict
       - from: execute.testResults
     systemPrompt: |
       Trigger a deployment using the test-validated build artifact.

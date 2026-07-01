@@ -14,13 +14,8 @@ harness:
   type: claude-code
   model: claude-sonnet-4-6
 
-constraints:
-  maxTokens: 50000
-  timeout: 10m
-
 steps:
   - name: research
-    policy: react
     systemPrompt: |
       You are a research assistant. Given a topic, gather key facts,
       identify the most important points, and produce a structured
@@ -30,7 +25,6 @@ steps:
         type: text
 
   - name: write
-    policy: react
     dependsOn: [research]
     inputs:
       - from: research.brief

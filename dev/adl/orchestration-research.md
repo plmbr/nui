@@ -1,6 +1,6 @@
 # ADL Multi-Step Orchestration — Research Findings [AI generated]
 
-> **Note:** Some harness wiring below is outdated. Builtin CLI harnesses are Go-managed subprocesses, not TCP `ExtensionAgent` processes. API paths use `/api/sessions/`, not `/api/projects/`. See [dev.md](../dev.md).
+> **Note:** Some harness wiring below is outdated. Builtin CLI harnesses are Go-managed subprocesses, not TCP `ExtensionAgent` processes. API paths use `/api/sessions/`, not `/api/projects/`. ADL no longer includes step `policy`, `approval`, `constraints`, or `schedule` — see [dev.md](../dev.md) for the current schema.
 
 ---
 
@@ -148,14 +148,10 @@ go-workflow DAG runner (goroutine per ready step)
   │     remote      → HTTPExtensionAgent (existing)
   │     pi          → ExtensionAgent (existing)
   ├── typed Input callback injects prior step's StepOutput
-  ├── step emits SSE events to browser (existing pipeline)
-  └── approval: required → emit needs_approval event
-                         → persist gate in ~/.loop/data.json
-                         → block goroutine on channel
-                         → POST /api/projects/:id/approve resumes channel
+  └── step emits SSE events to browser (existing pipeline)
 ```
 
-### ADL step schema additions implied by research
+### ADL step schema (current)
 
 ```yaml
 steps:
@@ -163,11 +159,9 @@ steps:
     harness:                    # per-step override of top-level harness
       type: claude-code
       model: claude-opus-4-8
-    policy: react
     outputs:
       - name: report            # named outputs for downstream reference
         type: text
-    approval: none
 
   - name: publish
     harness:
@@ -176,27 +170,20 @@ steps:
     dependsOn: [research]
     inputs:
       - from: research.report   # typed reference to upstream named output
-    approval: required
-    approvalTimeout: 30m        # deny on timeout (safest default for irreversible actions)
 ```
 
 ---
 
 ## Open Questions
 
-1. **`batch` and `loop` policies** — dynamic step registration in a running workflow, or
-   fixed unrolled DAG generated at ADL parse time? `go-workflow` docs don't address cyclic
-   DAGs; may need special-casing for `react`/`loop` outside the DAG runner.
+1. **Checkpoint depth for multi-step runs** — full step output snapshots (enables resume after
+   server restart) vs. lightweight pointers to persisted agent history files.
 
-2. **Checkpoint depth for approval gates** — full step output snapshots (enables resume after
-   server restart) vs. gate state only (simpler, loses intermediate outputs on restart)?
-
-3. **Docker harness security** — RemoteTools-compatible HTTP adapter (container exposes
+2. **Docker harness security** — RemoteTools-compatible HTTP adapter (container exposes
    HTTP/SSE, already implemented) vs. stdio-bridged ServerTools. Security implications differ
    for a self-hosted deployment.
 
-4. **`go-workflow` cycle support** — does it support cyclic DAGs needed for `react`/`loop`
-   policies, or does Loop need to handle those as a separate execution path?
+3. **`go-workflow` cycle support** — does it support cyclic DAGs if iterative workflows are added later?
 
 ---
 

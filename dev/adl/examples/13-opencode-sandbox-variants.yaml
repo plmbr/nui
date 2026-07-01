@@ -27,13 +27,8 @@ harness:
   type: claude-code
   model: claude-sonnet-4-6
 
-constraints:
-  maxTokens: 80000
-  timeout: 15m
-
 steps:
   - name: analyse-local
-    policy: react
     harness:
       type: opencode
       sandbox: none               # run directly on the host (default)
@@ -46,7 +41,6 @@ steps:
         type: text
 
   - name: analyse-sandboxed
-    policy: react
     harness:
       type: opencode
       sandbox: bubblewrap         # Linux only; bwrap wraps the subprocess
@@ -59,7 +53,6 @@ steps:
         type: text
 
   - name: analyse-docker
-    policy: react
     harness:
       type: opencode
       sandbox: docker
@@ -73,7 +66,6 @@ steps:
         type: text
 
   - name: compare
-    policy: react
     harness:
       type: claude-code
       model: claude-sonnet-4-6

@@ -1,7 +1,7 @@
 adl: "1.0"
 
-# Full-featured complex example combining: parallel fan-out, multi-harness,
-# aiAssets.mcpServers, adversarial verification, HITL approval, and batch output.
+# Full-featured complex example combining: multi-source fan-out, multi-harness,
+# aiAssets.mcpServers, adversarial verification, and section generation.
 #
 # Execution graph:
 #
@@ -12,38 +12,30 @@ adl: "1.0"
 #                                         consolidate (claude-code, opus)
 #                                               ↓
 #                                    ┌─ verify-claim-A ─┐
-#                                    ├─ verify-claim-B ─┤  (parallel adversarial check)
+#                                    ├─ verify-claim-B ─┤
 #                                    └─ verify-claim-C ─┘
 #                                               ↓
 #                                          adjudicate
 #                                               ↓
-#                                      [approval gate]
-#                                               ↓
-#                                    batch: generate-sections (× N sections)
+#                                    generate-sections
 #                                               ↓
 #                                          compile-report
 
 id: deep-research-report
 name: Deep Research Report
 description: |
-  Multi-source research with adversarial fact-checking, human sign-off,
-  and parallel section generation. Produces a cited technical report.
+  Multi-source research with adversarial fact-checking and section generation.
+  Produces a cited technical report.
 version: 0.2.0
 
 harness:
   type: claude-code
   model: claude-sonnet-4-6
 
-constraints:
-  maxTokens: 300000
-  timeout: 60m
-  maxConcurrency: 4
-
 steps:
-  # ── Phase 1: parallel search across three sources ──────────────────────────
+  # ── Phase 1: search across three sources ─────────────────────────────────
 
   - name: web-search
-    policy: react
     harness:
       type: remote
       host: search-api.internal
@@ -57,7 +49,6 @@ steps:
         type: json
 
   - name: code-search
-    policy: react
     harness:
       type: docker
       image: loop-code-index:latest
@@ -71,7 +62,6 @@ steps:
         type: json
 
   - name: doc-search
-    policy: react
     harness:
       type: claude-code
       model: claude-haiku-4-5-20251001    # cheap model, just retrieval
@@ -90,7 +80,6 @@ steps:
   # ── Phase 2: consolidate all sources, extract claims ──────────────────────
 
   - name: consolidate
-    policy: react
     harness:
       type: claude-code
       model: claude-opus-4-8    # best model for synthesis
@@ -122,10 +111,9 @@ steps:
       - name: sections
         type: json
 
-  # ── Phase 3: adversarial verification of top claims (parallel) ────────────
+  # ── Phase 3: adversarial verification of top claims ────────────────────────
 
   - name: verify-claim-A
-    policy: react
     dependsOn: [consolidate]
     inputs:
       - from: consolidate.claims
@@ -141,7 +129,6 @@ steps:
         type: text
 
   - name: verify-claim-B
-    policy: react
     dependsOn: [consolidate]
     inputs:
       - from: consolidate.claims
@@ -154,7 +141,6 @@ steps:
         type: text
 
   - name: verify-claim-C
-    policy: react
     dependsOn: [consolidate]
     inputs:
       - from: consolidate.claims
@@ -169,7 +155,6 @@ steps:
   # ── Phase 4: adjudicate verification results ──────────────────────────────
 
   - name: adjudicate
-    policy: react
     harness:
       type: claude-code
       model: claude-opus-4-8
@@ -203,35 +188,16 @@ steps:
       - name: assessment
         type: json
 
-  # ── Phase 5: human approval before generating the full report ──────────────
-
-  - name: human-review
-    policy: react
-    dependsOn: [adjudicate]
-    inputs:
-      - from: adjudicate.assessment
-    approval: required
-    approvalTimeout: 120m
-    systemPrompt: |
-      Present the research quality assessment to the human:
-        - Confidence level and what it means
-        - Which claims were verified vs refuted
-        - Any gaps identified
-        - The proposed report sections
-
-      Ask: "Proceed with report generation? APPROVE (continue) or REJECT (stop)."
-
-  # ── Phase 6: generate report sections in parallel (batch) ─────────────────
+  # ── Phase 5: generate report sections ─────────────────────────────────────
 
   - name: generate-sections
-    policy: batch
     harness:
       type: claude-code
       model: claude-sonnet-4-6
-    dependsOn: [human-review, adjudicate, consolidate]
+    dependsOn: [adjudicate, consolidate]
     inputs:
       - from: adjudicate.assessment
-        as: assessment        # contains approvedSections — batch iterates over this
+        as: assessment
       - from: web-search.results
         as: webSources
       - from: doc-search.docRefs
@@ -248,16 +214,15 @@ steps:
       - name: content
         type: text
 
-  # ── Phase 7: compile final report ─────────────────────────────────────────
+  # ── Phase 6: compile final report ─────────────────────────────────────────
 
   - name: compile-report
-    policy: react
     harness:
       type: claude-code
       model: claude-opus-4-8
     dependsOn: [generate-sections, adjudicate]
     inputs:
-      - from: generate-sections.content    # array of all section outputs
+      - from: generate-sections.content
         as: sections
       - from: adjudicate.assessment
         as: assessment

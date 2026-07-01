@@ -11,7 +11,7 @@ There are two distinct protocols both called "ACP":
 
 **The research question URL points to Zed ACP.** Both were included because they represent the current landscape.
 
-**Core finding:** Loop's ADL is architecturally orthogonal to both ACPs. ADL is a declarative workflow language (steps, DAG edges, policies, approval gates, harness types). ACP is a communication contract. They address different layers and could coexist — ACP could serve as the wire protocol for Loop's docker/remote harnesses.
+**Core finding:** Loop's ADL is architecturally orthogonal to both ACPs. ADL is a declarative workflow language (steps, DAG edges, harness types). ACP is a communication contract. They address different layers and could coexist — ACP could serve as the wire protocol for Loop's docker/remote harnesses.
 
 ---
 
@@ -90,13 +90,9 @@ in_progress → awaiting → in_progress
 ```
 REST resume endpoint: `POST /runs/{run_id}`. No configurable timeout.
 
-**Loop ADL approval gates:**
-- Named (`name: human-review`)
-- `approvalTimeout: 30m` — deny on timeout
-- Persisted in `~/.loop/data.json` (survives server restart)
-- Goroutine blocked, resumes on `POST /api/projects/:id/approve`
+**Loop ADL** does not define HITL approval gates or scheduled runs in the current schema. Inter-step orchestration uses `dependsOn`, named outputs/inputs, and per-step harness overrides.
 
-The functional analogy holds (all pause execution awaiting external input), but Loop's gates are richer: named, timeout-bearing, and persisted as application state rather than ephemeral protocol state.
+The functional analogy with ACP pause/resume (all pause execution awaiting external input) applies at the transport layer only; Loop's chat UI drives interactive sessions today.
 
 ---
 
@@ -116,11 +112,8 @@ The functional analogy holds (all pause execution awaiting external input), but 
 
 | Loop feature | ACP coverage |
 |---|---|
-| ADL step policies (react/sequential/parallel/loop/batch/conditional) | Not in scope for either ACP |
 | `dependsOn` DAG edges | Not in scope for either ACP |
 | Named outputs / typed inputs between steps | Not in scope for either ACP |
-| `approvalTimeout` with persistence | ACP has no timeout; Zed ACP's gates are ephemeral |
-| `schedule.cron` autonomous mode | Not in either ACP spec |
 | Per-step harness/model override | Not in either ACP spec |
 
 ### ACP compatibility path
@@ -130,7 +123,7 @@ Making Loop's docker/remote harnesses ACP-compatible would require:
 1. **IBM BeeAI ACP target**: Wrap `POST /run → SSE` in ACP's `POST /runs` envelope; map `EventText → message.part`, `EventDone → run.completed`, `EventError → run.failed`; expose `POST /runs/{id}` for resume (maps to existing `POST /api/projects/:id/approve`).
 2. **Zed ACP target**: Replace TCP JSON-RPC in the `pi` harness with Zed ACP's stdio JSON-RPC 2.0, gaining `session/new` / `session/load` semantics. For docker/remote, wait for Zed ACP's HTTP/WebSocket transport to stabilize.
 
-In both cases, **ADL's DAG execution layer remains above ACP's scope** — no ACP changes are needed to implement step policies, dependsOn, or approval timeouts.
+In both cases, **ADL's DAG execution layer remains above ACP's scope** — no ACP changes are needed to implement `dependsOn` or inter-step data flow.
 
 ---
 
@@ -144,7 +137,7 @@ In both cases, **ADL's DAG execution layer remains above ACP's scope** — no AC
 | **MCP** | JSON-RPC 2.0 / stdio or HTTP | None (tool calls only) | None | LLM ↔ tool/data source |
 | **OpenAI Agents SDK** | Library (Python) | Handoffs, typed inputs | Interrupt/resume | Python multi-agent workflows |
 | **LangGraph** | Library (Python) | Pregel BSP DAG | interrupt() | Python stateful agent graphs |
-| **Loop ADL** | YAML + Go executor | DAG + 6 step policies | Named gates + timeout | Self-hosted multi-harness pipelines |
+| **Loop ADL** | YAML + Go executor | DAG + multi-harness steps | Interactive chat | Self-hosted multi-harness pipelines |
 
 **Key takeaway:** No open protocol covers what ADL covers. ACP, A2A, and MCP are all communication/transport protocols. Loop's ADL sits at the orchestration layer above all of them.
 
@@ -154,8 +147,7 @@ In both cases, **ADL's DAG execution layer remains above ACP's scope** — no AC
 
 1. Has Zed ACP's Streamable HTTP/WebSocket transport ([PR #721](https://github.com/agentclientprotocol/agent-client-protocol)) shipped as of mid-2026? If so, does it converge with IBM BeeAI ACP's REST/SSE model enough to unify the two variants?
 2. Loop's `pi` harness uses TCP JSON-RPC 2.0 — could it be replaced with Zed ACP's stdio JSON-RPC 2.0 to gain ACP compatibility with minimal changes?
-3. ACP defines no `approvalTimeout` — for production workflows with timed gates (cost guardrails, compliance reviews), what pattern do ACP-native implementations use?
-4. IBM BeeAI ACP was archived August 27, 2025 — is it superseded by another IBM protocol, or simply abandoned?
+3. IBM BeeAI ACP was archived August 27, 2025 — is it superseded by another IBM protocol, or simply abandoned?
 
 ---
 

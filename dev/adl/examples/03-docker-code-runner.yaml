@@ -20,7 +20,6 @@ harness:
 
 steps:
   - name: execute
-    policy: react
     systemPrompt: |
       You are a code execution sandbox. The user will send you a code snippet.
       Run it and return stdout, stderr, and the exit code. Never modify the code.
