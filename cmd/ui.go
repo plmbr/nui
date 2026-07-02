@@ -3,9 +3,11 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 
+	"loop/internal/loopclient"
 	"loop/internal/server"
 
 	"github.com/spf13/cobra"
@@ -29,8 +31,7 @@ var uiCmd = &cobra.Command{
 	Use:   "ui",
 	Short: "Start the web UI server",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Printf("Starting web server on port %d...\n", port)
-		return server.Start(port, uiFS(), server.StartOptions{
+		opts := server.StartOptions{
 			AgentType:        agentType,
 			Prompt:           prompt,
 			WorkingDir:       workingDir,
@@ -38,7 +39,20 @@ var uiCmd = &cobra.Command{
 			HideInput:        hideInput,
 			Theme:            theme,
 			DefaultAgentType: defaultAgentType,
-		})
+		}
+
+		ctx := cmd.Context()
+		if ctx == nil {
+			ctx = context.Background()
+		}
+
+		client := loopclient.New(fmt.Sprintf("http://127.0.0.1:%d", port))
+		if err := client.Health(ctx); err == nil {
+			return attachToRunningServer(ctx, port, opts)
+		}
+
+		fmt.Printf("Starting web server on port %d...\n", port)
+		return server.Start(port, uiFS(), opts)
 	},
 }
 

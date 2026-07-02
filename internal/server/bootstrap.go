@@ -3,6 +3,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -103,11 +104,80 @@ func applyStartSettings(opts StartOptions) error {
 }
 
 func handleBootstrap(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+	switch r.Method {
+	case http.MethodGet:
+		writeJSON(w, http.StatusOK, takeBootstrap())
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func handleLaunch(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	writeJSON(w, http.StatusOK, takeBootstrap())
+
+	var req struct {
+		AgentType  string `json:"agentType,omitempty"`
+		WorkingDir string `json:"workingDir,omitempty"`
+		Prompt     string `json:"prompt,omitempty"`
+		HideInput  bool   `json:"hideInput,omitempty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	agentType := strings.TrimSpace(req.AgentType)
+	if agentType == "" {
+		settings, err := store.LoadSettings()
+		if err != nil {
+			settings = store.Settings{Theme: "light"}
+		}
+		agentType = ensureDefaultAgentType(&settings)
+		if agentType == "" {
+			http.Error(w, "no available agent type", http.StatusServiceUnavailable)
+			return
+		}
+	}
+
+	def, ok := findADLDef(agentType)
+	if !ok {
+		http.Error(w, fmt.Sprintf("unknown agent id %q", agentType), http.StatusBadRequest)
+		return
+	}
+
+	workingDir := strings.TrimSpace(req.WorkingDir)
+	if workingDir == "" {
+		if cwd, err := os.Getwd(); err == nil {
+			workingDir = cwd
+		}
+	}
+
+	s, err := createSession(model.ADLAgentLabel(def), workingDir, model.ADLAgentID(def), nil)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("agent unavailable: %v", err), http.StatusServiceUnavailable)
+		return
+	}
+
+	prompt := strings.TrimSpace(req.Prompt)
+	hideInput := req.HideInput
+	if model.IsADLAutoPrompt(def) {
+		hideInput = true
+		prompt = model.ResolveADLLaunchPrompt(def, prompt)
+	}
+
+	sidebarClosed := false
+	setBootstrap(s.ID, prompt, &sidebarClosed, hideInput)
+
+	settings, loadErr := store.LoadSettings()
+	if loadErr != nil {
+		settings = store.Settings{Theme: "light"}
+	}
+	saveSessionPreferences(model.ADLAgentID(def), s.ID, settings)
+
+	writeJSON(w, http.StatusCreated, s)
 }
 
 // bootstrapFromCLI creates a session from CLI flags and exposes it to the UI via bootstrap.
@@ -287,6 +357,7 @@ func createSession(name, workingDir, agentType string, agentConfig map[string]an
 	if err := store.SaveData(snapshot); err != nil {
 		fmt.Fprintf(os.Stderr, "warn: save data after create: %v\n", err)
 	}
+	notifySessionsChanged()
 	return s, nil
 }
 

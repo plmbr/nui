@@ -166,6 +166,21 @@ func (c *Client) CreateSession(ctx context.Context, req CreateSessionRequest) (S
 	return out, nil
 }
 
+type LaunchRequest struct {
+	AgentType  string `json:"agentType,omitempty"`
+	WorkingDir string `json:"workingDir,omitempty"`
+	Prompt     string `json:"prompt,omitempty"`
+	HideInput  bool   `json:"hideInput,omitempty"`
+}
+
+func (c *Client) Launch(ctx context.Context, req LaunchRequest) (Session, error) {
+	var out Session
+	if err := c.postJSON(ctx, "/api/launch", req, http.StatusCreated, &out); err != nil {
+		return Session{}, err
+	}
+	return out, nil
+}
+
 type StartRunRequest struct {
 	Message string `json:"message,omitempty"`
 }

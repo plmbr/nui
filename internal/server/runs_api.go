@@ -291,12 +291,23 @@ func handleRunEvents(w http.ResponseWriter, r *http.Request, sessionID, runID st
 	ch, unsub := subscribeRunEvents(runID)
 	defer unsub()
 
+	if updated, ok := getRunRecord(runID); ok && updated.Status != RunStatusRunning {
+		writeRunSSEDone(w, flusher, updated)
+		return
+	}
+
 	for {
 		select {
 		case <-r.Context().Done():
 			return
 		case entry, open := <-ch:
 			if !open {
+				if updated, ok := getRunRecord(runID); ok {
+					writeRunSSEDone(w, flusher, updated)
+				}
+				return
+			}
+			if entry.Seq == runFinishedSentinel.Seq {
 				if updated, ok := getRunRecord(runID); ok {
 					writeRunSSEDone(w, flusher, updated)
 				}

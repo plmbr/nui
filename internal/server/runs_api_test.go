@@ -8,8 +8,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
+	"loop/internal/agent"
 	"loop/internal/model"
 )
 
@@ -50,6 +53,38 @@ func TestHandleSessionRunsStartAndGet(t *testing.T) {
 	if recOut.RunID != runID {
 		t.Fatalf("runId = %q", recOut.RunID)
 	}
+}
+
+func TestRunEventsStreamFinishesAfterRunComplete(t *testing.T) {
+	resetRunState()
+	runID := "run-sse-done"
+	createRunRecord("sess-sse", runID, "hello")
+	_ = appendRunEvent(runID, 1, agent.Event{Type: agent.EventText, Content: "hi"})
+	_ = appendRunEvent(runID, 2, agent.Event{Type: agent.EventDone})
+
+	done := make(chan string, 1)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		req := httptest.NewRequest(http.MethodGet, "/api/sessions/sess-sse/runs/"+runID+"/events", nil)
+		rec := httptest.NewRecorder()
+		handleRunEvents(rec, req, "sess-sse", runID)
+		done <- rec.Body.String()
+	}()
+
+	time.Sleep(20 * time.Millisecond)
+	finishRunRecord(runID, RunStatusCompleted, "hi", "")
+
+	select {
+	case body := <-done:
+		if !strings.Contains(body, `"type":"run_finished"`) {
+			t.Fatalf("expected run_finished event, got: %s", body)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for SSE stream to finish")
+	}
+	wg.Wait()
 }
 
 func TestCancelActiveRunByRunID(t *testing.T) {

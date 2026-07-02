@@ -91,6 +91,46 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ ids }),
       }),
+
+    subscribeChanges: (onChange: () => void, onError?: (err: Error) => void): () => void => {
+      const controller = new AbortController()
+      let retryMs = 1000
+
+      void (async () => {
+        while (!controller.signal.aborted) {
+          try {
+            const res = await fetch(`${BASE}/sessions/events`, { signal: controller.signal })
+            if (!res.ok || !res.body) {
+              throw new Error(res.statusText || 'Failed to connect to session events')
+            }
+            retryMs = 1000
+            const reader = res.body.getReader()
+            const decoder = new TextDecoder()
+            let buffer = ''
+
+            while (!controller.signal.aborted) {
+              const { done, value } = await reader.read()
+              if (done) break
+              buffer += decoder.decode(value, { stream: true })
+              const chunks = buffer.split('\n\n')
+              buffer = chunks.pop() ?? ''
+              for (const chunk of chunks) {
+                if (!chunk.includes('data: ')) continue
+                onChange()
+              }
+            }
+          } catch (err) {
+            if (controller.signal.aborted) return
+            onError?.(err instanceof Error ? err : new Error(String(err)))
+          }
+          if (controller.signal.aborted) return
+          await new Promise((resolve) => setTimeout(resolve, retryMs))
+          retryMs = Math.min(retryMs * 2, 30_000)
+        }
+      })()
+
+      return () => controller.abort()
+    },
   },
 
   agentTypes: {

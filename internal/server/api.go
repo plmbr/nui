@@ -166,6 +166,7 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/directories", handleDirectories)
 	mux.HandleFunc("/api/settings", handleSettings)
 	mux.HandleFunc("/api/bootstrap", handleBootstrap)
+	mux.HandleFunc("/api/launch", handleLaunch)
 	mux.HandleFunc("/api/capabilities", handleCapabilities)
 	mux.HandleFunc("/api/extensions", handleExtensions)
 	mux.HandleFunc("/api/extensions/reload", handleExtensionsReload)
@@ -392,6 +393,7 @@ func handleBulkDeleteSessions(w http.ResponseWriter, r *http.Request) {
 		for _, item := range toCleanup {
 			cleanupDeletedSession(item.id, item.info)
 		}
+		notifySessionsChanged()
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -668,6 +670,11 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if path == "events" {
+		handleSessionEvents(w, r)
+		return
+	}
+
 	if path == "ensure-default" {
 		handleEnsureDefaultSession(w, r)
 		return
@@ -754,6 +761,7 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 		if err := store.SaveData(snapshot); err != nil {
 			fmt.Fprintf(os.Stderr, "warn: save data after rename: %v\n", err)
 		}
+		notifySessionsChanged()
 		writeJSON(w, http.StatusOK, updated)
 
 	case http.MethodDelete:
@@ -775,6 +783,7 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 		if err := store.SaveData(snapshot); err != nil {
 			fmt.Fprintf(os.Stderr, "warn: save data after delete: %v\n", err)
 		}
+		notifySessionsChanged()
 		cleanupDeletedSession(id, info)
 		w.WriteHeader(http.StatusNoContent)
 

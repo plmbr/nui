@@ -87,15 +87,30 @@ func listSessionRuns(sessionID string) []RunRecord {
 
 func finishRunRecord(runID string, status RunStatus, output, errMsg string) {
 	runStoreMu.Lock()
-	defer runStoreMu.Unlock()
 	rec, ok := runRecords[runID]
 	if !ok {
+		runStoreMu.Unlock()
 		return
 	}
 	rec.Status = status
 	rec.Output = output
 	rec.Error = errMsg
 	rec.FinishedAt = time.Now().UTC().Format(time.RFC3339)
+	listeners := runListeners[runID]
+	runStoreMu.Unlock()
+	notifyRunListeners(listeners)
+}
+
+// runFinishedSentinel wakes SSE subscribers after finishRunRecord updates status.
+var runFinishedSentinel = runLogEntry{Seq: -1}
+
+func notifyRunListeners(listeners map[chan runLogEntry]struct{}) {
+	for ch := range listeners {
+		select {
+		case ch <- runFinishedSentinel:
+		default:
+		}
+	}
 }
 
 func appendRunEvent(runID string, seq int, ev agent.Event) error {

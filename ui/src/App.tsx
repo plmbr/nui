@@ -166,6 +166,13 @@ export default function App() {
   }, [loadSessions, loadAgentTypes, createSessionFromUrl])
 
   useEffect(() => {
+    if (!appReady) return
+    return api.sessions.subscribeChanges(() => {
+      void loadSessions()
+    })
+  }, [appReady, loadSessions])
+
+  useEffect(() => {
     function onPopState() {
       if (isLaunchPath()) {
         setLandingOpen(true)
