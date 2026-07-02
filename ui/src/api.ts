@@ -2,6 +2,36 @@
 
 import type { AgentType, AgentFileContent, AgentFileInfo, Bootstrap, Capabilities, ChatMessage, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, MCPServer, MentionListResponse, Session, Settings, SkillEntry } from './types'
 
+export interface RunRecord {
+  runId: string
+  sessionId: string
+  status: 'running' | 'completed' | 'failed' | 'cancelled'
+  message?: string
+  output?: string
+  error?: string
+  startedAt: string
+  finishedAt?: string
+}
+
+export interface AgentRunEvent {
+  type: string
+  content?: string
+  sessionId?: string
+  error?: string
+  toolCallId?: string
+  toolName?: string
+  toolArgs?: string
+  imageData?: string
+  imageMediaType?: string
+}
+
+export interface RunFinishedPayload {
+  type: 'run_finished'
+  status: RunRecord['status']
+  output?: string
+  error?: string
+}
+
 const BASE = '/api'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -101,6 +131,72 @@ export const api = {
   history: {
     get: (sessionId: string): Promise<ChatMessage[]> =>
       request(`/sessions/${sessionId}/history`),
+  },
+
+  runs: {
+    list: (sessionId: string): Promise<RunRecord[]> =>
+      request(`/sessions/${sessionId}/runs`),
+
+    subscribeEvents: (
+      sessionId: string,
+      runId: string,
+      handlers: {
+        onEvent: (event: AgentRunEvent) => void
+        onFinished: (payload: RunFinishedPayload) => void
+        onError?: (err: Error) => void
+      },
+    ): () => void => {
+      const controller = new AbortController()
+      let lastEventId = 0
+
+      void (async () => {
+        try {
+          const res = await fetch(`${BASE}/sessions/${sessionId}/runs/${runId}/events`, {
+            signal: controller.signal,
+            headers: lastEventId > 0 ? { 'Last-Event-ID': String(lastEventId) } : {},
+          })
+          if (!res.ok || !res.body) {
+            throw new Error(res.statusText || 'Failed to connect to run events')
+          }
+          const reader = res.body.getReader()
+          const decoder = new TextDecoder()
+          let buffer = ''
+
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+            const chunks = buffer.split('\n\n')
+            buffer = chunks.pop() ?? ''
+            for (const chunk of chunks) {
+              let eventId = 0
+              let data = ''
+              for (const line of chunk.split('\n')) {
+                if (line.startsWith('id: ')) {
+                  eventId = Number.parseInt(line.slice(4), 10) || 0
+                } else if (line.startsWith('data: ')) {
+                  data = line.slice(6)
+                }
+              }
+              if (!data) continue
+              if (eventId > lastEventId) lastEventId = eventId
+              const parsed = JSON.parse(data) as AgentRunEvent | RunFinishedPayload
+              if (parsed && typeof parsed === 'object' && 'type' in parsed && parsed.type === 'run_finished') {
+                handlers.onFinished(parsed as RunFinishedPayload)
+                return
+              }
+              handlers.onEvent(parsed as AgentRunEvent)
+            }
+          }
+        } catch (err) {
+          if (!controller.signal.aborted) {
+            handlers.onError?.(err instanceof Error ? err : new Error(String(err)))
+          }
+        }
+      })()
+
+      return () => controller.abort()
+    },
   },
 
   settings: {

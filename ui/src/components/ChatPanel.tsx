@@ -94,6 +94,10 @@ export function ChatPanel({
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const initialPromptSentRef = useRef(false)
 
+  useEffect(() => {
+    initialPromptSentRef.current = false
+  }, [session.id])
+
   const mention = useMentionMenu({
     sessionId: session.id,
     input,

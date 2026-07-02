@@ -84,14 +84,26 @@ func appendUserMessage(sessionID, content string) {
 }
 
 func persistAssistantTurn(sessionID, content, newAgentSessionID string, isADL bool) {
-	if content == "" {
-		return
-	}
-	assistantMsg := model.ChatMessage{
+	persistRichAssistantTurn(sessionID, model.ChatMessage{
 		ID:        uuid.NewString(),
 		Role:      "assistant",
 		Content:   content,
 		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+	}, newAgentSessionID, isADL)
+}
+
+func persistRichAssistantTurn(sessionID string, assistantMsg model.ChatMessage, newAgentSessionID string, isADL bool) {
+	if assistantMsg.Content == "" && len(assistantMsg.Parts) == 0 {
+		return
+	}
+	if assistantMsg.ID == "" {
+		assistantMsg.ID = uuid.NewString()
+	}
+	if assistantMsg.Role == "" {
+		assistantMsg.Role = "assistant"
+	}
+	if assistantMsg.CreatedAt == "" {
+		assistantMsg.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 	}
 	mu.Lock()
 	sessionMessages[sessionID] = append(sessionMessages[sessionID], assistantMsg)

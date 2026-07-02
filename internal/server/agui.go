@@ -110,6 +110,9 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 	messageID := uuid.NewString()
 	var assistantContent strings.Builder
 	var newAgentSessionID string
+	acc := newAssistantPartAccumulator()
+
+	createRunRecord(sessionID, runID, resolvedMessage)
 
 	var ag agent.Agent
 	var isADL bool
@@ -128,9 +131,11 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 		}
 	}
 
-	runCtx, cancelRun := context.WithCancel(r.Context())
+	runCtx, cancelRun := context.WithCancel(context.Background())
 	registerActiveRun(sessionID, runID, cancelRun)
 	defer unregisterActiveRun(sessionID, runID)
+
+	reqCtx := r.Context()
 
 	events := make(chan agent.Event, 64)
 	go func() {
@@ -150,20 +155,28 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 	}()
 
 	runErrored := false
+	runCancelled := false
+	seq := 0
+	mcpLookup := func(toolName string) (string, string, bool) {
+		return mcpManager.LookupToolUI(toolName)
+	}
 	for ev := range events {
+		seq++
+		_ = appendRunEvent(runID, seq, ev)
+		acc.applyEvent(ev, mcpLookup)
 		switch ev.Type {
 		case agent.EventText:
 			if ev.Content == "" {
 				continue
 			}
 			assistantContent.WriteString(ev.Content)
-			writeAGUIEvent(w, flusher, map[string]any{
+			writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
 				"type":      "TEXT_MESSAGE_CHUNK",
 				"messageId": messageID,
 				"delta":     ev.Content,
 			})
 		case agent.EventToolCallStart:
-			writeAGUIEvent(w, flusher, map[string]any{
+			writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
 				"type":         "TOOL_CALL_START",
 				"toolCallId":   ev.ToolCallID,
 				"toolCallName": ev.ToolName,
@@ -172,13 +185,13 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 			if ev.ToolArgs == "" {
 				continue
 			}
-			writeAGUIEvent(w, flusher, map[string]any{
+			writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
 				"type":       "TOOL_CALL_ARGS",
 				"toolCallId": ev.ToolCallID,
 				"delta":      ev.ToolArgs,
 			})
 		case agent.EventToolCallEnd:
-			writeAGUIEvent(w, flusher, map[string]any{
+			writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
 				"type":       "TOOL_CALL_END",
 				"toolCallId": ev.ToolCallID,
 			})
@@ -190,7 +203,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 				if toolInput == nil {
 					toolInput = map[string]any{}
 				}
-				writeAGUIEvent(w, flusher, map[string]any{
+				writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
 					"type": "CUSTOM",
 					"name": "mcp_app",
 					"value": map[string]any{
@@ -203,7 +216,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 				})
 			}
 		case agent.EventToolCallResult:
-			writeAGUIEvent(w, flusher, map[string]any{
+			writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
 				"type":       "TOOL_CALL_RESULT",
 				"messageId":  uuid.NewString(),
 				"toolCallId": ev.ToolCallID,
@@ -218,7 +231,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 			if mediaType == "" {
 				mediaType = "image/png"
 			}
-			writeAGUIEvent(w, flusher, map[string]any{
+			writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
 				"type": "CUSTOM",
 				"name": "image",
 				"value": map[string]any{
@@ -230,7 +243,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 			newAgentSessionID = ev.SessionID
 		case agent.EventError:
 			runErrored = true
-			writeAGUIEvent(w, flusher, map[string]any{
+			writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
 				"type":    "RUN_ERROR",
 				"message": ev.Error,
 			})
@@ -238,21 +251,44 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 	}
 
 	if runCtx.Err() != nil {
-		writeAGUIEvent(w, flusher, map[string]any{
+		runCancelled = true
+		runErrored = true
+		writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
 			"type":    "RUN_ERROR",
 			"message": "cancelled",
 		})
 	} else if !runErrored {
-		writeAGUIEvent(w, flusher, map[string]any{
+		writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
 			"type":     "RUN_FINISHED",
 			"threadId": threadID,
 			"runId":    runID,
 		})
 	}
 
-	if assistantContent.Len() > 0 {
-		persistAssistantTurn(sessionID, assistantContent.String(), newAgentSessionID, isADL)
+	switch {
+	case runCancelled:
+		finishRunRecord(runID, RunStatusCancelled, assistantContent.String(), "cancelled")
+	case runErrored:
+		errMsg := "error"
+		finishRunRecord(runID, RunStatusFailed, assistantContent.String(), errMsg)
+	default:
+		finishRunRecord(runID, RunStatusCompleted, assistantContent.String(), "")
 	}
+
+	assistantMsg := acc.toMessage(messageID)
+	if assistantMsg.CreatedAt == "" {
+		assistantMsg.CreatedAt = time.Now().UTC().Format(time.RFC3339)
+	}
+	if assistantMsg.Content != "" || len(assistantMsg.Parts) > 0 {
+		persistRichAssistantTurn(sessionID, assistantMsg, newAgentSessionID, isADL)
+	}
+}
+
+func writeAGUIEventIfConnected(reqCtx context.Context, w http.ResponseWriter, flusher http.Flusher, event any) {
+	if reqCtx.Err() != nil {
+		return
+	}
+	writeAGUIEvent(w, flusher, event)
 }
 
 func writeAGUIEvent(w http.ResponseWriter, flusher http.Flusher, event any) {

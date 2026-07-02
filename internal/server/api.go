@@ -802,7 +802,12 @@ func handleSessionMessages(w http.ResponseWriter, r *http.Request, sessionID str
 		}
 		mu.Lock()
 		sessionMessages[sessionID] = msgs
+		snapshot := snapshotData()
 		mu.Unlock()
+		if err := store.SaveData(snapshot); err != nil {
+			http.Error(w, "failed to save messages", http.StatusInternalServerError)
+			return
+		}
 		w.WriteHeader(http.StatusNoContent)
 
 	default:

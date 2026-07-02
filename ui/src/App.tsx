@@ -14,6 +14,7 @@ import { SessionsListPanel } from '@/components/SessionsListPanel'
 import { ThemeProvider } from '@/contexts/theme'
 import { api } from '@/api'
 import { groupSessionsByAgentType, defaultAgentTypeForGroup } from '@/lib/sessionGroups'
+import { clearSessionChat, probeActiveRuns } from '@/lib/sessionChatStore'
 import {
   agentFromNewSessionSearch,
   cwdFromNewSessionSearch,
@@ -45,6 +46,11 @@ export default function App() {
   const initializedRef = useRef(false)
   const sessionsRef = useRef(sessions)
   sessionsRef.current = sessions
+
+  useEffect(() => {
+    if (!appReady || sessions.length === 0) return
+    void probeActiveRuns(sessions.map((s) => s.id))
+  }, [appReady, sessions])
 
   const loadAgentTypes = useCallback(async () => {
     try {
@@ -311,6 +317,7 @@ export default function App() {
 
   const handleDeleteSession = useCallback(async (id: string) => {
     await api.sessions.delete(id)
+    clearSessionChat(id)
     const list = await loadSessions()
     if (selectedId === id) {
       const nextId = list[0]?.id ?? null
@@ -326,6 +333,9 @@ export default function App() {
 
   const handleBulkDeleteSessions = useCallback(async (ids: string[]) => {
     await api.sessions.bulkDelete(ids)
+    for (const id of ids) {
+      clearSessionChat(id)
+    }
     const list = await loadSessions()
     if (selectedId && ids.includes(selectedId)) {
       const nextId = list[0]?.id ?? null
@@ -416,13 +426,13 @@ export default function App() {
               />
             ) : selected ? (
               <ConversationPanel
+                key={selected.id}
                 session={selected}
                 initialPrompt={initialPrompt}
                 hideInput={effectiveHideInput}
                 promptMode={promptMode}
                 defaultPrompt={selectedAgent?.defaultPrompt}
                 promptSuggestions={selectedAgent?.promptSuggestions}
-                key={selected.id}
               />
             ) : (
               <div className="empty-state">

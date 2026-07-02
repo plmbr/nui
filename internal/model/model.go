@@ -11,11 +11,33 @@ type Session struct {
 	CreatedAt   string         `json:"createdAt"`
 }
 
-type ChatMessage struct {
+type ChatImage struct {
 	ID        string `json:"id"`
-	Role      string `json:"role"`
-	Content   string `json:"content"`
-	CreatedAt string `json:"createdAt"`
+	MediaType string `json:"mediaType"`
+	Data      string `json:"data"`
+}
+
+type ChatMessagePart struct {
+	Type              string         `json:"type"`
+	ID                string         `json:"id,omitempty"`
+	Content           string         `json:"content,omitempty"`
+	ToolCallID        string         `json:"toolCallId,omitempty"`
+	ToolName          string         `json:"toolName,omitempty"`
+	ToolArgs          map[string]any `json:"toolArgs,omitempty"`
+	ToolResult        any            `json:"toolResult,omitempty"`
+	MCPAppResourceURI string         `json:"mcpAppResourceUri,omitempty"`
+	MCPAppServerName  string         `json:"mcpAppServerName,omitempty"`
+	MCPAppToolInput   map[string]any `json:"mcpAppToolInput,omitempty"`
+}
+
+type ChatMessage struct {
+	ID        string            `json:"id"`
+	Role      string            `json:"role"`
+	Content   string            `json:"content"`
+	CreatedAt string            `json:"createdAt"`
+	Parts     []ChatMessagePart `json:"parts,omitempty"`
+	Images    []ChatImage       `json:"images,omitempty"`
+	Error     bool              `json:"error,omitempty"`
 }
 
 // ── ADL (Agent Definition Language) ─────────────────────────────────────────

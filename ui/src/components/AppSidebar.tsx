@@ -1,7 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
-import { ChevronRight, List, MoreHorizontal, Pencil, Plus, Square, Trash2 } from 'lucide-react'
+import { ChevronRight, List, Loader2, MoreHorizontal, Pencil, Plus, Sparkles, Square, Trash2, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -20,10 +20,14 @@ import {
 } from '@/components/ui/sidebar'
 import { groupSessionsByAgentType, type SessionGroup } from '@/lib/sessionGroups'
 import {
+  getRunningProgressSnapshot,
   getRunningSessionsSnapshot,
+  getSessionProgress,
   stopSessionRun,
+  subscribeRunningProgress,
   subscribeSessionRuns,
-} from '@/lib/sessionRunRegistry'
+} from '@/lib/sessionChatStore'
+import { decodeSessionProgress, type SessionProgress, type SessionProgressKind } from '@/lib/sessionProgress'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import {
   Dialog,
@@ -75,12 +79,46 @@ function useRunningSessions(): Set<string> {
   )
 }
 
+function parseProgressSnapshot(snapshot: string): Map<string, SessionProgress> {
+  const map = new Map<string, SessionProgress>()
+  if (!snapshot) return map
+  for (const part of snapshot.split('|')) {
+    const eq = part.indexOf('=')
+    if (eq <= 0) continue
+    const id = part.slice(0, eq)
+    const progress = decodeSessionProgress(part.slice(eq + 1))
+    if (progress) map.set(id, progress)
+  }
+  return map
+}
+
+function SessionProgressIcon({ kind }: { kind: SessionProgressKind }) {
+  if (kind === 'tool') {
+    return <Wrench className="sidebar-session__status-icon" aria-hidden />
+  }
+  if (kind === 'generating') {
+    return <Sparkles className="sidebar-session__status-icon" aria-hidden />
+  }
+  return <Loader2 className="sidebar-session__status-icon" aria-hidden />
+}
+
+function useSessionProgressMap(): Map<string, SessionProgress> {
+  const snapshot = useSyncExternalStore(
+    subscribeRunningProgress,
+    getRunningProgressSnapshot,
+    getRunningProgressSnapshot,
+  )
+  return useMemo(() => parseProgressSnapshot(snapshot), [snapshot])
+}
+
 function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: SessionListItemProps) {
   const [renameOpen, setRenameOpen] = useState(false)
   const [nameValue, setNameValue] = useState(session.name)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const runningSessions = useRunningSessions()
+  const progressMap = useSessionProgressMap()
   const sessionRunning = runningSessions.has(session.id)
+  const progress = progressMap.get(session.id) ?? getSessionProgress(session.id)
 
   useEffect(() => {
     setNameValue(session.name)
@@ -97,8 +135,18 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
   return (
     <>
       <SidebarMenuItem>
-        <SidebarMenuButton isActive={isActive} onClick={onSelect} title={session.name}>
-          <span className="truncate flex-1">{session.name}</span>
+        <SidebarMenuButton
+          isActive={isActive}
+          onClick={onSelect}
+          title={progress ? `${session.name} — ${progress.label}` : session.name}
+          className="sidebar-session__button"
+        >
+          <span className="sidebar-session__name truncate">{session.name}</span>
+          {sessionRunning && progress && (
+            <span className="sidebar-session__status" role="status" aria-label={progress.label}>
+              <SessionProgressIcon kind={progress.kind} />
+            </span>
+          )}
         </SidebarMenuButton>
         <DropdownMenu>
           <DropdownMenuTrigger

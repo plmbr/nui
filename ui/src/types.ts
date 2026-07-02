@@ -61,11 +61,33 @@ export interface AgentType {
   available: boolean
 }
 
+export interface ChatMessagePart {
+  type: 'text' | 'tool'
+  id?: string
+  content?: string
+  toolCallId?: string
+  toolName?: string
+  toolArgs?: Record<string, unknown>
+  toolResult?: unknown
+  mcpAppResourceUri?: string
+  mcpAppServerName?: string
+  mcpAppToolInput?: Record<string, unknown>
+}
+
+export interface ChatImage {
+  id: string
+  mediaType: string
+  data: string
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
   createdAt: string
+  parts?: ChatMessagePart[]
+  images?: ChatImage[]
+  error?: boolean
 }
 
 export interface Settings {
