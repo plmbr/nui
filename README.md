@@ -105,6 +105,8 @@ loop ui              # start web server on :8080
 loop ui --port 3000  # custom port
 loop ui -p 3000      # shorthand
 loop ui --open       # open http://localhost:8080 with a new blank session
+loop run -a claude-code -m "Review README" --wait  # headless run via REST API
+loop mcp             # MCP server (stdio) for agent discovery and runs
 loop extension add   # install extension from git URL, directory, or zip
 loop extension remove # remove installed extension by id
 ```
@@ -137,6 +139,36 @@ On startup Loop:
 3. Exposes the prompt once via `GET /api/bootstrap` for the UI to consume
 
 If no sessions exist when the server starts (and `--agent-type` was not passed), Loop automatically creates one using `lastAgentType` from settings, or the first available built-in agent (`Claude Code`, `pi`, `codex`, or `opencode`).
+
+### Headless runs (`loop run`)
+
+With the server running (`loop ui`), start an agent without the browser:
+
+```sh
+loop run -m "Review README" -w .              # uses default agent from settings
+loop run -a claude-code -m "Review README" -w .
+loop run --session-id <id> -m "follow up" --no-wait
+```
+
+Set `LOOP_URL` or pass `--url` if the server is not on `http://127.0.0.1:8080`. Use `--spawn` to background-start `loop ui` when unreachable.
+
+### MCP server (`loop mcp`)
+
+Expose Loop agents to MCP hosts (Cursor, Claude Desktop, etc.):
+
+```json
+{
+  "mcpServers": {
+    "loop": {
+      "command": "loop",
+      "args": ["mcp"],
+      "env": { "LOOP_URL": "http://127.0.0.1:8080" }
+    }
+  }
+}
+```
+
+Tools: `list_agents`, `list_sessions`, `create_session`, `run_agent`, `get_run`, `get_run_events`, `stop_run`.
 
 ### Extensions
 
@@ -176,6 +208,10 @@ Stored in `~/.loop/settings.json` and restored on reload:
 | `GET/PATCH/DELETE /api/sessions/:id` | Get / rename / delete a session |
 | `GET/PUT /api/sessions/:id/messages` | Read / replace persisted UI messages |
 | `POST /api/sessions/:id/ag-ui` | **Primary chat** — AG-UI SSE stream |
+| `POST /api/sessions/:id/runs` | Start async headless run (`202` + `runId`) |
+| `GET /api/sessions/:id/runs` | List runs for a session |
+| `GET /api/sessions/:id/runs/:runId/events` | SSE run events with `Last-Event-ID` replay |
+| `POST /api/sessions/:id/stop` | Cancel in-flight run |
 | `POST /api/sessions/:id/chat` | Legacy raw agent-event SSE (unused by UI) |
 | `GET /api/sessions/:id/history` | Load history from agent session files |
 | `GET /api/agent-types` | Builtin + user-defined ADL agent types |

@@ -3,6 +3,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,7 +13,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"loop/internal/agent"
 	"loop/internal/extensions"
@@ -704,6 +704,10 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 		case "stop":
 			handleSessionStop(w, r, id)
 		default:
+			if strings.HasPrefix(rest, "runs") || rest == "runs" {
+				handleSessionRunsRouter(w, r, id, rest)
+				return
+			}
 			http.NotFound(w, r)
 		}
 		return
@@ -886,21 +890,7 @@ func handleSessionChat(w http.ResponseWriter, r *http.Request, sessionID string)
 		return
 	}
 
-	workingDir, err := effectiveWorkingDir(session.WorkingDir)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	userMsg := model.ChatMessage{
-		ID:        uuid.NewString(),
-		Role:      "user",
-		Content:   req.Message,
-		CreatedAt: time.Now().UTC().Format(time.RFC3339),
-	}
-	mu.Lock()
-	sessionMessages[sessionID] = append(sessionMessages[sessionID], userMsg)
-	mu.Unlock()
+	appendUserMessage(sessionID, req.Message)
 
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -913,72 +903,27 @@ func handleSessionChat(w http.ResponseWriter, r *http.Request, sessionID string)
 		return
 	}
 
-	var ag agent.Agent
-	var isADL bool
-	if def, found := findADLDef(session.AgentType); found {
-		ag = agent.NewADLAgent(def, session.ID, extensionManager)
-		// Multi-step workflow definitions don't have a resumable agent session.
-		isADL = len(def.Steps) > 0 || def.Kind == "workflow"
-	} else {
-		// Legacy fallback for "docker" and "remote" sessions that predate the ADL model.
-		var err error
-		ag, err = extensionManager.GetAgent(session.ID, session.AgentType, workingDir, session.AgentConfig)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("agent unavailable: %v", err), http.StatusServiceUnavailable)
-			return
-		}
-	}
-	events := make(chan agent.Event, 64)
+	runID := uuid.NewString()
+	runCtx, cancelRun := context.WithCancel(r.Context())
+	registerActiveRun(sessionID, runID, cancelRun)
+	defer unregisterActiveRun(sessionID, runID)
 
-	go func() {
-		defer close(events)
-		runReq := agent.RunRequest{
-			WorkingDir:       workingDir,
-			Message:          req.Message,
-			UserScopeHarness: agent.UserScopeHarnessConfig(session.AgentConfig),
-		}
-		if !isADL {
-			runReq.SessionID = agentSessionID
-		}
-		err := ag.Run(r.Context(), runReq, events)
-		if err != nil && r.Context().Err() == nil {
-			events <- agent.Event{Type: agent.EventError, Error: err.Error()}
-		}
-	}()
+	result := executeRun(runCtx, executeRunOptions{
+		SessionID:      sessionID,
+		Session:        session,
+		Message:        req.Message,
+		RunID:          runID,
+		PersistLog:     true,
+		AgentSessionID: agentSessionID,
+		OnEvent: func(ev agent.Event) {
+			data, _ := json.Marshal(ev)
+			fmt.Fprintf(w, "data: %s\n\n", data)
+			flusher.Flush()
+		},
+	})
 
-	var assistantContent strings.Builder
-	var newAgentSessionID string
-
-	for ev := range events {
-		data, _ := json.Marshal(ev)
-		fmt.Fprintf(w, "data: %s\n\n", data)
-		flusher.Flush()
-
-		switch ev.Type {
-		case agent.EventText:
-			assistantContent.WriteString(ev.Content)
-		case agent.EventDone:
-			newAgentSessionID = ev.SessionID
-		}
-	}
-
-	if assistantContent.Len() > 0 {
-		assistantMsg := model.ChatMessage{
-			ID:        uuid.NewString(),
-			Role:      "assistant",
-			Content:   assistantContent.String(),
-			CreatedAt: time.Now().UTC().Format(time.RFC3339),
-		}
-		mu.Lock()
-		sessionMessages[sessionID] = append(sessionMessages[sessionID], assistantMsg)
-		if newAgentSessionID != "" && !isADL {
-			agentSessions[sessionID] = newAgentSessionID
-		}
-		snapshot := snapshotData()
-		mu.Unlock()
-		if err := store.SaveData(snapshot); err != nil {
-			fmt.Fprintf(os.Stderr, "warn: save session: %v\n", err)
-		}
+	if result.AssistantContent != "" {
+		persistAssistantTurn(sessionID, result.AssistantContent, result.NewAgentSessionID, isSessionADLWorkflow(session))
 	}
 }
 

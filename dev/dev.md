@@ -299,7 +299,7 @@ Offset-based durable stream with `Last-Event-ID` replay is designed but not impl
 | Settings | JSON | `~/.loop/settings.json` | Done (`theme`, `lastAgentType`, `lastSessionId`, `sidebarOpen`) |
 | ADL definitions | YAML | `~/.loop/agents/*.yaml` | Done |
 | Default ADL templates | YAML | Auto-provisioned on startup | Done |
-| Run event log | JSONL | `~/.loop/runs/<runID>.jsonl` | Planned |
+| Run event log | JSONL | `~/.loop/runs/<runID>.jsonl` | Done |
 | Claude Code sessions | JSONL | `~/.claude/projects/<dirHash>/` | External |
 | pi / codex / opencode sessions | varies | Harness-specific paths | External |
 
@@ -318,6 +318,11 @@ Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-
 | `GET/PUT` | `/api/sessions/:id/messages` | Persisted UI messages |
 | `POST` | `/api/sessions/:id/ag-ui` | AG-UI chat stream |
 | `POST` | `/api/sessions/:id/chat` | Legacy agent-event SSE |
+| `POST` | `/api/sessions/:id/runs` | Start async headless run (`202` + `runId`) |
+| `GET` | `/api/sessions/:id/runs` | List runs for session |
+| `GET` | `/api/sessions/:id/runs/:runId` | Run status and output |
+| `GET` | `/api/sessions/:id/runs/:runId/events` | SSE event stream with `Last-Event-ID` replay |
+| `POST` | `/api/sessions/:id/stop` | Cancel in-flight run (`?runId=` optional) |
 | `GET` | `/api/sessions/:id/history` | Agent-side history |
 | `GET` | `/api/agent-types` | Builtin + ADL agent types |
 | `GET` | `/api/directories` | Working-dir suggestions |
@@ -329,7 +334,7 @@ Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/api/sessions/:id/runs` | Run history |
+| _(none)_ | | Headless runs API implemented — see Implemented table |
 
 ---
 
@@ -353,7 +358,7 @@ Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-
 - [x] Multi-step DAG (`dependsOn`, topo sort)
 - [x] Named outputs / inputs between steps
 - [x] Per-step harness override + sandbox propagation
-- [ ] Durable run log + SSE reconnection
+- [x] Durable run log + SSE reconnection
 
 ### Phase 3 — External integrations
 - [x] ADL `skill` references (SKILL.md) → session harness config

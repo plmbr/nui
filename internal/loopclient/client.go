@@ -1,0 +1,328 @@
+// Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
+
+package loopclient
+
+import (
+	"bufio"
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+)
+
+const defaultBaseURL = "http://127.0.0.1:8080"
+
+// Client talks to a running Loop REST API.
+type Client struct {
+	BaseURL    string
+	HTTPClient *http.Client
+}
+
+func New(baseURL string) *Client {
+	if strings.TrimSpace(baseURL) == "" {
+		baseURL = os.Getenv("LOOP_URL")
+	}
+	if strings.TrimSpace(baseURL) == "" {
+		baseURL = defaultBaseURL
+	}
+	baseURL = strings.TrimRight(baseURL, "/")
+	return &Client{
+		BaseURL: baseURL,
+		HTTPClient: &http.Client{
+			Timeout: 0, // streaming endpoints need no global timeout
+		},
+	}
+}
+
+func (c *Client) Health(ctx context.Context) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/health", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("health check failed: %s", resp.Status)
+	}
+	return nil
+}
+
+type AgentType struct {
+	ID            string `json:"id"`
+	Label         string `json:"label"`
+	Description   string `json:"description,omitempty"`
+	Harness       string `json:"harness"`
+	PromptMode    string `json:"promptMode,omitempty"`
+	DefaultPrompt string `json:"defaultPrompt,omitempty"`
+	Available     bool   `json:"available"`
+	IsBuiltin     bool   `json:"isBuiltin"`
+}
+
+type Settings struct {
+	DefaultAgentType string `json:"defaultAgentType,omitempty"`
+}
+
+type Session struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	WorkingDir string `json:"workingDir"`
+	AgentType  string `json:"agentType"`
+	CreatedAt  string `json:"createdAt"`
+}
+
+type RunRecord struct {
+	RunID      string `json:"runId"`
+	SessionID  string `json:"sessionId"`
+	Status     string `json:"status"`
+	Message    string `json:"message,omitempty"`
+	Output     string `json:"output,omitempty"`
+	Error      string `json:"error,omitempty"`
+	StartedAt  string `json:"startedAt"`
+	FinishedAt string `json:"finishedAt,omitempty"`
+}
+
+func (c *Client) ListAgents(ctx context.Context) ([]AgentType, error) {
+	var out []AgentType
+	if err := c.getJSON(ctx, "/api/agent-types", &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *Client) GetSettings(ctx context.Context) (Settings, error) {
+	var out Settings
+	if err := c.getJSON(ctx, "/api/settings", &out); err != nil {
+		return Settings{}, err
+	}
+	return out, nil
+}
+
+// ResolveDefaultAgentType returns the configured default agent id, or the first
+// available builtin, matching the UI pickDefaultAgentTypeId logic.
+func (c *Client) ResolveDefaultAgentType(ctx context.Context) (string, error) {
+	settings, err := c.GetSettings(ctx)
+	if err != nil {
+		return "", err
+	}
+	agents, err := c.ListAgents(ctx)
+	if err != nil {
+		return "", err
+	}
+	return pickDefaultAgentTypeID(agents, settings.DefaultAgentType)
+}
+
+func pickDefaultAgentTypeID(agents []AgentType, preferredID string) (string, error) {
+	var selectable []AgentType
+	for _, a := range agents {
+		if a.Available {
+			selectable = append(selectable, a)
+		}
+	}
+	if len(selectable) == 0 {
+		return "", fmt.Errorf("no available agent types")
+	}
+	if preferredID != "" {
+		for _, a := range selectable {
+			if a.ID == preferredID {
+				return a.ID, nil
+			}
+		}
+	}
+	for _, a := range selectable {
+		if a.IsBuiltin {
+			return a.ID, nil
+		}
+	}
+	return selectable[0].ID, nil
+}
+
+func (c *Client) ListSessions(ctx context.Context) ([]Session, error) {
+	var out []Session
+	if err := c.getJSON(ctx, "/api/sessions", &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+type CreateSessionRequest struct {
+	Name       string `json:"name"`
+	AgentType  string `json:"agentType"`
+	WorkingDir string `json:"workingDir,omitempty"`
+}
+
+func (c *Client) CreateSession(ctx context.Context, req CreateSessionRequest) (Session, error) {
+	var out Session
+	if err := c.postJSON(ctx, "/api/sessions", req, http.StatusCreated, &out); err != nil {
+		return Session{}, err
+	}
+	return out, nil
+}
+
+type StartRunRequest struct {
+	Message string `json:"message,omitempty"`
+}
+
+type StartRunResponse struct {
+	RunID     string `json:"runId"`
+	SessionID string `json:"sessionId"`
+	Status    string `json:"status"`
+}
+
+func (c *Client) StartRun(ctx context.Context, sessionID string, req StartRunRequest) (StartRunResponse, error) {
+	var out StartRunResponse
+	if err := c.postJSON(ctx, "/api/sessions/"+sessionID+"/runs", req, http.StatusAccepted, &out); err != nil {
+		return StartRunResponse{}, err
+	}
+	return out, nil
+}
+
+func (c *Client) GetRun(ctx context.Context, sessionID, runID string) (RunRecord, error) {
+	var out RunRecord
+	if err := c.getJSON(ctx, "/api/sessions/"+sessionID+"/runs/"+runID, &out); err != nil {
+		return RunRecord{}, err
+	}
+	return out, nil
+}
+
+func (c *Client) StopRun(ctx context.Context, sessionID string, runID string) error {
+	url := c.BaseURL + "/api/sessions/" + sessionID + "/stop"
+	if runID != "" {
+		url += "?runId=" + runID
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("stop failed: %s: %s", resp.Status, strings.TrimSpace(string(body)))
+	}
+	return nil
+}
+
+func (c *Client) WaitRun(ctx context.Context, sessionID, runID string, pollInterval time.Duration) (RunRecord, error) {
+	if pollInterval <= 0 {
+		pollInterval = 500 * time.Millisecond
+	}
+	for {
+		rec, err := c.GetRun(ctx, sessionID, runID)
+		if err != nil {
+			return RunRecord{}, err
+		}
+		switch rec.Status {
+		case "completed", "failed", "cancelled":
+			return rec, nil
+		}
+		select {
+		case <-ctx.Done():
+			return rec, ctx.Err()
+		case <-time.After(pollInterval):
+		}
+	}
+}
+
+// StreamRunEvents tails the run event SSE endpoint until the run finishes.
+func (c *Client) StreamRunEvents(ctx context.Context, sessionID, runID string, lastEventID string, onEvent func(data []byte)) (RunRecord, error) {
+	url := c.BaseURL + "/api/sessions/" + sessionID + "/runs/" + runID + "/events"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return RunRecord{}, err
+	}
+	if lastEventID != "" {
+		req.Header.Set("Last-Event-ID", lastEventID)
+	}
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return RunRecord{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return RunRecord{}, fmt.Errorf("events stream failed: %s: %s", resp.Status, strings.TrimSpace(string(body)))
+	}
+
+	sc := bufio.NewScanner(resp.Body)
+	sc.Buffer(make([]byte, 4*1024*1024), 4*1024*1024)
+	var dataLine []byte
+	for sc.Scan() {
+		line := sc.Bytes()
+		if len(line) == 0 {
+			if len(dataLine) > 0 {
+				if onEvent != nil {
+					onEvent(dataLine)
+				}
+				var meta struct {
+					Type string `json:"type"`
+				}
+				_ = json.Unmarshal(dataLine, &meta)
+				if meta.Type == "run_finished" {
+					return c.GetRun(ctx, sessionID, runID)
+				}
+			}
+			dataLine = nil
+			continue
+		}
+		if bytes.HasPrefix(line, []byte("data: ")) {
+			dataLine = bytes.TrimPrefix(line, []byte("data: "))
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return RunRecord{}, err
+	}
+	return c.GetRun(ctx, sessionID, runID)
+}
+
+func (c *Client) getJSON(ctx context.Context, path string, out any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+path, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("GET %s failed: %s: %s", path, resp.Status, strings.TrimSpace(string(body)))
+	}
+	return json.NewDecoder(resp.Body).Decode(out)
+}
+
+func (c *Client) postJSON(ctx context.Context, path string, body any, expectStatus int, out any) error {
+	data, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL+path, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != expectStatus {
+		raw, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("POST %s failed: %s: %s", path, resp.Status, strings.TrimSpace(string(raw)))
+	}
+	if out != nil {
+		return json.NewDecoder(resp.Body).Decode(out)
+	}
+	return nil
+}

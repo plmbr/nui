@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -15,7 +14,6 @@ import (
 	"loop/internal/agent"
 	"loop/internal/mentions"
 	"loop/internal/model"
-	"loop/internal/store"
 )
 
 type aguiRunInput struct {
@@ -131,8 +129,8 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 	}
 
 	runCtx, cancelRun := context.WithCancel(r.Context())
-	registerActiveRun(sessionID, cancelRun)
-	defer unregisterActiveRun(sessionID)
+	registerActiveRun(sessionID, runID, cancelRun)
+	defer unregisterActiveRun(sessionID, runID)
 
 	events := make(chan agent.Event, 64)
 	go func() {
@@ -253,22 +251,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 	}
 
 	if assistantContent.Len() > 0 {
-		assistantMsg := model.ChatMessage{
-			ID:        uuid.NewString(),
-			Role:      "assistant",
-			Content:   assistantContent.String(),
-			CreatedAt: time.Now().UTC().Format(time.RFC3339),
-		}
-		mu.Lock()
-		sessionMessages[sessionID] = append(sessionMessages[sessionID], assistantMsg)
-		if newAgentSessionID != "" && !isADL {
-			agentSessions[sessionID] = newAgentSessionID
-		}
-		snapshot := snapshotData()
-		mu.Unlock()
-		if err := store.SaveData(snapshot); err != nil {
-			fmt.Fprintf(os.Stderr, "warn: save session: %v\n", err)
-		}
+		persistAssistantTurn(sessionID, assistantContent.String(), newAgentSessionID, isADL)
 	}
 }
 

@@ -17,6 +17,7 @@ var (
 	prompt           string
 	workingDir       string
 	openBrowser      bool
+	noBrowser        bool
 	hideInput        bool
 	theme            string
 	defaultAgentType string
@@ -33,7 +34,7 @@ var uiCmd = &cobra.Command{
 			AgentType:        agentType,
 			Prompt:           prompt,
 			WorkingDir:       workingDir,
-			Open:             openBrowser,
+			Open:             openBrowser && !noBrowser,
 			HideInput:        hideInput,
 			Theme:            theme,
 			DefaultAgentType: defaultAgentType,
@@ -47,6 +48,7 @@ func init() {
 	uiCmd.Flags().StringVarP(&prompt, "prompt", "m", "", "Initial prompt to run in the new session")
 	uiCmd.Flags().StringVarP(&workingDir, "working-dir", "w", "", "Working directory for the new session (defaults to current directory)")
 	uiCmd.Flags().BoolVar(&openBrowser, "open", false, "Open the web UI in the system default browser")
+	uiCmd.Flags().BoolVar(&noBrowser, "no-browser", false, "Do not open a browser (headless daemon mode)")
 	uiCmd.Flags().BoolVar(&hideInput, "hide-input", false, "Hide the chat input (for one-off runs with --prompt)")
 	uiCmd.Flags().StringVar(&theme, "theme", "", "UI theme: light or dark (saved to ~/.loop/settings.json)")
 	uiCmd.Flags().StringVar(&defaultAgentType, "default-agent", "", "Default agent type for new sessions (ADL id or name; saved to ~/.loop/settings.json)")
