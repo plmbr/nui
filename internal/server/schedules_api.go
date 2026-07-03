@@ -70,6 +70,7 @@ func handleCreateSchedule(w http.ResponseWriter, r *http.Request) {
 	req.WorkingDir = strings.TrimSpace(req.WorkingDir)
 	req.Interval = strings.TrimSpace(req.Interval)
 	req.Cron = strings.TrimSpace(req.Cron)
+	req.RunAt = strings.TrimSpace(req.RunAt)
 
 	if err := model.ValidateScheduleInput(req, isAutoAgentType); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -85,6 +86,7 @@ func handleCreateSchedule(w http.ResponseWriter, r *http.Request) {
 		WorkingDir: req.WorkingDir,
 		Interval:   req.Interval,
 		Cron:       req.Cron,
+		RunAt:      req.RunAt,
 		Enabled:    true,
 		CreatedAt:  now.Format(time.RFC3339),
 	}
@@ -114,6 +116,7 @@ func handlePatchSchedule(w http.ResponseWriter, r *http.Request, id string) {
 		WorkingDir *string `json:"workingDir"`
 		Interval   *string `json:"interval"`
 		Cron       *string `json:"cron"`
+		RunAt      *string `json:"runAt"`
 		Enabled    *bool   `json:"enabled"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -152,10 +155,17 @@ func handlePatchSchedule(w http.ResponseWriter, r *http.Request, id string) {
 	if req.Interval != nil {
 		s.Interval = strings.TrimSpace(*req.Interval)
 		s.Cron = ""
+		s.RunAt = ""
 	}
 	if req.Cron != nil {
 		s.Cron = strings.TrimSpace(*req.Cron)
 		s.Interval = ""
+		s.RunAt = ""
+	}
+	if req.RunAt != nil {
+		s.RunAt = strings.TrimSpace(*req.RunAt)
+		s.Interval = ""
+		s.Cron = ""
 	}
 	if req.Enabled != nil {
 		s.Enabled = *req.Enabled
@@ -167,7 +177,7 @@ func handlePatchSchedule(w http.ResponseWriter, r *http.Request, id string) {
 	}
 
 	now := time.Now().UTC()
-	if req.Interval != nil || req.Cron != nil || req.Enabled != nil {
+	if req.Interval != nil || req.Cron != nil || req.RunAt != nil || req.Enabled != nil {
 		s.NextRunAt = ""
 	}
 	if err := ensureScheduleNextRunAt(&s, now); err != nil {

@@ -7,6 +7,7 @@ import { AgentHeader } from '@/components/AgentHeader'
 import { AppSidebar } from '@/components/AppSidebar'
 import { ConversationPanel } from '@/components/ConversationPanel'
 import { CustomizePanel, CustomizeTrigger, type CustomizeTabId } from '@/components/customize/CustomizePanel'
+import { SchedulesPanel } from '@/components/SchedulesPanel'
 import { ThemeSwitch } from '@/components/ThemeSwitch'
 import { LandingPage } from '@/components/LandingPage'
 import { NewSessionPanel } from '@/components/NewSessionPanel'
@@ -22,10 +23,12 @@ import {
   isCustomizePath,
   isLaunchPath,
   isNewSessionPath,
+  isSchedulesPath,
   navigateToCustomize,
   navigateToHome,
   navigateToLaunch,
   navigateToNewSession,
+  navigateToSchedules,
   navigateToSession,
   sessionIdFromPath,
 } from '@/lib/appUrl'
@@ -43,6 +46,7 @@ export default function App() {
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([])
   const [customizeOpen, setCustomizeOpen] = useState(false)
   const [customizeTab, setCustomizeTab] = useState<CustomizeTabId>('general')
+  const [schedulesOpen, setSchedulesOpen] = useState(false)
   const [newSessionOpen, setNewSessionOpen] = useState(false)
   const [landingOpen, setLandingOpen] = useState(false)
   const [sessionListGroupId, setSessionListGroupId] = useState<string | null>(null)
@@ -86,6 +90,7 @@ export default function App() {
       setSelectedId(session.id)
       setNewSessionOpen(false)
       setCustomizeOpen(false)
+      setSchedulesOpen(false)
       setLandingOpen(false)
       setSessionListGroupId(null)
       setInitialPrompt(undefined)
@@ -122,11 +127,15 @@ export default function App() {
       setSidebarWidth(resolveSidebarWidth(settings.sidebarWidth))
 
       const openCustomize = isCustomizePath()
+      const openSchedules = isSchedulesPath()
       const openNewSession = isNewSessionPath()
       const openCreateSession = isCreateSessionPath()
       const openLaunch = isLaunchPath()
       if (openCustomize) {
         setCustomizeOpen(true)
+      }
+      if (openSchedules) {
+        setSchedulesOpen(true)
       }
       if (openNewSession) {
         setNewSessionOpen(true)
@@ -146,9 +155,9 @@ export default function App() {
           nextId = null
         }
 
-        if (nextId && !openCustomize && !openNewSession && !openLaunch) {
+        if (nextId && !openCustomize && !openSchedules && !openNewSession && !openLaunch) {
           navigateToSession(nextId, true)
-        } else if (!nextId && !openCustomize && !openNewSession && !openCreateSession && !openLaunch) {
+        } else if (!nextId && !openCustomize && !openSchedules && !openNewSession && !openCreateSession && !openLaunch) {
           navigateToLaunch(true)
           setLandingOpen(true)
         }
@@ -182,12 +191,23 @@ export default function App() {
       if (isLaunchPath()) {
         setLandingOpen(true)
         setCustomizeOpen(false)
+        setSchedulesOpen(false)
         setNewSessionOpen(false)
         setSessionListGroupId(null)
         return
       }
 
       setLandingOpen(false)
+
+      if (isSchedulesPath()) {
+        setSchedulesOpen(true)
+        setCustomizeOpen(false)
+        setNewSessionOpen(false)
+        setSessionListGroupId(null)
+        return
+      }
+
+      setSchedulesOpen(false)
 
       if (isCustomizePath()) {
         setCustomizeOpen(true)
@@ -226,6 +246,7 @@ export default function App() {
 
   const handleSelect = useCallback((id: string) => {
     setCustomizeOpen(false)
+    setSchedulesOpen(false)
     setNewSessionOpen(false)
     setLandingOpen(false)
     setSessionListGroupId(null)
@@ -252,6 +273,7 @@ export default function App() {
 
   const handleOpenCustomize = useCallback(() => {
     setCustomizeTab('general')
+    setSchedulesOpen(false)
     setNewSessionOpen(false)
     setLandingOpen(false)
     setSessionListGroupId(null)
@@ -260,16 +282,26 @@ export default function App() {
   }, [])
 
   const handleOpenSchedules = useCallback(() => {
-    setCustomizeTab('schedules')
+    setCustomizeOpen(false)
     setNewSessionOpen(false)
     setLandingOpen(false)
     setSessionListGroupId(null)
-    setCustomizeOpen(true)
-    navigateToCustomize()
+    setSchedulesOpen(true)
+    navigateToSchedules()
   }, [])
+
+  const handleCloseSchedules = useCallback(() => {
+    setSchedulesOpen(false)
+    if (selectedId) {
+      navigateToSession(selectedId, true)
+    } else {
+      navigateToHome(true)
+    }
+  }, [selectedId])
 
   const handleOpenLaunch = useCallback(() => {
     setCustomizeOpen(false)
+    setSchedulesOpen(false)
     setNewSessionOpen(false)
     setSessionListGroupId(null)
     setLandingOpen(true)
@@ -287,6 +319,7 @@ export default function App() {
 
   const handleOpenNewSession = useCallback(() => {
     setCustomizeOpen(false)
+    setSchedulesOpen(false)
     setLandingOpen(false)
     setSessionListGroupId(null)
     setNewSessionOpen(true)
@@ -307,6 +340,7 @@ export default function App() {
     if (!group) return
     const agentId = defaultAgentTypeForGroup(group, agentTypes)
     setCustomizeOpen(false)
+    setSchedulesOpen(false)
     setLandingOpen(false)
     setSessionListGroupId(null)
     setNewSessionOpen(true)
@@ -315,6 +349,7 @@ export default function App() {
 
   const handleOpenSessionList = useCallback((groupId: string) => {
     setCustomizeOpen(false)
+    setSchedulesOpen(false)
     setNewSessionOpen(false)
     setLandingOpen(false)
     setSessionListGroupId(groupId)
@@ -399,7 +434,7 @@ export default function App() {
           <button type="button" className="app-brand shrink-0" onClick={handleOpenLaunch}>
             The Loop
           </button>
-          {selected && selectedAgent && !customizeOpen && !newSessionOpen && !sessionListGroup && !landingOpen && (
+          {selected && selectedAgent && !customizeOpen && !schedulesOpen && !newSessionOpen && !sessionListGroup && !landingOpen && (
             <>
               <span className="text-muted-foreground/35 shrink-0 select-none" aria-hidden="true">/</span>
               <AgentHeader name={sessionDisplayName(selected)} agent={selectedAgent} />
@@ -423,7 +458,7 @@ export default function App() {
             onSelect={handleSelect}
             onOpenNewSession={handleOpenNewSession}
             onOpenSchedules={handleOpenSchedules}
-            schedulesPanelOpen={customizeOpen && customizeTab === 'schedules'}
+            schedulesPanelOpen={schedulesOpen}
             onOpenNewSessionForGroup={handleOpenNewSessionForGroup}
             onOpenSessionList={handleOpenSessionList}
             onRename={handleRenameSession}
@@ -435,11 +470,15 @@ export default function App() {
                 onNewSession={handleOpenNewSession}
                 onCustomize={handleOpenCustomize}
               />
+            ) : schedulesOpen ? (
+              <SchedulesPanel
+                agentTypes={agentTypes}
+                onClose={handleCloseSchedules}
+              />
             ) : customizeOpen ? (
               <CustomizePanel
                 onClose={handleCloseCustomize}
                 onAgentTypesChanged={handleAgentTypesChanged}
-                agentTypes={agentTypes}
                 tab={customizeTab}
                 onTabChange={setCustomizeTab}
               />

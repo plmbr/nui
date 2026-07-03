@@ -89,6 +89,7 @@ type Schedule struct {
 	WorkingDir    string `json:"workingDir,omitempty"`
 	Interval      string `json:"interval,omitempty"`
 	Cron          string `json:"cron,omitempty"`
+	RunAt         string `json:"runAt,omitempty"`
 	Enabled       bool   `json:"enabled"`
 	LastRunAt     string `json:"lastRunAt,omitempty"`
 	NextRunAt     string `json:"nextRunAt,omitempty"`
@@ -104,6 +105,7 @@ type CreateScheduleRequest struct {
 	WorkingDir string `json:"workingDir,omitempty"`
 	Interval   string `json:"interval,omitempty"`
 	Cron       string `json:"cron,omitempty"`
+	RunAt      string `json:"runAt,omitempty"`
 }
 
 type PatchScheduleRequest struct {
@@ -112,6 +114,7 @@ type PatchScheduleRequest struct {
 	WorkingDir *string `json:"workingDir,omitempty"`
 	Interval   *string `json:"interval,omitempty"`
 	Cron       *string `json:"cron,omitempty"`
+	RunAt      *string `json:"runAt,omitempty"`
 	Enabled    *bool   `json:"enabled,omitempty"`
 }
 

@@ -1,6 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 export const LAUNCH_PATH = '/launch'
+export const SCHEDULES_PATH = '/schedules'
 export const CUSTOMIZE_PATH = '/customize'
 export const NEW_SESSION_PATH = '/sessions/new'
 export const CREATE_SESSION_PATH = '/sessions/create'
@@ -21,6 +22,10 @@ export function isLaunchPath(pathname = window.location.pathname): boolean {
 
 export function isCustomizePath(pathname = window.location.pathname): boolean {
   return pathname === CUSTOMIZE_PATH || pathname === `${CUSTOMIZE_PATH}/`
+}
+
+export function isSchedulesPath(pathname = window.location.pathname): boolean {
+  return pathname === SCHEDULES_PATH || pathname === `${SCHEDULES_PATH}/`
 }
 
 export function isNewSessionPath(pathname = window.location.pathname): boolean {
@@ -56,6 +61,10 @@ export function navigateToSession(id: string, replace = false): void {
 
 export function navigateToCustomize(replace = false): void {
   setPath(CUSTOMIZE_PATH, replace)
+}
+
+export function navigateToSchedules(replace = false): void {
+  setPath(SCHEDULES_PATH, replace)
 }
 
 export function navigateToNewSession(opts?: { agent?: string; cwd?: string }, replace = false): void {

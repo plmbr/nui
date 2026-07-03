@@ -235,12 +235,17 @@ func triggerScheduleRun(scheduleID string, manual bool) error {
 		if !manual {
 			from = now
 		}
-		next, err := schedules[i].ComputeNextRunAt(from)
-		if err != nil {
-			schedulesMu.Unlock()
-			return err
+		if schedules[i].IsOneTimeSchedule() {
+			schedules[i].Enabled = false
+			schedules[i].NextRunAt = ""
+		} else {
+			next, err := schedules[i].ComputeNextRunAt(from)
+			if err != nil {
+				schedulesMu.Unlock()
+				return err
+			}
+			schedules[i].NextRunAt = next.UTC().Format(time.RFC3339)
 		}
-		schedules[i].NextRunAt = next.UTC().Format(time.RFC3339)
 		if err := persistSchedulesLocked(); err != nil {
 			schedulesMu.Unlock()
 			return err

@@ -40,7 +40,7 @@ func ParseScheduleInterval(s string) (time.Duration, error) {
 
 const MinScheduleInterval = 30 * time.Second
 
-// Schedule describes a recurring autonomous run for a promptMode:auto agent.
+// Schedule describes a recurring or one-time autonomous run for a promptMode:auto agent.
 type Schedule struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
@@ -49,12 +49,26 @@ type Schedule struct {
 	WorkingDir    string `json:"workingDir,omitempty"`
 	Interval      string `json:"interval,omitempty"`
 	Cron          string `json:"cron,omitempty"`
+	RunAt         string `json:"runAt,omitempty"`
 	Enabled       bool   `json:"enabled"`
 	LastRunAt     string `json:"lastRunAt,omitempty"`
 	NextRunAt     string `json:"nextRunAt,omitempty"`
 	LastSessionID string `json:"lastSessionId,omitempty"`
 	LastRunID     string `json:"lastRunId,omitempty"`
 	CreatedAt     string `json:"createdAt"`
+}
+
+func scheduleTimingModes(s Schedule) (interval, cron, runAt bool) {
+	interval = strings.TrimSpace(s.Interval) != ""
+	cron = strings.TrimSpace(s.Cron) != ""
+	runAt = strings.TrimSpace(s.RunAt) != ""
+	return interval, cron, runAt
+}
+
+// IsOneTimeSchedule reports whether the schedule fires once at RunAt.
+func (s Schedule) IsOneTimeSchedule() bool {
+	_, _, runAt := scheduleTimingModes(s)
+	return runAt
 }
 
 // ValidateScheduleInput checks schedule fields before create/update.
@@ -71,10 +85,19 @@ func ValidateScheduleInput(s Schedule, isAutoAgent func(agentType string) bool) 
 		return fmt.Errorf("agent %q must use promptMode auto to be scheduled", agentType)
 	}
 
-	hasInterval := strings.TrimSpace(s.Interval) != ""
-	hasCron := strings.TrimSpace(s.Cron) != ""
-	if hasInterval == hasCron {
-		return fmt.Errorf("exactly one of interval or cron is required")
+	hasInterval, hasCron, hasRunAt := scheduleTimingModes(s)
+	modes := 0
+	if hasInterval {
+		modes++
+	}
+	if hasCron {
+		modes++
+	}
+	if hasRunAt {
+		modes++
+	}
+	if modes != 1 {
+		return fmt.Errorf("exactly one of interval, cron, or runAt is required")
 	}
 	if hasInterval {
 		d, err := ParseScheduleInterval(s.Interval)
@@ -88,6 +111,15 @@ func ValidateScheduleInput(s Schedule, isAutoAgent func(agentType string) bool) 
 	if hasCron {
 		if _, err := cron.ParseStandard(strings.TrimSpace(s.Cron)); err != nil {
 			return fmt.Errorf("invalid cron: %w", err)
+		}
+	}
+	if hasRunAt {
+		runAt, err := time.Parse(time.RFC3339, strings.TrimSpace(s.RunAt))
+		if err != nil {
+			return fmt.Errorf("invalid runAt: %w", err)
+		}
+		if s.Enabled && runAt.Before(time.Now().UTC().Add(-time.Second)) {
+			return fmt.Errorf("runAt must be in the future")
 		}
 	}
 	return nil
@@ -107,6 +139,13 @@ func nextIntervalBoundary(from time.Time, interval time.Duration) time.Time {
 
 // ComputeNextRunAt returns the next fire time after from for this schedule.
 func (s Schedule) ComputeNextRunAt(from time.Time) (time.Time, error) {
+	if strings.TrimSpace(s.RunAt) != "" {
+		runAt, err := time.Parse(time.RFC3339, strings.TrimSpace(s.RunAt))
+		if err != nil {
+			return time.Time{}, fmt.Errorf("invalid runAt: %w", err)
+		}
+		return runAt.UTC(), nil
+	}
 	if strings.TrimSpace(s.Interval) != "" {
 		d, err := ParseScheduleInterval(s.Interval)
 		if err != nil {

@@ -8,8 +8,6 @@ import { ExtensionsTab } from '@/components/customize/ExtensionsTab'
 import { MCPServersTab } from '@/components/customize/MCPServersTab'
 import { SkillsTab } from '@/components/customize/SkillsTab'
 import { AgentsTab } from '@/components/customize/AgentsTab'
-import { SchedulesTab } from '@/components/customize/SchedulesTab'
-import type { AgentType } from '@/types'
 
 const TABS = [
   { id: 'general', label: 'General' },
@@ -17,7 +15,6 @@ const TABS = [
   { id: 'mcp', label: 'MCP servers' },
   { id: 'skills', label: 'Skills' },
   { id: 'agents', label: 'Agents' },
-  { id: 'schedules', label: 'Schedules' },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
@@ -27,12 +24,11 @@ export type CustomizeTabId = TabId
 interface Props {
   onClose: () => void
   onAgentTypesChanged?: () => void
-  agentTypes: AgentType[]
   tab: TabId
   onTabChange: (tab: TabId) => void
 }
 
-export function CustomizePanel({ onClose, onAgentTypesChanged, agentTypes, tab, onTabChange }: Props) {
+export function CustomizePanel({ onClose, onAgentTypesChanged, tab, onTabChange }: Props) {
   return (
     <div className="customize-panel flex flex-1 flex-col overflow-hidden">
       <div className="conversation-header justify-between">
@@ -65,7 +61,6 @@ export function CustomizePanel({ onClose, onAgentTypesChanged, agentTypes, tab, 
           {tab === 'mcp' && <MCPServersTab />}
           {tab === 'skills' && <SkillsTab />}
           {tab === 'agents' && <AgentsTab onChanged={onAgentTypesChanged} />}
-          {tab === 'schedules' && <SchedulesTab agentTypes={agentTypes} />}
         </div>
       </div>
     </div>

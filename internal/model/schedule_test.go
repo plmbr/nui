@@ -39,6 +39,19 @@ func TestValidateScheduleInput(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "valid runAt",
+			s: Schedule{
+				Name:      "Later",
+				AgentType: "auto-agent",
+				RunAt:     time.Now().UTC().Add(time.Hour).Format(time.RFC3339),
+			},
+		},
+		{
+			name:    "all three timing modes",
+			s:       Schedule{Name: "x", AgentType: "auto-agent", Interval: "5m", Cron: "0 9 * * *", RunAt: time.Now().UTC().Add(time.Hour).Format(time.RFC3339)},
+			wantErr: true,
+		},
+		{
 			name:    "interval too short",
 			s:       Schedule{Name: "x", AgentType: "auto-agent", Interval: "5s"},
 			wantErr: true,

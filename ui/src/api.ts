@@ -344,7 +344,7 @@ export const api = {
         body: JSON.stringify(data),
       }),
 
-    patch: (id: string, patch: Partial<Pick<Schedule, 'name' | 'agentType' | 'prompt' | 'workingDir' | 'interval' | 'cron' | 'enabled'>>): Promise<Schedule> =>
+    patch: (id: string, patch: Partial<Pick<Schedule, 'name' | 'agentType' | 'prompt' | 'workingDir' | 'interval' | 'cron' | 'runAt' | 'enabled'>>): Promise<Schedule> =>
       request(`/schedules/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(patch),

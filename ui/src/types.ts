@@ -184,6 +184,7 @@ export interface Schedule {
   workingDir?: string
   interval?: string
   cron?: string
+  runAt?: string
   enabled: boolean
   lastRunAt?: string
   nextRunAt?: string
@@ -199,4 +200,5 @@ export interface CreateScheduleRequest {
   workingDir?: string
   interval?: string
   cron?: string
+  runAt?: string
 }
