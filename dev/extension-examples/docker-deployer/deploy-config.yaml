@@ -1,0 +1,6 @@
+# Extension-owned deploy settings (not part of Loop schema).
+registry: ""
+baseImage: python:3.12-slim
+push: false
+run: false
+containerPort: 9090

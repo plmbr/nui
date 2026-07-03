@@ -1,11 +1,19 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useCallback, useEffect, useState } from 'react'
-import { FileCode2, FormInput, Plus, Trash2 } from 'lucide-react'
+import { FileCode2, FormInput, Plus, Rocket, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { AgentForm } from '@/components/customize/AgentForm'
 import {
@@ -18,7 +26,7 @@ import {
 import { useAgentFormOptions } from '@/lib/useAgentFormOptions'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { api } from '@/api'
-import type { AgentFileInfo } from '@/types'
+import type { AgentDeployerInfo, AgentDeployResult, AgentFileInfo } from '@/types'
 
 type EditMode = 'form' | 'yaml'
 
@@ -78,6 +86,11 @@ export function AgentsTab({ onChanged }: Props) {
   const [newFilename, setNewFilename] = useState('my-agent.yaml')
   const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [deployers, setDeployers] = useState<AgentDeployerInfo[]>([])
+  const [deployOpen, setDeployOpen] = useState(false)
+  const [deployerId, setDeployerId] = useState('')
+  const [deploying, setDeploying] = useState(false)
+  const [deployResult, setDeployResult] = useState<AgentDeployResult | null>(null)
 
   const syncFormFromContent = useCallback(
     (yaml: string) => {
@@ -111,6 +124,10 @@ export function AgentsTab({ onChanged }: Props) {
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    void api.agents.listDeployers().then(setDeployers).catch(() => setDeployers([]))
+  }, [])
 
   const openAgent = async (file: string) => {
     setError(null)
@@ -195,6 +212,29 @@ export function AgentsTab({ onChanged }: Props) {
     setHasWorkflowSteps(false)
     setContent(NEW_AGENT_TEMPLATE)
     setNewFilename('my-agent.yaml')
+  }
+
+  const agentIdForDeploy = form.id.trim() || agents.find((a) => a.file === selectedFile)?.id || ''
+
+  const openDeploy = () => {
+    setDeployResult(null)
+    setDeployerId(deployers[0]?.id ?? '')
+    setDeployOpen(true)
+  }
+
+  const runDeploy = async () => {
+    if (!agentIdForDeploy || !deployerId) return
+    setDeploying(true)
+    setError(null)
+    try {
+      const result = await api.agents.deploy(agentIdForDeploy, deployerId)
+      setDeployResult(result)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Deploy failed')
+      setDeployOpen(false)
+    } finally {
+      setDeploying(false)
+    }
   }
 
   const handleFormChange = (nextForm: AgentFormModel) => {
@@ -292,9 +332,17 @@ export function AgentsTab({ onChanged }: Props) {
                     </Button>
                   </>
                 ) : (
-                  <Button size="sm" onClick={() => void save()} disabled={saving}>
-                    {saving ? 'Saving…' : 'Save changes'}
-                  </Button>
+                  <>
+                    <Button size="sm" onClick={() => void save()} disabled={saving}>
+                      {saving ? 'Saving…' : 'Save changes'}
+                    </Button>
+                    {deployers.length > 0 && agentIdForDeploy && (
+                      <Button variant="outline" size="sm" onClick={openDeploy}>
+                        <Rocket className="size-3.5" />
+                        Deploy
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
             </>
@@ -322,6 +370,62 @@ export function AgentsTab({ onChanged }: Props) {
           if (deleteTarget) await remove(deleteTarget)
         }}
       />
+
+      <Dialog open={deployOpen} onOpenChange={setDeployOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Deploy agent</DialogTitle>
+            <DialogDescription>
+              Deploy <strong>{agentIdForDeploy}</strong> using an extension agent deployer.
+              Registry and platform settings are configured inside the deployer extension.
+            </DialogDescription>
+          </DialogHeader>
+          {deployResult ? (
+            <div className="space-y-2 text-sm">
+              {deployResult.message && <p>{deployResult.message}</p>}
+              {deployResult.deploymentId && (
+                <p className="text-muted-foreground">Deployment: {deployResult.deploymentId}</p>
+              )}
+              {deployResult.endpoint?.url && (
+                <p className="text-muted-foreground">Endpoint: {deployResult.endpoint.url}</p>
+              )}
+              {deployResult.endpoint?.host && deployResult.endpoint.port ? (
+                <p className="text-muted-foreground">
+                  Endpoint: {deployResult.endpoint.host}:{deployResult.endpoint.port}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="deployer-select">Deployer</Label>
+              <select
+                id="deployer-select"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                value={deployerId}
+                onChange={(e) => setDeployerId(e.target.value)}
+              >
+                {deployers.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.id}{d.description ? ` — ${d.description}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <DialogFooter>
+            {deployResult ? (
+              <Button onClick={() => setDeployOpen(false)}>Close</Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setDeployOpen(false)}>Cancel</Button>
+                <Button onClick={() => void runDeploy()} disabled={deploying || !deployerId}>
+                  {deploying ? 'Deploying…' : 'Deploy'}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

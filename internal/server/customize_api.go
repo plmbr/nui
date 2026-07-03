@@ -143,9 +143,24 @@ func handleAgents(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleAgentFile(w http.ResponseWriter, r *http.Request) {
-	filename := strings.TrimPrefix(r.URL.Path, "/api/agents/")
-	filename = strings.Trim(filename, "/")
-	if filename == "" || strings.Contains(filename, "/") {
+	rest := strings.TrimPrefix(r.URL.Path, "/api/agents/")
+	rest = strings.Trim(rest, "/")
+	if rest == "" {
+		http.Error(w, "invalid agent file", http.StatusBadRequest)
+		return
+	}
+	if strings.HasSuffix(rest, "/deploy") {
+		agentID := strings.TrimSuffix(rest, "/deploy")
+		agentID = strings.Trim(agentID, "/")
+		if agentID == "" || strings.Contains(agentID, "/") {
+			http.Error(w, "invalid agent id", http.StatusBadRequest)
+			return
+		}
+		handleAgentDeploy(w, r, agentID)
+		return
+	}
+	filename := rest
+	if strings.Contains(filename, "/") {
 		http.Error(w, "invalid agent file", http.StatusBadRequest)
 		return
 	}

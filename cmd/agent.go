@@ -105,8 +105,63 @@ var agentRemoveCmd = &cobra.Command{
 	},
 }
 
+var agentDeployCmd = &cobra.Command{
+	Use:   "deploy [deployer-id] [agent-id]",
+	Short: "Deploy a user-installed agent via an extension agent deployer",
+	Long: `Deploy an ADL agent using an extension agentDeployer.
+
+Deployer ids use the ext:<extension>/<name> convention, for example:
+  loop agent deploy ext:docker-deployer/docker my-agent
+
+Registry, image tags, and platform details are configured inside the deployer extension.`,
+	Args: cobra.ExactArgs(2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		result, err := agents.Deploy(args[0], args[1])
+		if err != nil {
+			return err
+		}
+		if result.Message != "" {
+			fmt.Println(result.Message)
+		}
+		if result.DeploymentID != "" {
+			fmt.Fprintf(os.Stderr, "deploymentId: %s\n", result.DeploymentID)
+		}
+		if result.Endpoint != nil {
+			ep := result.Endpoint
+			switch {
+			case ep.URL != "":
+				fmt.Fprintf(os.Stderr, "endpoint: %s\n", ep.URL)
+			case ep.Host != "" && ep.Port > 0:
+				fmt.Fprintf(os.Stderr, "endpoint: %s:%d\n", ep.Host, ep.Port)
+			}
+		}
+		return nil
+	},
+}
+
+var agentDeployersCmd = &cobra.Command{
+	Use:   "deployers",
+	Short: "List installed extension agent deployers",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		items, err := agents.ListDeployers()
+		if err != nil {
+			return err
+		}
+		if len(items) == 0 {
+			fmt.Println("No agent deployers found.")
+			return nil
+		}
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(w, "DEPLOYER ID\tEXTENSION\tNAME\tDESCRIPTION")
+		for _, d := range items {
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", d.ID, d.Extension, d.Name, d.Description)
+		}
+		return w.Flush()
+	},
+}
+
 func init() {
 	agentListCmd.Flags().StringVar(&agentListURL, "url", "", "Loop server base URL (default LOOP_URL or http://127.0.0.1:8080)")
-	agentCmd.AddCommand(NewRunCmd(), NewScheduleCmd(), agentListCmd, agentAddCmd, agentRemoveCmd)
+	agentCmd.AddCommand(NewRunCmd(), NewScheduleCmd(), agentListCmd, agentAddCmd, agentRemoveCmd, agentDeployCmd, agentDeployersCmd)
 	rootCmd.AddCommand(agentCmd)
 }

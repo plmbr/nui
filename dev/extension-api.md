@@ -1,6 +1,6 @@
 # Loop Extension API
 
-Extensions live under `~/.loop/extensions/<name>/` and contribute backend capabilities to Loop: **harnesses**, **catalog** (MCP servers and skills), **custom MCP tool servers**, **rules**, and **agents**.
+Extensions live under `~/.loop/extensions/<name>/` and contribute backend capabilities to Loop: **harnesses**, **catalog** (MCP servers and skills), **custom MCP tool servers**, **rules**, **agent deployers**, and **agents**.
 
 ## Layout
 
@@ -78,6 +78,10 @@ contributions:
       - name: corp-guidelines
         content: |
           Follow corporate security guidelines. Never commit secrets.
+    agentDeployers:
+      - name: docker
+        description: Build and deploy agents as Docker images
+        command: ["python3", "${LOOP_EXTENSION_DIR}/deploy.py"]
 
   catalog:
     mcpServers:
@@ -244,6 +248,53 @@ SDK: [`harness-sdk/loop_mention.py`](../harness-sdk/loop_mention.py) (auto-insta
 
 Chat API: `GET /api/sessions/:id/mentions?parent=&query=`
 
+## Agent deployers
+
+Extensions may declare `contributions.aiAssets.agentDeployers` — named commands that deploy user ADL agents to a remote platform. Registry URLs, image tags, and auth are **extension-owned** (config files, env vars); Loop only passes the agent definition and bundled assets.
+
+Deployer ids use the `ext:<extension>/<name>` convention, for example `ext:docker-deployer/docker`.
+
+**CLI:**
+
+```sh
+loop agent deployers
+loop agent deploy ext:docker-deployer/docker my-agent
+```
+
+**Invocation:** Loop spawns the deployer `command`, writes one JSON line to stdin, reads one JSON line from stdout.
+
+Request:
+
+```json
+{
+  "action": "deploy",
+  "deployerId": "ext:docker-deployer/docker",
+  "agentId": "my-agent",
+  "definition": { "...ADLDefinition..." },
+  "assets": { "skills": [], "mcpServers": [], "rules": [] }
+}
+```
+
+Response:
+
+```json
+{
+  "ok": true,
+  "deploymentId": "loop-my-agent-1.0.0",
+  "status": "ready",
+  "message": "built image loop-my-agent:1.0.0",
+  "endpoint": { "host": "127.0.0.1", "port": 9090 }
+}
+```
+
+Example extension: [`dev/extension-examples/docker-deployer/`](extension-examples/docker-deployer/).
+
+Install:
+
+```sh
+loop extension add dev/extension-examples/docker-deployer
+```
+
 ## Catalog provider (dynamic lists)
 
 When `source.command` or `contributions.catalog.command` is set, Loop spawns a stdio JSON-RPC process:
@@ -265,6 +316,8 @@ Framework: [`harness-sdk/loop_catalog.py`](../harness-sdk/loop_catalog.py)
 |----------|-------------|
 | `GET /api/extensions` | Installed extensions and contribution item ids |
 | `POST /api/extensions/reload` | Rescan `~/.loop/extensions/` |
+| `GET /api/agent-deployers` | Installed extension agent deployers |
+| `POST /api/agents/:id/deploy` | Deploy user agent; body `{"deployerId":"ext:..."}` |
 
 Extension harnesses and agents appear in `GET /api/agent-types`.
 

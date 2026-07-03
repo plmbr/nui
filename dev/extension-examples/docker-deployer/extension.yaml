@@ -1,0 +1,12 @@
+apiVersion: loop.dev/extension/v1
+name: docker-deployer
+version: 1.0.0
+displayName: Docker Deployer
+description: Build and deploy ADL agents as Docker images
+
+contributions:
+  aiAssets:
+    agentDeployers:
+      - name: docker
+        description: Build and deploy agents as Docker images
+        command: ["python3", "${LOOP_EXTENSION_DIR}/deploy.py"]

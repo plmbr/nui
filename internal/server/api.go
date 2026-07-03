@@ -175,6 +175,7 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/skills/", handleSkill)
 	mux.HandleFunc("/api/agents", handleAgents)
 	mux.HandleFunc("/api/agents/", handleAgentFile)
+	mux.HandleFunc("/api/agent-deployers", handleAgentDeployers)
 	mux.HandleFunc("/api/schedules", handleSchedules)
 	mux.HandleFunc("/api/schedules/", handleSchedule)
 }

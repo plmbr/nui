@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -459,4 +460,46 @@ func (c *Client) deleteJSON(ctx context.Context, path string) error {
 		return fmt.Errorf("DELETE %s failed: %s: %s", path, resp.Status, strings.TrimSpace(string(raw)))
 	}
 	return nil
+}
+
+type AgentDeployerInfo struct {
+	ID          string `json:"id"`
+	Extension   string `json:"extension"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+}
+
+type DeployEndpoint struct {
+	Host string `json:"host,omitempty"`
+	Port int    `json:"port,omitempty"`
+	URL  string `json:"url,omitempty"`
+}
+
+type AgentDeployResult struct {
+	DeploymentID string          `json:"deploymentId,omitempty"`
+	Status       string          `json:"status,omitempty"`
+	Message      string          `json:"message,omitempty"`
+	Endpoint     *DeployEndpoint `json:"endpoint,omitempty"`
+}
+
+func (c *Client) ListAgentDeployers(ctx context.Context) ([]AgentDeployerInfo, error) {
+	var wrap struct {
+		Deployers []AgentDeployerInfo `json:"deployers"`
+	}
+	if err := c.getJSON(ctx, "/api/agent-deployers", &wrap); err != nil {
+		return nil, err
+	}
+	if wrap.Deployers == nil {
+		return []AgentDeployerInfo{}, nil
+	}
+	return wrap.Deployers, nil
+}
+
+func (c *Client) DeployAgent(ctx context.Context, agentID, deployerID string) (AgentDeployResult, error) {
+	var result AgentDeployResult
+	path := "/api/agents/" + url.PathEscape(agentID) + "/deploy"
+	err := c.postJSON(ctx, path, map[string]string{
+		"deployerId": deployerID,
+	}, http.StatusOK, &result)
+	return result, err
 }

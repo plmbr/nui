@@ -722,8 +722,7 @@ func (m *Manager) launchDocker(projectID string, config map[string]any) (string,
 	if image == "" {
 		return "", fmt.Errorf("docker agent config missing 'image'")
 	}
-	containerPortF, _ := config["containerPort"].(float64)
-	containerPort := int(containerPortF)
+	containerPort := configInt(config["containerPort"])
 	if containerPort == 0 {
 		return "", fmt.Errorf("docker agent config missing 'containerPort'")
 	}
@@ -804,8 +803,7 @@ func parseDockerPort(s string) (int, error) {
 
 func (m *Manager) connectRemote(config map[string]any) (string, error) {
 	host, _ := config["host"].(string)
-	portF, _ := config["port"].(float64)
-	port := int(portF)
+	port := configInt(config["port"])
 	if host == "" || port == 0 {
 		return "", fmt.Errorf("remote agent config requires 'host' and 'port'")
 	}
@@ -817,6 +815,31 @@ func (m *Manager) connectRemote(config map[string]any) (string, error) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+// configInt reads an integer port/number from agent config values that may be
+// float64 (JSON), int (Go structs), or other numeric types.
+func configInt(v any) int {
+	switch n := v.(type) {
+	case int:
+		return n
+	case int32:
+		return int(n)
+	case int64:
+		return int(n)
+	case float64:
+		return int(n)
+	case float32:
+		return int(n)
+	case json.Number:
+		i, err := n.Int64()
+		if err != nil {
+			return 0
+		}
+		return int(i)
+	default:
+		return 0
+	}
+}
 
 func isHTTPAlive(baseURL string) bool {
 	cl := &http.Client{Timeout: time.Second}

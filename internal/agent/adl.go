@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 
 	"loop/internal/extensions"
 	"loop/internal/model"
@@ -69,9 +70,12 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 
 		// Collect this step's output so downstream steps can reference it.
 		collecting := &collectingEvents{upstream: events}
-		if err := a.runStep(ctx, stepReq, harness, &step, collecting.ch()); err != nil {
+		stepEvents := collecting.start()
+		if err := a.runStep(ctx, stepReq, harness, &step, stepEvents); err != nil {
+			collecting.finish()
 			return err
 		}
+		collecting.finish()
 		stepOutputs[step.Name] = collecting.text
 	}
 
@@ -305,11 +309,14 @@ type collectingEvents struct {
 	upstream chan<- Event
 	text     string
 	pipe     chan Event
+	wg       sync.WaitGroup
 }
 
-func (c *collectingEvents) ch() chan<- Event {
+func (c *collectingEvents) start() chan<- Event {
 	c.pipe = make(chan Event, 64)
+	c.wg.Add(1)
 	go func() {
+		defer c.wg.Done()
 		for ev := range c.pipe {
 			if ev.Type == EventText {
 				c.text += ev.Content
@@ -322,4 +329,13 @@ func (c *collectingEvents) ch() chan<- Event {
 		}
 	}()
 	return c.pipe
+}
+
+func (c *collectingEvents) finish() {
+	if c.pipe == nil {
+		return
+	}
+	close(c.pipe)
+	c.wg.Wait()
+	c.pipe = nil
 }

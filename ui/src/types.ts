@@ -202,3 +202,23 @@ export interface CreateScheduleRequest {
   cron?: string
   runAt?: string
 }
+
+export interface AgentDeployerInfo {
+  id: string
+  extension: string
+  name: string
+  description?: string
+}
+
+export interface DeployEndpoint {
+  host?: string
+  port?: number
+  url?: string
+}
+
+export interface AgentDeployResult {
+  deploymentId?: string
+  status?: string
+  message?: string
+  endpoint?: DeployEndpoint
+}

@@ -58,3 +58,8 @@ func MentionRef(extensionName, providerID string) string {
 func RuleRef(extensionName, ruleName string) string {
 	return HarnessAgentID(extensionName, ruleName)
 }
+
+// DeployerRef returns the global deployer id for an extension agent deployer.
+func DeployerRef(extensionName, deployerName string) string {
+	return HarnessAgentID(extensionName, deployerName)
+}

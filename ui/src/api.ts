@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, AgentFileContent, AgentFileInfo, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, MCPServer, MentionListResponse, Schedule, Session, Settings, SkillEntry, UploadedImage } from './types'
+import type { AgentType, AgentFileContent, AgentFileInfo, AgentDeployerInfo, AgentDeployResult, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, MCPServer, MentionListResponse, Schedule, Session, Settings, SkillEntry, UploadedImage } from './types'
 
 export interface RunRecord {
   runId: string
@@ -332,6 +332,15 @@ export const api = {
 
     remove: (file: string): Promise<void> =>
       request(`/agents/${encodeURIComponent(file)}`, { method: 'DELETE' }),
+
+    listDeployers: (): Promise<AgentDeployerInfo[]> =>
+      request<{ deployers: AgentDeployerInfo[] }>('/agent-deployers').then((r) => r.deployers ?? []),
+
+    deploy: (agentId: string, deployerId: string): Promise<AgentDeployResult> =>
+      request(`/agents/${encodeURIComponent(agentId)}/deploy`, {
+        method: 'POST',
+        body: JSON.stringify({ deployerId }),
+      }),
   },
 
   schedules: {

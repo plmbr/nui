@@ -35,11 +35,12 @@ type Contributions struct {
 	Mentions   *MentionProvidersContribution `yaml:"mentionProviders,omitempty"`
 }
 
-// AIAssetsContribution declares custom MCP servers, skills, and rules for agent ref discovery.
+// AIAssetsContribution declares custom MCP servers, skills, rules, and agent deployers.
 type AIAssetsContribution struct {
-	MCPServers []ExtensionCustomMCPServer `yaml:"mcpServers,omitempty"`
-	Skills     []ExtensionCustomSkill     `yaml:"skills,omitempty"`
-	Rules      []ExtensionCustomRule      `yaml:"rules,omitempty"`
+	MCPServers     []ExtensionCustomMCPServer  `yaml:"mcpServers,omitempty"`
+	Skills         []ExtensionCustomSkill      `yaml:"skills,omitempty"`
+	Rules          []ExtensionCustomRule       `yaml:"rules,omitempty"`
+	AgentDeployers []ExtensionAgentDeployer    `yaml:"agentDeployers,omitempty"`
 }
 
 type CatalogContribution struct {
@@ -132,6 +133,9 @@ func validateManifest(dir string, m Manifest, matchDirName bool) error {
 	if err := validateCustomRules(m.aiAssetsRules(), m.Name); err != nil {
 		return err
 	}
+	if err := validateAgentDeployers(m.aiAssetsAgentDeployers(), m.Name); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -152,6 +156,13 @@ func (m Manifest) aiAssetsSkills() []ExtensionCustomSkill {
 func (m Manifest) aiAssetsRules() []ExtensionCustomRule {
 	if m.Contributions.AIAssets != nil {
 		return m.Contributions.AIAssets.Rules
+	}
+	return nil
+}
+
+func (m Manifest) aiAssetsAgentDeployers() []ExtensionAgentDeployer {
+	if m.Contributions.AIAssets != nil {
+		return m.Contributions.AIAssets.AgentDeployers
 	}
 	return nil
 }

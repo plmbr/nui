@@ -25,6 +25,7 @@ type Extension struct {
 	CustomMCPServers   []ExtensionCustomMCPServer
 	CustomSkills       []ExtensionCustomSkill
 	CustomRules        []ExtensionCustomRule
+	AgentDeployers     []ExtensionAgentDeployer
 	MentionProviders   []MentionProviderEntry
 	mentionRuntime   *RuntimeConfig
 
@@ -102,6 +103,7 @@ func logExtensionLoaded(ext *Extension) {
 	addCount(len(ext.MCPServers)+len(ext.CustomMCPServers), "mcp servers")
 	addCount(len(ext.Skills)+len(ext.CustomSkills), "skills")
 	addCount(len(ext.CustomRules), "rules")
+	addCount(len(ext.AgentDeployers), "agent deployers")
 	addCount(len(ext.Agents), "agents")
 	addCount(len(ext.MentionProviders), "mention providers")
 
@@ -144,6 +146,7 @@ func loadExtension(extDir string, reg *Registry) (*Extension, error) {
 	ext.CustomMCPServers = expandCustomMCPServers(extDir, manifest.aiAssetsMCPServers())
 	ext.CustomSkills = expandCustomSkills(extDir, manifest.aiAssetsSkills())
 	ext.CustomRules = expandCustomRules(extDir, manifest.aiAssetsRules())
+	ext.AgentDeployers = expandAgentDeployers(extDir, manifest.aiAssetsAgentDeployers())
 	if manifest.Contributions.MCPServers != nil {
 		fmt.Fprintf(os.Stderr, "[extensions] %s: contributions.mcpServers is deprecated; use contributions.catalog.mcpServers\n", manifest.Name)
 	}
@@ -461,6 +464,7 @@ type ExtensionInfo struct {
 	MCPServers    []string `json:"mcpServers,omitempty"`
 	Skills        []string `json:"skills,omitempty"`
 	Rules            []string `json:"rules,omitempty"`
+	AgentDeployers   []string `json:"agentDeployers,omitempty"`
 	MentionProviders []string `json:"mentionProviders,omitempty"`
 	Agents        []string `json:"agents,omitempty"`
 }
@@ -496,6 +500,9 @@ func (r *Registry) Info() []ExtensionInfo {
 		}
 		for _, rule := range ext.CustomRules {
 			info.Rules = append(info.Rules, rule.Name)
+		}
+		for _, d := range ext.AgentDeployers {
+			info.AgentDeployers = append(info.AgentDeployers, d.Name)
 		}
 		for _, mp := range ext.MentionProviders {
 			info.MentionProviders = append(info.MentionProviders, mp.ID)
