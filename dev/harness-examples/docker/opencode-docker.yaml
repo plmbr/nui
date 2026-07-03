@@ -1,0 +1,8 @@
+adl: "1.0"
+id: opencode-docker
+name: OpenCode Docker
+description: opencode running inside a Docker container (loop-opencode:latest)
+harness:
+  type: opencode
+  sandbox: docker
+  image: loop-opencode:latest

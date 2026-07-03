@@ -56,7 +56,7 @@ flowchart TB
    - **Production path:** builtin harnesses are Go structs that manage CLI subprocesses; docker/remote use `HTTPExtensionAgent`.
    - **Reference path:** TCP JSON-RPC 2.0 in `dev/harness-examples/py|ts/` and `ExtensionAgent` in Go — implemented but **not wired** to `Manager.GetAgent()`. For third-party custom harnesses.
 
-4. **Docker/remote via custom ADL.** There is no built-in "Docker" or "Remote" picker in the UI. Users select a custom ADL agent (e.g. `docker-echo` from `~/.loop/agents/docker-echo.yaml`). Loop validates the connector on session create.
+4. **Docker/remote via custom ADL.** There is no built-in "Docker" or "Remote" picker in the UI. Users copy an ADL template from `dev/harness-examples/` into `~/.loop/agents/` (e.g. `docker-echo.yaml`), then select it under **Custom Agents**. Loop validates the connector on session create.
 
 5. **CLI launch + UI preferences.** `loop ui -a <agent-id> --prompt --open` creates a session at server start (`bootstrap.go`), saves `lastAgentType` / `lastSessionId` to `settings.json`, and exposes the prompt once via `GET /api/bootstrap`. `loop ui --open` (without `-a`) also creates a fresh blank session and selects it via bootstrap instead of resuming `lastSessionId`. With `--open`, Loop waits for `/health` then launches the UI in the system default browser. If no sessions exist at startup, Loop auto-creates one with the default agent. Sidebar state and last-selected session/agent are also persisted in `settings.json`.
 
@@ -298,13 +298,12 @@ Offset-based durable stream with `Last-Event-ID` replay is designed but not impl
 | Sessions + agent session IDs + UI messages | JSON | `~/.loop/data.json` | Done |
 | Settings | JSON | `~/.loop/settings.json` | Done (`theme`, `lastAgentType`, `lastSessionId`, `sidebarOpen`) |
 | ADL definitions | YAML | `~/.loop/agents/*.yaml` | Done |
-| Default ADL templates | YAML | Auto-provisioned on startup | Done |
 | Run event log | JSONL | `~/.loop/runs/<runID>.jsonl` | Done |
 | Schedules | JSON | `~/.loop/schedules.json` | Done |
 | Claude Code sessions | JSONL | `~/.claude/projects/<dirHash>/` | External |
 | pi / codex / opencode sessions | varies | Harness-specific paths | External |
 
-Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-echo.yaml`.
+Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examples/docker/docker-echo.yaml`, `dev/harness-examples/remote/remote-echo.yaml`, `dev/harness-examples/docker/opencode-docker.yaml`.
 
 ---
 
@@ -353,7 +352,6 @@ Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-
 - [x] UI preferences (`lastAgentType`, `lastSessionId`, `sidebarOpen`)
 - [x] Bubblewrap sandbox for all four CLI harnesses (Linux)
 - [x] User ADL in `~/.loop/agents/*.yaml`
-- [x] Default ADL templates (docker-echo, remote-echo, opencode-docker)
 - [x] Docker/remote reachability check on session create
 
 ### Phase 2 — ADL workflows ✅

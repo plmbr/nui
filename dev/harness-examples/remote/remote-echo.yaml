@@ -1,0 +1,8 @@
+adl: "1.0"
+id: remote-echo
+name: Remote Echo
+description: Echo agent on a local HTTP/SSE server (start dev/harness-examples/remote/echo_agent.py)
+harness:
+  type: remote
+  host: 127.0.0.1
+  port: 9090

@@ -1,0 +1,8 @@
+adl: "1.0"
+id: docker-echo
+name: Docker Echo
+description: Echo agent in a Docker container (build dev/harness-examples/docker first)
+harness:
+  type: docker
+  image: loop-echo-agent
+  containerPort: 9090

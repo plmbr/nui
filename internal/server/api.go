@@ -136,9 +136,6 @@ func initStore() error {
 		sessionMessages = map[string][]model.ChatMessage{}
 	}
 	mu.Unlock()
-	if err := store.ProvisionDefaultAgents(); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: provisioning default agents: %v\n", err)
-	}
 	backfillSessionsLastRunAt()
 	return nil
 }

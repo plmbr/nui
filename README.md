@@ -235,13 +235,9 @@ Four CLI harnesses, selectable as pills in the New Session dialog:
 
 ### Custom (UI → Custom Agents)
 
-ADL YAML files in `~/.loop/agents/*.yaml`. On first run, Loop provisions starter templates:
+ADL YAML files in `~/.loop/agents/*.yaml` that you create or copy yourself. Example templates for `docker` and `remote` harness types live under [`dev/harness-examples/`](dev/harness-examples/) and [`dev/adl/examples/`](dev/adl/examples/).
 
-- `docker-echo.yaml` — HTTP/SSE agent in Docker (`loop-echo-agent:9090`)
-- `remote-echo.yaml` — HTTP/SSE agent at `127.0.0.1:9090`
-- `opencode-docker.yaml` — opencode in `loop-opencode:latest`
-
-Use these for `docker` and `remote` harness types, sandbox variants (`bubblewrap`, `docker`), and multi-step workflows.
+Use custom ADL for `docker` and `remote` harness types, sandbox variants (`bubblewrap`, `docker`), and multi-step workflows.
 
 ### Sandbox options
 

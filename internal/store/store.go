@@ -211,56 +211,6 @@ func LoadADLDefinitions() ([]model.ADLDefinition, error) {
 	return defs, nil
 }
 
-// ProvisionDefaultAgents writes default user-defined agent YAML files to
-// ~/.loop/agents/ if they do not already exist. This lets agents that are
-// intentionally kept out of the built-in list still appear in the UI for
-// users who have not written their own definitions.
-func ProvisionDefaultAgents() error {
-	dir, err := AgentsDir()
-	if err != nil {
-		return err
-	}
-	defaults := map[string]string{
-		"opencode-docker.yaml": `adl: "1.0"
-id: opencode-docker
-name: OpenCode Docker
-description: opencode running inside a Docker container (loop-opencode:latest)
-harness:
-  type: opencode
-  sandbox: docker
-  image: loop-opencode:latest
-`,
-		"docker-echo.yaml": `adl: "1.0"
-id: docker-echo
-name: Docker Echo
-description: Echo agent in a Docker container (build dev/harness-examples/docker first)
-harness:
-  type: docker
-  image: loop-echo-agent
-  containerPort: 9090
-`,
-		"remote-echo.yaml": `adl: "1.0"
-id: remote-echo
-name: Remote Echo
-description: Echo agent on a local HTTP/SSE server (start dev/harness-examples/remote/echo_agent.py)
-harness:
-  type: remote
-  host: 127.0.0.1
-  port: 9090
-`,
-	}
-	for filename, content := range defaults {
-		path := filepath.Join(dir, filename)
-		if _, err := os.Stat(path); err == nil {
-			continue // already exists — don't overwrite user edits
-		}
-		if err := os.WriteFile(path, []byte(content), 0600); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func saveJSON(filename string, v any) error {
 	dir, err := Dir()
 	if err != nil {

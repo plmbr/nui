@@ -19,7 +19,12 @@ docker build -t loop-echo-agent .
 
 Docker agents are configured through **custom ADL**, not a built-in UI picker.
 
-1. Ensure `~/.loop/agents/docker-echo.yaml` exists (auto-provisioned on first Loop start, or copy from the template in `internal/store/store.go`).
+1. Copy the example ADL into your agents directory:
+
+```sh
+cp dev/harness-examples/docker/docker-echo.yaml ~/.loop/agents/
+```
+
 2. Create a new session.
 3. Under **Custom Agents**, select **docker-echo**.
 4. Click **Create**.

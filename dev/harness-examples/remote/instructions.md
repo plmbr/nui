@@ -24,7 +24,12 @@ curl -N -X POST http://127.0.0.1:9090/run \
 Remote agents are configured through **custom ADL**, not a built-in UI picker.
 
 1. Start the agent server (command above).
-2. Ensure `~/.loop/agents/remote-echo.yaml` exists (auto-provisioned on first Loop start).
+2. Copy the example ADL into your agents directory:
+
+```sh
+cp dev/harness-examples/remote/remote-echo.yaml ~/.loop/agents/
+```
+
 3. Create a new session.
 4. Under **Custom Agents**, select **remote-echo**.
 5. Click **Create**.

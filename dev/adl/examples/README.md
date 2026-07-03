@@ -2,6 +2,8 @@
 
 ADL (Agent Definition Language) is a YAML format for declaring agent types and multi-step workflows. Place files in `~/.loop/agents/` to make them selectable in the Loop UI under **Custom Agents**.
 
+Echo-specific docker/remote walkthroughs (with runnable harness servers) live under [`dev/harness-examples/`](../harness-examples/).
+
 Each agent requires an `id` (stable identifier used by the CLI and sessions) and a `name` (display label). The UI shows the name with the description below it.
 
 The executor in `internal/agent/adl.go` runs multi-step pipelines in topological order.
