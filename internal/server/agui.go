@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/uuid"
 	"loop/internal/agent"
-	"loop/internal/mentions"
 	"loop/internal/model"
 )
 
@@ -65,9 +64,9 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 		return
 	}
 
-	resolvedMessage, err := mentions.DefaultRegistry.ResolveMessage(r.Context(), workingDir, lastUserMessage, mentionAllowedRoots(session))
+	resolvedMessage, err := prepareRunMessage(r.Context(), session, workingDir, lastUserMessage, true)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("mention resolution failed: %v", err), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

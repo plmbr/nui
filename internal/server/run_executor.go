@@ -13,6 +13,7 @@ import (
 	"loop/internal/agent"
 	"loop/internal/mentions"
 	"loop/internal/model"
+	"loop/internal/skills"
 	"loop/internal/store"
 )
 
@@ -64,6 +65,17 @@ func prepareRunMessage(ctx context.Context, session model.Session, workingDir, m
 	}
 	if message == "" {
 		return "", fmt.Errorf("message is required")
+	}
+	if def, ok := findADLDef(session.AgentType); ok {
+		expanded, err := skills.ExpandSlashCommand(
+			skills.Context{WorkingDir: workingDir},
+			skills.AgentSkills(def),
+			message,
+		)
+		if err != nil {
+			return "", err
+		}
+		message = expanded
 	}
 	if !resolveMentions {
 		return message, nil

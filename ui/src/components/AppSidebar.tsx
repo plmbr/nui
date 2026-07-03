@@ -1,7 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
-import { ChevronRight, CalendarClock, List, Loader2, MoreHorizontal, Pencil, Plus, Square, Trash2 } from 'lucide-react'
+import { ChevronRight, CalendarClock, Filter, List, Loader2, MoreHorizontal, Pencil, Plus, Square, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -46,6 +46,10 @@ import {
 } from '@/components/ui/dropdown-menu'
 import type { AgentType, Session } from '@/types'
 import { SidebarResizeHandle } from '@/components/SidebarResizeHandle'
+
+interface DisplaySessionGroup extends SessionGroup {
+  totalSessions: number
+}
 
 interface Props {
   sessions: Session[]
@@ -268,7 +272,8 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
 }
 
 interface CollapsibleSessionGroupProps {
-  group: SessionGroup
+  group: DisplaySessionGroup
+  runningOnly: boolean
   selectedId: string | null
   listViewOpen: boolean
   onSelect: (id: string) => void
@@ -280,6 +285,7 @@ interface CollapsibleSessionGroupProps {
 
 function CollapsibleSessionGroup({
   group,
+  runningOnly,
   selectedId,
   listViewOpen,
   onSelect,
@@ -290,6 +296,10 @@ function CollapsibleSessionGroup({
 }: CollapsibleSessionGroupProps) {
   const hasSelected = group.sessions.some((s) => s.id === selectedId)
   const [open, setOpen] = useState(true)
+  const sessionCount = group.sessions.length
+  const countTitle = runningOnly && sessionCount !== group.totalSessions
+    ? `${sessionCount} running (${group.totalSessions} total)`
+    : `${sessionCount} session${sessionCount === 1 ? '' : 's'}`
 
   useEffect(() => {
     if (hasSelected) setOpen(true)
@@ -350,8 +360,8 @@ function CollapsibleSessionGroup({
             </button>
           </span>
           <span className="sidebar-meta-rail">
-            <span className="sidebar-group-count" title={`${group.sessions.length} sessions`}>
-              {group.sessions.length}
+            <span className="sidebar-group-count" title={countTitle}>
+              {sessionCount}
             </span>
           </span>
         </span>
@@ -394,7 +404,28 @@ export function AppSidebar({
   onRename,
   onDelete,
 }: Props) {
-  const groups = groupSessionsByAgentType(sessions, agentTypes)
+  const runningSessions = useRunningSessions()
+  const [runningOnly, setRunningOnly] = useState(false)
+
+  const groups = useMemo((): DisplaySessionGroup[] => {
+    const allGroups = groupSessionsByAgentType(sessions, agentTypes)
+    if (!runningOnly) {
+      return allGroups.map((group) => ({
+        ...group,
+        totalSessions: group.sessions.length,
+      }))
+    }
+    return allGroups.map((group) => ({
+      ...group,
+      totalSessions: group.sessions.length,
+      sessions: group.sessions.filter((session) => runningSessions.has(session.id)),
+    }))
+  }, [sessions, agentTypes, runningOnly, runningSessions])
+
+  const visibleGroups = useMemo(
+    () => groups.filter((group) => group.sessions.length > 0),
+    [groups],
+  )
 
   return (
     <Sidebar
@@ -407,7 +438,7 @@ export function AppSidebar({
         onWidthCommit={onSidebarWidthCommit}
       />
       <SidebarHeader className="sidebar-actions shrink-0 px-3 py-3">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex items-center gap-2">
           <Button
             size="sm"
             className={cn(
@@ -433,6 +464,20 @@ export function AppSidebar({
             <CalendarClock className="size-4 shrink-0" />
             <span>Schedule</span>
           </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className={cn(
+              'ml-auto size-8 shrink-0 bg-background/40 p-0',
+              runningOnly && 'ring-1 ring-primary/40 bg-primary/10 text-primary',
+            )}
+            onClick={() => setRunningOnly((value) => !value)}
+            aria-pressed={runningOnly}
+            aria-label="Show running sessions only"
+            title="Running only"
+          >
+            <Filter className="size-4 shrink-0" />
+          </Button>
         </div>
       </SidebarHeader>
         <SidebarContent className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain pb-4">
@@ -441,19 +486,27 @@ export function AppSidebar({
               No sessions yet.
             </p>
           ) : (
-            groups.map((group) => (
-              <CollapsibleSessionGroup
-                key={group.id}
-                group={group}
-                selectedId={selectedId}
-                listViewOpen={sessionListGroupId === group.id}
-                onSelect={onSelect}
-                onOpenNewSessionForGroup={onOpenNewSessionForGroup}
-                onOpenSessionList={onOpenSessionList}
-                onRename={onRename}
-                onDelete={onDelete}
-              />
-            ))
+            <>
+              {runningOnly && visibleGroups.length === 0 && (
+                <p className="px-4 py-3 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+                  No running sessions.
+                </p>
+              )}
+              {visibleGroups.map((group) => (
+                <CollapsibleSessionGroup
+                  key={group.id}
+                  group={group}
+                  runningOnly={runningOnly}
+                  selectedId={selectedId}
+                  listViewOpen={sessionListGroupId === group.id}
+                  onSelect={onSelect}
+                  onOpenNewSessionForGroup={onOpenNewSessionForGroup}
+                  onOpenSessionList={onOpenSessionList}
+                  onRename={onRename}
+                  onDelete={onDelete}
+                />
+              ))}
+            </>
           )}
         </SidebarContent>
       </Sidebar>

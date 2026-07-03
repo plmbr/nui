@@ -80,6 +80,11 @@ export default function App() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!newSessionOpen) return
+    void loadAgentTypes()
+  }, [newSessionOpen, loadAgentTypes])
+
   const createSessionFromUrl = useCallback(async (): Promise<string | null> => {
     try {
       const session = await api.sessions.createFromUrl({
