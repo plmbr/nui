@@ -28,8 +28,9 @@ var (
 var uiFS func() fs.FS
 
 var uiCmd = &cobra.Command{
-	Use:   "ui",
-	Short: "Start the web UI server",
+	Use:     "ui",
+	Aliases: []string{"server"},
+	Short:   "Start the web server",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		opts := server.StartOptions{
 			AgentType:        agentType,
