@@ -71,11 +71,48 @@ type Settings struct {
 }
 
 type Session struct {
-	ID         string `json:"id"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	WorkingDir   string `json:"workingDir"`
+	AgentType    string `json:"agentType"`
+	CreatedAt    string `json:"createdAt"`
+	ScheduleID   string `json:"scheduleId,omitempty"`
+	ScheduleName string `json:"scheduleName,omitempty"`
+	LastRunAt    string `json:"lastRunAt,omitempty"`
+}
+
+type Schedule struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	AgentType     string `json:"agentType"`
+	Prompt        string `json:"prompt,omitempty"`
+	WorkingDir    string `json:"workingDir,omitempty"`
+	Interval      string `json:"interval,omitempty"`
+	Cron          string `json:"cron,omitempty"`
+	Enabled       bool   `json:"enabled"`
+	LastRunAt     string `json:"lastRunAt,omitempty"`
+	NextRunAt     string `json:"nextRunAt,omitempty"`
+	LastSessionID string `json:"lastSessionId,omitempty"`
+	LastRunID     string `json:"lastRunId,omitempty"`
+	CreatedAt     string `json:"createdAt"`
+}
+
+type CreateScheduleRequest struct {
 	Name       string `json:"name"`
-	WorkingDir string `json:"workingDir"`
 	AgentType  string `json:"agentType"`
-	CreatedAt  string `json:"createdAt"`
+	Prompt     string `json:"prompt,omitempty"`
+	WorkingDir string `json:"workingDir,omitempty"`
+	Interval   string `json:"interval,omitempty"`
+	Cron       string `json:"cron,omitempty"`
+}
+
+type PatchScheduleRequest struct {
+	Name       *string `json:"name,omitempty"`
+	Prompt     *string `json:"prompt,omitempty"`
+	WorkingDir *string `json:"workingDir,omitempty"`
+	Interval   *string `json:"interval,omitempty"`
+	Cron       *string `json:"cron,omitempty"`
+	Enabled    *bool   `json:"enabled,omitempty"`
 }
 
 type RunRecord struct {
@@ -300,6 +337,42 @@ func (c *Client) StreamRunEvents(ctx context.Context, sessionID, runID string, l
 	return c.GetRun(ctx, sessionID, runID)
 }
 
+func (c *Client) ListSchedules(ctx context.Context) ([]Schedule, error) {
+	var out []Schedule
+	if err := c.getJSON(ctx, "/api/schedules", &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *Client) CreateSchedule(ctx context.Context, req CreateScheduleRequest) (Schedule, error) {
+	var out Schedule
+	if err := c.postJSON(ctx, "/api/schedules", req, http.StatusCreated, &out); err != nil {
+		return Schedule{}, err
+	}
+	return out, nil
+}
+
+func (c *Client) PatchSchedule(ctx context.Context, id string, req PatchScheduleRequest) (Schedule, error) {
+	var out Schedule
+	if err := c.patchJSON(ctx, "/api/schedules/"+id, req, http.StatusOK, &out); err != nil {
+		return Schedule{}, err
+	}
+	return out, nil
+}
+
+func (c *Client) DeleteSchedule(ctx context.Context, id string) error {
+	return c.deleteJSON(ctx, "/api/schedules/"+id)
+}
+
+func (c *Client) RunScheduleNow(ctx context.Context, id string) (Schedule, error) {
+	var out Schedule
+	if err := c.postJSON(ctx, "/api/schedules/"+id+"/run-now", nil, http.StatusAccepted, &out); err != nil {
+		return Schedule{}, err
+	}
+	return out, nil
+}
+
 func (c *Client) getJSON(ctx context.Context, path string, out any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+path, nil)
 	if err != nil {
@@ -338,6 +411,48 @@ func (c *Client) postJSON(ctx context.Context, path string, body any, expectStat
 	}
 	if out != nil {
 		return json.NewDecoder(resp.Body).Decode(out)
+	}
+	return nil
+}
+
+func (c *Client) patchJSON(ctx context.Context, path string, body any, expectStatus int, out any) error {
+	data, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPatch, c.BaseURL+path, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != expectStatus {
+		raw, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("PATCH %s failed: %s: %s", path, resp.Status, strings.TrimSpace(string(raw)))
+	}
+	if out != nil {
+		return json.NewDecoder(resp.Body).Decode(out)
+	}
+	return nil
+}
+
+func (c *Client) deleteJSON(ctx context.Context, path string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.BaseURL+path, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		raw, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("DELETE %s failed: %s: %s", path, resp.Status, strings.TrimSpace(string(raw)))
 	}
 	return nil
 }

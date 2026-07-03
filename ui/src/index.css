@@ -328,6 +328,23 @@
     @apply flex h-screen w-full overflow-hidden pt-12;
   }
 
+  .app-sidebar [data-slot="sidebar-container"] {
+    top: 3rem;
+    bottom: auto;
+    height: calc(100svh - 3rem);
+    max-height: calc(100svh - 3rem);
+  }
+
+  .app-sidebar [data-slot="sidebar-inner"] {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .app-sidebar [data-slot="sidebar-content"] {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+
   [data-sidebar="sidebar"] [data-active="true"] {
     background: color-mix(in oklch, var(--primary) 14%, var(--sidebar-accent)) !important;
     color: color-mix(in oklch, var(--primary) 55%, var(--sidebar-accent-foreground)) !important;
@@ -335,19 +352,71 @@
   }
 
   .sidebar-session__button {
-    @apply gap-2;
+    @apply h-9 min-h-9 items-center gap-1.5 py-0 text-sm;
   }
 
   .sidebar-session__name {
-    @apply min-w-0 flex-1 text-left;
+    @apply min-w-0 flex-1 truncate text-left text-sm leading-snug;
+  }
+
+  .sidebar-session__last-run {
+    @apply shrink-0 text-[10px] tabular-nums text-muted-foreground;
+  }
+
+  .sidebar-meta-col {
+    @apply w-8 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground;
+  }
+
+  .sidebar-meta-col--group {
+    @apply mr-8;
+  }
+
+  .sidebar-header__btn-primary {
+    background: color-mix(in oklch, var(--primary) 16%, var(--sidebar));
+    color: color-mix(in oklch, var(--primary) 55%, var(--sidebar-foreground));
+    box-shadow: none;
+
+    &:hover {
+      background: color-mix(in oklch, var(--primary) 22%, var(--sidebar));
+      color: color-mix(in oklch, var(--primary) 65%, var(--sidebar-foreground));
+      filter: none;
+      box-shadow: none;
+    }
+  }
+
+  .sidebar-actions {
+    @apply gap-0;
+  }
+
+  .sidebar-session__scheduled-icon {
+    @apply size-3.5 shrink-0 text-muted-foreground;
   }
 
   .sidebar-session__status {
-    @apply ml-auto flex shrink-0 items-center;
+    @apply ml-0 flex shrink-0 items-center;
+  }
+
+  .sidebar-resize-handle {
+    @apply absolute inset-y-0 right-0 z-30 hidden w-1.5 cursor-col-resize md:block;
+  }
+
+  .sidebar-resize-handle::after {
+    content: "";
+    @apply absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors;
+  }
+
+  .sidebar-resize-handle:hover::after,
+  .sidebar-resize-handle:active::after {
+    background: color-mix(in oklch, var(--sidebar-border) 80%, var(--sidebar-foreground));
+  }
+
+  body.sidebar-resizing [data-slot="sidebar-gap"],
+  body.sidebar-resizing [data-slot="sidebar-container"] {
+    transition: none !important;
   }
 
   .sidebar-session__status-icon {
-    @apply size-3.5 text-muted-foreground;
+    @apply size-3.5 animate-spin text-muted-foreground;
   }
 
   .empty-state {

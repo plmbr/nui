@@ -1,10 +1,9 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
-import { ChevronRight, List, Loader2, MoreHorizontal, Pencil, Plus, Sparkles, Square, Trash2, Wrench } from 'lucide-react'
+import { ChevronRight, CalendarClock, List, Loader2, MoreHorizontal, Pencil, Plus, Square, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import {
   Sidebar,
@@ -27,7 +26,9 @@ import {
   subscribeRunningProgress,
   subscribeSessionRuns,
 } from '@/lib/sessionChatStore'
-import { decodeSessionProgress, type SessionProgress, type SessionProgressKind } from '@/lib/sessionProgress'
+import { decodeSessionProgress, type SessionProgress } from '@/lib/sessionProgress'
+import { formatExactTime, formatRelativeTime } from '@/lib/formatRelativeTime'
+import { sessionDisplayName } from '@/lib/sessionDisplay'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import {
   Dialog,
@@ -44,15 +45,21 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { AgentType, Session } from '@/types'
+import { SidebarResizeHandle } from '@/components/SidebarResizeHandle'
 
 interface Props {
   sessions: Session[]
   agentTypes: AgentType[]
   selectedId: string | null
   newSessionOpen: boolean
+  schedulesPanelOpen: boolean
   sessionListGroupId: string | null
+  sidebarWidth: number
+  onSidebarWidthChange: (width: number) => void
+  onSidebarWidthCommit: (width: number) => void
   onSelect: (id: string) => void
   onOpenNewSession: () => void
+  onOpenSchedules: () => void
   onOpenNewSessionForGroup: (groupId: string) => void
   onOpenSessionList: (groupId: string) => void
   onRename: (id: string, newName: string) => Promise<void>
@@ -92,16 +99,6 @@ function parseProgressSnapshot(snapshot: string): Map<string, SessionProgress> {
   return map
 }
 
-function SessionProgressIcon({ kind }: { kind: SessionProgressKind }) {
-  if (kind === 'tool') {
-    return <Wrench className="sidebar-session__status-icon" aria-hidden />
-  }
-  if (kind === 'generating') {
-    return <Sparkles className="sidebar-session__status-icon" aria-hidden />
-  }
-  return <Loader2 className="sidebar-session__status-icon" aria-hidden />
-}
-
 function useSessionProgressMap(): Map<string, SessionProgress> {
   const snapshot = useSyncExternalStore(
     subscribeRunningProgress,
@@ -119,6 +116,14 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
   const progressMap = useSessionProgressMap()
   const sessionRunning = runningSessions.has(session.id)
   const progress = progressMap.get(session.id) ?? getSessionProgress(session.id)
+  const displayName = sessionDisplayName(session)
+  const lastRunLabel = session.lastRunAt
+    ? (sessionRunning ? 'now' : formatRelativeTime(session.lastRunAt, Date.now(), false))
+    : ''
+  const lastRunTitle = session.lastRunAt ? formatExactTime(session.lastRunAt) : ''
+  const scheduledTitle = session.scheduleId
+    ? `Scheduled · ${session.scheduleName || session.scheduleId}`
+    : undefined
 
   useEffect(() => {
     setNameValue(session.name)
@@ -138,13 +143,31 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
         <SidebarMenuButton
           isActive={isActive}
           onClick={onSelect}
-          title={progress ? `${session.name} — ${progress.label}` : session.name}
+          title={
+            lastRunTitle
+              ? `${displayName} · ${lastRunTitle}${progress ? ` — ${progress.label}` : ''}`
+              : progress
+                ? `${displayName} — ${progress.label}`
+                : displayName
+          }
           className="sidebar-session__button"
         >
-          <span className="sidebar-session__name truncate">{session.name}</span>
-          {sessionRunning && progress && (
-            <span className="sidebar-session__status" role="status" aria-label={progress.label}>
-              <SessionProgressIcon kind={progress.kind} />
+          {session.scheduleId && (
+            <span className="sidebar-session__scheduled shrink-0" title={scheduledTitle}>
+              <CalendarClock className="sidebar-session__scheduled-icon" aria-hidden />
+            </span>
+          )}
+          <span className="sidebar-session__name truncate" title={displayName}>
+            {displayName}
+          </span>
+          {lastRunLabel && (
+            <span className="sidebar-meta-col" title={lastRunTitle}>
+              {lastRunLabel}
+            </span>
+          )}
+          {sessionRunning && (
+            <span className="sidebar-session__status" role="status" aria-label={progress?.label ?? 'Running'}>
+              <Loader2 className="sidebar-session__status-icon" aria-hidden />
             </span>
           )}
         </SidebarMenuButton>
@@ -182,6 +205,18 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5">Created</p>
                 <p className="text-xs">{new Date(session.createdAt).toLocaleString()}</p>
               </div>
+              {session.scheduleId && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5">Schedule</p>
+                  <p className="text-xs">{session.scheduleName || session.scheduleId}</p>
+                </div>
+              )}
+              {session.lastRunAt && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5">Last run</p>
+                  <p className="text-xs">{formatExactTime(session.lastRunAt)}</p>
+                </div>
+              )}
             </div>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -261,7 +296,7 @@ function CollapsibleSessionGroup({
   }, [hasSelected])
 
   return (
-    <SidebarGroup>
+    <SidebarGroup className="px-2 pb-2 pt-0">
       <SidebarGroupLabel
         render={<button type="button" />}
         className={cn(
@@ -308,11 +343,11 @@ function CollapsibleSessionGroup({
             <List className="size-3.5" />
           </button>
         </span>
-        <span className="text-xs font-normal text-muted-foreground tabular-nums">{group.sessions.length}</span>
+        <span className="sidebar-meta-col sidebar-meta-col--group">{group.sessions.length}</span>
       </SidebarGroupLabel>
       {open && (
         <SidebarGroupContent>
-          <SidebarMenu className="pl-5">
+          <SidebarMenu className="pl-4">
             {group.sessions.map((s) => (
               <SessionListItem
                 key={s.id}
@@ -335,9 +370,14 @@ export function AppSidebar({
   agentTypes,
   selectedId,
   newSessionOpen,
+  schedulesPanelOpen,
   sessionListGroupId,
+  sidebarWidth,
+  onSidebarWidthChange,
+  onSidebarWidthCommit,
   onSelect,
   onOpenNewSession,
+  onOpenSchedules,
   onOpenNewSessionForGroup,
   onOpenSessionList,
   onRename,
@@ -346,44 +386,64 @@ export function AppSidebar({
   const groups = groupSessionsByAgentType(sessions, agentTypes)
 
   return (
-    <Sidebar collapsible="offcanvas" className="pt-12">
-      <SidebarHeader className="p-3">
-        <Button
-          variant="secondary"
-          size="sm"
-          className={cn(
-            'w-full justify-start gap-2',
-            newSessionOpen && 'ring-1 ring-primary bg-primary/10',
-          )}
-          onClick={onOpenNewSession}
-          aria-pressed={newSessionOpen}
-        >
-            <Plus className="size-4 shrink-0" />
-            <span className="group-data-[collapsible=icon]:hidden">New Session</span>
-          </Button>
-        </SidebarHeader>
-        <SidebarContent>
-          <ScrollArea className="flex-1">
-            {groups.length === 0 ? (
-              <p className="px-4 py-4 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-                No sessions yet.
-              </p>
-            ) : (
-              groups.map((group) => (
-                <CollapsibleSessionGroup
-                  key={group.id}
-                  group={group}
-                  selectedId={selectedId}
-                  listViewOpen={sessionListGroupId === group.id}
-                  onSelect={onSelect}
-                  onOpenNewSessionForGroup={onOpenNewSessionForGroup}
-                  onOpenSessionList={onOpenSessionList}
-                  onRename={onRename}
-                  onDelete={onDelete}
-                />
-              ))
+    <Sidebar
+      collapsible="offcanvas"
+      className="app-sidebar top-12 bottom-auto h-[calc(100svh-3rem)] max-h-[calc(100svh-3rem)]"
+    >
+      <SidebarResizeHandle
+        width={sidebarWidth}
+        onWidthChange={onSidebarWidthChange}
+        onWidthCommit={onSidebarWidthCommit}
+      />
+      <SidebarHeader className="sidebar-actions shrink-0 px-3 py-3">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            className={cn(
+              'sidebar-header__btn-primary w-auto gap-2 border-0 shadow-none',
+              newSessionOpen && 'ring-1 ring-primary/60',
             )}
-          </ScrollArea>
+            onClick={onOpenNewSession}
+            aria-pressed={newSessionOpen}
+          >
+            <Plus className="size-4 shrink-0" />
+            <span>New Session</span>
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className={cn(
+              'w-auto gap-2 bg-background/40',
+              schedulesPanelOpen && 'ring-1 ring-primary/40 bg-primary/10',
+            )}
+            onClick={onOpenSchedules}
+            aria-pressed={schedulesPanelOpen}
+          >
+            <CalendarClock className="size-4 shrink-0" />
+            <span>Schedule</span>
+          </Button>
+        </div>
+      </SidebarHeader>
+        <SidebarContent className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain pb-4">
+          {groups.length === 0 ? (
+            <p className="px-4 py-4 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+              No sessions yet.
+            </p>
+          ) : (
+            groups.map((group) => (
+              <CollapsibleSessionGroup
+                key={group.id}
+                group={group}
+                selectedId={selectedId}
+                listViewOpen={sessionListGroupId === group.id}
+                onSelect={onSelect}
+                onOpenNewSessionForGroup={onOpenNewSessionForGroup}
+                onOpenSessionList={onOpenSessionList}
+                onRename={onRename}
+                onDelete={onDelete}
+              />
+            ))
+          )}
         </SidebarContent>
       </Sidebar>
   )

@@ -300,6 +300,7 @@ Offset-based durable stream with `Last-Event-ID` replay is designed but not impl
 | ADL definitions | YAML | `~/.loop/agents/*.yaml` | Done |
 | Default ADL templates | YAML | Auto-provisioned on startup | Done |
 | Run event log | JSONL | `~/.loop/runs/<runID>.jsonl` | Done |
+| Schedules | JSON | `~/.loop/schedules.json` | Done |
 | Claude Code sessions | JSONL | `~/.claude/projects/<dirHash>/` | External |
 | pi / codex / opencode sessions | varies | Harness-specific paths | External |
 
@@ -329,6 +330,8 @@ Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-
 | `GET/PUT` | `/api/settings` | User preferences (partial PUT) |
 | `GET` | `/api/bootstrap` | One-shot CLI bootstrap (`sessionId`, `initialPrompt`) |
 | `GET` | `/api/capabilities` | Bwrap availability |
+| `GET/POST/PATCH/DELETE` | `/api/schedules` | Schedule CRUD |
+| `POST` | `/api/schedules/:id/run-now` | Trigger schedule immediately |
 
 ### Planned
 
@@ -366,6 +369,14 @@ Default provisioned agents: `opencode-docker.yaml`, `docker-echo.yaml`, `remote-
 - [x] `loop skills add|list|remove` CLI
 - [x] `loop extension add|remove` CLI
 - [x] ADL `aiAssets.mcpServers` → session harness config
+
+### Phase 4 — Scheduled runs ✅
+- [x] Interval schedules align to clock boundaries (e.g. `5m` at :00, :05, :10… UTC), not current time + interval
+- [x] Server scheduler: each tick creates a new session + headless run
+- [x] Only `promptMode: auto` ADL agents are schedulable
+- [x] REST API + `loop schedule` CLI
+- [x] Customize → Schedules UI
+- [x] Session sidebar: scheduled indicator + relative last-run time
 
 ---
 

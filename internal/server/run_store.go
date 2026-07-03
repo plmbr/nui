@@ -96,9 +96,47 @@ func finishRunRecord(runID string, status RunStatus, output, errMsg string) {
 	rec.Output = output
 	rec.Error = errMsg
 	rec.FinishedAt = time.Now().UTC().Format(time.RFC3339)
+	sessionID := rec.SessionID
+	finishedAt := rec.FinishedAt
 	listeners := runListeners[runID]
 	runStoreMu.Unlock()
+	updateSessionLastRunAt(sessionID, finishedAt)
 	notifyRunListeners(listeners)
+}
+
+func updateSessionLastRunAt(sessionID, lastRunAt string) {
+	if sessionID == "" || lastRunAt == "" {
+		return
+	}
+	mu.Lock()
+	updated := false
+	for i, s := range sessions {
+		if s.ID == sessionID {
+			sessions[i].LastRunAt = lastRunAt
+			updated = true
+			break
+		}
+	}
+	var snapshot store.Data
+	if updated {
+		snapshot = snapshotData()
+	}
+	mu.Unlock()
+	if updated {
+		if err := store.SaveData(snapshot); err != nil {
+			fmt.Fprintf(os.Stderr, "warn: save session lastRunAt: %v\n", err)
+		}
+		notifySessionsChanged()
+	}
+}
+
+func sessionHasRunningRun(sessionID string) bool {
+	for _, rec := range listSessionRuns(sessionID) {
+		if rec.Status == RunStatusRunning {
+			return true
+		}
+	}
+	return false
 }
 
 // runFinishedSentinel wakes SSE subscribers after finishRunRecord updates status.

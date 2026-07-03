@@ -7,6 +7,9 @@ export interface Session {
   agentType: string
   agentConfig?: Record<string, unknown>
   createdAt: string
+  scheduleId?: string
+  scheduleName?: string
+  lastRunAt?: string
 }
 
 export interface CreateSessionRequest {
@@ -96,6 +99,7 @@ export interface Settings {
   lastAgentType?: string
   lastSessionId?: string
   sidebarOpen?: boolean
+  sidebarWidth?: number
   disabledExtensions?: string[]
 }
 
@@ -162,4 +166,29 @@ export interface Capabilities {
   sandbox: {
     bwrap: BwrapStatus
   }
+}
+
+export interface Schedule {
+  id: string
+  name: string
+  agentType: string
+  prompt?: string
+  workingDir?: string
+  interval?: string
+  cron?: string
+  enabled: boolean
+  lastRunAt?: string
+  nextRunAt?: string
+  lastSessionId?: string
+  lastRunId?: string
+  createdAt: string
+}
+
+export interface CreateScheduleRequest {
+  name: string
+  agentType: string
+  prompt?: string
+  workingDir?: string
+  interval?: string
+  cron?: string
 }

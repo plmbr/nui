@@ -3,12 +3,15 @@
 package model
 
 type Session struct {
-	ID          string         `json:"id"`
-	Name        string         `json:"name"`
-	WorkingDir  string         `json:"workingDir"`
-	AgentType   string         `json:"agentType"`
-	AgentConfig map[string]any `json:"agentConfig,omitempty"`
-	CreatedAt   string         `json:"createdAt"`
+	ID           string         `json:"id"`
+	Name         string         `json:"name"`
+	WorkingDir   string         `json:"workingDir"`
+	AgentType    string         `json:"agentType"`
+	AgentConfig  map[string]any `json:"agentConfig,omitempty"`
+	CreatedAt    string         `json:"createdAt"`
+	ScheduleID   string         `json:"scheduleId,omitempty"`
+	ScheduleName string         `json:"scheduleName,omitempty"`
+	LastRunAt    string         `json:"lastRunAt,omitempty"`
 }
 
 type ChatImage struct {

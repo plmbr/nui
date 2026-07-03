@@ -18,6 +18,7 @@ type Settings struct {
 	LastAgentType        string   `json:"lastAgentType,omitempty"`          // last agent picked in new-session dialog
 	LastSessionID        string   `json:"lastSessionId,omitempty"`          // last selected session in UI
 	SidebarOpen          *bool    `json:"sidebarOpen,omitempty"`            // desktop sidebar expanded state
+	SidebarWidth         *int     `json:"sidebarWidth,omitempty"`           // desktop sidebar width in px
 	DisabledExtensions   []string `json:"disabledExtensions,omitempty"`     // extension names excluded from runtime
 }
 

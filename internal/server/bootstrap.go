@@ -317,6 +317,28 @@ func saveSessionPreferences(agentType, sessionID string, settings store.Settings
 }
 
 func createSession(name, workingDir, agentType string, agentConfig map[string]any) (model.Session, error) {
+	return createSessionEx(sessionCreateOpts{
+		Name:        name,
+		WorkingDir:  workingDir,
+		AgentType:   agentType,
+		AgentConfig: agentConfig,
+	})
+}
+
+type sessionCreateOpts struct {
+	Name         string
+	WorkingDir   string
+	AgentType    string
+	AgentConfig  map[string]any
+	ScheduleID   string
+	ScheduleName string
+}
+
+func createSessionEx(opts sessionCreateOpts) (model.Session, error) {
+	name := opts.Name
+	workingDir := opts.WorkingDir
+	agentType := opts.AgentType
+	agentConfig := opts.AgentConfig
 	if name == "" || agentType == "" {
 		return model.Session{}, fmt.Errorf("name and agentType are required")
 	}
@@ -332,12 +354,14 @@ func createSession(name, workingDir, agentType string, agentConfig map[string]an
 	}
 
 	s := model.Session{
-		ID:          sessionID,
-		Name:        name,
-		WorkingDir:  resolvedWorkingDir,
-		AgentType:   model.ADLAgentID(def),
-		AgentConfig: agentConfig,
-		CreatedAt:   time.Now().UTC().Format(time.RFC3339),
+		ID:           sessionID,
+		Name:         name,
+		WorkingDir:   resolvedWorkingDir,
+		AgentType:    model.ADLAgentID(def),
+		AgentConfig:  agentConfig,
+		CreatedAt:    time.Now().UTC().Format(time.RFC3339),
+		ScheduleID:   strings.TrimSpace(opts.ScheduleID),
+		ScheduleName: strings.TrimSpace(opts.ScheduleName),
 	}
 	if err := validateSessionConnector(s); err != nil {
 		if !model.IsADLWorkingDirInput(def) {

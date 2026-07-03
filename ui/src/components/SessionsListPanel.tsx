@@ -1,7 +1,9 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useEffect, useMemo, useState } from 'react'
-import { List, Trash2, X } from 'lucide-react'
+import { List, Trash2, X, CalendarClock } from 'lucide-react'
+import { formatExactTime, formatRelativeTime } from '@/lib/formatRelativeTime'
+import { sessionDisplayName } from '@/lib/sessionDisplay'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
@@ -114,6 +116,7 @@ export function SessionsListPanel({
                     </th>
                     <th>Name</th>
                     <th>Working directory</th>
+                    <th>Last run</th>
                     <th>Created</th>
                   </tr>
                 </thead>
@@ -139,9 +142,25 @@ export function SessionsListPanel({
                             onChange={() => toggleOne(session.id)}
                           />
                         </td>
-                        <td className="font-medium">{session.name}</td>
+                        <td className="font-medium">
+                          <span className="inline-flex items-center gap-1.5 min-w-0">
+                            {session.scheduleId && (
+                              <CalendarClock
+                                className="size-3.5 shrink-0 text-muted-foreground"
+                                title={`Scheduled · ${session.scheduleName || session.scheduleId}`}
+                              />
+                            )}
+                            <span className="truncate">{sessionDisplayName(session)}</span>
+                          </span>
+                        </td>
                         <td className="text-muted-foreground max-w-xs truncate" title={session.workingDir}>
                           {session.workingDir || '(server working directory)'}
+                        </td>
+                        <td
+                          className="text-muted-foreground whitespace-nowrap tabular-nums"
+                          title={session.lastRunAt ? formatExactTime(session.lastRunAt) : undefined}
+                        >
+                          {session.lastRunAt ? formatRelativeTime(session.lastRunAt) : '—'}
                         </td>
                         <td className="text-muted-foreground whitespace-nowrap tabular-nums">
                           {new Date(session.createdAt).toLocaleString()}

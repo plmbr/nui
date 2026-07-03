@@ -22,6 +22,7 @@ The executor in `internal/agent/adl.go` runs multi-step pipelines in topological
 | `14-ai-assets-mcp.yaml` | Basic | `aiAssets.mcpServers` (HTTP + stdio) |
 | `15-env-vars.yaml` | Basic | Global `env` + `harness.env` |
 | `16-ai-assets-skills.yaml` | Basic | `aiAssets.skills` (path, ref, content, git) |
+| `17-auto-scheduled-agent.yaml` | Basic | `promptMode: auto` agent for Customize → Schedules |
 
 ## Harness types
 

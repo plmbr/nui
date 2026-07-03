@@ -6,7 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AgentHeader } from '@/components/AgentHeader'
 import { AppSidebar } from '@/components/AppSidebar'
 import { ConversationPanel } from '@/components/ConversationPanel'
-import { CustomizePanel, CustomizeTrigger } from '@/components/customize/CustomizePanel'
+import { CustomizePanel, CustomizeTrigger, type CustomizeTabId } from '@/components/customize/CustomizePanel'
 import { ThemeSwitch } from '@/components/ThemeSwitch'
 import { LandingPage } from '@/components/LandingPage'
 import { NewSessionPanel } from '@/components/NewSessionPanel'
@@ -30,15 +30,19 @@ import {
   sessionIdFromPath,
 } from '@/lib/appUrl'
 import type { Session, AgentType } from '@/types'
+import { resolveSidebarWidth } from '@/lib/sidebarWidth'
+import { sessionDisplayName } from '@/lib/sessionDisplay'
 
 export default function App() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarWidth, setSidebarWidth] = useState(resolveSidebarWidth())
   const [initialPrompt, setInitialPrompt] = useState<string | undefined>()
   const [hideInput, setHideInput] = useState(false)
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([])
   const [customizeOpen, setCustomizeOpen] = useState(false)
+  const [customizeTab, setCustomizeTab] = useState<CustomizeTabId>('general')
   const [newSessionOpen, setNewSessionOpen] = useState(false)
   const [landingOpen, setLandingOpen] = useState(false)
   const [sessionListGroupId, setSessionListGroupId] = useState<string | null>(null)
@@ -115,6 +119,7 @@ export default function App() {
       } else if (settings.sidebarOpen !== undefined) {
         setSidebarOpen(settings.sidebarOpen)
       }
+      setSidebarWidth(resolveSidebarWidth(settings.sidebarWidth))
 
       const openCustomize = isCustomizePath()
       const openNewSession = isNewSessionPath()
@@ -246,6 +251,16 @@ export default function App() {
       : null
 
   const handleOpenCustomize = useCallback(() => {
+    setCustomizeTab('general')
+    setNewSessionOpen(false)
+    setLandingOpen(false)
+    setSessionListGroupId(null)
+    setCustomizeOpen(true)
+    navigateToCustomize()
+  }, [])
+
+  const handleOpenSchedules = useCallback(() => {
+    setCustomizeTab('schedules')
     setNewSessionOpen(false)
     setLandingOpen(false)
     setSessionListGroupId(null)
@@ -362,6 +377,11 @@ export default function App() {
     }
   }, [selectedId, loadSessions, sessionListGroupId, agentTypes])
 
+  const handleSidebarWidthCommit = useCallback((width: number) => {
+    setSidebarWidth(width)
+    api.settings.update({ sidebarWidth: width }).catch(() => {})
+  }, [])
+
   const handleRenameSession = useCallback(async (id: string, newName: string) => {
     await api.sessions.rename(id, newName)
     await loadSessions()
@@ -373,7 +393,7 @@ export default function App() {
       {!appReady ? (
         <div className="h-screen bg-background" />
       ) : (
-      <SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange}>
+      <SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange} width={sidebarWidth}>
         <header className="app-header">
           <SidebarTrigger />
           <button type="button" className="app-brand shrink-0" onClick={handleOpenLaunch}>
@@ -382,7 +402,7 @@ export default function App() {
           {selected && selectedAgent && !customizeOpen && !newSessionOpen && !sessionListGroup && !landingOpen && (
             <>
               <span className="text-muted-foreground/35 shrink-0 select-none" aria-hidden="true">/</span>
-              <AgentHeader name={selected.name} agent={selectedAgent} />
+              <AgentHeader name={sessionDisplayName(selected)} agent={selectedAgent} />
             </>
           )}
           <div className="app-header__actions">
@@ -397,8 +417,13 @@ export default function App() {
             selectedId={selectedId}
             newSessionOpen={newSessionOpen}
             sessionListGroupId={sessionListGroupId}
+            sidebarWidth={sidebarWidth}
+            onSidebarWidthChange={setSidebarWidth}
+            onSidebarWidthCommit={handleSidebarWidthCommit}
             onSelect={handleSelect}
             onOpenNewSession={handleOpenNewSession}
+            onOpenSchedules={handleOpenSchedules}
+            schedulesPanelOpen={customizeOpen && customizeTab === 'schedules'}
             onOpenNewSessionForGroup={handleOpenNewSessionForGroup}
             onOpenSessionList={handleOpenSessionList}
             onRename={handleRenameSession}
@@ -414,6 +439,9 @@ export default function App() {
               <CustomizePanel
                 onClose={handleCloseCustomize}
                 onAgentTypesChanged={handleAgentTypesChanged}
+                agentTypes={agentTypes}
+                tab={customizeTab}
+                onTabChange={setCustomizeTab}
               />
             ) : newSessionOpen ? (
               <NewSessionPanel

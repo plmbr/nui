@@ -139,6 +139,7 @@ func initStore() error {
 	if err := store.ProvisionDefaultAgents(); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: provisioning default agents: %v\n", err)
 	}
+	backfillSessionsLastRunAt()
 	return nil
 }
 
@@ -175,6 +176,8 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/skills/", handleSkill)
 	mux.HandleFunc("/api/agents", handleAgents)
 	mux.HandleFunc("/api/agents/", handleAgentFile)
+	mux.HandleFunc("/api/schedules", handleSchedules)
+	mux.HandleFunc("/api/schedules/", handleSchedule)
 }
 
 var errDirectoryOutsideHome = errors.New("directory is outside the home directory")
@@ -312,7 +315,7 @@ func handleSessions(w http.ResponseWriter, r *http.Request) {
 		list := make([]model.Session, len(sessions))
 		copy(list, sessions)
 		mu.RUnlock()
-		writeJSON(w, http.StatusOK, list)
+		writeJSON(w, http.StatusOK, enrichSessions(list))
 
 	case http.MethodPost:
 		var req struct {
@@ -730,7 +733,7 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 			http.NotFound(w, r)
 			return
 		}
-		writeJSON(w, http.StatusOK, s)
+		writeJSON(w, http.StatusOK, enrichSession(s))
 
 	case http.MethodPatch:
 		var req struct {
@@ -863,6 +866,16 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		if patch.SidebarOpen != nil {
 			current.SidebarOpen = patch.SidebarOpen
+		}
+		if patch.SidebarWidth != nil {
+			w := *patch.SidebarWidth
+			if w < 200 {
+				w = 200
+			}
+			if w > 480 {
+				w = 480
+			}
+			current.SidebarWidth = &w
 		}
 		if patch.DisabledExtensions != nil {
 			current.DisabledExtensions = patch.DisabledExtensions

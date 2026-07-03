@@ -53,6 +53,7 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 
 	registerAPIRoutes(mux)
 	registerMCPRoutes(mux)
+	runScheduler()
 
 	mux.HandleFunc("/health", handleHealth)
 
@@ -86,6 +87,7 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 	go func() {
 		<-quit
 		fmt.Fprintln(os.Stderr, "shutting down: stopping agents and containers...")
+		stopScheduler()
 		if extensions.Default != nil {
 			extensions.Default.Shutdown()
 		}

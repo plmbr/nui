@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, AgentFileContent, AgentFileInfo, Bootstrap, Capabilities, ChatMessage, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, MCPServer, MentionListResponse, Session, Settings, SkillEntry } from './types'
+import type { AgentType, AgentFileContent, AgentFileInfo, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, MCPServer, MentionListResponse, Schedule, Session, Settings, SkillEntry } from './types'
 
 export interface RunRecord {
   runId: string
@@ -308,5 +308,28 @@ export const api = {
 
     remove: (file: string): Promise<void> =>
       request(`/agents/${encodeURIComponent(file)}`, { method: 'DELETE' }),
+  },
+
+  schedules: {
+    list: (): Promise<Schedule[]> =>
+      request('/schedules'),
+
+    create: (data: CreateScheduleRequest): Promise<Schedule> =>
+      request('/schedules', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    patch: (id: string, patch: Partial<Pick<Schedule, 'name' | 'agentType' | 'prompt' | 'workingDir' | 'interval' | 'cron' | 'enabled'>>): Promise<Schedule> =>
+      request(`/schedules/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      }),
+
+    delete: (id: string): Promise<{ ok: boolean }> =>
+      request(`/schedules/${id}`, { method: 'DELETE' }),
+
+    runNow: (id: string): Promise<Schedule> =>
+      request(`/schedules/${id}/run-now`, { method: 'POST' }),
   },
 }
