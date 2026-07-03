@@ -65,6 +65,7 @@ export interface AgentType {
   promptMode?: 'user' | 'auto'
   defaultPrompt?: string
   promptSuggestions?: PromptSuggestion[]
+  skills?: string[]
   workingDirInput?: boolean
   isBuiltin: boolean
   source?: 'builtin' | 'user' | 'extension'

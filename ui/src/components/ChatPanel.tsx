@@ -16,9 +16,11 @@ import { CodeBlock } from '@/components/CodeBlock'
 import { DiffBlock } from '@/components/DiffBlock'
 import { ThinkingIndicator } from '@/components/ThinkingIndicator'
 import { MentionMenu } from '@/components/MentionMenu'
+import { SlashCommandMenu } from '@/components/SlashCommandMenu'
 import { ToolCallBubble } from '@/components/ToolCallBubble'
 import { imageSrc, useSessionChat, type AssistantPart } from '@/hooks/useSessionChat'
 import { useMentionMenu } from '@/hooks/useMentionMenu'
+import { useSlashCommandMenu } from '@/hooks/useSlashCommandMenu'
 import { looksLikeDiff } from '@/lib/diff'
 import { normalizeMarkdown, stripInlineCodeDelimiters } from '@/lib/markdown'
 import { getCodeBlockInfo } from '@/lib/reactNodeText'
@@ -115,6 +117,7 @@ interface Props {
   promptMode?: 'user' | 'auto'
   defaultPrompt?: string
   promptSuggestions?: PromptSuggestion[]
+  slashCommands?: string[]
 }
 
 export function ChatPanel({
@@ -124,6 +127,7 @@ export function ChatPanel({
   promptMode = 'user',
   defaultPrompt,
   promptSuggestions,
+  slashCommands = [],
 }: Props) {
   const { messages, sendMessage, stopRun, isRunning, isLoading } = useSessionChat(session.id)
   const [input, setInput] = useState('')
@@ -211,6 +215,14 @@ export function ChatPanel({
 
   const mention = useMentionMenu({
     sessionId: session.id,
+    input,
+    setInput,
+    inputRef,
+    disabled: isRunning || hideInput,
+  })
+
+  const slashCommand = useSlashCommandMenu({
+    commands: slashCommands,
     input,
     setInput,
     inputRef,
@@ -368,12 +380,15 @@ export function ChatPanel({
     (promptSuggestions?.length ?? 0) > 0
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (slashCommand.handleKeyDown(e)) return
     if (mention.handleKeyDown(e)) return
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       submit()
     }
   }
+
+  const promptMenuOpen = slashCommand.open || mention.open
 
   const streamingAssistantId = isRunning
     ? [...messages].reverse().find((m) => m.role === 'assistant')?.id
@@ -513,6 +528,13 @@ export function ChatPanel({
           onDragLeave={onDragLeave}
           onDrop={onDrop}
         >
+          <SlashCommandMenu
+            open={slashCommand.open}
+            items={slashCommand.items}
+            activeIndex={slashCommand.activeIndex}
+            onSelect={slashCommand.applySelection}
+            onHover={slashCommand.setActiveIndex}
+          />
           <MentionMenu
             open={mention.open}
             items={mention.items}
@@ -562,16 +584,24 @@ export function ChatPanel({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
             onPaste={onPaste}
-            placeholder="Message your agent… (@ to mention, paste or drop images)"
+            placeholder="Message your agent… (/ for commands, @ to mention, paste or drop images)"
             rows={1}
             disabled={isRunning || uploadingCount > 0}
-            aria-autocomplete={mention.open ? 'list' : undefined}
-            aria-expanded={mention.open}
-            aria-controls={mention.open ? 'mention-menu' : undefined}
+            aria-autocomplete={promptMenuOpen ? 'list' : undefined}
+            aria-expanded={promptMenuOpen}
+            aria-controls={
+              slashCommand.open
+                ? 'slash-command-menu'
+                : mention.open
+                  ? 'mention-menu'
+                  : undefined
+            }
             aria-activedescendant={
-              mention.open && mention.items.length > 0
-                ? `mention-option-${mention.activeIndex}`
-                : undefined
+              slashCommand.open && slashCommand.items.length > 0
+                ? `slash-command-option-${slashCommand.activeIndex}`
+                : mention.open && mention.items.length > 0
+                  ? `mention-option-${mention.activeIndex}`
+                  : undefined
             }
           />
         </div>

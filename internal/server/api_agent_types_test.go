@@ -78,6 +78,48 @@ func TestAgentTypeInfoFromDef_promptSuggestions(t *testing.T) {
 	}
 }
 
+func TestAgentTypeInfoFromDef_skills(t *testing.T) {
+	def := model.ADLDefinition{
+		ID:      "skills-agent",
+		Name:    "Skills Agent",
+		Harness: model.ADLHarness{Type: "claude-code"},
+		AIAssets: model.ADLAIAssets{
+			Skills: []model.ADLSkill{
+				{Name: "code-review", Path: "./skills/code-review"},
+				{Name: "commit-helper", Ref: "commit-helper"},
+			},
+		},
+		Steps: []model.ADLStep{{
+			AIAssets: model.ADLAIAssets{
+				Skills: []model.ADLSkill{
+					{Name: "step-skill", Path: "./skills/step-skill"},
+					{Name: "code-review", Path: "./skills/code-review"},
+				},
+			},
+		}},
+	}
+	info := agentTypeInfoFromDef(def, false)
+	want := []string{"code-review", "commit-helper", "step-skill"}
+	if len(info.Skills) != len(want) {
+		t.Fatalf("Skills = %v, want %v", info.Skills, want)
+	}
+	for i, name := range want {
+		if info.Skills[i] != name {
+			t.Fatalf("Skills[%d] = %q, want %q", i, info.Skills[i], name)
+		}
+	}
+}
+
+func TestSkillNamesFromADL_legacySkill(t *testing.T) {
+	def := model.ADLDefinition{
+		Skill: "./skills/code-review/SKILL.md",
+	}
+	got := skillNamesFromADL(def)
+	if len(got) != 1 || got[0] != "code-review" {
+		t.Fatalf("skillNamesFromADL() = %v, want [code-review]", got)
+	}
+}
+
 func TestBuiltinAgentDefs_havePromptSuggestions(t *testing.T) {
 	for _, def := range builtinAgentDefs {
 		if len(def.PromptSuggestions) < 2 {

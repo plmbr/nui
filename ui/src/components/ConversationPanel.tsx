@@ -10,6 +10,7 @@ interface Props {
   promptMode?: 'user' | 'auto'
   defaultPrompt?: string
   promptSuggestions?: PromptSuggestion[]
+  slashCommands?: string[]
 }
 
 export function ConversationPanel({
@@ -19,6 +20,7 @@ export function ConversationPanel({
   promptMode,
   defaultPrompt,
   promptSuggestions,
+  slashCommands,
 }: Props) {
   return (
     <ChatPanel
@@ -28,6 +30,7 @@ export function ConversationPanel({
       promptMode={promptMode}
       defaultPrompt={defaultPrompt}
       promptSuggestions={promptSuggestions}
+      slashCommands={slashCommands}
     />
   )
 }

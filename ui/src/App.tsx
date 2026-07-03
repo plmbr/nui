@@ -468,6 +468,7 @@ export default function App() {
                 promptMode={promptMode}
                 defaultPrompt={selectedAgent?.defaultPrompt}
                 promptSuggestions={selectedAgent?.promptSuggestions}
+                slashCommands={selectedAgent?.skills}
               />
             ) : (
               <div className="empty-state">

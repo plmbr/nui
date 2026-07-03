@@ -33,6 +33,7 @@ type AgentTypeInfo struct {
 	PromptMode        string                     `json:"promptMode,omitempty"`        // user | auto
 	DefaultPrompt     string                     `json:"defaultPrompt,omitempty"`
 	PromptSuggestions []model.ADLPromptSuggestion `json:"promptSuggestions,omitempty"`
+	Skills            []string                   `json:"skills,omitempty"`
 	WorkingDirInput   bool                       `json:"workingDirInput,omitempty"` // true = user picks working dir at session create
 	IsBuiltin     bool   `json:"isBuiltin"`
 	Source        string `json:"source,omitempty"` // builtin | user | extension
@@ -447,21 +448,45 @@ func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
 
 func agentTypeInfoFromDef(def model.ADLDefinition, builtin bool) AgentTypeInfo {
 	info := AgentTypeInfo{
-		ID:              model.ADLAgentID(def),
-		Label:           model.ADLAgentLabel(def),
-		Description:     def.Description,
-		Harness:         def.Harness.Type,
-		Sandbox:         def.Harness.Sandbox,
+		ID:                model.ADLAgentID(def),
+		Label:             model.ADLAgentLabel(def),
+		Description:       def.Description,
+		Harness:           def.Harness.Type,
+		Sandbox:           def.Harness.Sandbox,
 		DefaultPrompt:     def.DefaultPrompt,
 		PromptSuggestions: def.PromptSuggestions,
+		Skills:            skillNamesFromADL(def),
 		WorkingDirInput:   model.IsADLWorkingDirInput(def),
-		IsBuiltin:       builtin,
-		Available:       harnessAvailable(def),
+		IsBuiltin:         builtin,
+		Available:         harnessAvailable(def),
 	}
 	if model.IsADLAutoPrompt(def) {
 		info.PromptMode = model.ADLPromptModeAuto
 	}
 	return info
+}
+
+func skillNamesFromADL(def model.ADLDefinition) []string {
+	defCopy := def
+	model.NormalizeADLSkills(&defCopy)
+
+	seen := map[string]bool{}
+	var names []string
+	add := func(skills []model.ADLSkill) {
+		for _, skill := range skills {
+			name := strings.TrimSpace(skill.Name)
+			if name == "" || seen[name] {
+				continue
+			}
+			seen[name] = true
+			names = append(names, name)
+		}
+	}
+	add(defCopy.AIAssets.Skills)
+	for _, step := range defCopy.Steps {
+		add(step.AIAssets.Skills)
+	}
+	return names
 }
 
 // harnessAvailable reports whether the harness required by def can run on this system.
