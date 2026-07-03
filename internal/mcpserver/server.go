@@ -75,9 +75,6 @@ func registerTools(server *mcp.Server, client *loopclient.Client) {
 			}
 		}
 		name := stringArg(args, "name")
-		if name == "" {
-			name = agentType
-		}
 		sess, err := client.CreateSession(ctx, loopclient.CreateSessionRequest{
 			Name:       name,
 			AgentType:  agentType,
@@ -119,7 +116,6 @@ func registerTools(server *mcp.Server, client *loopclient.Client) {
 				return toolError(fmt.Errorf("working directory required"))
 			}
 			sess, err := client.CreateSession(ctx, loopclient.CreateSessionRequest{
-				Name:       agentType,
 				AgentType:  agentType,
 				WorkingDir: wd,
 			})

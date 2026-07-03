@@ -10,6 +10,7 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
+  selectItemData,
 } from '@/components/ui/select'
 import { api } from '@/api'
 import { pickDefaultAgentTypeId, selectableAgentTypes } from '@/lib/agentTypes'
@@ -63,7 +64,11 @@ export function GeneralTab() {
           Used when Loop creates a session on startup.
         </p>
         {selectableAgentTypesList.length > 0 && (
-          <Select value={defaultAgentType} onValueChange={handleDefaultAgentChange}>
+          <Select
+            value={defaultAgentType}
+            onValueChange={handleDefaultAgentChange}
+            items={selectItemData(selectableAgentTypesList)}
+          >
             <SelectTrigger className="w-full max-w-md">
               <SelectValue placeholder="Select agent" />
             </SelectTrigger>

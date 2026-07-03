@@ -4,7 +4,19 @@ import { Select as SelectPrimitive } from "@base-ui/react/select"
 import { cn } from "@/lib/utils"
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
 
-const Select = SelectPrimitive.Root
+type SelectItemData = { value: string; label: React.ReactNode }
+
+type SelectProps = SelectPrimitive.Root.Props & {
+  items?: SelectItemData[] | Record<string, React.ReactNode>
+}
+
+function Select({ items, ...props }: SelectProps) {
+  return <SelectPrimitive.Root items={items} {...props} />
+}
+
+function selectItemData(items: Array<{ id: string; label: React.ReactNode }>): SelectItemData[] {
+  return items.map((item) => ({ value: item.id, label: item.label }))
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (
@@ -187,6 +199,7 @@ function SelectScrollDownButton({
 
 export {
   Select,
+  selectItemData,
   SelectContent,
   SelectGroup,
   SelectItem,
@@ -197,3 +210,4 @@ export {
   SelectTrigger,
   SelectValue,
 }
+export type { SelectItemData }

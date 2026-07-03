@@ -60,7 +60,6 @@ var runCmd = &cobra.Command{
 				wd = cwd
 			}
 			sess, err := client.CreateSession(ctx, loopclient.CreateSessionRequest{
-				Name:       agentType,
 				AgentType:  agentType,
 				WorkingDir: wd,
 			})

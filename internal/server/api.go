@@ -328,8 +328,8 @@ func handleSessions(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
-		if req.Name == "" || req.AgentType == "" {
-			http.Error(w, "name and agentType are required", http.StatusBadRequest)
+		if req.AgentType == "" {
+			http.Error(w, "agentType is required", http.StatusBadRequest)
 			return
 		}
 		s, err := createSession(req.Name, req.WorkingDir, req.AgentType, req.AgentConfig)

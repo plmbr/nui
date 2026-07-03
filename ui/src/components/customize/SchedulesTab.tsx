@@ -15,6 +15,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  selectItemData,
 } from '@/components/ui/select'
 import { api } from '@/api'
 import type { AgentType, Schedule } from '@/types'
@@ -100,7 +101,11 @@ function ScheduleFormFields({
       </div>
       <div className="grid gap-2">
         <Label>Agent</Label>
-        <Select value={agentType} onValueChange={(v) => onAgentTypeChange(v ?? '')}>
+        <Select
+          value={agentType}
+          onValueChange={(v) => onAgentTypeChange(v ?? '')}
+          items={selectItemData(autoAgents)}
+        >
           <SelectTrigger><SelectValue placeholder="Select agent" /></SelectTrigger>
           <SelectContent>
             {autoAgents.map((a) => (

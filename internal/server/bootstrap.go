@@ -339,12 +339,15 @@ func createSessionEx(opts sessionCreateOpts) (model.Session, error) {
 	workingDir := opts.WorkingDir
 	agentType := opts.AgentType
 	agentConfig := opts.AgentConfig
-	if name == "" || agentType == "" {
-		return model.Session{}, fmt.Errorf("name and agentType are required")
+	if agentType == "" {
+		return model.Session{}, fmt.Errorf("agentType is required")
 	}
 	def, ok := findADLDef(agentType)
 	if !ok {
 		return model.Session{}, fmt.Errorf("unknown agent type: %s", agentType)
+	}
+	if strings.TrimSpace(name) == "" {
+		name = model.ADLAgentLabel(def)
 	}
 
 	sessionID := uuid.NewString()

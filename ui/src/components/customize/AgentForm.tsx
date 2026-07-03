@@ -12,6 +12,7 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
+  selectItemData,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -124,7 +125,11 @@ function SelectGrouped<T extends { id: string; label: string; group: string }>({
 }) {
   const groups = groupBy(items)
   return (
-    <Select value={value || null} onValueChange={(v) => v && onValueChange(v)}>
+    <Select
+      value={value || null}
+      onValueChange={(v) => v && onValueChange(v)}
+      items={selectItemData(items)}
+    >
       <SelectTrigger className="w-full">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
@@ -303,6 +308,10 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
             <Select
               value={form.promptMode}
               onValueChange={(v) => patch({ promptMode: (v ?? 'user') as 'user' | 'auto' })}
+              items={[
+                { value: 'user', label: 'User (interactive chat)' },
+                { value: 'auto', label: 'Auto (run default prompt on start)' },
+              ]}
             >
               <SelectTrigger className="w-full">
                 <SelectValue />
@@ -340,6 +349,10 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
           <Select
             value={form.workingDirInput ? 'true' : 'false'}
             onValueChange={(v) => patch({ workingDirInput: v === 'true' })}
+            items={[
+              { value: 'false', label: 'Isolated workspace (default)' },
+              { value: 'true', label: 'User picks directory at session create' },
+            ]}
           >
             <SelectTrigger className="w-full max-w-md">
               <SelectValue />
@@ -388,7 +401,11 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
           </ul>
         )}
         {options.skills.length > 0 ? (
-          <Select key={`add-skill-${form.skills.length}`} onValueChange={(v) => v && addSkill(v)}>
+          <Select
+            key={`add-skill-${form.skills.length}`}
+            onValueChange={(v) => v && addSkill(v)}
+            items={selectItemData(options.skills)}
+          >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Add skill…" />
             </SelectTrigger>
@@ -448,7 +465,11 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
           </ul>
         )}
         {options.mcpServers.length > 0 ? (
-          <Select key={`add-mcp-${form.mcpServers.length}`} onValueChange={(v) => v && addMCP(v)}>
+          <Select
+            key={`add-mcp-${form.mcpServers.length}`}
+            onValueChange={(v) => v && addMCP(v)}
+            items={selectItemData(options.mcpServers)}
+          >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Add MCP server…" />
             </SelectTrigger>
