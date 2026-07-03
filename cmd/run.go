@@ -26,10 +26,24 @@ var (
 	runSessionID  string
 )
 
-var runCmd = &cobra.Command{
-	Use:   "run",
-	Short: "Run an agent headlessly against a Loop server",
-	RunE: func(cmd *cobra.Command, args []string) error {
+// NewRunCmd returns the loop run command.
+func NewRunCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "run",
+		Short: "Run an agent headlessly against a Loop server",
+		RunE:  runCommand,
+	}
+	registerRunFlags(cmd)
+	cmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+		if noWait, _ := cmd.Flags().GetBool("no-wait"); noWait {
+			runWait = false
+		}
+		return nil
+	}
+	return cmd
+}
+
+func runCommand(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		if ctx == nil {
 			ctx = context.Background()
@@ -111,7 +125,6 @@ var runCmd = &cobra.Command{
 			}
 			return fmt.Errorf("run failed")
 		}
-	},
 }
 
 func ensureLoopServer(ctx context.Context, client *loopclient.Client, spawn bool) error {
@@ -141,20 +154,17 @@ func ensureLoopServer(ctx context.Context, client *loopclient.Client, spawn bool
 	return fmt.Errorf("timed out waiting for loop server at %s", client.BaseURL)
 }
 
+func registerRunFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVarP(&runAgentType, "agent-type", "a", "", "ADL agent id for a new session (default: settings defaultAgentType)")
+	cmd.Flags().StringVarP(&runMessage, "message", "m", "", "Prompt message (optional for promptMode:auto agents)")
+	cmd.Flags().StringVarP(&runWorkingDir, "working-dir", "w", "", "Working directory for a new session")
+	cmd.Flags().StringVar(&runURL, "url", "", "Loop server base URL (default LOOP_URL or http://127.0.0.1:8080)")
+	cmd.Flags().StringVar(&runSessionID, "session-id", "", "Existing session id (skips session create)")
+	cmd.Flags().BoolVar(&runWait, "wait", true, "Wait for the run to finish and stream text to stdout")
+	cmd.Flags().Bool("no-wait", false, "Return immediately after starting the run (same as --wait=false)")
+	cmd.Flags().BoolVar(&runSpawn, "spawn", false, "Start loop ui in the background if the server is unreachable")
+}
+
 func init() {
-	runCmd.Flags().StringVarP(&runAgentType, "agent-type", "a", "", "ADL agent id for a new session (default: settings defaultAgentType)")
-	runCmd.Flags().StringVarP(&runMessage, "message", "m", "", "Prompt message (optional for promptMode:auto agents)")
-	runCmd.Flags().StringVarP(&runWorkingDir, "working-dir", "w", "", "Working directory for a new session")
-	runCmd.Flags().StringVar(&runURL, "url", "", "Loop server base URL (default LOOP_URL or http://127.0.0.1:8080)")
-	runCmd.Flags().StringVar(&runSessionID, "session-id", "", "Existing session id (skips session create)")
-	runCmd.Flags().BoolVar(&runWait, "wait", true, "Wait for the run to finish and stream text to stdout")
-	runCmd.Flags().Bool("no-wait", false, "Return immediately after starting the run (same as --wait=false)")
-	runCmd.Flags().BoolVar(&runSpawn, "spawn", false, "Start loop ui in the background if the server is unreachable")
-	rootCmd.AddCommand(runCmd)
-	runCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		if noWait, _ := cmd.Flags().GetBool("no-wait"); noWait {
-			runWait = false
-		}
-		return nil
-	}
+	rootCmd.AddCommand(NewRunCmd())
 }

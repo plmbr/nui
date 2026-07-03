@@ -24,135 +24,169 @@ var (
 	scheduleName       string
 )
 
-var scheduleCmd = &cobra.Command{
-	Use:   "schedule",
-	Short: "Manage scheduled autonomous agent runs",
+// NewScheduleCmd returns the loop schedule command tree.
+func NewScheduleCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "schedule",
+		Short: "Manage scheduled autonomous agent runs",
+	}
+	cmd.PersistentFlags().StringVar(&scheduleURL, "url", "", "Loop server base URL (default LOOP_URL or http://127.0.0.1:8080)")
+
+	addCmd := newScheduleAddCmd()
+	cmd.AddCommand(
+		newScheduleListCmd(),
+		addCmd,
+		newScheduleEnableCmd(),
+		newScheduleDisableCmd(),
+		newScheduleDeleteCmd(),
+		newScheduleRunNowCmd(),
+	)
+	return cmd
 }
 
-var scheduleListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List schedules",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
-		client := loopclient.New(scheduleURL)
-		items, err := client.ListSchedules(ctx)
-		if err != nil {
-			return err
-		}
-		if len(items) == 0 {
-			fmt.Println("No schedules.")
+func newScheduleListCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List schedules",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			client := loopclient.New(scheduleURL)
+			items, err := client.ListSchedules(ctx)
+			if err != nil {
+				return err
+			}
+			if len(items) == 0 {
+				fmt.Println("No schedules.")
+				return nil
+			}
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			fmt.Fprintln(w, "ID\tNAME\tAGENT\tWHEN\tENABLED\tNEXT")
+			for _, s := range items {
+				when := s.Interval
+				if when == "" {
+					when = s.Cron
+				}
+				enabled := "no"
+				if s.Enabled {
+					enabled = "yes"
+				}
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", s.ID, s.Name, s.AgentType, when, enabled, s.NextRunAt)
+			}
+			return w.Flush()
+		},
+	}
+}
+
+func newScheduleAddCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "add",
+		Short: "Create a schedule",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			every := strings.TrimSpace(scheduleEvery)
+			cronExpr := strings.TrimSpace(scheduleCron)
+			if every == "" && cronExpr == "" {
+				return fmt.Errorf("one of --every or --cron is required")
+			}
+			if every != "" && cronExpr != "" {
+				return fmt.Errorf("--every and --cron are mutually exclusive")
+			}
+			agentType := strings.TrimSpace(scheduleAgentType)
+			if agentType == "" {
+				return fmt.Errorf("--agent-type is required")
+			}
+			name := strings.TrimSpace(scheduleName)
+			if name == "" {
+				name = agentType
+			}
+			client := loopclient.New(scheduleURL)
+			s, err := client.CreateSchedule(ctx, loopclient.CreateScheduleRequest{
+				Name:       name,
+				AgentType:  agentType,
+				Prompt:     strings.TrimSpace(schedulePrompt),
+				WorkingDir: strings.TrimSpace(scheduleWorkingDir),
+				Interval:   every,
+				Cron:       cronExpr,
+			})
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Created schedule %s (%s)\n", s.ID, s.Name)
 			return nil
-		}
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "ID\tNAME\tAGENT\tWHEN\tENABLED\tNEXT")
-		for _, s := range items {
-			when := s.Interval
-			if when == "" {
-				when = s.Cron
+		},
+	}
+	cmd.Flags().StringVarP(&scheduleAgentType, "agent-type", "a", "", "ADL agent id (must be promptMode:auto)")
+	cmd.Flags().StringVar(&scheduleEvery, "every", "", "Fixed interval (e.g. 5m, 1h, 1d)")
+	cmd.Flags().StringVar(&scheduleCron, "cron", "", "Cron expression (5-field)")
+	cmd.Flags().StringVarP(&schedulePrompt, "prompt", "m", "", "Optional prompt override")
+	cmd.Flags().StringVarP(&scheduleWorkingDir, "working-dir", "w", "", "Working directory for new sessions")
+	cmd.Flags().StringVar(&scheduleName, "name", "", "Schedule display name")
+	return cmd
+}
+
+func newScheduleEnableCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "enable <id>",
+		Short: "Enable a schedule",
+		Args:  cobra.ExactArgs(1),
+		RunE:  scheduleSetEnabled(true),
+	}
+}
+
+func newScheduleDisableCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "disable <id>",
+		Short: "Disable a schedule",
+		Args:  cobra.ExactArgs(1),
+		RunE:  scheduleSetEnabled(false),
+	}
+}
+
+func newScheduleDeleteCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "delete <id>",
+		Short: "Delete a schedule",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			if ctx == nil {
+				ctx = context.Background()
 			}
-			enabled := "no"
-			if s.Enabled {
-				enabled = "yes"
+			client := loopclient.New(scheduleURL)
+			if err := client.DeleteSchedule(ctx, args[0]); err != nil {
+				return err
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", s.ID, s.Name, s.AgentType, when, enabled, s.NextRunAt)
-		}
-		return w.Flush()
-	},
+			fmt.Println("Deleted.")
+			return nil
+		},
+	}
 }
 
-var scheduleAddCmd = &cobra.Command{
-	Use:   "add",
-	Short: "Create a schedule",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
-		every := strings.TrimSpace(scheduleEvery)
-		cronExpr := strings.TrimSpace(scheduleCron)
-		if every == "" && cronExpr == "" {
-			return fmt.Errorf("one of --every or --cron is required")
-		}
-		if every != "" && cronExpr != "" {
-			return fmt.Errorf("--every and --cron are mutually exclusive")
-		}
-		agentType := strings.TrimSpace(scheduleAgentType)
-		if agentType == "" {
-			return fmt.Errorf("--agent-type is required")
-		}
-		name := strings.TrimSpace(scheduleName)
-		if name == "" {
-			name = agentType
-		}
-		client := loopclient.New(scheduleURL)
-		s, err := client.CreateSchedule(ctx, loopclient.CreateScheduleRequest{
-			Name:       name,
-			AgentType:  agentType,
-			Prompt:     strings.TrimSpace(schedulePrompt),
-			WorkingDir: strings.TrimSpace(scheduleWorkingDir),
-			Interval:   every,
-			Cron:       cronExpr,
-		})
-		if err != nil {
-			return err
-		}
-		fmt.Printf("Created schedule %s (%s)\n", s.ID, s.Name)
-		return nil
-	},
-}
-
-var scheduleEnableCmd = &cobra.Command{
-	Use:   "enable <id>",
-	Short: "Enable a schedule",
-	Args:  cobra.ExactArgs(1),
-	RunE:  scheduleSetEnabled(true),
-}
-
-var scheduleDisableCmd = &cobra.Command{
-	Use:   "disable <id>",
-	Short: "Disable a schedule",
-	Args:  cobra.ExactArgs(1),
-	RunE:  scheduleSetEnabled(false),
-}
-
-var scheduleDeleteCmd = &cobra.Command{
-	Use:   "delete <id>",
-	Short: "Delete a schedule",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
-		client := loopclient.New(scheduleURL)
-		if err := client.DeleteSchedule(ctx, args[0]); err != nil {
-			return err
-		}
-		fmt.Println("Deleted.")
-		return nil
-	},
-}
-
-var scheduleRunNowCmd = &cobra.Command{
-	Use:   "run-now <id>",
-	Short: "Trigger a schedule immediately",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := cmd.Context()
-		if ctx == nil {
-			ctx = context.Background()
-		}
-		client := loopclient.New(scheduleURL)
-		s, err := client.RunScheduleNow(ctx, args[0])
-		if err != nil {
-			return err
-		}
-		fmt.Printf("Started schedule %s; last session %s\n", s.Name, s.LastSessionID)
-		return nil
-	},
+func newScheduleRunNowCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "run-now <id>",
+		Short: "Trigger a schedule immediately",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			if ctx == nil {
+				ctx = context.Background()
+			}
+			client := loopclient.New(scheduleURL)
+			s, err := client.RunScheduleNow(ctx, args[0])
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Started schedule %s; last session %s\n", s.Name, s.LastSessionID)
+			return nil
+		},
+	}
 }
 
 func scheduleSetEnabled(enabled bool) func(*cobra.Command, []string) error {
@@ -178,15 +212,5 @@ func scheduleSetEnabled(enabled bool) func(*cobra.Command, []string) error {
 }
 
 func init() {
-	scheduleCmd.PersistentFlags().StringVar(&scheduleURL, "url", "", "Loop server base URL (default LOOP_URL or http://127.0.0.1:8080)")
-
-	scheduleAddCmd.Flags().StringVarP(&scheduleAgentType, "agent-type", "a", "", "ADL agent id (must be promptMode:auto)")
-	scheduleAddCmd.Flags().StringVar(&scheduleEvery, "every", "", "Fixed interval (e.g. 5m, 1h, 1d)")
-	scheduleAddCmd.Flags().StringVar(&scheduleCron, "cron", "", "Cron expression (5-field)")
-	scheduleAddCmd.Flags().StringVarP(&schedulePrompt, "prompt", "m", "", "Optional prompt override")
-	scheduleAddCmd.Flags().StringVarP(&scheduleWorkingDir, "working-dir", "w", "", "Working directory for new sessions")
-	scheduleAddCmd.Flags().StringVar(&scheduleName, "name", "", "Schedule display name")
-
-	scheduleCmd.AddCommand(scheduleListCmd, scheduleAddCmd, scheduleEnableCmd, scheduleDisableCmd, scheduleDeleteCmd, scheduleRunNowCmd)
-	rootCmd.AddCommand(scheduleCmd)
+	rootCmd.AddCommand(NewScheduleCmd())
 }
