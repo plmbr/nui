@@ -51,21 +51,29 @@ function removeMention(current: string, path: string): string {
     .trimStart()
 }
 
-function imageFilesFromDataTransfer(dataTransfer: DataTransfer): File[] {
+function isImageFile(file: File): boolean {
+  return file.type.startsWith('image/')
+}
+
+function filesFromDataTransfer(dataTransfer: DataTransfer): File[] {
   const files: File[] = []
   if (dataTransfer.files.length > 0) {
     for (const file of dataTransfer.files) {
-      if (file.type.startsWith('image/')) files.push(file)
+      files.push(file)
     }
     return files
   }
   for (const item of dataTransfer.items) {
-    if (item.kind === 'file' && item.type.startsWith('image/')) {
+    if (item.kind === 'file') {
       const file = item.getAsFile()
       if (file) files.push(file)
     }
   }
   return files
+}
+
+function imageFilesFromDataTransfer(dataTransfer: DataTransfer): File[] {
+  return filesFromDataTransfer(dataTransfer).filter(isImageFile)
 }
 
 const SUGGESTION_ICONS: Record<string, LucideIcon> = {
@@ -134,6 +142,7 @@ export function ChatPanel({
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [uploadingCount, setUploadingCount] = useState(0)
+  const [uploadingImageCount, setUploadingImageCount] = useState(0)
   const attachmentsRef = useRef<PendingAttachment[]>([])
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const scrollSpacerRef = useRef<HTMLDivElement>(null)
@@ -171,6 +180,7 @@ export function ChatPanel({
   const uploadImages = useCallback(async (files: File[]) => {
     if (files.length === 0 || isRunning || hideInput) return
     setUploadingCount((count) => count + files.length)
+    setUploadingImageCount((count) => count + files.length)
     try {
       for (const file of files) {
         const previewUrl = URL.createObjectURL(file)
@@ -192,6 +202,24 @@ export function ChatPanel({
       }
     } catch (err) {
       console.error('image upload failed:', err)
+    } finally {
+      setUploadingCount((count) => Math.max(0, count - files.length))
+      setUploadingImageCount((count) => Math.max(0, count - files.length))
+    }
+  }, [hideInput, isRunning, session.id])
+
+  const uploadFiles = useCallback(async (files: File[]) => {
+    if (files.length === 0 || isRunning || hideInput) return
+    setUploadingCount((count) => count + files.length)
+    try {
+      for (const file of files) {
+        try {
+          const uploaded = await api.uploads.upload(session.id, file)
+          setInput((current) => appendMention(current, uploaded.path))
+        } catch (err) {
+          console.error('file upload failed:', err)
+        }
+      }
     } finally {
       setUploadingCount((count) => Math.max(0, count - files.length))
     }
@@ -298,16 +326,10 @@ export function ChatPanel({
   ])
 
   const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const files: File[] = []
-    for (const item of e.clipboardData.items) {
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile()
-        if (file) files.push(file)
-      }
-    }
-    if (files.length === 0) return
+    const images = imageFilesFromDataTransfer(e.clipboardData)
+    if (images.length === 0) return
     e.preventDefault()
-    void uploadImages(files)
+    void uploadImages(images)
   }
 
   const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -327,8 +349,12 @@ export function ChatPanel({
     e.preventDefault()
     setIsDragging(false)
     if (isRunning || hideInput) return
-    const files = imageFilesFromDataTransfer(e.dataTransfer)
-    if (files.length > 0) void uploadImages(files)
+    const dropped = filesFromDataTransfer(e.dataTransfer)
+    if (dropped.length === 0) return
+    const images = dropped.filter(isImageFile)
+    const files = dropped.filter((file) => !isImageFile(file))
+    if (images.length > 0) void uploadImages(images)
+    if (files.length > 0) void uploadFiles(files)
   }
 
   useLayoutEffect(() => {
@@ -546,7 +572,7 @@ export function ChatPanel({
             onBack={mention.goBack}
             onHover={mention.setActiveIndex}
           />
-          {(attachments.length > 0 || uploadingCount > 0) && (
+          {(attachments.length > 0 || uploadingImageCount > 0) && (
             <div className="agui-chat__attachments" aria-label="Attached images">
               {attachments.map((attachment) => (
                 <div key={attachment.path} className="agui-chat__attachment">
@@ -570,7 +596,7 @@ export function ChatPanel({
                   </button>
                 </div>
               ))}
-              {uploadingCount > 0 && (
+              {uploadingImageCount > 0 && (
                 <div className="agui-chat__attachment agui-chat__attachment--uploading" aria-hidden>
                   <span className="agui-chat__attachment-spinner" />
                 </div>
@@ -584,7 +610,7 @@ export function ChatPanel({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
             onPaste={onPaste}
-            placeholder="Message your agent… (/ for commands, @ to mention, paste or drop images)"
+            placeholder="Message your agent… (/ for commands, @ to mention, paste or drop images and files)"
             rows={1}
             disabled={isRunning || uploadingCount > 0}
             aria-autocomplete={promptMenuOpen ? 'list' : undefined}

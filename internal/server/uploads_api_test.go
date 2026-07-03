@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -86,8 +87,8 @@ func TestHandleSessionUploads(t *testing.T) {
 	}
 }
 
-func TestHandleSessionUploadsRejectsNonImage(t *testing.T) {
-	sessionID := "sess-upload-bad"
+func TestHandleSessionUploadsAcceptsTextFile(t *testing.T) {
+	sessionID := "sess-upload-txt"
 	mu.Lock()
 	sessions = []model.Session{{
 		ID:        sessionID,
@@ -100,6 +101,7 @@ func TestHandleSessionUploadsRejectsNonImage(t *testing.T) {
 		mu.Lock()
 		sessions = nil
 		mu.Unlock()
+		_ = os.RemoveAll(filepath.Join(os.TempDir(), "loop-uploads", sessionID))
 	})
 
 	body := &bytes.Buffer{}
@@ -119,7 +121,21 @@ func TestHandleSessionUploadsRejectsNonImage(t *testing.T) {
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	rec := httptest.NewRecorder()
 	handleSessionUploads(rec, req, sessionID)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want 400", rec.Code)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+
+	var resp uploadResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Path == "" || resp.URL == "" || resp.Filename != "notes.txt" {
+		t.Fatalf("unexpected response: %+v", resp)
+	}
+	if !strings.HasSuffix(resp.Path, ".txt") {
+		t.Fatalf("path = %q, want .txt suffix", resp.Path)
+	}
+	if _, err := os.Stat(resp.Path); err != nil {
+		t.Fatalf("saved file missing: %v", err)
 	}
 }

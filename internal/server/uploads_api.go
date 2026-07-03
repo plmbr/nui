@@ -25,6 +25,40 @@ var allowedImageTypes = map[string]string{
 	"image/webp": ".webp",
 }
 
+func uploadExtension(originalName, mediaType string) (string, bool) {
+	if ext, ok := allowedImageTypes[mediaType]; ok {
+		return ext, true
+	}
+	if ext := sanitizeUploadExt(filepath.Ext(strings.TrimSpace(originalName))); ext != "" {
+		return ext, true
+	}
+	if exts, _ := mime.ExtensionsByType(mediaType); len(exts) > 0 {
+		if ext := sanitizeUploadExt(exts[0]); ext != "" {
+			return ext, true
+		}
+	}
+	return ".bin", true
+}
+
+func sanitizeUploadExt(ext string) string {
+	ext = strings.ToLower(strings.TrimSpace(ext))
+	if ext == "" || ext == "." {
+		return ""
+	}
+	if !strings.HasPrefix(ext, ".") {
+		ext = "." + ext
+	}
+	if len(ext) > 16 {
+		return ""
+	}
+	for _, r := range ext[1:] {
+		if (r < 'a' || r > 'z') && (r < '0' || r > '9') {
+			return ""
+		}
+	}
+	return ext
+}
+
 type uploadResponse struct {
 	Path      string `json:"path"`
 	URL       string `json:"url"`
@@ -70,9 +104,9 @@ func handleSessionUploads(w http.ResponseWriter, r *http.Request, sessionID stri
 	}
 
 	mediaType := http.DetectContentType(data)
-	ext, ok := allowedImageTypes[mediaType]
+	ext, ok := uploadExtension(header.Filename, mediaType)
 	if !ok {
-		http.Error(w, "unsupported image type", http.StatusBadRequest)
+		http.Error(w, "unsupported file type", http.StatusBadRequest)
 		return
 	}
 

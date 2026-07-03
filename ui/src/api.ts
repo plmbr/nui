@@ -49,6 +49,25 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
+async function uploadSessionFile(
+  sessionId: string,
+  file: File | Blob,
+  filename?: string,
+): Promise<UploadedImage> {
+  const form = new FormData()
+  const name = filename?.trim() || (file instanceof File ? file.name : 'upload')
+  form.append('file', file, name)
+  const res = await fetch(`${BASE}/sessions/${sessionId}/uploads`, {
+    method: 'POST',
+    body: form,
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(text || res.statusText)
+  }
+  return res.json() as Promise<UploadedImage>
+}
+
 export const api = {
   sessions: {
     list: (): Promise<Session[]> =>
@@ -158,20 +177,8 @@ export const api = {
   },
 
   uploads: {
-    image: async (sessionId: string, file: File | Blob, filename?: string): Promise<UploadedImage> => {
-      const form = new FormData()
-      const name = filename?.trim() || (file instanceof File ? file.name : 'image.png')
-      form.append('file', file, name)
-      const res = await fetch(`${BASE}/sessions/${sessionId}/uploads`, {
-        method: 'POST',
-        body: form,
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text || res.statusText)
-      }
-      return res.json() as Promise<UploadedImage>
-    },
+    upload: uploadSessionFile,
+    image: uploadSessionFile,
   },
 
   messages: {
