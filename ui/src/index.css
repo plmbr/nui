@@ -352,11 +352,16 @@
   }
 
   .sidebar-session__button {
-    @apply h-9 min-h-9 items-center gap-1.5 py-0 text-sm;
+    @apply h-8 min-h-8 items-center gap-1.5 py-0 pl-3 text-xs text-muted-foreground;
   }
 
   .sidebar-session__name {
-    @apply min-w-0 flex-1 truncate text-left text-sm leading-snug;
+    @apply min-w-0 flex-1 truncate text-left text-xs leading-snug text-sidebar-foreground/85;
+  }
+
+  [data-active="true"].sidebar-session__button,
+  [data-active="true"] .sidebar-session__name {
+    color: inherit;
   }
 
   .sidebar-session__last-run {

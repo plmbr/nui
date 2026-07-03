@@ -358,7 +358,7 @@ function CollapsibleSessionGroup({
       </SidebarGroupLabel>
       {open && (
         <SidebarGroupContent>
-          <SidebarMenu className="pl-4">
+          <SidebarMenu className="pl-6">
             {group.sessions.map((s) => (
               <SessionListItem
                 key={s.id}
