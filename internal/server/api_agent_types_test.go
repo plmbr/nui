@@ -99,7 +99,7 @@ func TestAgentTypeInfoFromDef_skills(t *testing.T) {
 		}},
 	}
 	info := agentTypeInfoFromDef(def, false)
-	want := []string{"code-review", "commit-helper", "step-skill"}
+	want := []string{"code-review", "commit-helper", "step-skill", "create-agent"}
 	if len(info.Skills) != len(want) {
 		t.Fatalf("Skills = %v, want %v", info.Skills, want)
 	}
@@ -115,8 +115,25 @@ func TestSkillNamesFromADL_legacySkill(t *testing.T) {
 		Skill: "./skills/code-review/SKILL.md",
 	}
 	got := skillNamesFromADL(def)
-	if len(got) != 1 || got[0] != "code-review" {
-		t.Fatalf("skillNamesFromADL() = %v, want [code-review]", got)
+	if len(got) != 2 || got[0] != "code-review" || got[1] != "create-agent" {
+		t.Fatalf("skillNamesFromADL() = %v, want [code-review create-agent]", got)
+	}
+}
+
+func TestSkillNamesFromADL_includesBuiltinSkills(t *testing.T) {
+	got := skillNamesFromADL(model.ADLDefinition{})
+	if len(got) == 0 {
+		t.Fatal("expected builtin skills")
+	}
+	found := false
+	for _, name := range got {
+		if name == "create-agent" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("skillNamesFromADL() = %v, want create-agent", got)
 	}
 }
 

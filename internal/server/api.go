@@ -17,6 +17,7 @@ import (
 	"loop/internal/agent"
 	"loop/internal/extensions"
 	"loop/internal/model"
+	"loop/internal/skills"
 	"loop/internal/store"
 
 	"github.com/google/uuid"
@@ -485,6 +486,11 @@ func skillNamesFromADL(def model.ADLDefinition) []string {
 	add(defCopy.AIAssets.Skills)
 	for _, step := range defCopy.Steps {
 		add(step.AIAssets.Skills)
+	}
+	for _, name := range skills.BuiltinSkillNames() {
+		if !seen[name] {
+			names = append(names, name)
+		}
 	}
 	return names
 }

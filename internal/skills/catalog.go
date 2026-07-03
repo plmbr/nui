@@ -278,6 +278,9 @@ func Resolve(ctx Context, skill model.ADLSkill) (string, error) {
 }
 
 func resolveRef(ctx Context, ref string) (string, error) {
+	if IsBuiltinRef(ref) {
+		return ResolveBuiltin(strings.TrimPrefix(strings.TrimSpace(ref), BuiltinRefPrefix))
+	}
 	if extensions.IsExtRef(ref) && extensions.Default != nil {
 		_, dir, err := extensions.Default.ResolveSkill(ref)
 		if err == nil {

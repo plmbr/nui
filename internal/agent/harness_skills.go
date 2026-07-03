@@ -8,6 +8,7 @@ import (
 )
 
 func installHarnessSkills(harnessType, configDir, workingDir string, skillList []model.ADLSkill) error {
+	skillList = skills.WithBuiltins(skillList)
 	if len(skillList) == 0 {
 		return nil
 	}

@@ -110,6 +110,26 @@ func TestProvisionClaudeHarnessConfigLinksCredentials(t *testing.T) {
 	}
 }
 
+func TestProvisionClaudeHarnessConfigInstallsBuiltinSkills(t *testing.T) {
+	tmp := t.TempDir()
+	t.Setenv("HOME", filepath.Join(tmp, "home"))
+
+	sessionID := "builtin-skills-session"
+	configDir, err := ProvisionHarnessConfig(sessionID, "claude-code", HarnessDeps{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	skillPath := filepath.Join(configDir, "skills", "create-agent", "SKILL.md")
+	data, err := os.ReadFile(skillPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "name: create-agent") {
+		t.Fatalf("create-agent SKILL.md = %q", string(data))
+	}
+}
+
 func TestProvisionClaudeHarnessConfigSkipsCredentialsWhenUserScope(t *testing.T) {
 	tmp := t.TempDir()
 	home := filepath.Join(tmp, "home")
