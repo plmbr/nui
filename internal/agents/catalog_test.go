@@ -32,19 +32,9 @@ harness:
 		t.Fatalf("id = %q, want test-watchdog", id)
 	}
 
-	types, err := ListTypes()
-	if err != nil {
-		t.Fatalf("ListTypes: %v", err)
-	}
-	found := false
-	for _, info := range types {
-		if info.ID == "test-watchdog" && info.Source == "user" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Fatal("installed agent not listed")
+	agentsDir := filepath.Join(home, ".loop", "agents")
+	if _, err := os.Stat(filepath.Join(agentsDir, "test-watchdog.yaml")); err != nil {
+		t.Fatalf("installed agent file missing: %v", err)
 	}
 
 	if err := Remove("test-watchdog"); err != nil {

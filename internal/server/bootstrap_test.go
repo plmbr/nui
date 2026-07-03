@@ -99,22 +99,54 @@ func TestApplyStartSettings_unknownDefaultAgent(t *testing.T) {
 	}
 }
 
-func TestBootstrapFromCLI_noAgentTypeDoesNotCreateSession(t *testing.T) {
+func TestNeedsCLILaunch(t *testing.T) {
+	if needsCLILaunch(StartOptions{}) {
+		t.Fatal("expected false for empty options")
+	}
+	if !needsCLILaunch(StartOptions{Open: true}) {
+		t.Fatal("expected true when --open is set")
+	}
+	if !needsCLILaunch(StartOptions{AgentType: "claude-code"}) {
+		t.Fatal("expected true when agent type is set")
+	}
+	if !needsCLILaunch(StartOptions{Prompt: "hello"}) {
+		t.Fatal("expected true when prompt is set")
+	}
+}
+
+func TestLaunchSessionFromRequest_unknownAgent(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	if err := initStore(); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := bootstrapFromCLI(StartOptions{}); err != nil {
-		t.Fatalf("bootstrapFromCLI: %v", err)
+	_, err := launchSessionFromRequest(launchRequest{AgentType: "not-a-real-agent"})
+	if err == nil {
+		t.Fatal("expected error for unknown agent")
+	}
+}
+
+func TestLaunchSessionFromRequest_createsSession(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := initStore(); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := launchSessionFromRequest(launchRequest{AgentType: "claude-code"})
+	if err != nil {
+		t.Fatalf("launchSessionFromRequest: %v", err)
+	}
+	if result.Session.ID == "" {
+		t.Fatal("expected session id")
 	}
 
 	mu.RLock()
 	count := len(sessions)
 	mu.RUnlock()
-	if count != 0 {
-		t.Fatalf("sessions = %d, want 0", count)
+	if count != 1 {
+		t.Fatalf("sessions = %d, want 1", count)
 	}
 }
 

@@ -31,6 +31,13 @@ func NewScheduleCmd() *cobra.Command {
 		Short: "Manage scheduled autonomous agent runs",
 	}
 	cmd.PersistentFlags().StringVar(&scheduleURL, "url", "", "Loop server base URL (default LOOP_URL or http://127.0.0.1:8080)")
+	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		ctx := cmd.Context()
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		return ensureLoopServer(ctx, loopclient.New(scheduleURL), false)
+	}
 
 	addCmd := newScheduleAddCmd()
 	cmd.AddCommand(

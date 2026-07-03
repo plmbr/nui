@@ -106,6 +106,8 @@ loop ui --port 3000  # custom port
 loop ui -p 3000      # shorthand
 loop ui --open       # open http://localhost:8080 with a new blank session
 loop run -a claude-code -m "Review README" --wait  # headless run via REST API
+loop agent list      # list agent types (requires loop ui)
+loop agent add ./my-agent.yaml  # install ADL to ~/.loop/agents/ (offline)
 loop mcp             # MCP server (stdio) for agent discovery and runs
 loop extension add   # install extension from git URL, directory, or zip
 loop extension remove # remove installed extension by id
@@ -132,13 +134,15 @@ loop ui -a pi -m "Summarize this repo" --open --hide-input
 
 Agent type names match the New Session dialog — e.g. `Claude Code`, `pi`, `codex`, `opencode`, or a custom ADL name like `docker-echo`. Legacy aliases such as `claude-code` also work.
 
-On startup Loop:
+On startup Loop (when `-a`, `-m`, or `--open` is passed):
 
-1. Creates the session and validates docker/remote connectors if needed
-2. Saves `lastAgentType` and `lastSessionId` to `~/.loop/settings.json`
-3. Exposes the prompt once via `GET /api/bootstrap` for the UI to consume
+1. Binds the HTTP server and prints `Listening on ...`
+2. Creates the session (same as `POST /api/launch`) and validates docker/remote connectors if needed
+3. Saves `lastAgentType` and `lastSessionId` to `~/.loop/settings.json`
+4. Exposes the prompt once via `GET /api/bootstrap` for the UI to consume
+5. Opens the browser to `/sessions/<id>` when `--open` is set
 
-If no sessions exist when the server starts (and `--agent-type` was not passed), Loop automatically creates one using `lastAgentType` from settings, or the first available built-in agent (`Claude Code`, `pi`, `codex`, or `opencode`).
+If no sessions exist when the server starts (and no launch flags were passed), Loop automatically creates one using `lastAgentType` from settings, or the first available built-in agent (`Claude Code`, `pi`, `codex`, or `opencode`) when the UI loads.
 
 ### Headless runs (`loop run`)
 

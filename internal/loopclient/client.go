@@ -64,6 +64,7 @@ type AgentType struct {
 	DefaultPrompt string `json:"defaultPrompt,omitempty"`
 	Available     bool   `json:"available"`
 	IsBuiltin     bool   `json:"isBuiltin"`
+	Source        string `json:"source,omitempty"` // builtin | user | extension
 }
 
 type Settings struct {

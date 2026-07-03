@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"loop/internal/agent"
+	"loop/internal/browser"
 	"loop/internal/extensions"
 	"loop/internal/model"
 	"loop/internal/pathutil"
@@ -112,6 +113,70 @@ func handleBootstrap(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type launchRequest struct {
+	AgentType  string
+	WorkingDir string
+	Prompt     string
+	HideInput  bool
+}
+
+type launchResult struct {
+	Session        model.Session
+	ResolvedPrompt string
+	HideInput      bool
+}
+
+// launchSessionFromRequest creates a session using the same rules as POST /api/launch.
+func launchSessionFromRequest(req launchRequest) (launchResult, error) {
+	agentType := strings.TrimSpace(req.AgentType)
+	if agentType == "" {
+		settings, err := store.LoadSettings()
+		if err != nil {
+			settings = store.Settings{Theme: "light"}
+		}
+		agentType = ensureDefaultAgentType(&settings)
+		if agentType == "" {
+			return launchResult{}, fmt.Errorf("no available agent type")
+		}
+	}
+
+	def, ok := findADLDef(agentType)
+	if !ok {
+		return launchResult{}, fmt.Errorf("unknown agent id %q", agentType)
+	}
+
+	workingDir := strings.TrimSpace(req.WorkingDir)
+	if workingDir == "" {
+		if cwd, err := os.Getwd(); err == nil {
+			workingDir = cwd
+		}
+	}
+
+	s, err := createSession(model.ADLAgentLabel(def), workingDir, model.ADLAgentID(def), nil)
+	if err != nil {
+		return launchResult{}, err
+	}
+
+	prompt := strings.TrimSpace(req.Prompt)
+	hideInput := req.HideInput
+	if model.IsADLAutoPrompt(def) {
+		hideInput = true
+		prompt = model.ResolveADLLaunchPrompt(def, prompt)
+	}
+
+	settings, loadErr := store.LoadSettings()
+	if loadErr != nil {
+		settings = store.Settings{Theme: "light"}
+	}
+	saveSessionPreferences(model.ADLAgentID(def), s.ID, settings)
+
+	return launchResult{
+		Session:        s,
+		ResolvedPrompt: prompt,
+		HideInput:      hideInput,
+	}, nil
+}
+
 func handleLaunch(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -129,99 +194,61 @@ func handleLaunch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	agentType := strings.TrimSpace(req.AgentType)
-	if agentType == "" {
-		settings, err := store.LoadSettings()
-		if err != nil {
-			settings = store.Settings{Theme: "light"}
-		}
-		agentType = ensureDefaultAgentType(&settings)
-		if agentType == "" {
-			http.Error(w, "no available agent type", http.StatusServiceUnavailable)
+	result, err := launchSessionFromRequest(launchRequest{
+		AgentType:  req.AgentType,
+		WorkingDir: req.WorkingDir,
+		Prompt:     req.Prompt,
+		HideInput:  req.HideInput,
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), "no available agent type") {
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
 			return
 		}
-	}
-
-	def, ok := findADLDef(agentType)
-	if !ok {
-		http.Error(w, fmt.Sprintf("unknown agent id %q", agentType), http.StatusBadRequest)
-		return
-	}
-
-	workingDir := strings.TrimSpace(req.WorkingDir)
-	if workingDir == "" {
-		if cwd, err := os.Getwd(); err == nil {
-			workingDir = cwd
+		if strings.Contains(err.Error(), "unknown agent id") {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
-	}
-
-	s, err := createSession(model.ADLAgentLabel(def), workingDir, model.ADLAgentID(def), nil)
-	if err != nil {
 		http.Error(w, fmt.Sprintf("agent unavailable: %v", err), http.StatusServiceUnavailable)
 		return
 	}
 
-	prompt := strings.TrimSpace(req.Prompt)
-	hideInput := req.HideInput
-	if model.IsADLAutoPrompt(def) {
-		hideInput = true
-		prompt = model.ResolveADLLaunchPrompt(def, prompt)
-	}
-
 	sidebarClosed := false
-	setBootstrap(s.ID, prompt, &sidebarClosed, hideInput)
-
-	settings, loadErr := store.LoadSettings()
-	if loadErr != nil {
-		settings = store.Settings{Theme: "light"}
-	}
-	saveSessionPreferences(model.ADLAgentID(def), s.ID, settings)
-
-	writeJSON(w, http.StatusCreated, s)
+	setBootstrap(result.Session.ID, result.ResolvedPrompt, &sidebarClosed, result.HideInput)
+	writeJSON(w, http.StatusCreated, result.Session)
 }
 
-// bootstrapFromCLI creates a session from CLI flags and exposes it to the UI via bootstrap.
-func bootstrapFromCLI(opts StartOptions) error {
-	agentType := strings.TrimSpace(opts.AgentType)
-	if agentType != "" {
-		def, ok := findADLDef(agentType)
-		if !ok {
-			return fmt.Errorf("unknown agent id %q", agentType)
-		}
+// needsCLILaunch reports whether CLI flags request a session launch on server start.
+func needsCLILaunch(opts StartOptions) bool {
+	return strings.TrimSpace(opts.AgentType) != "" || strings.TrimSpace(opts.Prompt) != "" || opts.Open
+}
 
-		workingDir := strings.TrimSpace(opts.WorkingDir)
-		if workingDir == "" {
-			if cwd, err := os.Getwd(); err == nil {
-				workingDir = cwd
-			}
-		}
+// runCLILaunch creates a session after the HTTP server is listening, matching POST /api/launch.
+func runCLILaunch(port int, opts StartOptions) {
+	baseURL := fmt.Sprintf("http://localhost:%d", port)
+	waitForHealth(baseURL)
 
-		s, err := createSession(model.ADLAgentLabel(def), workingDir, model.ADLAgentID(def), nil)
-		if err != nil {
-			return err
-		}
-
-		prompt := strings.TrimSpace(opts.Prompt)
-		hideInput := opts.HideInput
-		if model.IsADLAutoPrompt(def) {
-			hideInput = true
-			prompt = model.ResolveADLLaunchPrompt(def, prompt)
-		}
-
-		setBootstrap(s.ID, prompt, cliLaunchSidebarOpen(opts), hideInput)
-
-		settings, err := store.LoadSettings()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warn: load settings for bootstrap: %v\n", err)
-			settings = store.Settings{Theme: "light"}
-		}
-		saveSessionPreferences(model.ADLAgentID(def), s.ID, settings)
-
-		fmt.Fprintf(os.Stderr, "Created session %q (%s) with agent %s\n", s.Name, s.ID, model.ADLAgentID(def))
-		return nil
+	result, err := launchSessionFromRequest(launchRequest{
+		AgentType:  opts.AgentType,
+		WorkingDir: opts.WorkingDir,
+		Prompt:     opts.Prompt,
+		HideInput:  opts.HideInput,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "launch: %v\n", err)
+		return
 	}
 
-	return nil
+	sidebar := cliLaunchSidebarOpen(opts)
+	setBootstrap(result.Session.ID, result.ResolvedPrompt, sidebar, result.HideInput)
+	fmt.Fprintf(os.Stderr, "Created session %q (%s)\n", result.Session.Name, result.Session.ID)
+
+	if opts.Open {
+		sessionURL := fmt.Sprintf("%s/sessions/%s", baseURL, result.Session.ID)
+		if err := browser.Open(sessionURL); err != nil {
+			fmt.Fprintf(os.Stderr, "warn: open browser: %v\n", err)
+		}
+	}
 }
 
 func handleEnsureDefaultSession(w http.ResponseWriter, r *http.Request) {

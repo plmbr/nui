@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"loop/internal/agent"
-	"loop/internal/browser"
 	"loop/internal/extensions"
 	"loop/internal/mentions"
 )
@@ -47,10 +46,6 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 		return fmt.Errorf("apply settings: %w", err)
 	}
 
-	if err := bootstrapFromCLI(opts); err != nil {
-		return fmt.Errorf("bootstrap session: %w", err)
-	}
-
 	registerAPIRoutes(mux)
 	registerMCPRoutes(mux)
 	runScheduler()
@@ -77,8 +72,8 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 
 	srv := &http.Server{Addr: addr, Handler: mux}
 
-	if opts.Open {
-		go openBrowserWhenReady(url)
+	if needsCLILaunch(opts) {
+		go runCLILaunch(port, opts)
 	}
 
 	quit := make(chan os.Signal, 1)
@@ -119,23 +114,17 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, `{"status":"ok"}`)
 }
 
-func openBrowserWhenReady(url string) {
+func waitForHealth(baseURL string) {
 	client := &http.Client{Timeout: 500 * time.Millisecond}
-	healthURL := url + "/health"
+	healthURL := baseURL + "/health"
 	for range 50 {
 		resp, err := client.Get(healthURL)
 		if err == nil {
 			resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
-				if err := browser.Open(url); err != nil {
-					fmt.Fprintf(os.Stderr, "warn: open browser: %v\n", err)
-				}
 				return
 			}
 		}
 		time.Sleep(100 * time.Millisecond)
-	}
-	if err := browser.Open(url); err != nil {
-		fmt.Fprintf(os.Stderr, "warn: open browser: %v\n", err)
 	}
 }

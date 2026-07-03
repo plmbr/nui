@@ -3,14 +3,18 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"text/tabwriter"
 
 	"loop/internal/agents"
+	"loop/internal/loopclient"
 
 	"github.com/spf13/cobra"
 )
+
+var agentListURL string
 
 var agentCmd = &cobra.Command{
 	Use:   "agent",
@@ -46,7 +50,15 @@ var agentListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List available agent types",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		items, err := agents.ListTypes()
+		ctx := cmd.Context()
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		client := loopclient.New(agentListURL)
+		if err := ensureLoopServer(ctx, client, false); err != nil {
+			return err
+		}
+		items, err := client.ListAgents(ctx)
 		if err != nil {
 			return err
 		}
@@ -55,18 +67,26 @@ var agentListCmd = &cobra.Command{
 			return nil
 		}
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "ID\tLABEL\tHARNESS\tPROMPT\tSOURCE\tAVAILABLE\tFILE")
+		fmt.Fprintln(w, "ID\tLABEL\tHARNESS\tPROMPT\tSOURCE\tAVAILABLE")
 		for _, a := range items {
 			prompt := a.PromptMode
 			if prompt == "" {
 				prompt = "user"
 			}
+			source := a.Source
+			if source == "" {
+				if a.IsBuiltin {
+					source = "builtin"
+				} else {
+					source = "user"
+				}
+			}
 			available := "yes"
 			if !a.Available {
 				available = "no"
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
-				a.ID, a.Label, a.Harness, prompt, a.Source, available, a.File)
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+				a.ID, a.Label, a.Harness, prompt, source, available)
 		}
 		return w.Flush()
 	},
@@ -86,6 +106,7 @@ var agentRemoveCmd = &cobra.Command{
 }
 
 func init() {
+	agentListCmd.Flags().StringVar(&agentListURL, "url", "", "Loop server base URL (default LOOP_URL or http://127.0.0.1:8080)")
 	agentCmd.AddCommand(NewRunCmd(), NewScheduleCmd(), agentListCmd, agentAddCmd, agentRemoveCmd)
 	rootCmd.AddCommand(agentCmd)
 }
