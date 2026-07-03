@@ -161,7 +161,7 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
             {displayName}
           </span>
           {lastRunLabel && (
-            <span className="sidebar-meta-col" title={lastRunTitle}>
+            <span className="sidebar-meta-rail sidebar-session__time" title={lastRunTitle}>
               {lastRunLabel}
             </span>
           )}
@@ -300,7 +300,7 @@ function CollapsibleSessionGroup({
       <SidebarGroupLabel
         render={<button type="button" />}
         className={cn(
-          'group/label h-9 cursor-pointer gap-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
+          'group/label relative h-9 cursor-pointer gap-1.5 pr-8 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
           listViewOpen && 'bg-sidebar-accent/60 text-sidebar-accent-foreground',
         )}
         onClick={() => setOpen((value) => !value)}
@@ -314,36 +314,47 @@ function CollapsibleSessionGroup({
           )}
         />
         <span className="flex-1 truncate text-left">{group.label}</span>
-        <span className="inline-flex shrink-0 items-center gap-0">
-          <button
-            type="button"
-            className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-hover/label:opacity-100"
-            aria-label={`New ${group.label} session`}
-            title="New session"
-            onClick={(event) => {
-              event.stopPropagation()
-              onOpenNewSessionForGroup(group.id)
-            }}
-          >
-            <Plus className="size-3.5" />
-          </button>
-          <button
-            type="button"
+        <span className="flex shrink-0 items-center">
+          <span
             className={cn(
-              'inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-hover/label:opacity-100',
-              listViewOpen && 'opacity-100 text-sidebar-accent-foreground',
+              'sidebar-group-actions group-hover/label:w-12 group-hover/label:opacity-100',
+              listViewOpen && 'sidebar-group-actions--visible',
             )}
-            aria-label={`List ${group.label} sessions`}
-            title="List sessions"
-            onClick={(event) => {
-              event.stopPropagation()
-              onOpenSessionList(group.id)
-            }}
           >
-            <List className="size-3.5" />
-          </button>
+            <button
+              type="button"
+              className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              aria-label={`New ${group.label} session`}
+              title="New session"
+              onClick={(event) => {
+                event.stopPropagation()
+                onOpenNewSessionForGroup(group.id)
+              }}
+            >
+              <Plus className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              className={cn(
+                'inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                listViewOpen && 'text-sidebar-accent-foreground',
+              )}
+              aria-label={`List ${group.label} sessions`}
+              title="List sessions"
+              onClick={(event) => {
+                event.stopPropagation()
+                onOpenSessionList(group.id)
+              }}
+            >
+              <List className="size-3.5" />
+            </button>
+          </span>
+          <span className="sidebar-meta-rail">
+            <span className="sidebar-group-count" title={`${group.sessions.length} sessions`}>
+              {group.sessions.length}
+            </span>
+          </span>
         </span>
-        <span className="sidebar-meta-col sidebar-meta-col--group">{group.sessions.length}</span>
       </SidebarGroupLabel>
       {open && (
         <SidebarGroupContent>

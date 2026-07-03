@@ -363,12 +363,24 @@
     @apply shrink-0 text-[10px] tabular-nums text-muted-foreground;
   }
 
-  .sidebar-meta-col {
-    @apply w-8 shrink-0 text-right text-[10px] tabular-nums text-muted-foreground;
+  .sidebar-meta-rail {
+    @apply w-9 shrink-0 text-right tabular-nums;
   }
 
-  .sidebar-meta-col--group {
-    @apply mr-8;
+  .sidebar-session__time {
+    @apply text-[10px] text-muted-foreground/70;
+  }
+
+  .sidebar-group-count {
+    @apply ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-sidebar-border/80 bg-sidebar-accent/50 px-1.5 text-[11px] font-medium text-sidebar-foreground/75;
+  }
+
+  .sidebar-group-actions {
+    @apply flex w-0 shrink-0 items-center gap-0 overflow-hidden opacity-0 transition-[width,opacity] duration-150;
+  }
+
+  .sidebar-group-actions--visible {
+    @apply w-12 opacity-100;
   }
 
   .sidebar-header__btn-primary {

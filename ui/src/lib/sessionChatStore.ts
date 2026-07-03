@@ -127,16 +127,35 @@ function finishRun(sessionId: string) {
   emitSession(sessionId)
 }
 
+function hasAssistantContent(messages: SessionChatMessage[]): boolean {
+  return messages.some(
+    (m) => m.role === 'assistant' && (assistantTextContent(m).trim() !== '' || (m.parts?.length ?? 0) > 0),
+  )
+}
+
+async function fetchMessagesFromServer(sessionId: string): Promise<SessionChatMessage[]> {
+  const stored = await api.messages.list(sessionId)
+  if (stored.length > 0) {
+    return apiMessagesToSessionMessages(stored)
+  }
+  const history = await api.history.get(sessionId)
+  return apiMessagesToSessionMessages(history)
+}
+
 async function reloadMessages(sessionId: string) {
   const entry = getOrCreateEntry(sessionId)
+  const previous = entry.messages
   try {
-    const stored = await api.messages.list(sessionId)
-    if (stored.length > 0) {
-      entry.messages = apiMessagesToSessionMessages(stored)
+    let next = await fetchMessagesFromServer(sessionId)
+    if (!hasAssistantContent(next) && hasAssistantContent(previous)) {
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      next = await fetchMessagesFromServer(sessionId)
+    }
+    if (!hasAssistantContent(next) && hasAssistantContent(previous)) {
+      entry.messages = previous
       return
     }
-    const history = await api.history.get(sessionId)
-    entry.messages = apiMessagesToSessionMessages(history)
+    entry.messages = next
   } catch {
     entry.messages = []
   }

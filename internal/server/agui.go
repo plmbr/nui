@@ -267,20 +267,32 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 
 	switch {
 	case runCancelled:
+		assistantMsg := acc.toMessage(messageID)
+		if assistantMsg.CreatedAt == "" {
+			assistantMsg.CreatedAt = time.Now().UTC().Format(time.RFC3339)
+		}
+		if assistantMsg.Content != "" || len(assistantMsg.Parts) > 0 {
+			persistRichAssistantTurn(sessionID, assistantMsg, newAgentSessionID, isADL)
+		}
 		finishRunRecord(runID, RunStatusCancelled, assistantContent.String(), "cancelled")
 	case runErrored:
-		errMsg := "error"
-		finishRunRecord(runID, RunStatusFailed, assistantContent.String(), errMsg)
+		assistantMsg := acc.toMessage(messageID)
+		if assistantMsg.CreatedAt == "" {
+			assistantMsg.CreatedAt = time.Now().UTC().Format(time.RFC3339)
+		}
+		if assistantMsg.Content != "" || len(assistantMsg.Parts) > 0 {
+			persistRichAssistantTurn(sessionID, assistantMsg, newAgentSessionID, isADL)
+		}
+		finishRunRecord(runID, RunStatusFailed, assistantContent.String(), "error")
 	default:
+		assistantMsg := acc.toMessage(messageID)
+		if assistantMsg.CreatedAt == "" {
+			assistantMsg.CreatedAt = time.Now().UTC().Format(time.RFC3339)
+		}
+		if assistantMsg.Content != "" || len(assistantMsg.Parts) > 0 {
+			persistRichAssistantTurn(sessionID, assistantMsg, newAgentSessionID, isADL)
+		}
 		finishRunRecord(runID, RunStatusCompleted, assistantContent.String(), "")
-	}
-
-	assistantMsg := acc.toMessage(messageID)
-	if assistantMsg.CreatedAt == "" {
-		assistantMsg.CreatedAt = time.Now().UTC().Format(time.RFC3339)
-	}
-	if assistantMsg.Content != "" || len(assistantMsg.Parts) > 0 {
-		persistRichAssistantTurn(sessionID, assistantMsg, newAgentSessionID, isADL)
 	}
 }
 

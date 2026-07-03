@@ -191,8 +191,8 @@ func runInBackground(sessionID string, session model.Session, agentSessionID, ru
 		status = RunStatusCompleted
 	}
 
-	finishRunRecord(runID, status, result.AssistantContent, errMsg)
 	persistAssistantTurn(sessionID, result.AssistantContent, result.NewAgentSessionID, isSessionADLWorkflow(session))
+	finishRunRecord(runID, status, result.AssistantContent, errMsg)
 }
 
 func isSessionADLWorkflow(session model.Session) bool {
