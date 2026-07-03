@@ -43,6 +43,13 @@ export interface MentionListResponse {
   breadcrumb: MentionBreadcrumb[]
 }
 
+export interface UploadedImage {
+  path: string
+  url: string
+  mediaType: string
+  filename: string
+}
+
 export interface PromptSuggestion {
   title: string
   prompt: string

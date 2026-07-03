@@ -634,6 +634,9 @@ func cleanupDeletedSession(id string, info sessionDeleteInfo) {
 	if err := store.RemoveSessionWorkspace(id); err != nil {
 		fmt.Fprintf(os.Stderr, "warn: remove session workspace: %v\n", err)
 	}
+	if err := store.RemoveSessionUploads(id); err != nil {
+		fmt.Fprintf(os.Stderr, "warn: remove session uploads: %v\n", err)
+	}
 	if info.agentSessionID == "" {
 		return
 	}
@@ -708,9 +711,16 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 			handleSessionAGUI(w, r, id)
 		case "mentions":
 			handleSessionMentions(w, r, id)
+		case "uploads":
+			handleSessionUploads(w, r, id)
 		case "stop":
 			handleSessionStop(w, r, id)
 		default:
+			if strings.HasPrefix(rest, "uploads/") {
+				filename := strings.TrimPrefix(rest, "uploads/")
+				handleSessionUploadServe(w, r, id, filename)
+				return
+			}
 			if strings.HasPrefix(rest, "runs") || rest == "runs" {
 				handleSessionRunsRouter(w, r, id, rest)
 				return

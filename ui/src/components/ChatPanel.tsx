@@ -1,15 +1,17 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   Flame,
   Gamepad2,
   Sparkles,
+  X,
   type LucideIcon,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
+import { api } from '@/api'
 import { CodeBlock } from '@/components/CodeBlock'
 import { DiffBlock } from '@/components/DiffBlock'
 import { ThinkingIndicator } from '@/components/ThinkingIndicator'
@@ -24,6 +26,45 @@ import type { PromptSuggestion, Session } from '@/types'
 
 const AUTO_PROMPT_FALLBACK = 'Follow your system instructions and run.'
 const SCROLL_ANCHOR_TOP_GAP = 12
+
+interface PendingAttachment {
+  id: string
+  path: string
+  previewUrl: string
+  filename: string
+}
+
+function appendMention(current: string, path: string): string {
+  const mention = `@${path}`
+  if (!current.trim()) return `${mention} `
+  if (current.endsWith(' ')) return `${current}${mention} `
+  return `${current} ${mention} `
+}
+
+function removeMention(current: string, path: string): string {
+  const mention = `@${path}`
+  return current
+    .replace(new RegExp(`\\s*${mention.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*`, 'g'), ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trimStart()
+}
+
+function imageFilesFromDataTransfer(dataTransfer: DataTransfer): File[] {
+  const files: File[] = []
+  if (dataTransfer.files.length > 0) {
+    for (const file of dataTransfer.files) {
+      if (file.type.startsWith('image/')) files.push(file)
+    }
+    return files
+  }
+  for (const item of dataTransfer.items) {
+    if (item.kind === 'file' && item.type.startsWith('image/')) {
+      const file = item.getAsFile()
+      if (file) files.push(file)
+    }
+  }
+  return files
+}
 
 const SUGGESTION_ICONS: Record<string, LucideIcon> = {
   sparkles: Sparkles,
@@ -86,6 +127,10 @@ export function ChatPanel({
 }: Props) {
   const { messages, sendMessage, stopRun, isRunning, isLoading } = useSessionChat(session.id)
   const [input, setInput] = useState('')
+  const [attachments, setAttachments] = useState<PendingAttachment[]>([])
+  const [isDragging, setIsDragging] = useState(false)
+  const [uploadingCount, setUploadingCount] = useState(0)
+  const attachmentsRef = useRef<PendingAttachment[]>([])
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const scrollSpacerRef = useRef<HTMLDivElement>(null)
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
@@ -93,6 +138,72 @@ export function ChatPanel({
   const anchoredUserMsgIdRef = useRef<string | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const initialPromptSentRef = useRef(false)
+
+  useEffect(() => {
+    attachmentsRef.current = attachments
+  }, [attachments])
+
+  useEffect(() => {
+    return () => {
+      for (const attachment of attachmentsRef.current) {
+        if (attachment.previewUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(attachment.previewUrl)
+        }
+      }
+    }
+  }, [session.id])
+
+  const clearAttachments = useCallback(() => {
+    setAttachments((prev) => {
+      for (const attachment of prev) {
+        if (attachment.previewUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(attachment.previewUrl)
+        }
+      }
+      return []
+    })
+  }, [])
+
+  const uploadImages = useCallback(async (files: File[]) => {
+    if (files.length === 0 || isRunning || hideInput) return
+    setUploadingCount((count) => count + files.length)
+    try {
+      for (const file of files) {
+        const previewUrl = URL.createObjectURL(file)
+        try {
+          const uploaded = await api.uploads.image(session.id, file)
+          setAttachments((prev) => [
+            ...prev,
+            {
+              id: uploaded.path,
+              path: uploaded.path,
+              previewUrl: uploaded.url,
+              filename: uploaded.filename,
+            },
+          ])
+          setInput((current) => appendMention(current, uploaded.path))
+        } finally {
+          URL.revokeObjectURL(previewUrl)
+        }
+      }
+    } catch (err) {
+      console.error('image upload failed:', err)
+    } finally {
+      setUploadingCount((count) => Math.max(0, count - files.length))
+    }
+  }, [hideInput, isRunning, session.id])
+
+  const removeAttachment = useCallback((path: string) => {
+    setAttachments((prev) => {
+      const next = prev.filter((item) => item.path !== path)
+      const removed = prev.find((item) => item.path === path)
+      if (removed?.previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(removed.previewUrl)
+      }
+      return next
+    })
+    setInput((current) => removeMention(current, path))
+  }, [])
 
   useEffect(() => {
     initialPromptSentRef.current = false
@@ -157,6 +268,7 @@ export function ChatPanel({
     if (isLoading) return
     if (messages.length > 0) {
       setInput('')
+      clearAttachments()
       return
     }
     if (promptMode !== 'user' || hideInput) return
@@ -170,7 +282,42 @@ export function ChatPanel({
     hideInput,
     isLoading,
     messages.length,
+    clearAttachments,
   ])
+
+  const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const files: File[] = []
+    for (const item of e.clipboardData.items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (file) files.push(file)
+      }
+    }
+    if (files.length === 0) return
+    e.preventDefault()
+    void uploadImages(files)
+  }
+
+  const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (isRunning || hideInput) return
+    if (![...e.dataTransfer.types].includes('Files')) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    setIsDragging(true)
+  }
+
+  const onDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return
+    setIsDragging(false)
+  }
+
+  const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDragging(false)
+    if (isRunning || hideInput) return
+    const files = imageFilesFromDataTransfer(e.dataTransfer)
+    if (files.length > 0) void uploadImages(files)
+  }
 
   useLayoutEffect(() => {
     const container = messagesContainerRef.current
@@ -198,8 +345,9 @@ export function ChatPanel({
 
   const submit = () => {
     const text = input.trim()
-    if (!text || isRunning) return
+    if (!text || isRunning || uploadingCount > 0) return
     setInput('')
+    clearAttachments()
     markScrollAnchor()
     sendMessage(text)
   }
@@ -359,7 +507,12 @@ export function ChatPanel({
           </div>
         )}
         <div className="agui-chat__input-row">
-        <div className="agui-chat__input-wrap">
+        <div
+          className={`agui-chat__input-wrap${isDragging ? ' agui-chat__input-wrap--dragging' : ''}`}
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+        >
           <MentionMenu
             open={mention.open}
             items={mention.items}
@@ -371,15 +524,47 @@ export function ChatPanel({
             onBack={mention.goBack}
             onHover={mention.setActiveIndex}
           />
+          {(attachments.length > 0 || uploadingCount > 0) && (
+            <div className="agui-chat__attachments" aria-label="Attached images">
+              {attachments.map((attachment) => (
+                <div key={attachment.path} className="agui-chat__attachment">
+                  <div className="agui-chat__attachment-preview" aria-hidden>
+                    <img src={attachment.previewUrl} alt="" />
+                  </div>
+                  <div className="agui-chat__attachment-thumb-wrap">
+                    <img
+                      src={attachment.previewUrl}
+                      alt={attachment.filename}
+                      className="agui-chat__attachment-thumb"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="agui-chat__attachment-remove"
+                    onClick={() => removeAttachment(attachment.path)}
+                    aria-label={`Remove ${attachment.filename}`}
+                  >
+                    <X className="size-3" aria-hidden />
+                  </button>
+                </div>
+              ))}
+              {uploadingCount > 0 && (
+                <div className="agui-chat__attachment agui-chat__attachment--uploading" aria-hidden>
+                  <span className="agui-chat__attachment-spinner" />
+                </div>
+              )}
+            </div>
+          )}
           <textarea
             ref={inputRef}
             className="agui-chat__input"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Message your agent… (@ to mention, Enter to send)"
+            onPaste={onPaste}
+            placeholder="Message your agent… (@ to mention, paste or drop images)"
             rows={1}
-            disabled={isRunning}
+            disabled={isRunning || uploadingCount > 0}
             aria-autocomplete={mention.open ? 'list' : undefined}
             aria-expanded={mention.open}
             aria-controls={mention.open ? 'mention-menu' : undefined}
@@ -394,7 +579,7 @@ export function ChatPanel({
           type="button"
           className={isRunning ? 'agui-chat__stop' : 'agui-chat__send'}
           onClick={isRunning ? () => void stopRun() : submit}
-          disabled={!isRunning && !input.trim()}
+          disabled={!isRunning && (!input.trim() || uploadingCount > 0)}
           aria-label={isRunning ? 'Stop agent' : 'Send message'}
         >
           {isRunning ? (

@@ -232,3 +232,20 @@ func pathWithinRoot(root, target string) bool {
 	}
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
+
+// resolveAbsoluteFileMention resolves pasted upload paths and other @/abs/path tokens.
+func resolveAbsoluteFileMention(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if !filepath.IsAbs(value) {
+		return "", fmt.Errorf("not an absolute path")
+	}
+	abs := filepath.Clean(value)
+	info, err := os.Stat(abs)
+	if err != nil {
+		return "", err
+	}
+	if info.IsDir() {
+		return "", fmt.Errorf("mention is a directory, not a file: %s", abs)
+	}
+	return "@" + abs, nil
+}

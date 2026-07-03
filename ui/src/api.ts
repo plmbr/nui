@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, AgentFileContent, AgentFileInfo, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, MCPServer, MentionListResponse, Schedule, Session, Settings, SkillEntry } from './types'
+import type { AgentType, AgentFileContent, AgentFileInfo, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, MCPServer, MentionListResponse, Schedule, Session, Settings, SkillEntry, UploadedImage } from './types'
 
 export interface RunRecord {
   runId: string
@@ -154,6 +154,23 @@ export const api = {
       if (opts.query?.trim()) params.set('query', opts.query.trim())
       const qs = params.toString()
       return request(`/sessions/${sessionId}/mentions${qs ? `?${qs}` : ''}`, { signal })
+    },
+  },
+
+  uploads: {
+    image: async (sessionId: string, file: File | Blob, filename?: string): Promise<UploadedImage> => {
+      const form = new FormData()
+      const name = filename?.trim() || (file instanceof File ? file.name : 'image.png')
+      form.append('file', file, name)
+      const res = await fetch(`${BASE}/sessions/${sessionId}/uploads`, {
+        method: 'POST',
+        body: form,
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || res.statusText)
+      }
+      return res.json() as Promise<UploadedImage>
     },
   },
 

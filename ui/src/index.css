@@ -807,6 +807,55 @@
     @apply relative min-w-0 flex-1;
   }
 
+  .agui-chat__input-wrap--dragging {
+    @apply rounded-xl ring-2 ring-primary/40;
+  }
+
+  .agui-chat__attachments {
+    @apply mb-2 flex flex-wrap gap-2;
+  }
+
+  .agui-chat__attachment {
+    @apply relative size-16;
+  }
+
+  .agui-chat__attachment-thumb-wrap {
+    @apply size-full overflow-hidden rounded-lg border bg-muted/40 shadow-sm;
+  }
+
+  .agui-chat__attachment-preview {
+    @apply pointer-events-none absolute bottom-[calc(100%+0.5rem)] left-0 z-30 hidden rounded-lg border bg-background p-1 shadow-lg;
+  }
+
+  .agui-chat__attachment-preview img {
+    @apply block max-h-48 max-w-48 object-contain;
+  }
+
+  .agui-chat__attachment:not(.agui-chat__attachment--uploading):hover .agui-chat__attachment-preview {
+    @apply block;
+  }
+
+  .agui-chat__attachment:not(.agui-chat__attachment--uploading):hover .agui-chat__attachment-thumb-wrap {
+    @apply ring-2 ring-primary/40;
+  }
+
+  .agui-chat__attachment--uploading {
+    @apply flex items-center justify-center;
+  }
+
+  .agui-chat__attachment-thumb {
+    @apply size-full object-cover;
+  }
+
+  .agui-chat__attachment-remove {
+    @apply absolute right-0 top-0 z-10 flex size-5 translate-x-1/4 -translate-y-1/4 items-center justify-center rounded-full border bg-background/90 text-foreground shadow-sm transition-colors;
+    @apply hover:bg-destructive/10 hover:text-destructive;
+  }
+
+  .agui-chat__attachment-spinner {
+    @apply size-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary;
+  }
+
   .mention-menu {
     @apply absolute bottom-full left-0 z-50 mb-2 max-h-64 w-60 overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-md;
   }

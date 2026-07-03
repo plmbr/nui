@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -153,6 +154,8 @@ func (r *Registry) Resolve(ctx context.Context, req ResolveRequest) (string, err
 		return "", fmt.Errorf("mention %q is not selectable", value)
 	case strings.HasPrefix(value, fileValuePrefix), strings.HasPrefix(value, dirValuePrefix):
 		return r.builtin.Resolve(ctx, req)
+	case filepath.IsAbs(value):
+		return resolveAbsoluteFileMention(value)
 	}
 	if r.extension != nil {
 		if extName, providerID, ok := r.extension.MatchExtensionValue(value); ok {

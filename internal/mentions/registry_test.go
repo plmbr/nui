@@ -174,3 +174,27 @@ func TestRegistryResolveMessage(t *testing.T) {
 		t.Fatalf("resolved = %q, want %q", got, want)
 	}
 }
+
+func TestRegistryResolveMessageAbsoluteUploadPath(t *testing.T) {
+	uploadDir := filepath.Join(os.TempDir(), "loop-uploads", "sess-1")
+	if err := os.MkdirAll(uploadDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(os.TempDir(), "loop-uploads", "sess-1")) })
+
+	imagePath := filepath.Join(uploadDir, "photo.png")
+	if err := os.WriteFile(imagePath, []byte{0x89, 0x50, 0x4e, 0x47}, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	reg := mentions.NewRegistry(nil)
+	msg := "look at @" + imagePath
+	got, err := reg.ResolveMessage(context.Background(), t.TempDir(), msg, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "look at @" + imagePath
+	if got != want {
+		t.Fatalf("resolved = %q, want %q", got, want)
+	}
+}
