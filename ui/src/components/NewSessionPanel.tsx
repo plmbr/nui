@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Check, Folder, Plus, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -48,6 +48,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   const [directoryInputFocused, setDirectoryInputFocused] = useState(false)
   const [activeDirectoryIndex, setActiveDirectoryIndex] = useState(0)
   const suppressDirectoryLookupForValue = useRef<string | null>(null)
+  const customAgentsScrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (agentTypes.length === 0) return
@@ -184,6 +185,16 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
     const agent = agentTypes.find((a) => a.id === selectedId)
     setUserScopeHarnessConfig(defaultUserScopeHarnessConfig(agent))
   }, [selectedId, agentTypes])
+
+  useLayoutEffect(() => {
+    if (!selectedId) return
+    if (!userDefined.some((a) => a.id === selectedId)) return
+    if (!filteredCustom.some((a) => a.id === selectedId)) return
+    const container = customAgentsScrollRef.current
+    if (!container) return
+    const el = container.querySelector(`[data-agent-id="${CSS.escape(selectedId)}"]`)
+    el?.scrollIntoView({ block: 'nearest' })
+  }, [selectedId, userDefined, filteredCustom])
 
   function selectDirectory(path: string) {
     suppressDirectoryLookupForValue.current = path
@@ -351,7 +362,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
                         </Button>
                       )}
                     </div>
-                    <div className="min-h-0 flex-1 overflow-y-auto">
+                    <div ref={customAgentsScrollRef} className="min-h-0 flex-1 overflow-y-auto">
                       <div className="flex flex-col gap-1.5 pr-1">
                         {filteredCustom.length === 0 ? (
                           <p className="text-sm text-muted-foreground py-2">
@@ -509,6 +520,7 @@ function AgentCard({ agent, selected, onSelect }: AgentCardProps) {
   return (
     <button
       type="button"
+      data-agent-id={agent.id}
       onClick={onSelect}
       className={[
         'flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
