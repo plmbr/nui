@@ -121,10 +121,10 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
   const sessionRunning = runningSessions.has(session.id)
   const progress = progressMap.get(session.id) ?? getSessionProgress(session.id)
   const displayName = sessionDisplayName(session)
-  const lastRunLabel = session.lastRunAt
-    ? (sessionRunning ? 'now' : formatRelativeTime(session.lastRunAt, Date.now(), false))
+  const timeLabel = session.createdAt
+    ? (sessionRunning ? 'now' : formatRelativeTime(session.createdAt, Date.now(), false))
     : ''
-  const lastRunTitle = session.lastRunAt ? formatExactTime(session.lastRunAt) : ''
+  const timeTitle = session.createdAt ? formatExactTime(session.createdAt) : ''
   const scheduledTitle = session.scheduleId
     ? `Scheduled · ${session.scheduleName || session.scheduleId}`
     : undefined
@@ -148,8 +148,8 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
           isActive={isActive}
           onClick={onSelect}
           title={
-            lastRunTitle
-              ? `${displayName} · ${lastRunTitle}${progress ? ` — ${progress.label}` : ''}`
+            timeTitle
+              ? `${displayName} · ${timeTitle}${progress ? ` — ${progress.label}` : ''}`
               : progress
                 ? `${displayName} — ${progress.label}`
                 : displayName
@@ -164,9 +164,9 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
           <span className="sidebar-session__name truncate" title={displayName}>
             {displayName}
           </span>
-          {lastRunLabel && (
-            <span className="sidebar-meta-rail sidebar-session__time" title={lastRunTitle}>
-              {lastRunLabel}
+          {timeLabel && (
+            <span className="sidebar-meta-rail sidebar-session__time" title={timeTitle}>
+              {timeLabel}
             </span>
           )}
           {sessionRunning && (
@@ -213,12 +213,6 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
                 <div>
                   <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5">Schedule</p>
                   <p className="text-xs">{session.scheduleName || session.scheduleId}</p>
-                </div>
-              )}
-              {session.lastRunAt && (
-                <div>
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5">Last run</p>
-                  <p className="text-xs">{formatExactTime(session.lastRunAt)}</p>
                 </div>
               )}
             </div>
