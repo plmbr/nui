@@ -1,0 +1,42 @@
+apiVersion: loop.dev/extension/v1
+name: hitl-demo
+version: 1.0.0
+displayName: HITL Demo
+description: Example extension demonstrating harness-agnostic human-in-the-loop
+
+contributions:
+  aiAssets:
+    mcpServers:
+      - name: hitl-tools
+        tools:
+          - name: confirm_action
+            description: Ask the user to confirm an action via Loop HITL REST API
+            command: ["python3", "${LOOP_EXTENSION_DIR}/tools/confirm.py"]
+            inputSchema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: Prompt shown to the user
+                title:
+                  type: string
+                  description: Optional card title
+              required: [message]
+
+  harnesses:
+    source:
+      file: harnesses.yaml
+    runtime:
+      transport: stdio
+      command: ["python3", "harness_host.py"]
+
+  agents:
+    source:
+      file: agents.yaml
+
+  hitlChannels:
+    source:
+      file: hitl-channels.yaml
+    runtime:
+      transport: stdio
+      command: ["python3", "hitl_channel_host.py"]

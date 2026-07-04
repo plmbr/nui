@@ -32,7 +32,8 @@ type Contributions struct {
 	MCPServers *MCPServersContribution `yaml:"mcpServers,omitempty"` // deprecated: use catalog.mcpServers
 	Skills     *SkillsContribution     `yaml:"skills,omitempty"`     // deprecated: use catalog.skills
 	Agents     *AgentsContribution     `yaml:"agents,omitempty"`
-	Mentions   *MentionProvidersContribution `yaml:"mentionProviders,omitempty"`
+	Mentions      *MentionProvidersContribution `yaml:"mentionProviders,omitempty"`
+	HITLChannels  *HITLChannelsContribution     `yaml:"hitlChannels,omitempty"`
 }
 
 // AIAssetsContribution declares custom MCP servers, skills, rules, and agent deployers.

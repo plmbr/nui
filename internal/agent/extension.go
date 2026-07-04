@@ -81,6 +81,15 @@ func eventFromHarnessParams(params map[string]any) (Event, bool) {
 			ImageData:      stringParam(params, "imageData"),
 			ImageMediaType: stringParam(params, "imageMediaType"),
 		}, true
+	case "hitl_request":
+		requestID := stringParam(params, "requestId")
+		if requestID == "" {
+			requestID = stringParam(params, "request_id")
+		}
+		if requestID == "" {
+			return Event{}, false
+		}
+		return Event{Type: EventHITLRequest, Content: requestID}, true
 	default:
 		return Event{}, false
 	}

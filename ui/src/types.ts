@@ -18,6 +18,8 @@ export interface CreateSessionRequest {
   agentType: string
   agentConfig?: {
     userScopeHarnessConfig?: boolean
+    hitlMode?: 'interactive' | 'off' | 'auto'
+    harnessPermissions?: 'interactive' | 'bypass'
     [key: string]: unknown
   }
 }
@@ -67,9 +69,59 @@ export interface AgentType {
   promptSuggestions?: PromptSuggestion[]
   skills?: string[]
   workingDirInput?: boolean
+  hitlMode?: 'interactive' | 'off' | 'auto'
+  harnessPermissions?: 'interactive' | 'bypass'
+  supportsHarnessPermissions?: boolean
   isBuiltin: boolean
   source?: 'builtin' | 'user' | 'extension'
   available: boolean
+}
+
+export interface HitlQuestionOption {
+  label: string
+  description?: string
+}
+
+export interface HitlQuestion {
+  question?: string
+  header?: string
+  options?: HitlQuestionOption[]
+  multiSelect?: boolean
+}
+
+export interface HitlAction {
+  id: string
+  label: string
+}
+
+export interface HitlPayload {
+  title?: string
+  message?: string
+  questions?: HitlQuestion[]
+  actions?: HitlAction[]
+  toolName?: string
+  toolInput?: Record<string, unknown>
+  description?: string
+  [key: string]: unknown
+}
+
+export interface HitlRequest {
+  requestId: string
+  sessionId?: string
+  runId?: string
+  stepName?: string
+  kind: 'question' | 'approval' | 'freeform' | 'review' | string
+  payload?: HitlPayload
+  status?: string
+  expiresAt?: string
+  createdAt?: string
+}
+
+export interface HitlResponse {
+  requestId: string
+  status: string
+  answers?: Record<string, unknown>
+  respondedAt?: string
 }
 
 export interface ChatMessagePart {

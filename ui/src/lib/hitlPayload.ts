@@ -1,0 +1,78 @@
+// Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
+
+import type { HitlQuestion, HitlQuestionOption } from '@/types'
+import { formatToolCallSummary } from '@/lib/toolCallSummary'
+
+export function normalizeHitlQuestionOptions(
+  options: HitlQuestion['options'],
+): HitlQuestionOption[] {
+  if (!options?.length) return []
+  return options.map((option, index) => {
+    if (typeof option === 'string') {
+      const label = option.trim()
+      return { label: label || `Option ${index + 1}` }
+    }
+    if (option && typeof option === 'object') {
+      const record = option as Record<string, unknown>
+      const label = pickString(record, 'label', 'name', 'value', 'text')
+      const description = pickString(record, 'description')
+      return {
+        label: label || `Option ${index + 1}`,
+        ...(description ? { description } : {}),
+      }
+    }
+    return { label: `Option ${index + 1}` }
+  })
+}
+
+function pickString(record: Record<string, unknown>, ...keys: string[]): string {
+  for (const key of keys) {
+    const value = record[key]
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim()
+    }
+  }
+  return ''
+}
+
+export function formatHitlApprovalSummary(
+  toolName: string | undefined,
+  toolInput: Record<string, unknown> | undefined,
+  message?: string,
+): string {
+  const input = toolInput ?? {}
+  const description = pickString(input, 'description')
+  if (description) return description
+
+  const summary = formatToolCallSummary(toolName, input)
+  if (summary) return summary
+
+  const trimmedMessage = message?.trim()
+  if (trimmedMessage) return trimmedMessage
+
+  const bareName = toolName?.split(':').pop()?.split('__').pop()?.trim()
+  return bareName ? `${bareName} action` : 'Tool action'
+}
+
+export function hitlApprovalCommand(
+  toolInput: Record<string, unknown> | undefined,
+): string {
+  return pickString(toolInput ?? {}, 'command', 'cmd')
+}
+
+export function isRedundantHitlApprovalMessage(
+  message: string | undefined,
+  toolInput: Record<string, unknown> | undefined,
+): boolean {
+  const trimmed = message?.trim()
+  if (!trimmed) return true
+
+  const input = toolInput ?? {}
+  const command = pickString(input, 'command', 'cmd')
+  if (command && trimmed === command) return true
+
+  const path = pickString(input, 'file_path', 'path', 'target_file')
+  if (path && trimmed === path) return true
+
+  return false
+}

@@ -57,7 +57,7 @@ func TestApplyCmdEnv(t *testing.T) {
 	cmd := exec.Command("true")
 	applyCmdEnv(cmd, "claude-code", "/tmp/session-config", map[string]string{
 		"LOOP_CMD_ENV_TEST": "adl",
-	}, false)
+	}, false, "sess-1", "run-1")
 	m := envMap(cmd.Env)
 	if m["LOOP_CMD_ENV_TEST"] != "adl" {
 		t.Fatalf("override = %q", m["LOOP_CMD_ENV_TEST"])

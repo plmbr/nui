@@ -992,19 +992,156 @@
   }
 
   .tool-call__body {
-    @apply px-0 py-2;
+    @apply flex flex-col gap-1.5 px-0 py-1;
   }
 
-  .tool-call__section + .tool-call__section {
-    @apply mt-2.5;
+  .tool-call__section {
+    @apply flex flex-col gap-0.5;
   }
 
   .tool-call__label {
-    @apply mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground;
+    @apply m-0 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70;
   }
 
   .tool-call__code {
-    @apply max-h-[200px] overflow-auto whitespace-pre-wrap break-all rounded-lg border bg-muted/40 p-2 font-mono text-xs text-foreground/85;
+    @apply m-0 max-h-[200px] overflow-auto whitespace-pre-wrap break-words rounded-md border border-border/50 bg-muted/25 px-2 py-1 font-mono text-[11px] leading-snug text-foreground/90;
+  }
+
+  .hitl-prompt {
+    @apply flex flex-col gap-3;
+  }
+
+  .hitl-prompt__header {
+    @apply flex items-center gap-2;
+  }
+
+  .hitl-prompt__badge {
+    @apply rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary;
+  }
+
+  .hitl-prompt__step {
+    @apply text-xs text-muted-foreground;
+  }
+
+  .hitl-prompt__title {
+    @apply text-sm font-semibold leading-snug;
+  }
+
+  .hitl-prompt__message,
+  .hitl-prompt__description {
+    @apply text-sm leading-relaxed text-foreground/90;
+  }
+
+  .hitl-prompt__approval {
+    @apply rounded-lg border bg-muted/20;
+  }
+
+  .hitl-prompt__approval-summary {
+    @apply flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-muted/40 disabled:cursor-default disabled:hover:bg-transparent;
+  }
+
+  .hitl-prompt__approval-tool {
+    @apply shrink-0 rounded-md bg-background px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground;
+  }
+
+  .hitl-prompt__approval-text {
+    @apply min-w-0 flex-1 truncate text-xs leading-snug text-foreground/90;
+  }
+
+  .hitl-prompt__approval-toggle {
+    @apply shrink-0 text-[10px] text-muted-foreground;
+  }
+
+  .hitl-prompt__approval-details {
+    @apply border-t px-3 py-2;
+  }
+
+  .hitl-prompt__approval-section + .hitl-prompt__approval-section {
+    @apply mt-2;
+  }
+
+  .hitl-prompt__approval-label {
+    @apply mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground;
+  }
+
+  .hitl-prompt__approval-code {
+    @apply max-h-[180px] overflow-auto whitespace-pre-wrap break-all rounded-md border bg-background/70 p-2 font-mono text-[11px] text-foreground/85;
+  }
+
+  .hitl-prompt__tool {
+    @apply rounded-lg border bg-muted/30 p-2;
+  }
+
+  .hitl-prompt__tool-name {
+    @apply text-xs font-medium text-foreground;
+  }
+
+  .hitl-prompt__tool-input {
+    @apply mt-2 max-h-[160px] overflow-auto whitespace-pre-wrap break-all rounded-md border bg-background/60 p-2 font-mono text-[11px];
+  }
+
+  .hitl-prompt__question + .hitl-prompt__question {
+    @apply mt-2 border-t pt-2;
+  }
+
+  .hitl-prompt__question-header {
+    @apply text-xs font-semibold uppercase tracking-wide text-muted-foreground;
+  }
+
+  .hitl-prompt__question-text {
+    @apply mt-1 text-sm;
+  }
+
+  .hitl-prompt__options {
+    @apply mt-2 flex flex-col gap-1.5;
+  }
+
+  .hitl-prompt__option {
+    @apply flex flex-col items-start rounded-lg border bg-background px-3 py-2 text-left text-sm transition-colors hover:bg-muted/60;
+  }
+
+  .hitl-prompt__option--selected {
+    @apply border-primary bg-primary/5;
+  }
+
+  .hitl-prompt__option-label {
+    @apply font-medium;
+  }
+
+  .hitl-prompt__option-desc {
+    @apply mt-0.5 text-xs text-muted-foreground;
+  }
+
+  .hitl-prompt__textarea {
+    @apply w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring;
+  }
+
+  .hitl-prompt__error {
+    @apply text-sm text-destructive;
+  }
+
+  .hitl-prompt__actions {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .hitl-prompt__actions--compact {
+    @apply gap-1.5;
+  }
+
+  .hitl-prompt__btn {
+    @apply rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50;
+  }
+
+  .hitl-prompt__actions--compact .hitl-prompt__btn {
+    @apply rounded px-2 py-0.5 text-xs font-medium;
+  }
+
+  .hitl-prompt__btn--primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90;
+  }
+
+  .hitl-prompt__btn--secondary {
+    @apply border bg-background hover:bg-muted;
   }
 
   .mcp-app-frame {

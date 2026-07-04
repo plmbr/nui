@@ -25,6 +25,17 @@ export function harnessSupportsUserScope(harness: AgentType['harness']): boolean
   return harness === 'claude-code' || harness === 'codex'
 }
 
+/** Harnesses that support interactive tool approval via harness permissions. */
+export function harnessSupportsPermissions(harness: AgentType['harness']): boolean {
+  return harness === 'claude-code' || harness === 'codex'
+}
+
+export function agentSupportsHarnessPermissions(agent: AgentType | undefined): boolean {
+  if (!agent) return false
+  if (agent.supportsHarnessPermissions != null) return agent.supportsHarnessPermissions
+  return harnessSupportsPermissions(agent.harness)
+}
+
 /** Default user-scope checkbox state for a newly selected agent type. */
 export function defaultUserScopeHarnessConfig(agent: AgentType | undefined): boolean {
   if (!agent || !harnessSupportsUserScope(agent.harness)) return false

@@ -1,0 +1,25 @@
+agents:
+  - id: hitl-claude
+    name: HITL Claude Demo
+    description: Claude agent with interactive HITL via loop-hitl MCP ask_user
+    harness:
+      type: claude-code
+      model: claude-sonnet-4-6
+    hitl:
+      mode: interactive
+      channels:
+        - loop-ui
+        - ext:hitl-demo/demo-slack
+    aiAssets:
+      mcpServers:
+        - ref: ext:hitl-demo/hitl-tools
+
+  - id: hitl-harness
+    name: HITL Harness Demo
+    description: Extension harness that calls ask_user() via REST (no MCP)
+    harness:
+      type: ext:hitl-demo/hitl-ask
+    hitl:
+      mode: interactive
+      channels:
+        - loop-ui

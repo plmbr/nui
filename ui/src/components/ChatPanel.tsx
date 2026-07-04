@@ -17,6 +17,7 @@ import { DiffBlock } from '@/components/DiffBlock'
 import { ThinkingIndicator } from '@/components/ThinkingIndicator'
 import { MentionMenu } from '@/components/MentionMenu'
 import { SlashCommandMenu } from '@/components/SlashCommandMenu'
+import { HitlPromptCard } from '@/components/HitlPromptCard'
 import { ToolCallBubble } from '@/components/ToolCallBubble'
 import { imageSrc, useSessionChat, type AssistantPart } from '@/hooks/useSessionChat'
 import { useMentionMenu } from '@/hooks/useMentionMenu'
@@ -137,7 +138,7 @@ export function ChatPanel({
   promptSuggestions,
   slashCommands = [],
 }: Props) {
-  const { messages, sendMessage, stopRun, isRunning, isLoading } = useSessionChat(session.id)
+  const { messages, sendMessage, stopRun, isRunning, isLoading, pendingHitlRequests } = useSessionChat(session.id)
   const [input, setInput] = useState('')
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -523,6 +524,13 @@ export function ChatPanel({
             </div>
           )
         })}
+        {pendingHitlRequests.map((req) => (
+          <div key={req.requestId} className="agui-message agui-message--assistant">
+            <div className="agui-message__bubble">
+              <HitlPromptCard sessionId={session.id} request={req} />
+            </div>
+          </div>
+        ))}
         {messages.length > 0 && (
           <div ref={scrollSpacerRef} className="agui-chat__scroll-spacer" aria-hidden="true" />
         )}

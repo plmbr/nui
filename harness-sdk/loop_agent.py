@@ -60,6 +60,71 @@ class LoopAgent:
         _ = run_id
         return ""
 
+    def ask_user(
+        self,
+        *,
+        questions=None,
+        title: str = "",
+        message: str = "",
+        session_id: str = "",
+        run_id: str = "",
+        routing=None,
+    ) -> dict:
+        """Create a HITL question and block until the user responds."""
+        from loop_hitl import ask_user as hitl_ask_user
+
+        return hitl_ask_user(
+            questions=questions,
+            title=title,
+            message=message,
+            session_id=session_id,
+            run_id=run_id,
+            routing=routing,
+            emit_event=self._emit_hitl_request,
+        )
+
+    def request_approval(
+        self,
+        *,
+        title: str = "",
+        message: str = "",
+        tool_name: str = "",
+        tool_input=None,
+        description: str = "",
+        session_id: str = "",
+        run_id: str = "",
+        routing=None,
+    ) -> dict:
+        """Create a HITL approval gate and block until resolved."""
+        from loop_hitl import request_approval as hitl_request_approval
+
+        return hitl_request_approval(
+            title=title,
+            message=message,
+            tool_name=tool_name,
+            tool_input=tool_input,
+            description=description,
+            session_id=session_id,
+            run_id=run_id,
+            routing=routing,
+            emit_event=self._emit_hitl_request,
+        )
+
+    def _emit_hitl_request(self, req: dict) -> None:
+        emit = getattr(self, "_emit_event", None)
+        if not emit:
+            return
+        emit({
+            "type": "hitl_request",
+            "requestId": req.get("requestId", ""),
+            "sessionId": req.get("sessionId", ""),
+            "runId": req.get("runId", ""),
+            "kind": req.get("kind", ""),
+            "payload": req.get("payload") or {},
+            "status": req.get("status", ""),
+            "expiresAt": req.get("expiresAt", ""),
+        })
+
     # ── Internals ────────────────────────────────────────────────────────────
 
     def serve(self):
@@ -160,6 +225,11 @@ class LoopAgent:
             message = params.get("message", "")
             run_id = params.get("runId") or str(uuid.uuid4())
             extra = {k: v for k, v in params.items() if k not in ("message", "runId")}
+            self._emit_event = lambda event: self._send(conn, {
+                "jsonrpc": "2.0",
+                "method": "harness.event",
+                "params": {"runId": run_id, **event},
+            })
             try:
                 for chunk in self.run(message, run_id, **extra):
                     if isinstance(chunk, dict):
@@ -175,6 +245,8 @@ class LoopAgent:
                     "jsonrpc": "2.0", "method": "harness.event",
                     "params": {"runId": run_id, "type": "error", "error": str(e)},
                 })
+            finally:
+                self._emit_event = None
             done_params: dict = {"runId": run_id, "type": "done"}
             sid = self.get_session_id(run_id)
             if sid:

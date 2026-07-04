@@ -12,6 +12,8 @@ import (
 	"os/exec"
 	"sync"
 	"syscall"
+
+	"loop/internal/hitl"
 )
 
 type persistentClaudeSession struct {
@@ -29,6 +31,7 @@ type persistentClaudeSession struct {
 	workingDir   string
 	configDir    string
 	userScope    bool
+	harnessPermissions string
 
 	claudeSessionID string
 }
@@ -44,7 +47,8 @@ func (s *persistentClaudeSession) matches(agent *ClaudeCodeAgent, req RunRequest
 		s.useBwrap == agent.useBwrap() &&
 		s.workingDir == req.WorkingDir &&
 		s.configDir == req.ConfigDir &&
-		s.userScope == req.UserScopeHarness
+		s.userScope == req.UserScopeHarness &&
+		s.harnessPermissions == req.HarnessPermissions
 }
 
 func processAlive(cmd *exec.Cmd) bool {
@@ -71,7 +75,7 @@ func (s *persistentClaudeSession) runTurn(ctx context.Context, agent *ClaudeCode
 	}
 	sessionID := s.claudeSessionID
 	if sessionID == "" {
-		sessionID = req.SessionID
+		sessionID = harnessResumeSessionID(req)
 	}
 	if sessionID != "" {
 		userMsg["session_id"] = sessionID
@@ -107,6 +111,15 @@ func (s *persistentClaudeSession) runTurn(ctx context.Context, agent *ClaudeCode
 			continue
 		}
 
+		if req.HarnessPermissions == hitl.PermissionsInteractive {
+			if handled, err := s.handleClaudePermissionRequest(ctx, req, line); handled {
+				if err != nil {
+					return err
+				}
+				continue
+			}
+		}
+
 		var envelope struct {
 			Type      string `json:"type"`
 			SessionID string `json:"session_id"`
@@ -119,6 +132,21 @@ func (s *persistentClaudeSession) runTurn(ctx context.Context, agent *ClaudeCode
 
 		parser.handleLine(line, events)
 
+		if parser.completedTurn() && !parser.hasPendingToolWork() {
+			if envelope.SessionID != "" {
+				s.claudeSessionID = envelope.SessionID
+			} else if parser.sessionID != "" {
+				s.claudeSessionID = parser.sessionID
+			}
+			// message_stop/end_turn returns before claude emits the trailing
+			// "result" line; drain it so the next runTurn does not treat it
+			// as an immediate empty completion.
+			if err := s.drainThroughResultLine(ctx); err != nil {
+				return err
+			}
+			return nil
+		}
+
 		switch envelope.Type {
 		case "result":
 			if !envelope.IsError && envelope.SessionID != "" {
@@ -128,6 +156,30 @@ func (s *persistentClaudeSession) runTurn(ctx context.Context, agent *ClaudeCode
 		case "error":
 			msg := formatClaudeError(envelope.Error)
 			events <- Event{Type: EventError, Error: msg}
+			return nil
+		}
+	}
+}
+
+func (s *persistentClaudeSession) drainThroughResultLine(ctx context.Context) error {
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if !s.stdout.Scan() {
+			return nil
+		}
+		line := s.stdout.Bytes()
+		if len(line) == 0 {
+			continue
+		}
+		var envelope struct {
+			Type string `json:"type"`
+		}
+		if err := json.Unmarshal(line, &envelope); err != nil {
+			continue
+		}
+		if envelope.Type == "result" {
 			return nil
 		}
 	}
@@ -176,17 +228,18 @@ func (s *persistentClaudeSession) start(ctx context.Context, agent *ClaudeCodeAg
 	bin := agent.binaryPath()
 	useBwrap := agent.useBwrap()
 
-	if req.SessionID != "" && s.claudeSessionID == "" {
-		s.claudeSessionID = req.SessionID
-	}
-
 	args := []string{
 		"-p",
 		"--input-format", "stream-json",
 		"--output-format", "stream-json",
 		"--verbose",
-		"--dangerously-skip-permissions",
 		"--include-partial-messages",
+	}
+	if req.HarnessPermissions != hitl.PermissionsInteractive {
+		args = append(args, "--dangerously-skip-permissions")
+	} else {
+		args = appendClaudeInteractiveHitlArgs(args, req)
+		args = appendClaudeInteractivePermissionArgs(args, req.ConfigDir, true)
 	}
 	if req.Model != "" {
 		args = append(args, "--model", req.Model)
@@ -196,7 +249,7 @@ func (s *persistentClaudeSession) start(ctx context.Context, agent *ClaudeCodeAg
 	}
 	resume := s.claudeSessionID
 	if resume == "" {
-		resume = req.SessionID
+		resume = harnessResumeSessionID(req)
 	}
 	if resume != "" {
 		args = append(args, "--resume", resume)
@@ -219,7 +272,7 @@ func (s *persistentClaudeSession) start(ctx context.Context, agent *ClaudeCodeAg
 			cmd.Dir = req.WorkingDir
 		}
 	}
-	applyCmdEnv(cmd, "claude-code", req.ConfigDir, req.Env, req.UserScopeHarness)
+	applyCmdEnv(cmd, "claude-code", req.ConfigDir, req.Env, req.UserScopeHarness, req.LoopSessionID, req.RunID)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -260,6 +313,7 @@ func (s *persistentClaudeSession) start(ctx context.Context, agent *ClaudeCodeAg
 	s.workingDir = req.WorkingDir
 	s.configDir = req.ConfigDir
 	s.userScope = req.UserScopeHarness
+	s.harnessPermissions = req.HarnessPermissions
 	return nil
 }
 

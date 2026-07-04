@@ -27,7 +27,9 @@ type Extension struct {
 	CustomRules        []ExtensionCustomRule
 	AgentDeployers     []ExtensionAgentDeployer
 	MentionProviders   []MentionProviderEntry
+	HITLChannels       []HITLChannelEntry
 	mentionRuntime   *RuntimeConfig
+	hitlRuntime      *RuntimeConfig
 
 	defaultRuntime *RuntimeConfig
 }
@@ -237,6 +239,21 @@ func loadExtension(extDir string, reg *Registry) (*Extension, error) {
 		if c.Runtime != nil {
 			rt := *c.Runtime
 			ext.mentionRuntime = &rt
+		}
+	}
+
+	if c := manifest.Contributions.HITLChannels; c != nil {
+		list, err := loadContributionList(extDir, manifest.Name, c.Source, catalogCmd, resolveCatalog,
+			func(file string) ([]HITLChannelEntry, error) { return loadHITLChannelsFromFile(file) },
+			nil,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("hitlChannels: %w", err)
+		}
+		ext.HITLChannels = list
+		if c.Runtime != nil {
+			rt := *c.Runtime
+			ext.hitlRuntime = &rt
 		}
 	}
 
@@ -466,6 +483,7 @@ type ExtensionInfo struct {
 	Rules            []string `json:"rules,omitempty"`
 	AgentDeployers   []string `json:"agentDeployers,omitempty"`
 	MentionProviders []string `json:"mentionProviders,omitempty"`
+	HITLChannels     []string `json:"hitlChannels,omitempty"`
 	Agents        []string `json:"agents,omitempty"`
 }
 
@@ -506,6 +524,9 @@ func (r *Registry) Info() []ExtensionInfo {
 		}
 		for _, mp := range ext.MentionProviders {
 			info.MentionProviders = append(info.MentionProviders, mp.ID)
+		}
+		for _, ch := range ext.HITLChannels {
+			info.HITLChannels = append(info.HITLChannels, ch.ID)
 		}
 		for _, a := range ext.Agents {
 			id := a.ID

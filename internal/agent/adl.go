@@ -4,11 +4,13 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
 
 	"loop/internal/extensions"
+	"loop/internal/hitl"
 	"loop/internal/model"
 )
 
@@ -50,6 +52,15 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 			events <- Event{Type: EventText, Content: fmt.Sprintf("\n**Step %d/%d: %s**\n\n", i+1, len(sorted), step.Name)}
 		}
 
+		if step.Type == "hitl" {
+			out, err := a.runHITLStep(ctx, req, step, stepOutputs, events)
+			if err != nil {
+				return err
+			}
+			stepOutputs[step.Name] = out
+			continue
+		}
+
 		harness := a.def.Harness
 		if step.Harness != nil {
 			harness = *step.Harness
@@ -62,6 +73,8 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 		msg := buildStepMessage(req.Message, step, stepOutputs)
 
 		stepReq := RunRequest{
+			LoopSessionID:    a.projectID,
+			RunID:            req.RunID,
 			WorkingDir:       req.WorkingDir,
 			Message:          msg,
 			SystemPrompt:     systemPrompt,
@@ -85,7 +98,11 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 // runStep resolves the harness and runs the agent for a single step.
 func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.ADLHarness, step *model.ADLStep, events chan<- Event) error {
 	req.UserScopeHarness = effectiveUserScopeHarness(harness.Type, req.UserScopeHarness)
-	deps, err := buildHarnessDeps(a.projectID, a.def, step, req.WorkingDir, a.manager.registry)
+	var reg *extensions.Registry
+	if a.manager != nil {
+		reg = a.manager.registry
+	}
+	deps, err := buildHarnessDeps(a.projectID, a.def, step, req.WorkingDir, reg, req.AgentConfig)
 	if err != nil {
 		return fmt.Errorf("expand harness deps: %w", err)
 	}
@@ -97,7 +114,10 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 	req.ConfigDir = configDir
 	req.SystemPrompt = deps.SystemPrompt
 	req.Model = harness.Model
-	req.Env = mergeADLEnv(a.def, harness)
+	req.Env = mergeLoopHarnessEnv(mergeADLEnv(a.def, harness), loopSessionIDForRun(req, a.projectID), req.RunID, defaultLoopAPIURL())
+	if req.HarnessPermissions == "" {
+		req.HarnessPermissions = hitl.EffectivePermissions(a.def, req.AgentConfig)
+	}
 
 	switch harness.Type {
 	case "claude-code", "":
@@ -338,4 +358,75 @@ func (c *collectingEvents) finish() {
 	close(c.pipe)
 	c.wg.Wait()
 	c.pipe = nil
+}
+
+func (a *ADLAgent) runHITLStep(ctx context.Context, req RunRequest, step model.ADLStep, outputs map[string]string, events chan<- Event) (string, error) {
+	gate := orchestrationGateFn()
+	if gate == nil {
+		return "", fmt.Errorf("orchestration HITL gate not configured")
+	}
+	if step.HITL == nil {
+		return "", fmt.Errorf("step %q: hitl block required for type hitl", step.Name)
+	}
+	kind := step.HITL.Kind
+	if kind == "" {
+		kind = "approval"
+	}
+	payload := map[string]any{
+		"title":   step.HITL.Title,
+		"message": step.HITL.Message,
+	}
+	if len(step.HITL.Questions) > 0 {
+		payload["questions"] = step.HITL.Questions
+	}
+	if len(step.HITL.Actions) > 0 {
+		actions := make([]map[string]string, 0, len(step.HITL.Actions))
+		for _, act := range step.HITL.Actions {
+			actions = append(actions, map[string]string{"id": act.ID, "label": act.Label})
+		}
+		payload["actions"] = actions
+	}
+	for _, disp := range step.HITL.Display {
+		parts := strings.SplitN(disp.From, ".", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		if out, ok := outputs[parts[0]]; ok {
+			payload["display_"+parts[0]] = out
+		}
+	}
+	channels := []string{"loop-ui"}
+	if len(step.HITL.Channels) > 0 {
+		channels = append([]string{}, step.HITL.Channels...)
+	}
+	created, err := gate.CreateOrchestrationGate(ctx, hitl.CreateInput{
+		SessionID: a.projectID,
+		RunID:     req.RunID,
+		StepName:  step.Name,
+		Kind:      kind,
+		Routing:   hitl.Routing{Channels: channels},
+		Payload:   payload,
+	})
+	if err != nil {
+		return "", err
+	}
+	events <- Event{
+		Type:    EventHITLRequest,
+		Content: created.RequestID,
+	}
+	resp, err := gate.Wait(ctx, created.RequestID)
+	if err != nil {
+		return "", err
+	}
+	if resp.Status == hitl.StatusDeclined || resp.Status == hitl.StatusCancelled {
+		return "", fmt.Errorf("hitl gate %q %s", step.Name, resp.Status)
+	}
+	if action, ok := resp.Answers["action"].(string); ok && action != "" {
+		return action, nil
+	}
+	if answer, ok := resp.Answers["answer"].(string); ok {
+		return answer, nil
+	}
+	data, _ := json.Marshal(resp.Answers)
+	return string(data), nil
 }

@@ -57,6 +57,29 @@ func claudeMCPConfigPath(configDir string) string {
 	return path
 }
 
+func claudeSettingsPath(configDir string) string {
+	if configDir == "" {
+		return ""
+	}
+	path := filepath.Join(configDir, "settings.json")
+	info, err := os.Stat(path)
+	if err != nil || info.IsDir() {
+		return ""
+	}
+	return path
+}
+
+func appendClaudeInteractivePermissionArgs(args []string, configDir string, interactive bool) []string {
+	if !interactive {
+		return args
+	}
+	args = append(args, "--permission-prompt-tool", "stdio")
+	if path := claudeSettingsPath(configDir); path != "" {
+		args = append(args, "--settings", path)
+	}
+	return args
+}
+
 func appendClaudeUserScopeArgs(args []string, configDir string) []string {
 	args = append(args, "--setting-sources", "user,project,local")
 	if path := claudeMCPConfigPath(configDir); path != "" {

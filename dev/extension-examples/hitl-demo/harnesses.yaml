@@ -1,0 +1,4 @@
+harnesses:
+  - id: hitl-ask
+    displayName: HITL Ask Harness
+    description: Extension harness that calls ask_user() directly

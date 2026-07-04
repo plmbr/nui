@@ -1,11 +1,11 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, AgentFileContent, AgentFileInfo, AgentDeployerInfo, AgentDeployResult, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, MCPServer, MentionListResponse, Schedule, Session, Settings, SkillEntry, UploadedImage } from './types'
+import type { AgentType, AgentFileContent, AgentFileInfo, AgentDeployerInfo, AgentDeployResult, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, HitlRequest, HitlResponse, MCPServer, MentionListResponse, Schedule, Session, Settings, SkillEntry, UploadedImage } from './types'
 
 export interface RunRecord {
   runId: string
   sessionId: string
-  status: 'running' | 'completed' | 'failed' | 'cancelled'
+  status: 'running' | 'completed' | 'failed' | 'cancelled' | 'awaiting_user'
   message?: string
   output?: string
   error?: string
@@ -341,6 +341,30 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ deployerId }),
       }),
+  },
+
+  hitl: {
+    respond: (
+      requestId: string,
+      answers: Record<string, unknown>,
+      status?: string,
+    ): Promise<HitlResponse> =>
+      request(`/hitl/requests/${encodeURIComponent(requestId)}/respond`, {
+        method: 'POST',
+        body: JSON.stringify({
+          answers,
+          ...(status ? { status } : {}),
+        }),
+      }),
+
+    listPending: (sessionId: string): Promise<HitlRequest[]> => {
+      const params = new URLSearchParams({ pending: 'true' })
+      if (sessionId.trim()) params.set('sessionId', sessionId.trim())
+      return request(`/hitl/requests?${params.toString()}`)
+    },
+
+    get: (requestId: string): Promise<HitlRequest> =>
+      request(`/hitl/requests/${encodeURIComponent(requestId)}`),
   },
 
   schedules: {

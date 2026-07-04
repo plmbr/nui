@@ -1,0 +1,7 @@
+hitlChannels:
+  - id: demo-slack
+    displayName: Demo Slack Channel
+    description: Logs HITL prompts to stderr (stdio channel stub)
+  - id: demo-webhook
+    displayName: Demo Webhook Bridge
+    description: REST-only origin bridge — use origin_bridge.py

@@ -36,7 +36,7 @@ aiAssets:
 	if err := yaml.Unmarshal(raw, &def); err != nil {
 		t.Fatal(err)
 	}
-	if def.ID != "data-agent" {
+	if def.ID != "test-agent" {
 		t.Fatalf("id = %q", def.ID)
 	}
 	if def.Name != "Data Agent" {

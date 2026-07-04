@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"loop/internal/agent"
+	"loop/internal/hitl"
 	"loop/internal/model"
 )
 
@@ -23,6 +25,15 @@ type aguiRunInput struct {
 		Role    string `json:"role"`
 		Content string `json:"content"`
 	} `json:"messages"`
+}
+
+var aguiSessionRunLocks sync.Map // sessionID -> *sync.Mutex
+
+func lockSessionAGUIRun(sessionID string) func() {
+	v, _ := aguiSessionRunLocks.LoadOrStore(sessionID, &sync.Mutex{})
+	mu := v.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
 }
 
 func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string) {
@@ -38,9 +49,11 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 	}
 
 	var lastUserMessage string
+	var lastUserID string
 	for i := len(input.Messages) - 1; i >= 0; i-- {
 		if input.Messages[i].Role == "user" {
 			lastUserMessage = strings.TrimSpace(input.Messages[i].Content)
+			lastUserID = strings.TrimSpace(input.Messages[i].ID)
 			break
 		}
 	}
@@ -70,8 +83,15 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 		return
 	}
 
+	unlockSessionRun := lockSessionAGUIRun(sessionID)
+	defer unlockSessionRun()
+
+	userID := lastUserID
+	if userID == "" {
+		userID = uuid.NewString()
+	}
 	userMsg := model.ChatMessage{
-		ID:        uuid.NewString(),
+		ID:        userID,
 		Role:      "user",
 		Content:   resolvedMessage,
 		CreatedAt: time.Now().UTC().Format(time.RFC3339),
@@ -136,13 +156,23 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 
 	reqCtx := r.Context()
 
+	initHITL()
+	hitlCh, unsubHITL := subscribeHITL(sessionID)
+	defer unsubHITL()
+
 	events := make(chan agent.Event, 64)
 	go func() {
 		defer close(events)
 		runReq := agent.RunRequest{
+			LoopSessionID:    sessionID,
+			RunID:            runID,
 			WorkingDir:       workingDir,
 			Message:          resolvedMessage,
 			UserScopeHarness: agent.UserScopeHarnessConfig(session.AgentConfig),
+			AgentConfig:      session.AgentConfig,
+		}
+		if def, ok := findADLDef(session.AgentType); ok {
+			runReq.HarnessPermissions = hitl.EffectivePermissions(def, session.AgentConfig)
 		}
 		if !isADL {
 			runReq.SessionID = agentSessionID
@@ -159,6 +189,25 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 	mcpLookup := func(toolName string) (string, string, bool) {
 		return mcpManager.LookupToolUI(toolName)
 	}
+	go func() {
+		for req := range hitlCh {
+			writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
+				"type": "CUSTOM",
+				"name": "hitl_request",
+				"value": map[string]any{
+					"requestId": req.RequestID,
+					"sessionId": req.SessionID,
+					"runId":     req.RunID,
+					"stepName":  req.StepName,
+					"kind":      req.Kind,
+					"payload":   req.Payload,
+					"status":    req.Status,
+					"expiresAt": req.ExpiresAt,
+				},
+			})
+		}
+	}()
+
 	for ev := range events {
 		seq++
 		_ = appendRunEvent(runID, seq, ev)
@@ -238,6 +287,23 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 					"data":      ev.ImageData,
 				},
 			})
+		case agent.EventHITLRequest:
+			if req, err := coordinator().Get(runCtx, ev.Content); err == nil {
+				writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
+					"type": "CUSTOM",
+					"name": "hitl_request",
+					"value": map[string]any{
+						"requestId": req.RequestID,
+						"sessionId": req.SessionID,
+						"runId":     req.RunID,
+						"stepName":  req.StepName,
+						"kind":      req.Kind,
+						"payload":   req.Payload,
+						"status":    req.Status,
+						"expiresAt": req.ExpiresAt,
+					},
+				})
+			}
 		case agent.EventDone:
 			newAgentSessionID = ev.SessionID
 		case agent.EventError:

@@ -9,7 +9,7 @@ import (
 
 // BuildDeployAssets expands ADL aiAssets into a serializable deploy bundle.
 func BuildDeployAssets(def model.ADLDefinition, reg *extensions.Registry) (extensions.DeployAssets, error) {
-	deps, err := buildHarnessDeps("", def, nil, "", reg)
+	deps, err := buildHarnessDeps("", def, nil, "", reg, nil)
 	if err != nil {
 		return extensions.DeployAssets{}, err
 	}

@@ -64,6 +64,7 @@ type ADLDefinition struct {
 	DefaultPrompt     string               `yaml:"defaultPrompt"     json:"defaultPrompt,omitempty"`     // auto mode when no launch prompt
 	PromptSuggestions []ADLPromptSuggestion `yaml:"promptSuggestions" json:"promptSuggestions,omitempty"` // quick-start pills in chat UI
 	WorkingDirInput   bool                 `yaml:"workingDirInput"   json:"workingDirInput,omitempty"`   // true = user picks working dir at session create
+	HITL              ADLHITL              `yaml:"hitl"              json:"hitl,omitempty"`
 	Steps        []ADLStep      `yaml:"steps"        json:"steps,omitempty"`
 }
 
@@ -97,6 +98,7 @@ type ADLHarness struct {
 	Host          string            `yaml:"host"          json:"host,omitempty"`           // harness type=remote only
 	Port          int               `yaml:"port"          json:"port,omitempty"`           // harness type=remote only
 	Env           map[string]string `yaml:"env"           json:"env,omitempty"`
+	Permissions   string            `yaml:"permissions"   json:"permissions,omitempty"` // interactive | bypass (claude-code, codex)
 }
 
 type ADLAIAssets struct {
@@ -155,11 +157,13 @@ type ADLInput struct {
 }
 
 type ADLStep struct {
-	Name         string      `yaml:"name"         json:"name"`
-	Harness      *ADLHarness `yaml:"harness"      json:"harness,omitempty"`
-	SystemPrompt string      `yaml:"systemPrompt" json:"systemPrompt,omitempty"`
-	DependsOn    []string    `yaml:"dependsOn"    json:"dependsOn,omitempty"`
-	AIAssets     ADLAIAssets `yaml:"aiAssets"     json:"aiAssets,omitempty"`
-	Outputs      []ADLOutput `yaml:"outputs"      json:"outputs,omitempty"`
-	Inputs       []ADLInput  `yaml:"inputs"       json:"inputs,omitempty"`
+	Type         string       `yaml:"type"         json:"type,omitempty"` // agent (default) | hitl
+	Name         string       `yaml:"name"         json:"name"`
+	Harness      *ADLHarness  `yaml:"harness"      json:"harness,omitempty"`
+	SystemPrompt string       `yaml:"systemPrompt" json:"systemPrompt,omitempty"`
+	DependsOn    []string     `yaml:"dependsOn"    json:"dependsOn,omitempty"`
+	AIAssets     ADLAIAssets  `yaml:"aiAssets"     json:"aiAssets,omitempty"`
+	HITL         *ADLStepHITL `yaml:"hitl"         json:"hitl,omitempty"`
+	Outputs      []ADLOutput  `yaml:"outputs"      json:"outputs,omitempty"`
+	Inputs       []ADLInput   `yaml:"inputs"       json:"inputs,omitempty"`
 }

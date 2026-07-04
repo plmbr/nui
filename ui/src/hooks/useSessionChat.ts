@@ -46,5 +46,6 @@ export function useSessionChat(sessionId: string) {
     stopRun,
     isRunning: snapshot.isRunning,
     isLoading: snapshot.isLoading,
+    pendingHitlRequests: snapshot.pendingHitl,
   }
 }

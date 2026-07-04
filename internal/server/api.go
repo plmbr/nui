@@ -16,6 +16,7 @@ import (
 
 	"loop/internal/agent"
 	"loop/internal/extensions"
+	"loop/internal/hitl"
 	"loop/internal/model"
 	"loop/internal/skills"
 	"loop/internal/store"
@@ -32,6 +33,9 @@ type AgentTypeInfo struct {
 	Harness       string `json:"harness"`           // claude-code | pi | codex | opencode | docker | remote
 	Sandbox       string `json:"sandbox,omitempty"` // none | bubblewrap | docker
 	PromptMode        string                     `json:"promptMode,omitempty"`        // user | auto
+	HitlMode          string                     `json:"hitlMode,omitempty"`          // interactive | auto | off
+	HarnessPermissions string                    `json:"harnessPermissions,omitempty"` // interactive | bypass
+	SupportsHarnessPermissions bool             `json:"supportsHarnessPermissions,omitempty"`
 	DefaultPrompt     string                     `json:"defaultPrompt,omitempty"`
 	PromptSuggestions []model.ADLPromptSuggestion `json:"promptSuggestions,omitempty"`
 	Skills            []string                   `json:"skills,omitempty"`
@@ -68,7 +72,8 @@ var builtinAgentDefs = []model.ADLDefinition{
 		ID:                "claude-code",
 		Name:              "Claude Code",
 		Description:       "Claude Code running as a local subprocess",
-		Harness:           model.ADLHarness{Type: "claude-code", Sandbox: "none"},
+		Harness:           model.ADLHarness{Type: "claude-code", Sandbox: "none", Permissions: hitl.PermissionsBypass},
+		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelLoopUI}},
 		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
 	},
@@ -77,6 +82,7 @@ var builtinAgentDefs = []model.ADLDefinition{
 		Name:              "Pi",
 		Description:       "Pi running as a local subprocess",
 		Harness:           model.ADLHarness{Type: "pi", Sandbox: "none"},
+		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelLoopUI}},
 		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
 	},
@@ -84,7 +90,8 @@ var builtinAgentDefs = []model.ADLDefinition{
 		ID:                "codex",
 		Name:              "Codex",
 		Description:       "Codex running as a local subprocess",
-		Harness:           model.ADLHarness{Type: "codex", Sandbox: "none"},
+		Harness:           model.ADLHarness{Type: "codex", Sandbox: "none", Permissions: hitl.PermissionsBypass},
+		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelLoopUI}},
 		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
 	},
@@ -93,6 +100,7 @@ var builtinAgentDefs = []model.ADLDefinition{
 		Name:              "OpenCode",
 		Description:       "OpenCode running as a local subprocess",
 		Harness:           model.ADLHarness{Type: "opencode", Sandbox: "none"},
+		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelLoopUI}},
 		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
 	},
@@ -178,6 +186,7 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/agent-deployers", handleAgentDeployers)
 	mux.HandleFunc("/api/schedules", handleSchedules)
 	mux.HandleFunc("/api/schedules/", handleSchedule)
+	registerHITLRoutes(mux)
 }
 
 var errDirectoryOutsideHome = errors.New("directory is outside the home directory")
@@ -465,6 +474,17 @@ func agentTypeInfoFromDef(def model.ADLDefinition, builtin bool) AgentTypeInfo {
 	if model.IsADLAutoPrompt(def) {
 		info.PromptMode = model.ADLPromptModeAuto
 	}
+	mode := def.HITL.Mode
+	if mode == "" {
+		if model.IsADLAutoPrompt(def) {
+			mode = hitl.ModeAuto
+		} else {
+			mode = hitl.ModeInteractive
+		}
+	}
+	info.HitlMode = mode
+	info.HarnessPermissions = hitl.EffectivePermissions(def, nil)
+	info.SupportsHarnessPermissions = agent.HarnessSupportsUserScope(def.Harness.Type)
 	return info
 }
 
@@ -489,9 +509,10 @@ func skillNamesFromADL(def model.ADLDefinition) []string {
 		add(step.AIAssets.Skills)
 	}
 	for _, name := range skills.BuiltinSkillNames() {
-		if !seen[name] {
-			names = append(names, name)
+		if name == skills.HitlAskUserSkillName || seen[name] {
+			continue
 		}
+		names = append(names, name)
 	}
 	return names
 }

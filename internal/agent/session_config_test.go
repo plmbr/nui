@@ -63,7 +63,7 @@ func TestAppendClaudeUserScopeArgs(t *testing.T) {
 
 func TestApplyCmdEnvUserScopeSkipsConfigDir(t *testing.T) {
 	cmd := exec.Command("true")
-	applyCmdEnv(cmd, "claude-code", "/tmp/session-config", nil, true)
+	applyCmdEnv(cmd, "claude-code", "/tmp/session-config", nil, true, "", "")
 	m := envMap(cmd.Env)
 	if _, ok := m["CLAUDE_CONFIG_DIR"]; ok {
 		t.Fatalf("CLAUDE_CONFIG_DIR should be omitted: %v", m)

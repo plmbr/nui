@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"loop/internal/agent"
+	"loop/internal/hitl"
 	"loop/internal/mentions"
 	"loop/internal/model"
 	"loop/internal/skills"
@@ -149,9 +150,15 @@ func executeRun(ctx context.Context, opts executeRunOptions) executeRunResult {
 	go func() {
 		defer close(events)
 		runReq := agent.RunRequest{
+			LoopSessionID:    opts.Session.ID,
+			RunID:            opts.RunID,
 			WorkingDir:       workingDir,
 			Message:          resolved,
 			UserScopeHarness: agent.UserScopeHarnessConfig(opts.Session.AgentConfig),
+			AgentConfig:      opts.Session.AgentConfig,
+		}
+		if def, ok := findADLDef(opts.Session.AgentType); ok {
+			runReq.HarnessPermissions = hitl.EffectivePermissions(def, opts.Session.AgentConfig)
 		}
 		if !ra.IsADL {
 			runReq.SessionID = opts.AgentSessionID

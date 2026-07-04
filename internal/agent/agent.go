@@ -15,6 +15,7 @@ const (
 	EventToolCallEnd     EventType = "tool_call_end"
 	EventToolCallResult  EventType = "tool_call_result"
 	EventImage           EventType = "image"
+	EventHITLRequest     EventType = "hitl_request"
 )
 
 type Event struct {
@@ -30,7 +31,9 @@ type Event struct {
 }
 
 type RunRequest struct {
-	SessionID    string
+	SessionID string
+	// LoopSessionID is the Loop session id for HITL/MCP env (distinct from harness resume SessionID).
+	LoopSessionID string
 	WorkingDir   string
 	Message      string
 	SystemPrompt string
@@ -42,6 +45,12 @@ type RunRequest struct {
 	UserScopeHarness bool
 	// Env is merged ADL env (global + harness); applied to harness subprocesses.
 	Env map[string]string
+	// RunID is the active Loop run when executing inside a tracked run.
+	RunID string
+	// HarnessPermissions is interactive | bypass for claude-code/codex native approval gates.
+	HarnessPermissions string
+	// AgentConfig is the Loop session override map (hitlMode, harnessPermissions, …).
+	AgentConfig map[string]any
 }
 
 type Agent interface {

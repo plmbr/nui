@@ -400,7 +400,7 @@ func createSessionEx(opts sessionCreateOpts) (model.Session, error) {
 		return model.Session{}, err
 	}
 
-	if err := agent.PrepareSessionHarnessConfig(sessionID, def, extensions.Default); err != nil {
+	if err := agent.PrepareSessionHarnessConfig(sessionID, def, extensions.Default, agentConfig); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: provision session harness config: %v\n", err)
 	}
 

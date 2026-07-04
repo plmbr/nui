@@ -90,6 +90,22 @@ function mapPart(part: ChatMessagePart): AssistantPart {
   }
 }
 
+export function dedupeChatMessages(messages: SessionChatMessage[]): SessionChatMessage[] {
+  const result: SessionChatMessage[] = []
+  for (const msg of messages) {
+    const prev = result[result.length - 1]
+    if (prev && prev.role === msg.role) {
+      const prevText =
+        prev.role === 'assistant' ? assistantTextContent(prev).trim() : prev.content.trim()
+      const msgText =
+        msg.role === 'assistant' ? assistantTextContent(msg).trim() : msg.content.trim()
+      if (prevText !== '' && prevText === msgText) continue
+    }
+    result.push(msg)
+  }
+  return result
+}
+
 export function apiMessagesToSessionMessages(history: ChatMessage[]): SessionChatMessage[] {
   return history
     .filter((m) => m.role === 'user' || m.role === 'assistant')

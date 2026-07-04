@@ -30,6 +30,117 @@ func TestClaudeStreamParserResultErrorUsesResultField(t *testing.T) {
 	}
 }
 
+func TestClaudeStreamParserSkipsAssistantTextReplayAfterToolUse(t *testing.T) {
+	parser := newClaudeStreamParser()
+	events := make(chan Event, 8)
+
+	parser.handleLine([]byte(`{"type":"stream_event","event":{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"tool-1","name":"AskUserQuestion"}}}`), events)
+	parser.handleLine([]byte(`{"type":"stream_event","event":{"type":"content_block_stop","index":0}}`), events)
+	parser.handleLine([]byte(`{"type":"assistant","message":{"content":[{"type":"text","text":"old response from a prior turn"}]}}`), events)
+	close(events)
+
+	for ev := range events {
+		if ev.Type == EventText {
+			t.Fatalf("unexpected text replay: %q", ev.Content)
+		}
+	}
+}
+
+func TestClaudeStreamParserAssistantTextBeforeTools(t *testing.T) {
+	parser := newClaudeStreamParser()
+	events := make(chan Event, 4)
+
+	parser.handleLine([]byte(`{"type":"assistant","message":{"content":[{"type":"text","text":"Hello"}]}}`), events)
+	close(events)
+
+	var text string
+	for ev := range events {
+		if ev.Type == EventText {
+			text += ev.Content
+		}
+	}
+	if text != "Hello" {
+		t.Fatalf("text = %q", text)
+	}
+}
+
+func TestClaudeStreamParserCompletesTurnOnMessageStopEndTurn(t *testing.T) {
+	parser := newClaudeStreamParser()
+	events := make(chan Event, 4)
+
+	lines := [][]byte{
+		[]byte(`{"type":"stream_event","session_id":"sess-1","event":{"type":"message_delta","delta":{"stop_reason":"end_turn"}}}`),
+		[]byte(`{"type":"stream_event","session_id":"sess-1","event":{"type":"message_stop"}}`),
+	}
+	for _, line := range lines {
+		parser.handleLine(line, events)
+	}
+	close(events)
+
+	var done Event
+	for ev := range events {
+		if ev.Type == EventDone {
+			done = ev
+		}
+	}
+	if done.Type != EventDone {
+		t.Fatalf("expected EventDone, got %+v", done)
+	}
+	if done.SessionID != "sess-1" {
+		t.Fatalf("session id = %q", done.SessionID)
+	}
+	if !parser.completedTurn() {
+		t.Fatal("expected completed turn")
+	}
+}
+
+func TestClaudeStreamParserDoesNotCompleteWithPendingToolWork(t *testing.T) {
+	parser := newClaudeStreamParser()
+	events := make(chan Event, 8)
+
+	parser.handleLine([]byte(`{"type":"stream_event","event":{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"tool-1","name":"AskUserQuestion"}}}`), events)
+	parser.handleLine([]byte(`{"type":"stream_event","event":{"type":"content_block_stop","index":0}}`), events)
+	parser.handleLine([]byte(`{"type":"stream_event","event":{"type":"message_delta","delta":{"stop_reason":"end_turn"}}}`), events)
+	parser.handleLine([]byte(`{"type":"stream_event","event":{"type":"message_stop"}}`), events)
+	close(events)
+
+	for ev := range events {
+		if ev.Type == EventDone {
+			t.Fatal("expected no EventDone while tool is pending")
+		}
+	}
+	if parser.completedTurn() {
+		t.Fatal("turn should not complete while tool result is pending")
+	}
+}
+
+func TestClaudeStreamParserCompletesTurnOnAssistantSnapshotAfterToolResult(t *testing.T) {
+	parser := newClaudeStreamParser()
+	events := make(chan Event, 8)
+
+	lines := [][]byte{
+		[]byte(`{"type":"stream_event","session_id":"sess-1","event":{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"tool-1","name":"AskUserQuestion"}}}`),
+		[]byte(`{"type":"stream_event","event":{"type":"content_block_stop","index":0}}`),
+		[]byte(`{"type":"user","parent_tool_use_id":"tool-1","tool_use_result":{"answers":["animal"]}}`),
+		[]byte(`{"type":"stream_event","event":{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Here's a joke."}}}`),
+		[]byte(`{"type":"assistant","message":{"content":[{"type":"text","text":"Here's a joke."}]}}`),
+	}
+	for _, line := range lines {
+		parser.handleLine(line, events)
+	}
+	close(events)
+
+	var done Event
+	for ev := range events {
+		if ev.Type == EventDone {
+			done = ev
+		}
+	}
+	if done.Type != EventDone {
+		t.Fatal("expected EventDone after post-tool assistant snapshot")
+	}
+}
+
 func TestClaudeStreamParserTextSepAfterToolCall(t *testing.T) {
 	parser := newClaudeStreamParser()
 	events := make(chan Event, 16)

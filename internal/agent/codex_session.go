@@ -9,6 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+
+	"loop/internal/hitl"
 )
 
 type persistentCodexSession struct {
@@ -70,7 +72,7 @@ func (s *persistentCodexSession) runTurn(ctx context.Context, agent *CodexAgent,
 			cmd.Dir = req.WorkingDir
 		}
 	}
-	applyCmdEnv(cmd, "codex", req.ConfigDir, req.Env, req.UserScopeHarness)
+	applyCmdEnv(cmd, "codex", req.ConfigDir, req.Env, req.UserScopeHarness, req.LoopSessionID, req.RunID)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -138,7 +140,7 @@ func (s *persistentCodexSession) runTurn(ctx context.Context, agent *CodexAgent,
 func (s *persistentCodexSession) buildArgs(req RunRequest) []string {
 	threadID := s.threadID
 	if threadID == "" {
-		threadID = req.SessionID
+		threadID = harnessResumeSessionID(req)
 	}
 
 	var args []string
@@ -147,11 +149,10 @@ func (s *persistentCodexSession) buildArgs(req RunRequest) []string {
 	} else {
 		args = []string{"exec", req.Message}
 	}
-	args = append(args,
-		"--json",
-		"--dangerously-bypass-approvals-and-sandbox",
-		"--skip-git-repo-check",
-	)
+	args = append(args, "--json", "--skip-git-repo-check")
+	if req.HarnessPermissions != hitl.PermissionsInteractive {
+		args = append(args, "--dangerously-bypass-approvals-and-sandbox")
+	}
 	if !req.UserScopeHarness && req.ConfigDir == "" {
 		args = append(args, "--ignore-user-config")
 	}

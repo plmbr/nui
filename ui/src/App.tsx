@@ -55,8 +55,13 @@ export default function App() {
   const sessionsRef = useRef(sessions)
   sessionsRef.current = sessions
 
+  // Probe in-flight runs once after bootstrap — not on every sessions list refresh.
+  // Re-probing after each completed run races with AG-UI finish and can mark the
+  // session running again, which blocks the next user message.
+  const probedSessionsRef = useRef(false)
   useEffect(() => {
-    if (!appReady || sessions.length === 0) return
+    if (!appReady || sessions.length === 0 || probedSessionsRef.current) return
+    probedSessionsRef.current = true
     void probeActiveRuns(sessions.map((s) => s.id))
   }, [appReady, sessions])
 

@@ -12,7 +12,7 @@ import {
   filterCustomAgentsBySources,
   sortCustomAgentsByName,
 } from '@/lib/agentSources'
-import { pickDefaultAgentTypeId, selectableAgentTypes, harnessSupportsUserScope, defaultUserScopeHarnessConfig } from '@/lib/agentTypes'
+import { pickDefaultAgentTypeId, selectableAgentTypes, harnessSupportsUserScope, defaultUserScopeHarnessConfig, agentSupportsHarnessPermissions } from '@/lib/agentTypes'
 import type { AgentType, CreateSessionRequest, ExtensionInfo, Session } from '@/types'
 
 interface Props {
@@ -44,6 +44,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [userScopeHarnessConfig, setUserScopeHarnessConfig] = useState(false)
+  const [harnessPermissionsEnabled, setHarnessPermissionsEnabled] = useState(true)
   const [directorySuggestions, setDirectorySuggestions] = useState<string[]>([])
   const [directoryInputFocused, setDirectoryInputFocused] = useState(false)
   const [activeDirectoryIndex, setActiveDirectoryIndex] = useState(0)
@@ -118,6 +119,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
     setSelectedSourceKeys(new Set())
     setError('')
     setUserScopeHarnessConfig(false)
+    setHarnessPermissionsEnabled(true)
     setDirectorySuggestions([])
     setDirectoryInputFocused(false)
   }
@@ -180,6 +182,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   const isBasicLoopSelected = builtins.some((a) => a.id === selectedId)
   const directoryListOpen = directoryInputFocused && directorySuggestions.length > 0
   const showUserScopeOption = selected ? harnessSupportsUserScope(selected.harness) : false
+  const showHarnessPermissionsOption = selected ? agentSupportsHarnessPermissions(selected) : false
 
   useEffect(() => {
     const agent = agentTypes.find((a) => a.id === selectedId)
@@ -236,8 +239,21 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
         workingDir: workingDir.trim(),
         agentType: selectedId,
       }
+      const agentConfig: NonNullable<CreateSessionRequest['agentConfig']> = {}
       if (userScopeHarnessConfig) {
-        req.agentConfig = { userScopeHarnessConfig: true }
+        agentConfig.userScopeHarnessConfig = true
+      }
+      if (showHarnessPermissionsOption) {
+        if (harnessPermissionsEnabled) {
+          agentConfig.hitlMode = 'interactive'
+          agentConfig.harnessPermissions = 'interactive'
+        } else {
+          agentConfig.hitlMode = 'off'
+          agentConfig.harnessPermissions = 'bypass'
+        }
+      }
+      if (Object.keys(agentConfig).length > 0) {
+        req.agentConfig = agentConfig
       }
       const session = await api.sessions.create(req)
       api.settings.update({ lastAgentType: selectedId }).catch(() => {})
@@ -474,6 +490,27 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
                   <p className="text-xs text-muted-foreground leading-snug">
                     Also load your harness user and project settings from the working directory.
                     ADL MCP servers are still merged in when supported.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {showHarnessPermissionsOption && (
+              <div className="shrink-0 flex items-start gap-2">
+                <input
+                  id="harnessPermissionsEnabled"
+                  type="checkbox"
+                  checked={harnessPermissionsEnabled}
+                  onChange={(e) => setHarnessPermissionsEnabled(e.target.checked)}
+                  className="mt-1 size-4 shrink-0 rounded border border-input"
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="harnessPermissionsEnabled" className="cursor-pointer">
+                    Tool approvals
+                  </Label>
+                  <p className="text-xs text-muted-foreground leading-snug">
+                    Human in the loop: ask questions via prompt cards and require approval before
+                    sensitive tools (bash, file writes, etc.).
                   </p>
                 </div>
               </div>

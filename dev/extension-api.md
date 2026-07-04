@@ -14,12 +14,15 @@ Extensions live under `~/.loop/extensions/<name>/` and contribute backend capabi
     agents.yaml          # list of ADL agents (optional)
     tools/               # CLI scripts for custom MCP tools (optional)
     harness_host.py      # harness runtime process (when using harnesses)
+    hitl-channels.yaml   # HITL delivery channels (optional)
+    hitl_channel_host.py # HITL channel runtime (optional)
 ```
 
 Copy the example from [`dev/extension-examples/corp-pack/`](extension-examples/corp-pack/) into `~/.loop/extensions/corp-pack/` to try it, or install it with the CLI:
 
 ```sh
 loop extension add dev/extension-examples/corp-pack
+loop extension add dev/extension-examples/hitl-demo   # HITL demo
 ```
 
 ## Install
@@ -109,6 +112,13 @@ contributions:
     runtime:
       transport: stdio
       command: ["python3", "mention_host.py"]
+
+  hitlChannels:
+    source:
+      file: hitl-channels.yaml
+    runtime:
+      transport: stdio
+      command: ["python3", "hitl_channel_host.py"]
 ```
 
 **Catalog source resolution** per list type: `source.file` → `source.command` → `catalog.command`.
@@ -248,6 +258,102 @@ SDK: [`harness-sdk/loop_mention.py`](../harness-sdk/loop_mention.py) (auto-insta
 
 Chat API: `GET /api/sessions/:id/mentions?parent=&query=`
 
+### HITL channels
+
+Extensions can contribute **delivery channels** for human-in-the-loop prompts. Declared under `contributions.hitlChannels` with a list file and optional stdio runtime (same pattern as harnesses and mention providers). Channels are **not** active globally — agents opt in via ADL `hitl.channels`:
+
+```yaml
+hitl:
+  mode: interactive
+  channels:
+    - loop-ui
+    - ext:hitl-demo/demo-slack
+```
+
+Built-in channel: **Loop UI** (`loop-ui`) renders prompt cards in chat.
+
+`hitl-channels.yaml`:
+
+```yaml
+hitlChannels:
+  - id: demo-slack
+    displayName: Demo Slack Channel
+    description: Forwards HITL prompts to Slack (example)
+```
+
+Channel ids use `ext:<extension>/<channel-id>` when referenced in agent ADL.
+
+Wire protocol (`hitl.*` namespace) for stdio channel hosts:
+
+| Method | Params | Result |
+|--------|--------|--------|
+| `hitl.info` | `{}` | `{id, name, version, capabilities}` |
+| `hitl.deliver` | `{channelId, request, workingDir?, sessionId?}` | `{ok: true, ...}` |
+| `hitl.shutdown` | `{}` | `{ok: true}` |
+
+The `request` object is the canonical HITL envelope (`requestId`, `kind`, `payload`, `routing`, `status`, …).
+
+SDK: [`harness-sdk/loop_hitl_channel.py`](../harness-sdk/loop_hitl_channel.py). Example: [`dev/extension-examples/hitl-demo/hitl_channel_host.py`](extension-examples/hitl-demo/hitl_channel_host.py).
+
+#### Harness-agnostic HITL (REST)
+
+Any harness — extension TCP/stdio hosts, remote HTTP agents, or custom MCP tool scripts — can create and wait on HITL requests via the Loop REST API. Loop sets `LOOP_API_URL`, `LOOP_SESSION_ID`, and `LOOP_RUN_ID` on harness subprocesses.
+
+| Step | HTTP |
+|------|------|
+| Create | `POST /api/hitl/requests` |
+| Wait | `GET /api/hitl/requests/:id/wait` |
+| Respond | `POST /api/hitl/requests/:id/respond` |
+| List pending | `GET /api/hitl/requests?pending=true` |
+
+Create body (minimal):
+
+```json
+{
+  "sessionId": "...",
+  "runId": "...",
+  "kind": "question",
+  "payload": {
+    "title": "Confirm",
+    "message": "Proceed?",
+    "questions": []
+  },
+  "routing": { "channels": ["loop-ui", "ext:hitl-demo/demo-slack"] }
+}
+```
+
+Python SDK helpers:
+
+| Module | Use |
+|--------|-----|
+| [`harness-sdk/loop_hitl.py`](../harness-sdk/loop_hitl.py) | `ask_user()`, `request_approval()`, `create_request()`, `wait_response()` |
+| [`harness-sdk/loop_agent.py`](../harness-sdk/loop_agent.py) | `LoopAgent.ask_user()` on TCP harnesses |
+| [`harness-sdk/loop_agent_stdio.py`](../harness-sdk/loop_agent_stdio.py) | `LoopAgent.ask_user()` on stdio extension harnesses; emits `harness.event` with `type: hitl_request` |
+
+Builtin harnesses (Claude, Codex, Pi, OpenCode) receive an injected **`loop-hitl`** MCP server (`loop hitl-mcp`) with `ask_user` and `request_approval` tools when `hitl.mode` is `interactive`.
+
+Example extension: [`dev/extension-examples/hitl-demo/`](extension-examples/hitl-demo/).
+
+#### REST-only origin bridge
+
+For event-bus integrations (Kafka, webhooks, Slack), implement a channel **without** a stdio runtime. Declare the channel in `hitl-channels.yaml` for discovery (`GET /api/hitl-channels`), then run a sidecar process that polls and responds over REST:
+
+1. `GET /api/hitl/requests?pending=true` — filter by `routing.channels` containing your channel id (e.g. `ext:hitl-demo/demo-webhook`).
+2. Deliver the prompt to your external system (Slack message, Kafka event, etc.).
+3. When the human answers, `POST /api/hitl/requests/:id/respond` with `{status, answers, respondedBy: {channel}}`.
+
+Example sidecar: [`dev/extension-examples/hitl-demo/origin_bridge.py`](extension-examples/hitl-demo/origin_bridge.py).
+
+HITL API:
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/hitl-channels` | Built-in and extension channel ids |
+| `POST /api/hitl/requests` | Create a HITL request |
+| `GET /api/hitl/requests/:id/wait` | Block until answered |
+| `POST /api/hitl/requests/:id/respond` | Submit an answer |
+| `GET /api/hitl/requests?pending=true` | List pending requests |
+
 ## Agent deployers
 
 Extensions may declare `contributions.aiAssets.agentDeployers` — named commands that deploy user ADL agents to a remote platform. Registry URLs, image tags, and auth are **extension-owned** (config files, env vars); Loop only passes the agent definition and bundled assets.
@@ -318,6 +424,10 @@ Framework: [`harness-sdk/loop_catalog.py`](../harness-sdk/loop_catalog.py)
 | `POST /api/extensions/reload` | Rescan `~/.loop/extensions/` |
 | `GET /api/agent-deployers` | Installed extension agent deployers |
 | `POST /api/agents/:id/deploy` | Deploy user agent; body `{"deployerId":"ext:..."}` |
+| `GET /api/hitl-channels` | HITL delivery channels (builtin + extensions) |
+| `POST /api/hitl/requests` | Create a HITL request |
+| `GET /api/hitl/requests/:id/wait` | Wait for HITL response |
+| `POST /api/hitl/requests/:id/respond` | Respond to a HITL request |
 
 Extension harnesses and agents appear in `GET /api/agent-types`.
 

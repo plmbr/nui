@@ -14,6 +14,10 @@ type claudeStreamParser struct {
 	seenToolEnds    map[string]bool
 	seenToolResults map[string]bool
 	blocks          map[int]*claudeBlockState
+	sessionID       string
+	lastStopReason  string
+	emittedDone     bool
+	turnComplete    bool
 }
 
 type claudeBlockState struct {
@@ -30,6 +34,32 @@ func newClaudeStreamParser() *claudeStreamParser {
 		seenToolResults: map[string]bool{},
 		blocks:          map[int]*claudeBlockState{},
 	}
+}
+
+func (p *claudeStreamParser) emitDone(sessionID string, events chan<- Event) {
+	if p.emittedDone || p.hasPendingToolWork() {
+		return
+	}
+	p.emittedDone = true
+	p.turnComplete = true
+	sid := sessionID
+	if sid == "" {
+		sid = p.sessionID
+	}
+	events <- Event{Type: EventDone, SessionID: sid}
+}
+
+func (p *claudeStreamParser) hasPendingToolWork() bool {
+	for id := range p.seenToolStarts {
+		if !p.seenToolResults[id] {
+			return true
+		}
+	}
+	return false
+}
+
+func (p *claudeStreamParser) completedTurn() bool {
+	return p.turnComplete
 }
 
 func (p *claudeStreamParser) markTextSepNeeded() {
@@ -70,6 +100,10 @@ func (p *claudeStreamParser) handleLine(line []byte, events chan<- Event) {
 		return
 	}
 
+	if envelope.SessionID != "" {
+		p.sessionID = envelope.SessionID
+	}
+
 	switch envelope.Type {
 	case "stream_event":
 		p.handleStreamEvent(envelope.Event, events)
@@ -85,7 +119,7 @@ func (p *claudeStreamParser) handleLine(line []byte, events chan<- Event) {
 			}
 			events <- Event{Type: EventError, Error: msg}
 		} else {
-			events <- Event{Type: EventDone, SessionID: envelope.SessionID}
+			p.emitDone(envelope.SessionID, events)
 		}
 	}
 }
@@ -98,6 +132,7 @@ func (p *claudeStreamParser) handleStreamEvent(raw json.RawMessage, events chan<
 			Type        string `json:"type"`
 			Text        string `json:"text"`
 			PartialJSON string `json:"partial_json"`
+			StopReason  string `json:"stop_reason"`
 		} `json:"delta"`
 		ContentBlock struct {
 			Type string `json:"type"`
@@ -110,6 +145,18 @@ func (p *claudeStreamParser) handleStreamEvent(raw json.RawMessage, events chan<
 	}
 
 	switch ev.Type {
+	case "message_delta":
+		if ev.Delta.StopReason != "" {
+			p.lastStopReason = ev.Delta.StopReason
+		}
+	case "message_stop":
+		if ev.Delta.StopReason != "" {
+			p.lastStopReason = ev.Delta.StopReason
+		}
+		if p.lastStopReason == "end_turn" {
+			p.emitDone("", events)
+		}
+		p.lastStopReason = ""
 	case "content_block_delta":
 		if ev.Delta.Type == "text_delta" && ev.Delta.Text != "" {
 			p.emitText(ev.Delta.Text, events)
@@ -180,6 +227,8 @@ func (p *claudeStreamParser) handleAssistant(raw json.RawMessage, events chan<- 
 		return
 	}
 
+	hasToolUse := false
+	hasTextBlock := false
 	for _, blockRaw := range msg.Content {
 		var blockType struct {
 			Type string `json:"type"`
@@ -190,13 +239,21 @@ func (p *claudeStreamParser) handleAssistant(raw json.RawMessage, events chan<- 
 
 		switch blockType.Type {
 		case "text":
+			hasTextBlock = true
 			var block struct {
 				Text string `json:"text"`
 			}
-			if json.Unmarshal(blockRaw, &block) == nil && block.Text != "" && !p.emittedText {
-				p.emitText(block.Text, events)
+			if json.Unmarshal(blockRaw, &block) != nil || block.Text == "" {
+				continue
 			}
+			// Partial stream_event deltas are authoritative with --include-partial-messages.
+			// Full assistant snapshots after tool/HITL pauses can replay prior turns.
+			if len(p.seenToolStarts) > 0 || p.emittedText {
+				continue
+			}
+			p.emitText(block.Text, events)
 		case "tool_use":
+			hasToolUse = true
 			p.markTextSepNeeded()
 			var block struct {
 				ID    string         `json:"id"`
@@ -233,6 +290,9 @@ func (p *claudeStreamParser) handleAssistant(raw json.RawMessage, events chan<- 
 		case "image":
 			emitImageEvents(blockRaw, events)
 		}
+	}
+	if hasTextBlock && !hasToolUse && len(p.seenToolStarts) > 0 && len(p.seenToolResults) > 0 && p.emittedText {
+		p.emitDone("", events)
 	}
 }
 

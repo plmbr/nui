@@ -85,6 +85,7 @@ func BuiltinADLSkills() []model.ADLSkill {
 }
 
 // WithBuiltins appends compiled-in skills not already present by name.
+// The ask-user skill is HITL-specific and attached separately when hitl.mode is interactive.
 func WithBuiltins(skills []model.ADLSkill) []model.ADLSkill {
 	if len(builtinSkillNames) == 0 {
 		return skills
@@ -98,12 +99,25 @@ func WithBuiltins(skills []model.ADLSkill) []model.ADLSkill {
 	}
 	out := append([]model.ADLSkill{}, skills...)
 	for _, builtin := range BuiltinADLSkills() {
+		if builtin.Name == HitlAskUserSkillName {
+			continue
+		}
 		if seen[builtin.Name] {
 			continue
 		}
 		out = append(out, builtin)
 	}
 	return out
+}
+
+const HitlAskUserSkillName = "ask-user"
+
+// HitlAskUserSkill returns the compiled-in HITL ask-user skill reference.
+func HitlAskUserSkill() model.ADLSkill {
+	return model.ADLSkill{
+		Name: HitlAskUserSkillName,
+		Ref:  BuiltinRefPrefix + HitlAskUserSkillName,
+	}
 }
 
 // ResolveBuiltin materializes a compiled-in skill into the catalog cache.

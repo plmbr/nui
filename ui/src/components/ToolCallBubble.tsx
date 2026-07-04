@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { McpAppFrame } from '@/components/McpAppFrame'
 import { imageSrc, type ToolCallPart } from '@/hooks/useSessionChat'
+import { formatToolCallDisplay } from '@/lib/formatToolCallDisplay'
 import { formatToolCallSummary } from '@/lib/toolCallSummary'
 import { extractImagesFromValue } from '@/lib/images'
 
@@ -40,17 +41,13 @@ export function ToolCallBubble({ part: msg }: Props) {
           {msg.toolArgs && Object.keys(msg.toolArgs).length > 0 && (
             <div className="tool-call__section">
               <div className="tool-call__label">Input</div>
-              <pre className="tool-call__code">{JSON.stringify(msg.toolArgs, null, 2)}</pre>
+              <pre className="tool-call__code">{formatToolCallDisplay(msg.toolArgs)}</pre>
             </div>
           )}
           {msg.toolResult !== undefined && (
             <div className="tool-call__section">
               <div className="tool-call__label">Output</div>
-              <pre className="tool-call__code">
-                {typeof msg.toolResult === 'string'
-                  ? msg.toolResult
-                  : JSON.stringify(msg.toolResult, null, 2)}
-              </pre>
+              <pre className="tool-call__code">{formatToolCallDisplay(msg.toolResult)}</pre>
             </div>
           )}
         </div>

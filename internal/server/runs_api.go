@@ -27,13 +27,15 @@ var (
 	activeRunsByID      = map[string]*activeRun{}
 )
 
+func runStatusIsActive(status RunStatus) bool {
+	return status == RunStatusRunning || status == RunStatusAwaitingUser
+}
+
 func registerActiveRun(sessionID, runID string, cancel context.CancelFunc) {
 	activeRunsMu.Lock()
 	defer activeRunsMu.Unlock()
-	if prev, ok := activeRunsBySession[sessionID]; ok {
-		prev.cancel()
-		delete(activeRunsByID, prev.runID)
-	}
+	// Runs are serialized per session in handleSessionAGUI; do not cancel the prior
+	// run here or a fast follow-up message can drop the in-flight Claude turn.
 	ar := &activeRun{sessionID: sessionID, runID: runID, cancel: cancel}
 	activeRunsBySession[sessionID] = ar
 	if runID != "" {
@@ -212,6 +214,10 @@ func handleSessionRunsRouter(w http.ResponseWriter, r *http.Request, sessionID, 
 		handleRunEvents(w, r, sessionID, runID)
 		return
 	}
+	if sub == "hitl" && r.Method == http.MethodPost {
+		handleSessionHITLCreate(w, r, sessionID, runID)
+		return
+	}
 	if sub != "" {
 		http.NotFound(w, r)
 		return
@@ -283,7 +289,7 @@ func handleRunEvents(w http.ResponseWriter, r *http.Request, sessionID, runID st
 		lastSeq = entry.Seq
 	}
 
-	if rec.Status != RunStatusRunning {
+	if !runStatusIsActive(rec.Status) {
 		writeRunSSEDone(w, flusher, rec)
 		return
 	}
@@ -291,7 +297,7 @@ func handleRunEvents(w http.ResponseWriter, r *http.Request, sessionID, runID st
 	ch, unsub := subscribeRunEvents(runID)
 	defer unsub()
 
-	if updated, ok := getRunRecord(runID); ok && updated.Status != RunStatusRunning {
+	if updated, ok := getRunRecord(runID); ok && !runStatusIsActive(updated.Status) {
 		writeRunSSEDone(w, flusher, updated)
 		return
 	}
@@ -318,7 +324,7 @@ func handleRunEvents(w http.ResponseWriter, r *http.Request, sessionID, runID st
 			}
 			writeRunSSE(w, flusher, entry)
 			lastSeq = entry.Seq
-			if updated, ok := getRunRecord(runID); ok && updated.Status != RunStatusRunning {
+			if updated, ok := getRunRecord(runID); ok && !runStatusIsActive(updated.Status) {
 				writeRunSSEDone(w, flusher, updated)
 				return
 			}

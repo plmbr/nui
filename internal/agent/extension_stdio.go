@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -44,7 +45,7 @@ func newStdioHarnessAgent(name, harnessID, projectID, extDir string, rt extensio
 		runtime:   rt,
 		projectID: projectID,
 	}
-	if err := a.ensureRPC(); err != nil {
+	if err := a.ensureRPC(RunRequest{LoopSessionID: projectID}); err != nil {
 		return nil, err
 	}
 	return a, nil
@@ -60,7 +61,45 @@ func (a *StdioHarnessAgent) Stop() {
 	}
 }
 
-func (a *StdioHarnessAgent) ensureRPC() error {
+func (a *StdioHarnessAgent) buildHarnessEnv(req RunRequest) []string {
+	sessionID := a.projectID
+	if req.LoopSessionID != "" {
+		sessionID = req.LoopSessionID
+	}
+	apiURL := defaultLoopAPIURL()
+	if req.Env != nil {
+		if v := strings.TrimSpace(req.Env[EnvLoopAPIURL]); v != "" {
+			apiURL = strings.TrimRight(v, "/")
+		}
+	}
+	env := append(os.Environ(),
+		"LOOP_EXTENSION_DIR="+a.extDir,
+		"LOOP_SESSION_ID="+sessionID,
+		"LOOP_HARNESS_ID="+a.harnessID,
+		"LOOP_API_URL="+apiURL,
+	)
+	if runID := strings.TrimSpace(req.RunID); runID != "" {
+		env = append(env, "LOOP_RUN_ID="+runID)
+	}
+	if sdkDir, err := extensions.HitlSDKDir(); err == nil && sdkDir != "" {
+		env = append(env, "LOOP_HITL_SDK_DIR="+sdkDir)
+		pyPath := sdkDir
+		if existing := os.Getenv("PYTHONPATH"); existing != "" {
+			pyPath = sdkDir + string(os.PathListSeparator) + existing
+		}
+		env = append(env, "PYTHONPATH="+pyPath)
+	}
+	for k, v := range req.Env {
+		switch k {
+		case EnvLoopSessionID, EnvLoopRunID, EnvLoopAPIURL:
+			continue
+		}
+		env = append(env, k+"="+v)
+	}
+	return env
+}
+
+func (a *StdioHarnessAgent) ensureRPC(req RunRequest) error {
 	if a.rpc != nil && !a.rpc.closed {
 		return nil
 	}
@@ -74,11 +113,7 @@ func (a *StdioHarnessAgent) ensureRPC() error {
 	}
 	cmd := exec.Command(command[0], command[1:]...)
 	cmd.Dir = cwd
-	cmd.Env = append(os.Environ(),
-		"LOOP_EXTENSION_DIR="+a.extDir,
-		"LOOP_SESSION_ID="+a.projectID,
-		"LOOP_HARNESS_ID="+a.harnessID,
-	)
+	cmd.Env = a.buildHarnessEnv(req)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return err
@@ -155,7 +190,13 @@ func (a *StdioHarnessAgent) rpcCall(method string, params any, result any) error
 
 func (a *StdioHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<- Event) error {
 	a.mu.Lock()
-	if err := a.ensureRPC(); err != nil {
+	if req.LoopSessionID == "" {
+		req.LoopSessionID = a.projectID
+	}
+	if a.rpc != nil && !a.rpc.closed {
+		a.closeRPC()
+	}
+	if err := a.ensureRPC(req); err != nil {
 		a.mu.Unlock()
 		return err
 	}

@@ -4,7 +4,9 @@ import { HttpAgent } from '@ag-ui/client'
 import { EventType } from '@ag-ui/core'
 import { v4 as uuidv4 } from 'uuid'
 import { api, type AgentRunEvent } from '@/api'
+import type { HitlRequest } from '@/types'
 import {
+  dedupeChatMessages,
   apiMessagesToSessionMessages,
   appendTextPart,
   applyAssistantError,
@@ -23,7 +25,9 @@ interface SessionEntry {
   isLoaded: boolean
   isLoading: boolean
   assistantMsgId: string | null
+  activeRunId: string | null
   pendingTools: Record<string, string>
+  pendingHitl: Record<string, HitlRequest>
   agent: HttpAgent
   subscription: { unsubscribe: () => void } | null
   listeners: Set<() => void>
@@ -35,14 +39,23 @@ function syncSnapshot(entry: SessionEntry) {
     messages: entry.messages,
     isRunning: entry.isRunning,
     isLoading: !entry.isLoaded || entry.isLoading,
+    pendingHitl: Object.values(entry.pendingHitl),
   }
 }
 
 const entries = new Map<string, SessionEntry>()
+const aguiFinishedRuns = new Map<string, Set<string>>()
 const globalListeners = new Set<() => void>()
 const progressListeners = new Set<() => void>()
 let runningSnapshot = ''
 let progressSnapshot = ''
+
+function createSessionAgent(sessionId: string): HttpAgent {
+  return new HttpAgent({
+    url: `/api/sessions/${sessionId}/ag-ui`,
+    threadId: sessionId,
+  })
+}
 
 function getOrCreateEntry(sessionId: string): SessionEntry {
   let entry = entries.get(sessionId)
@@ -53,14 +66,13 @@ function getOrCreateEntry(sessionId: string): SessionEntry {
       isLoaded: false,
       isLoading: false,
       assistantMsgId: null,
+      activeRunId: null,
       pendingTools: {},
-      agent: new HttpAgent({
-        url: `/api/sessions/${sessionId}/ag-ui`,
-        threadId: sessionId,
-      }),
+      pendingHitl: {},
+      agent: createSessionAgent(sessionId),
       subscription: null,
       listeners: new Set(),
-      snapshot: { messages: [], isRunning: false, isLoading: true },
+      snapshot: { messages: [], isRunning: false, isLoading: true, pendingHitl: [] },
     }
     syncSnapshot(entry)
     entries.set(sessionId, entry)
@@ -117,20 +129,26 @@ function setEntry(
   emitSession(sessionId)
 }
 
-function finishRun(sessionId: string) {
+function markAguiRunFinished(sessionId: string, runId: string) {
+  let finished = aguiFinishedRuns.get(sessionId)
+  if (!finished) {
+    finished = new Set()
+    aguiFinishedRuns.set(sessionId, finished)
+  }
+  finished.add(runId)
+}
+
+function finishRun(sessionId: string, runId?: string) {
   const entry = entries.get(sessionId)
   if (!entry) return
+  if (runId && entry.activeRunId && entry.activeRunId !== runId) return
+  if (runId) markAguiRunFinished(sessionId, runId)
   entry.subscription?.unsubscribe()
   entry.subscription = null
   entry.assistantMsgId = null
+  entry.activeRunId = null
   entry.isRunning = false
   emitSession(sessionId)
-}
-
-function hasAssistantContent(messages: SessionChatMessage[]): boolean {
-  return messages.some(
-    (m) => m.role === 'assistant' && (assistantTextContent(m).trim() !== '' || (m.parts?.length ?? 0) > 0),
-  )
 }
 
 async function fetchMessagesFromServer(sessionId: string): Promise<SessionChatMessage[]> {
@@ -142,22 +160,93 @@ async function fetchMessagesFromServer(sessionId: string): Promise<SessionChatMe
   return apiMessagesToSessionMessages(history)
 }
 
+function upsertHitlRequest(sessionId: string, req: HitlRequest) {
+  if (!req.requestId) return
+  setEntry(sessionId, (entry) => ({
+    pendingHitl: { ...entry.pendingHitl, [req.requestId]: req },
+  }))
+}
+
+async function reloadPendingHitl(sessionId: string) {
+  try {
+    const pending = await api.hitl.listPending(sessionId)
+    if (pending.length === 0) return
+    setEntry(sessionId, (entry) => {
+      const pendingHitl = { ...entry.pendingHitl }
+      for (const req of pending) {
+        if (req.requestId) pendingHitl[req.requestId] = req
+      }
+      return { pendingHitl }
+    })
+  } catch {
+    /* best-effort */
+  }
+}
+
+function scheduleHitlReload(sessionId: string) {
+  void (async () => {
+    for (let attempt = 0; attempt < 30; attempt++) {
+      await reloadPendingHitl(sessionId)
+      const entry = entries.get(sessionId)
+      if (entry && Object.keys(entry.pendingHitl).length > 0) return
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    }
+  })()
+}
+
+export function dismissHitlRequest(sessionId: string, requestId: string) {
+  setEntry(sessionId, (entry) => {
+    if (!entry.pendingHitl[requestId]) return
+    const pendingHitl = { ...entry.pendingHitl }
+    delete pendingHitl[requestId]
+    return { pendingHitl }
+  })
+}
+
+function hitlRequestFromCustomValue(value: Record<string, unknown>): HitlRequest | null {
+  const requestId = typeof value.requestId === 'string' ? value.requestId : ''
+  if (!requestId) return null
+  return {
+    requestId,
+    sessionId: typeof value.sessionId === 'string' ? value.sessionId : undefined,
+    runId: typeof value.runId === 'string' ? value.runId : undefined,
+    stepName: typeof value.stepName === 'string' ? value.stepName : undefined,
+    kind: typeof value.kind === 'string' ? value.kind : 'question',
+    payload: value.payload as HitlRequest['payload'],
+    status: typeof value.status === 'string' ? value.status : undefined,
+    expiresAt: typeof value.expiresAt === 'string' ? value.expiresAt : undefined,
+    createdAt: typeof value.createdAt === 'string' ? value.createdAt : undefined,
+  }
+}
+
+function handleHitlCustomEvent(sessionId: string, value: Record<string, unknown>) {
+  const req = hitlRequestFromCustomValue(value)
+  if (req) upsertHitlRequest(sessionId, req)
+}
+
+async function handleHitlRunEvent(sessionId: string, requestId: string) {
+  if (!requestId.trim()) return
+  try {
+    const req = await api.hitl.get(requestId.trim())
+    upsertHitlRequest(sessionId, req)
+  } catch {
+    /* best-effort */
+  }
+}
+
 async function reloadMessages(sessionId: string) {
   const entry = getOrCreateEntry(sessionId)
-  const previous = entry.messages
+  if (entry.isRunning) return
+  // SSE is authoritative during an active chat; only hydrate from server on first load.
+  if (entry.messages.length > 0) return
+
   try {
-    let next = await fetchMessagesFromServer(sessionId)
-    if (!hasAssistantContent(next) && hasAssistantContent(previous)) {
-      await new Promise((resolve) => setTimeout(resolve, 200))
-      next = await fetchMessagesFromServer(sessionId)
-    }
-    if (!hasAssistantContent(next) && hasAssistantContent(previous)) {
-      entry.messages = previous
-      return
-    }
-    entry.messages = next
+    const next = await fetchMessagesFromServer(sessionId)
+    const current = entries.get(sessionId)
+    if (!current || current.isRunning || current.messages.length > 0) return
+    current.messages = dedupeChatMessages(next)
   } catch {
-    entry.messages = []
+    /* keep empty */
   }
 }
 
@@ -166,6 +255,11 @@ function applyAgentEvent(
   assistantMsgId: string,
   ev: AgentRunEvent,
 ) {
+  if (ev.type === 'hitl_request') {
+    void handleHitlRunEvent(sessionId, ev.content ?? '')
+    return
+  }
+
   setEntry(sessionId, (entry) => {
     const pendingTools = { ...entry.pendingTools }
     const messages = entry.messages.map((m) => {
@@ -253,15 +347,11 @@ function attachRunEvents(sessionId: string, runId: string) {
       applyAgentEvent(sessionId, current.assistantMsgId, event)
     },
     onFinished: () => {
-      void (async () => {
-        finishRun(sessionId)
-        await reloadMessages(sessionId)
-        emitSession(sessionId)
-      })()
+      finishRun(sessionId, runId)
     },
     onError: (err) => {
       if (err.name === 'AbortError') return
-      finishRun(sessionId)
+      finishRun(sessionId, runId)
     },
   })
 
@@ -270,7 +360,8 @@ function attachRunEvents(sessionId: string, runId: string) {
 
 async function reconnectActiveRun(sessionId: string) {
   const entry = getOrCreateEntry(sessionId)
-  if (entry.isRunning && entry.subscription) return
+  // Never attach a second event stream while the live AG-UI run owns this session.
+  if (entry.isRunning) return
 
   let runs: Awaited<ReturnType<typeof api.runs.list>>
   try {
@@ -279,8 +370,16 @@ async function reconnectActiveRun(sessionId: string) {
     return
   }
 
-  const active = [...runs].reverse().find((r) => r.status === 'running')
-  if (!active) return
+  const active = [...runs].reverse().find((r) => r.status === 'running' || r.status === 'awaiting_user')
+  if (!active) {
+    await reloadPendingHitl(sessionId)
+    return
+  }
+
+  const finishedViaAgui = aguiFinishedRuns.get(sessionId)
+  if (finishedViaAgui?.has(active.runId)) {
+    return
+  }
 
   if (entry.messages.length === 0) {
     await reloadMessages(sessionId)
@@ -304,10 +403,14 @@ async function reconnectActiveRun(sessionId: string) {
   }
 
   entry.assistantMsgId = assistantMsgId
+  entry.activeRunId = active.runId
   entry.isRunning = true
   entry.pendingTools = {}
   entry.messages = entry.messages.map((m) =>
-    m.id === assistantMsgId
+    m.id === assistantMsgId &&
+    m.role === 'assistant' &&
+    !assistantTextContent(m).trim() &&
+    !(m.parts?.length ?? 0)
       ? { ...m, content: '', parts: [], images: undefined, error: false }
       : m,
   )
@@ -315,6 +418,7 @@ async function reconnectActiveRun(sessionId: string) {
   syncSnapshot(entry)
   emitSession(sessionId)
   attachRunEvents(sessionId, active.runId)
+  await reloadPendingHitl(sessionId)
 }
 
 /** Re-attach to in-flight runs after page refresh (all sessions, for sidebar + chat). */
@@ -326,6 +430,7 @@ export interface SessionChatSnapshot {
   messages: SessionChatMessage[]
   isRunning: boolean
   isLoading: boolean
+  pendingHitl: HitlRequest[]
 }
 
 export function getSessionChatSnapshot(sessionId: string): SessionChatSnapshot {
@@ -387,9 +492,10 @@ export async function ensureSessionChatLoaded(sessionId: string): Promise<void> 
   entry.isLoading = false
   emitSession(sessionId)
 
-  if (!entry.isRunning) {
+  if (!entry.isRunning && entry.messages.length === 0) {
     await reconnectActiveRun(sessionId)
   }
+  await reloadPendingHitl(sessionId)
 }
 
 export async function stopRun(sessionId: string): Promise<void> {
@@ -432,11 +538,23 @@ export async function stopSessionRun(sessionId: string) {
 }
 
 export function sendMessage(sessionId: string, text: string) {
+  const trimmed = text.trim()
+  if (!trimmed) return
+
   const entry = getOrCreateEntry(sessionId)
-  if (entry.isRunning || !text.trim()) return
+  if (entry.isRunning) return
+
+  entry.isRunning = true
+  emitSession(sessionId)
+  startSend(sessionId, trimmed)
+}
+
+function startSend(sessionId: string, text: string) {
+  const entry = getOrCreateEntry(sessionId)
 
   const userMsg: SessionChatMessage = { id: uuidv4(), role: 'user', content: text }
   const assistantMsgId = uuidv4()
+  const runId = uuidv4()
   const assistantMsg: SessionChatMessage = {
     id: assistantMsgId,
     role: 'assistant',
@@ -445,11 +563,12 @@ export function sendMessage(sessionId: string, text: string) {
   }
 
   entry.messages = [...entry.messages, userMsg, assistantMsg]
-  entry.isRunning = true
   entry.assistantMsgId = assistantMsgId
+  entry.activeRunId = runId
   entry.pendingTools = {}
-  registerSessionRun(sessionId, () => stopRun(sessionId))
-  emitSession(sessionId)
+  entry.subscription?.unsubscribe()
+  entry.subscription = null
+  entry.agent = createSessionAgent(sessionId)
 
   const history = [
     ...entry.messages.slice(0, -2).map((m) => ({
@@ -462,7 +581,7 @@ export function sendMessage(sessionId: string, text: string) {
 
   const obs = entry.agent.run({
     threadId: sessionId,
-    runId: uuidv4(),
+    runId,
     messages: history,
     tools: [],
     state: {},
@@ -473,7 +592,7 @@ export function sendMessage(sessionId: string, text: string) {
   const sub = obs.subscribe({
     next(event) {
       const current = entries.get(sessionId)
-      if (!current) return
+      if (!current || current.activeRunId !== runId) return
 
       if (event.type === EventType.TEXT_MESSAGE_CHUNK) {
         const chunk = event as { delta?: string }
@@ -504,6 +623,10 @@ export function sendMessage(sessionId: string, text: string) {
             m.id === assistantMsgId ? { ...m, parts: [...(m.parts ?? []), toolPart] } : m,
           ),
         }))
+        const toolName = (e.toolCallName ?? '').toLowerCase()
+        if (toolName.includes('askuserquestion') || toolName.includes('ask_user')) {
+          scheduleHitlReload(sessionId)
+        }
       } else if (event.type === EventType.TOOL_CALL_ARGS) {
         const e = event as { toolCallId?: string; delta?: string }
         if (!e.toolCallId) return
@@ -563,6 +686,10 @@ export function sendMessage(sessionId: string, text: string) {
           }))
           return
         }
+        if (e.name === 'hitl_request') {
+          handleHitlCustomEvent(sessionId, e.value)
+          return
+        }
         if (e.name !== 'mcp_app') return
         const { toolCallId, serverName, resourceUri, toolInput } = e.value as {
           toolCallId?: string
@@ -587,8 +714,7 @@ export function sendMessage(sessionId: string, text: string) {
           }),
         }))
       } else if (event.type === EventType.RUN_FINISHED) {
-        finishRun(sessionId)
-        void reloadMessages(sessionId).then(() => emitSession(sessionId))
+        finishRun(sessionId, runId)
       } else if (event.type === EventType.RUN_ERROR) {
         const errEvent = event as { message?: string }
         const errText = errEvent.message?.trim()
@@ -605,11 +731,12 @@ export function sendMessage(sessionId: string, text: string) {
             return applyAssistantError(m, errText ?? '')
           }),
         }))
-        finishRun(sessionId)
-        void reloadMessages(sessionId).then(() => emitSession(sessionId))
+        finishRun(sessionId, runId)
       }
     },
     error(err) {
+      const current = entries.get(sessionId)
+      if (current?.activeRunId !== runId) return
       setEntry(sessionId, (ent) => ({
         messages: ent.messages.map((m) =>
           m.id === assistantMsgId
@@ -620,14 +747,22 @@ export function sendMessage(sessionId: string, text: string) {
             : m,
         ),
       }))
-      finishRun(sessionId)
+      finishRun(sessionId, runId)
+    },
+    complete() {
+      const current = entries.get(sessionId)
+      if (!current || current.activeRunId !== runId || !current.isRunning) return
+      finishRun(sessionId, runId)
     },
   })
 
   entry.subscription = sub
+  registerSessionRun(sessionId, () => stopRun(sessionId))
+  emitSession(sessionId)
 }
 
 export function clearSessionChat(sessionId: string) {
+  aguiFinishedRuns.delete(sessionId)
   const entry = entries.get(sessionId)
   if (!entry) return
   entry.subscription?.unsubscribe()
