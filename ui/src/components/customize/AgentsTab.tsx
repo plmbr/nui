@@ -21,6 +21,7 @@ import {
   formToAgentYaml,
   mergeFormIntoAgentYaml,
   parseAgentYaml,
+  syncYamlFromForm,
   type AgentFormModel,
 } from '@/lib/adlAgentForm'
 import { useAgentFormOptions } from '@/lib/useAgentFormOptions'
@@ -97,17 +98,27 @@ export function AgentsTab({ onChanged }: Props) {
       const parsed = parseAgentYaml(yaml, options)
       setForm(parsed.form)
       setHasWorkflowSteps(parsed.hasWorkflowSteps)
+      if (parsed.parseError) {
+        setError('YAML could not be parsed; form shows last known values.')
+      }
+      return parsed
     },
     [options],
   )
 
   useEffect(() => {
-    if ((selectedFile || creating) && content) {
+    if (optionsLoading || (!selectedFile && !creating)) return
+    if (editMode === 'form') {
+      const yaml = syncYamlFromForm(content, form, options)
+      const parsed = parseAgentYaml(yaml, options)
+      setForm(parsed.form)
+      setHasWorkflowSteps(parsed.hasWorkflowSteps)
+    } else if (content) {
       syncFormFromContent(content)
     }
-    // Re-parse when catalog options finish loading so dropdown ids resolve.
+    // Re-resolve catalog option ids once options finish loading.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [options])
+  }, [optionsLoading])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -145,7 +156,13 @@ export function AgentsTab({ onChanged }: Props) {
 
   const handleModeChange = (mode: EditMode) => {
     if (mode === editMode) return
-    if (mode === 'form' && editMode === 'yaml') {
+    if (mode === 'yaml' && editMode === 'form') {
+      const merged = syncYamlFromForm(content, form, options)
+      setContent(merged)
+      const parsed = parseAgentYaml(merged, options)
+      setHasWorkflowSteps(parsed.hasWorkflowSteps)
+    } else if (mode === 'form' && editMode === 'yaml') {
+      setError(null)
       syncFormFromContent(content)
     }
     setEditMode(mode)
@@ -299,7 +316,9 @@ export function AgentsTab({ onChanged }: Props) {
 
               {creating && (
                 <div className="space-y-1.5 shrink-0 max-w-md">
-                  <Label>Filename</Label>
+                  <Label>
+                    Filename <span className="text-destructive">*</span>
+                  </Label>
                   <Input value={newFilename} onChange={(e) => setNewFilename(e.target.value)} />
                 </div>
               )}

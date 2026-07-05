@@ -18,6 +18,9 @@ export interface FormMCPServer {
   name: string
 }
 
+export type ToolApprovalPolicy = 'default' | 'all' | 'allowlist' | 'denylist' | ''
+export type HitlMode = 'interactive' | 'auto' | 'off' | ''
+
 export interface AgentFormModel {
   id: string
   name: string
@@ -35,6 +38,9 @@ export interface AgentFormModel {
   env: KeyValue[]
   skills: FormSkill[]
   mcpServers: FormMCPServer[]
+  toolApprovalPolicy: ToolApprovalPolicy
+  toolApprovalTools: string[]
+  hitlMode: HitlMode
 }
 
 export interface AgentFormOptions {
@@ -71,6 +77,7 @@ export interface MCPOption {
 export interface ParsedAgentDoc {
   form: AgentFormModel
   hasWorkflowSteps: boolean
+  parseError?: boolean
 }
 
 const BUILTIN_HARNESSES: HarnessOption[] = [
@@ -100,6 +107,9 @@ export function defaultAgentForm(): AgentFormModel {
     env: [],
     skills: [],
     mcpServers: [],
+    toolApprovalPolicy: '',
+    toolApprovalTools: [],
+    hitlMode: '',
   }
 }
 
@@ -192,14 +202,39 @@ function aiAssetsLists(doc: Record<string, unknown>) {
   }
 }
 
+const TOOL_APPROVAL_POLICIES = new Set(['default', 'all', 'allowlist', 'denylist'])
+const HITL_MODES = new Set(['interactive', 'auto', 'off'])
+
+function parseToolApprovalPolicy(value: unknown): ToolApprovalPolicy {
+  const policy = String(value ?? '').trim()
+  return TOOL_APPROVAL_POLICIES.has(policy) ? (policy as ToolApprovalPolicy) : ''
+}
+
+function parseHitlMode(value: unknown): HitlMode {
+  const mode = String(value ?? '').trim()
+  return HITL_MODES.has(mode) ? (mode as HitlMode) : ''
+}
+
+function parseStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.map((item) => String(item).trim()).filter(Boolean)
+}
+
 /** Read supported form fields from YAML without modifying the source text. */
 export function parseAgentYaml(content: string, options: AgentFormOptions): ParsedAgentDoc {
-  const doc = parse(content) as Record<string, unknown> | null
+  let doc: Record<string, unknown> | null = null
+  try {
+    doc = parse(content) as Record<string, unknown> | null
+  } catch {
+    return { form: defaultAgentForm(), hasWorkflowSteps: false, parseError: true }
+  }
   if (!doc || typeof doc !== 'object') {
     return { form: defaultAgentForm(), hasWorkflowSteps: false }
   }
 
   const harness = doc.harness as Record<string, unknown> | undefined
+  const toolApprovals = doc.toolApprovals as Record<string, unknown> | undefined
+  const hitl = doc.hitl as Record<string, unknown> | undefined
   const { skills: skillsRaw, mcpServers: mcpRaw } = aiAssetsLists(doc)
   const steps = doc.steps as unknown[] | undefined
   const hasWorkflowSteps = Array.isArray(steps) && steps.length > 0
@@ -221,6 +256,9 @@ export function parseAgentYaml(content: string, options: AgentFormOptions): Pars
     env: mapToEntries(doc.env as Record<string, string> | undefined),
     skills: skillsRaw.map((s) => findSkillOption(s, options.skills)).filter(Boolean) as FormSkill[],
     mcpServers: mcpRaw.map((s) => findMCPOption(s, options.mcpServers)).filter(Boolean) as FormMCPServer[],
+    toolApprovalPolicy: parseToolApprovalPolicy(toolApprovals?.policy),
+    toolApprovalTools: parseStringList(toolApprovals?.tools),
+    hitlMode: parseHitlMode(hitl?.mode),
   }
 
   return { form, hasWorkflowSteps }
@@ -355,6 +393,51 @@ function mergeAiAssets(
   if (aiAssets.items.length === 0) root.delete('aiAssets')
 }
 
+function mergeToolApprovals(root: YAMLMap, form: AgentFormModel) {
+  const policy = form.toolApprovalPolicy.trim()
+  const tools = form.toolApprovalTools.map((tool) => tool.trim()).filter(Boolean)
+
+  if (!policy) {
+    root.delete('toolApprovals')
+    return
+  }
+
+  const toolApprovals = ensureMap(root, 'toolApprovals')
+  toolApprovals.set('policy', policy)
+  if (policy === 'allowlist' || policy === 'denylist') {
+    if (tools.length > 0) toolApprovals.set('tools', tools)
+    else toolApprovals.delete('tools')
+  } else {
+    toolApprovals.delete('tools')
+  }
+}
+
+function mergeHitl(root: YAMLMap, form: AgentFormModel) {
+  const mode = form.hitlMode.trim()
+  if (!mode) {
+    const hitl = root.get('hitl')
+    if (isMap(hitl)) {
+      ;(hitl as YAMLMap).delete('mode')
+      if ((hitl as YAMLMap).items.length === 0) root.delete('hitl')
+    } else {
+      root.delete('hitl')
+    }
+    return
+  }
+
+  const hitl = ensureMap(root, 'hitl')
+  hitl.set('mode', mode)
+}
+
+/** Best-effort merge of form fields into YAML, preserving unsupported sections. */
+export function syncYamlFromForm(
+  content: string,
+  form: AgentFormModel,
+  options: AgentFormOptions,
+): string {
+  return mergeFormIntoAgentYaml(content, form, options)
+}
+
 /** Apply form edits onto the original YAML document, preserving unsupported sections and formatting where possible. */
 export function mergeFormIntoAgentYaml(
   originalContent: string,
@@ -397,6 +480,8 @@ export function mergeFormIntoAgentYaml(
 
   mergeHarness(root, form, options.harnesses)
   mergeAiAssets(root, form, options, original)
+  mergeToolApprovals(root, form)
+  mergeHitl(root, form)
 
   if (!root.has('version')) root.set('version', '0.1.0')
 

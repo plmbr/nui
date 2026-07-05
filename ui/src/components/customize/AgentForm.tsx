@@ -1,5 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
+import type { ReactNode } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,7 +21,9 @@ import {
   type AgentFormOptions,
   type FormMCPServer,
   type FormSkill,
+  type HitlMode,
   type KeyValue,
+  type ToolApprovalPolicy,
   slugFromName,
 } from '@/lib/adlAgentForm'
 
@@ -29,6 +32,27 @@ interface Props {
   options: AgentFormOptions
   hasWorkflowSteps?: boolean
   onChange: (form: AgentFormModel) => void
+}
+
+function RequiredMark() {
+  return <span className="text-destructive" aria-hidden="true">*</span>
+}
+
+function FieldLabel({
+  htmlFor,
+  required,
+  children,
+}: {
+  htmlFor?: string
+  required?: boolean
+  children: ReactNode
+}) {
+  return (
+    <Label htmlFor={htmlFor}>
+      {children}
+      {required && <> <RequiredMark /></>}
+    </Label>
+  )
 }
 
 function groupBy<T extends { group: string }>(items: T[]): Map<string, T[]> {
@@ -182,9 +206,10 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
 
       <section className="space-y-3">
         <h3 className="text-sm font-semibold">Identity</h3>
+        <p className="text-xs text-muted-foreground">At least one of ID or Name is required.</p>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="agent-id">ID</Label>
+            <FieldLabel htmlFor="agent-id" required>ID</FieldLabel>
             <Input
               id="agent-id"
               value={form.id}
@@ -193,7 +218,7 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="agent-name">Name</Label>
+            <FieldLabel htmlFor="agent-name" required>Name</FieldLabel>
             <Input
               id="agent-name"
               value={form.name}
@@ -223,7 +248,7 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
         <h3 className="text-sm font-semibold">Harness</h3>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label>Harness type</Label>
+            <FieldLabel required>Harness type</FieldLabel>
             <SelectGrouped
               value={form.harnessOptionId}
               onValueChange={(harnessOptionId) => patch({ harnessOptionId })}
@@ -246,7 +271,7 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
         {harnessType === 'docker' && (
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="docker-image">Container image</Label>
+              <FieldLabel htmlFor="docker-image" required>Container image</FieldLabel>
               <Input
                 id="docker-image"
                 value={form.dockerImage}
@@ -255,7 +280,7 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="container-port">Container port</Label>
+              <FieldLabel htmlFor="container-port" required>Container port</FieldLabel>
               <Input
                 id="container-port"
                 value={form.containerPort}
@@ -269,7 +294,7 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
         {harnessType === 'remote' && (
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="remote-host">Host</Label>
+              <FieldLabel htmlFor="remote-host" required>Host</FieldLabel>
               <Input
                 id="remote-host"
                 value={form.remoteHost}
@@ -278,7 +303,7 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="remote-port">Port</Label>
+              <FieldLabel htmlFor="remote-port" required>Port</FieldLabel>
               <Input
                 id="remote-port"
                 value={form.remotePort}
@@ -363,6 +388,95 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
             </SelectContent>
           </Select>
         </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold">Safety &amp; approvals</h3>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>Tool approval policy</Label>
+            <p className="text-xs text-muted-foreground">
+              Controls which harness tools require Loop approval cards before running.
+            </p>
+            <Select
+              value={form.toolApprovalPolicy || 'unset'}
+              onValueChange={(v) => {
+                const policy = (v === 'unset' ? '' : v) as ToolApprovalPolicy
+                patch({
+                  toolApprovalPolicy: policy,
+                  toolApprovalTools:
+                    policy === 'allowlist' || policy === 'denylist' ? form.toolApprovalTools : [],
+                })
+              }}
+              items={[
+                { value: 'unset', label: 'Unset (prompt for every tool)' },
+                { value: 'default', label: 'Default (prompt for every tool)' },
+                { value: 'all', label: 'All (auto-approve every tool)' },
+                { value: 'allowlist', label: 'Allowlist (auto-approve listed tools only)' },
+                { value: 'denylist', label: 'Denylist (prompt only for listed tools)' },
+              ]}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unset">Unset (prompt for every tool)</SelectItem>
+                <SelectItem value="default">Default (prompt for every tool)</SelectItem>
+                <SelectItem value="all">All (auto-approve every tool)</SelectItem>
+                <SelectItem value="allowlist">Allowlist (auto-approve listed tools only)</SelectItem>
+                <SelectItem value="denylist">Denylist (prompt only for listed tools)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>HITL mode</Label>
+            <p className="text-xs text-muted-foreground">
+              Runtime human-in-the-loop prompts via Loop UI and MCP tools.
+            </p>
+            <Select
+              value={form.hitlMode || 'unset'}
+              onValueChange={(v) => patch({ hitlMode: (v === 'unset' ? '' : v) as HitlMode })}
+              items={[
+                { value: 'unset', label: 'Unset (interactive for chat, auto for schedules)' },
+                { value: 'interactive', label: 'Interactive (show HITL cards)' },
+                { value: 'auto', label: 'Auto (for scheduled agents)' },
+                { value: 'off', label: 'Off (disable runtime HITL)' },
+              ]}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unset">Unset (interactive for chat, auto for schedules)</SelectItem>
+                <SelectItem value="interactive">Interactive (show HITL cards)</SelectItem>
+                <SelectItem value="auto">Auto (for scheduled agents)</SelectItem>
+                <SelectItem value="off">Off (disable runtime HITL)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {(form.toolApprovalPolicy === 'allowlist' || form.toolApprovalPolicy === 'denylist') && (
+          <div className="space-y-1.5">
+            <FieldLabel htmlFor="tool-approval-tools" required>Tool list</FieldLabel>
+            <p className="text-xs text-muted-foreground">
+              One tool name per line (e.g. Bash, Write, Read, mcp__loop-hitl__*).
+            </p>
+            <Textarea
+              id="tool-approval-tools"
+              value={form.toolApprovalTools.join('\n')}
+              onChange={(e) => {
+                const toolApprovalTools = e.target.value
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .filter(Boolean)
+                patch({ toolApprovalTools })
+              }}
+              rows={4}
+              placeholder={'Bash\nWrite\nEdit'}
+              className="font-mono text-xs"
+            />
+          </div>
+        )}
       </section>
 
       <section className="space-y-3">
