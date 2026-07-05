@@ -31,9 +31,10 @@ const containerIdleTimeout = 30 * time.Minute
 
 // Manager launches in-process harness agents, Docker containers, and remote agents.
 type Manager struct {
-	registry      *extensions.Registry
-	builtinMu     sync.Mutex
-	builtinAgents map[string]Agent // projectID + harnessType → agent
+	registry       *extensions.Registry
+	testHarnessRun HarnessRunHook
+	builtinMu      sync.Mutex
+	builtinAgents  map[string]Agent // projectID + harnessType → agent
 	extMu         sync.Mutex
 	extAgents     map[string]Agent // projectID + harnessID → extension harness agent
 	containerMu   sync.Mutex       // protects containers, dockerURLs, and lastActivity

@@ -26,3 +26,6 @@ __pycache__/
 
 # Playwright
 .playwright-mcp/
+
+# Test results
+ui/test-results/

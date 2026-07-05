@@ -7,7 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Backend (Go)
 ```sh
 go build ./...          # compile
-go test ./...           # run tests
+go test . ./cmd/... ./internal/...  # run tests (avoids ui/node_modules)
+./scripts/test-all.sh               # Go + Vitest + Playwright E2E
 go run . ui             # build + run server on :8080
 go run . ui --port 3000 # custom port (use this for development)
 go run . ui -a "Claude Code" -m "Review README" -w . --open --hide-input

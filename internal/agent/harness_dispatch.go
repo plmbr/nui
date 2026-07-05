@@ -22,6 +22,9 @@ var harnessRunners = map[string]harnessRunner{
 }
 
 func (a *ADLAgent) dispatchHarness(ctx context.Context, req RunRequest, harness model.ADLHarness, events chan<- Event) error {
+	if a.manager != nil && a.manager.testHarnessRun != nil {
+		return a.manager.testHarnessRun(ctx, req, events)
+	}
 	harnessType := harness.Type
 	if harnessType == "" {
 		harnessType = "claude-code"
