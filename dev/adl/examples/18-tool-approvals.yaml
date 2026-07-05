@@ -1,0 +1,39 @@
+adl: "1.0"
+id: tool-approvals-example
+name: Tool Approvals Example
+description: Demonstrates top-level toolApprovals policies with interactive harness permissions
+
+harness:
+  type: claude-code
+  model: claude-sonnet-4-6
+  permissions: interactive
+
+# Prompt only for dangerous tools; auto-approve Read, Grep, MCP tools, etc.
+toolApprovals:
+  policy: denylist
+  tools:
+    - Bash
+    - Write
+    - Edit
+    - MultiEdit
+
+hitl:
+  mode: interactive
+
+systemPrompt: |
+  You are a careful coding assistant. Prefer Read and Grep before making changes.
+
+# Other policy examples (use one at a time):
+#
+# Auto-approve every harness tool (no Loop approval cards):
+# toolApprovals:
+#   policy: all
+#
+# Auto-approve only safe read-only tools:
+# toolApprovals:
+#   policy: allowlist
+#   tools: [Read, Grep, Glob, mcp__loop-hitl__*]
+#
+# Prompt for every tool (default when toolApprovals is omitted):
+# toolApprovals:
+#   policy: default

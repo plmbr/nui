@@ -97,6 +97,19 @@ harness:
   port: 9090                      # harness.type:remote
   env:                            # per-harness env (overrides top-level env on conflict)
     ANTHROPIC_API_KEY: string
+  permissions: interactive | bypass # claude-code/codex native tool approval gate; default bypass
+
+toolApprovals:                    # selective auto-approve when harness.permissions is interactive
+  policy: default | all | allowlist | denylist
+  tools:                          # required for allowlist or denylist
+    - Read
+    - Bash
+    - mcp__my-server__*
+
+hitl:
+  mode: interactive | auto | off
+  channels: [loop-ui, ext:...]
+  # approvals: [bash, write]      # deprecated; use toolApprovals with policy denylist instead
 
 env:                              # global env for all harness subprocesses
   ANTHROPIC_BASE_URL: string

@@ -67,6 +67,7 @@ type ADLDefinition struct {
 	PromptSuggestions []ADLPromptSuggestion `yaml:"promptSuggestions" json:"promptSuggestions,omitempty"` // quick-start pills in chat UI
 	WorkingDirInput   bool                 `yaml:"workingDirInput"   json:"workingDirInput,omitempty"`   // true = user picks working dir at session create
 	HITL              ADLHITL              `yaml:"hitl"              json:"hitl,omitempty"`
+	ToolApprovals     ADLToolApprovals     `yaml:"toolApprovals"     json:"toolApprovals,omitempty"`
 	Steps        []ADLStep      `yaml:"steps"        json:"steps,omitempty"`
 }
 

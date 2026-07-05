@@ -25,6 +25,7 @@ The executor in `internal/agent/adl.go` runs multi-step pipelines in topological
 | `15-env-vars.yaml` | Basic | Global `env` + `harness.env` |
 | `16-ai-assets-skills.yaml` | Basic | `aiAssets.skills` (path, ref, content, git) |
 | `17-auto-scheduled-agent.yaml` | Basic | `promptMode: auto` agent for Customize → Schedules |
+| `18-tool-approvals.yaml` | Basic | Top-level `toolApprovals` with `harness.permissions: interactive` |
 
 ## Harness types
 
@@ -138,6 +139,29 @@ harness:
 
 `promptMode: user` (default) waits for the user to type a message. `promptMode: auto` hides the input and runs on session open with a launch prompt, ADL `defaultPrompt`, or the built-in phrase `"Follow your system instructions and run."`.
 
+### Tool approvals
+
+When `harness.permissions: interactive` (Claude Code or Codex), Loop routes native tool permission requests through the UI. Top-level `toolApprovals` controls which tools auto-approve vs prompt:
+
+| Policy | Behavior |
+|---|---|
+| `default` | Prompt for every tool |
+| `all` | Auto-approve all tools |
+| `allowlist` | Auto-approve only listed tools |
+| `denylist` | Prompt only for listed tools |
+
+Tool names include native harness tools (`Bash`, `Write`) and MCP tools (`mcp__server-name__tool-name`). Glob patterns such as `mcp__corp__*` are supported. Selective policies are enforced for Claude Code in v1; Codex supports binary bypass only.
+
+Session overrides: `agentConfig.toolApprovalPolicy` and `agentConfig.toolApprovalTools`.
+
+```yaml
+harness:
+  permissions: interactive
+toolApprovals:
+  policy: denylist
+  tools: [Bash, Write, Edit]
+```
+
 ```yaml
 promptMode: auto
 defaultPrompt: Follow your system instructions and run.
@@ -192,5 +216,6 @@ harness:
 | `skill` + `systemPrompt` → harness config | Done |
 | `env` / `harness.env` → subprocess env | Done |
 | `promptMode` / `defaultPrompt` | Done |
+| `toolApprovals` selective auto-approve | Done (Claude; requires `harness.permissions: interactive`) |
 
 See [dev/dev.md](../../dev.md) for the full architecture and [orchestration-research.md](../orchestration-research.md) for design research.

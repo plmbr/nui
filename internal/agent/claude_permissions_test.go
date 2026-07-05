@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"loop/internal/hitl"
 )
 
 func TestParseClaudePermissionRequest(t *testing.T) {
@@ -56,6 +58,19 @@ func TestParseClaudePermissionRequestIgnoresOtherMessages(t *testing.T) {
 	_, ok := parseClaudePermissionRequest([]byte(`{"type":"assistant","message":{}}`))
 	if ok {
 		t.Fatal("expected non-permission line to be ignored")
+	}
+}
+
+func TestShouldAutoApproveBeforeHITL(t *testing.T) {
+	req := RunRequest{
+		ToolApprovalPolicy: hitl.ToolApprovalDenylist,
+		ToolApprovalTools:  []string{"Bash", "Write"},
+	}
+	if !hitl.ShouldAutoApproveTool("Read", req.ToolApprovalPolicy, req.ToolApprovalTools) {
+		t.Fatal("Read should auto-approve under denylist")
+	}
+	if hitl.ShouldAutoApproveTool("Bash", req.ToolApprovalPolicy, req.ToolApprovalTools) {
+		t.Fatal("Bash should require approval under denylist")
 	}
 }
 

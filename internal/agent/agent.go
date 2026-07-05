@@ -49,6 +49,10 @@ type RunRequest struct {
 	RunID string
 	// HarnessPermissions is interactive | bypass for claude-code/codex native approval gates.
 	HarnessPermissions string
+	// ToolApprovalPolicy is default | all | allowlist | denylist for selective auto-approve.
+	ToolApprovalPolicy string
+	// ToolApprovalTools lists tool names/patterns for allowlist or denylist policies.
+	ToolApprovalTools []string
 	// AgentConfig is the Loop session override map (hitlMode, harnessPermissions, …).
 	AgentConfig map[string]any
 }

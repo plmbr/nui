@@ -5,6 +5,10 @@ agents:
     harness:
       type: claude-code
       model: claude-sonnet-4-6
+      permissions: interactive
+    toolApprovals:
+      policy: denylist
+      tools: [Bash, Write, Edit]
     hitl:
       mode: interactive
       channels:

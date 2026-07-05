@@ -32,6 +32,8 @@ type HarnessDeps struct {
 	ResolvedRules           []ResolvedRule
 	WorkingDir              string
 	UserScope               bool
+	ToolApprovalPolicy      string
+	ToolApprovalTools       []string
 	PendingCustomMCPServers []extensions.PendingCustomMCPServer
 }
 
@@ -213,6 +215,7 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 		}
 		deps.ResolvedRules = resolved
 		deps.Rules = nil
+		deps.ToolApprovalPolicy, deps.ToolApprovalTools = hitl.EffectiveToolApprovals(def, agentConfig)
 		return deps, nil
 	}
 	expandedSkills := make([]model.ADLSkill, 0, len(deps.Skills))
@@ -236,6 +239,7 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 	}
 	deps.ResolvedRules = resolved
 	deps.Rules = nil
+	deps.ToolApprovalPolicy, deps.ToolApprovalTools = hitl.EffectiveToolApprovals(def, agentConfig)
 	return deps, nil
 }
 

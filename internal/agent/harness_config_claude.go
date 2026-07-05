@@ -24,14 +24,8 @@ func (claudeHarnessProvisioner) provision(configDir string, deps HarnessDeps) er
 	if err := writeClaudeMCPConfig(configDir, deps.MCPServers); err != nil {
 		return err
 	}
-	if hasLoopHitlMCP(deps.MCPServers) {
-		if err := writeClaudeHITLHooks(configDir); err != nil {
-			return err
-		}
-	} else if hasLoopVizMCP(deps.MCPServers) {
-		if err := writeClaudeLoopMCPPermissions(configDir, deps.MCPServers); err != nil {
-			return err
-		}
+	if err := writeClaudeSessionSettings(configDir, deps); err != nil {
+		return err
 	}
 	if !deps.UserScope {
 		if err := linkClaudeAuthFromUser(configDir); err != nil {

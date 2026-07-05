@@ -71,6 +71,9 @@ func parseClaudePermissionRequest(line []byte) (claudePermissionRequest, bool) {
 }
 
 func waitForClaudeToolApproval(ctx context.Context, req RunRequest, perm claudePermissionRequest) (allow bool, denyMessage string, err error) {
+	if hitl.ShouldAutoApproveTool(perm.ToolName, req.ToolApprovalPolicy, req.ToolApprovalTools) {
+		return true, "", nil
+	}
 	sessionID := req.LoopSessionID
 	if sessionID == "" {
 		sessionID = req.SessionID

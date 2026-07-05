@@ -36,6 +36,8 @@ type AgentTypeInfo struct {
 	HitlMode          string                     `json:"hitlMode,omitempty"`          // interactive | auto | off
 	HarnessPermissions string                    `json:"harnessPermissions,omitempty"` // interactive | bypass
 	SupportsHarnessPermissions bool             `json:"supportsHarnessPermissions,omitempty"`
+	ToolApprovalPolicy         string           `json:"toolApprovalPolicy,omitempty"` // default | all | allowlist | denylist
+	ToolApprovalTools          []string         `json:"toolApprovalTools,omitempty"`
 	DefaultPrompt     string                     `json:"defaultPrompt,omitempty"`
 	PromptSuggestions []model.ADLPromptSuggestion `json:"promptSuggestions,omitempty"`
 	Skills            []string                   `json:"skills,omitempty"`
@@ -485,6 +487,7 @@ func agentTypeInfoFromDef(def model.ADLDefinition, builtin bool) AgentTypeInfo {
 	info.HitlMode = mode
 	info.HarnessPermissions = hitl.EffectivePermissions(def, nil)
 	info.SupportsHarnessPermissions = agent.HarnessSupportsUserScope(def.Harness.Type)
+	info.ToolApprovalPolicy, info.ToolApprovalTools = hitl.EffectiveToolApprovals(def, nil)
 	return info
 }
 

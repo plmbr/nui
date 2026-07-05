@@ -18,7 +18,7 @@ func TestWriteClaudeHITLHooksAllowsLoopHitlMCP(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(tmp, ".claude.json"), []byte(`{"mcpServers":{"loop-hitl":{},"loop-viz":{}}}`), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := writeClaudeHITLHooks(tmp); err != nil {
+	if err := writeClaudeSessionSettings(tmp, HarnessDeps{}); err != nil {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(filepath.Join(tmp, "settings.json"))
@@ -38,6 +38,73 @@ func TestWriteClaudeHITLHooksAllowsLoopHitlMCP(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(tmp, claudeVizBridgeScript)); err != nil {
 		t.Fatalf("expected viz bridge script: %v", err)
+	}
+}
+
+func TestWriteClaudeSessionSettingsToolApprovalAll(t *testing.T) {
+	tmp := t.TempDir()
+	if err := writeClaudeSessionSettings(tmp, HarnessDeps{
+		ToolApprovalPolicy: hitl.ToolApprovalAll,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(tmp, "settings.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var settings struct {
+		Permissions struct {
+			Allow []string `json:"allow"`
+		} `json:"permissions"`
+	}
+	if err := json.Unmarshal(data, &settings); err != nil {
+		t.Fatal(err)
+	}
+	if len(settings.Permissions.Allow) != 1 || settings.Permissions.Allow[0] != "*" {
+		t.Fatalf("permissions.allow = %v", settings.Permissions.Allow)
+	}
+}
+
+func TestWriteClaudeSessionSettingsToolApprovalAllowlist(t *testing.T) {
+	tmp := t.TempDir()
+	if err := writeClaudeSessionSettings(tmp, HarnessDeps{
+		ToolApprovalPolicy: hitl.ToolApprovalAllowlist,
+		ToolApprovalTools:  []string{"Read", "Grep"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(tmp, "settings.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var settings struct {
+		Permissions struct {
+			Allow []string `json:"allow"`
+		} `json:"permissions"`
+	}
+	if err := json.Unmarshal(data, &settings); err != nil {
+		t.Fatal(err)
+	}
+	if len(settings.Permissions.Allow) != 2 {
+		t.Fatalf("permissions.allow = %v", settings.Permissions.Allow)
+	}
+}
+
+func TestExpandHarnessDepsSetsToolApprovals(t *testing.T) {
+	expanded, err := ExpandHarnessDeps(HarnessDeps{}, nil, "session", model.ADLDefinition{
+		ToolApprovals: model.ADLToolApprovals{
+			Policy: hitl.ToolApprovalDenylist,
+			Tools:  []string{"Bash"},
+		},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expanded.ToolApprovalPolicy != hitl.ToolApprovalDenylist {
+		t.Fatalf("policy = %q", expanded.ToolApprovalPolicy)
+	}
+	if len(expanded.ToolApprovalTools) != 1 {
+		t.Fatalf("tools = %v", expanded.ToolApprovalTools)
 	}
 }
 

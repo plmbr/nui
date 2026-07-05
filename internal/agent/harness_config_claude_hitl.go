@@ -102,8 +102,9 @@ func claudePreToolUseHooks(configDir string) ([]map[string]any, error) {
 	return hooks, nil
 }
 
-func writeClaudeSessionSettings(configDir string, servers []model.ADLMCPServer) error {
-	allowed := claudeAllowedTools(configDir, servers)
+func writeClaudeSessionSettings(configDir string, deps HarnessDeps) error {
+	allowed := claudeAllowedTools(configDir, deps.MCPServers)
+	allowed = hitl.ToolsForPermissionsAllow(deps.ToolApprovalPolicy, deps.ToolApprovalTools, allowed)
 	preToolUse, err := claudePreToolUseHooks(configDir)
 	if err != nil {
 		return err
@@ -127,14 +128,6 @@ func writeClaudeSessionSettings(configDir string, servers []model.ADLMCPServer) 
 		return err
 	}
 	return os.WriteFile(filepath.Join(configDir, "settings.json"), data, 0644)
-}
-
-func writeClaudeLoopMCPPermissions(configDir string, servers []model.ADLMCPServer) error {
-	return writeClaudeSessionSettings(configDir, servers)
-}
-
-func writeClaudeHITLHooks(configDir string) error {
-	return writeClaudeSessionSettings(configDir, nil)
 }
 
 const claudeHitlBridgeSh = `#!/usr/bin/env bash

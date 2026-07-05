@@ -174,6 +174,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 		}
 		if def, ok := findADLDef(session.AgentType); ok {
 			runReq.HarnessPermissions = hitl.EffectivePermissions(def, session.AgentConfig)
+			runReq.ToolApprovalPolicy, runReq.ToolApprovalTools = hitl.EffectiveToolApprovals(def, session.AgentConfig)
 		}
 		if !isADL {
 			runReq.SessionID = agentSessionID

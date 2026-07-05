@@ -118,6 +118,9 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 	if req.HarnessPermissions == "" {
 		req.HarnessPermissions = hitl.EffectivePermissions(a.def, req.AgentConfig)
 	}
+	if req.ToolApprovalPolicy == "" {
+		req.ToolApprovalPolicy, req.ToolApprovalTools = hitl.EffectiveToolApprovals(a.def, req.AgentConfig)
+	}
 
 	switch harness.Type {
 	case "claude-code", "":

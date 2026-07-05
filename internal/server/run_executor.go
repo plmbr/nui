@@ -163,6 +163,7 @@ func executeRun(ctx context.Context, opts executeRunOptions) executeRunResult {
 		}
 		if def, ok := findADLDef(opts.Session.AgentType); ok {
 			runReq.HarnessPermissions = hitl.EffectivePermissions(def, opts.Session.AgentConfig)
+			runReq.ToolApprovalPolicy, runReq.ToolApprovalTools = hitl.EffectiveToolApprovals(def, opts.Session.AgentConfig)
 		}
 		if !ra.IsADL {
 			runReq.SessionID = opts.AgentSessionID

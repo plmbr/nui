@@ -72,6 +72,8 @@ export interface AgentType {
   hitlMode?: 'interactive' | 'off' | 'auto'
   harnessPermissions?: 'interactive' | 'bypass'
   supportsHarnessPermissions?: boolean
+  toolApprovalPolicy?: 'default' | 'all' | 'allowlist' | 'denylist'
+  toolApprovalTools?: string[]
   isBuiltin: boolean
   source?: 'builtin' | 'user' | 'extension'
   available: boolean
