@@ -245,6 +245,23 @@ export function ChatPanel({
     initialPromptSentRef.current = false
   }, [session.id])
 
+  useEffect(() => {
+    const root = document.documentElement
+    const container = messagesContainerRef.current
+    if (!container) return
+
+    const onScroll = () => {
+      root.classList.toggle('chat-scrolled', container.scrollTop > 0)
+    }
+
+    onScroll()
+    container.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      container.removeEventListener('scroll', onScroll)
+      root.classList.remove('chat-scrolled')
+    }
+  }, [session.id])
+
   const mention = useMentionMenu({
     sessionId: session.id,
     input,
