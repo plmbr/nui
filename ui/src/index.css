@@ -679,7 +679,7 @@
   }
 
   .agui-message--user .agui-message__bubble {
-    @apply ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md border border-primary/10 bg-user-bubble px-3.5 py-2 text-user-bubble-foreground whitespace-pre-wrap;
+    @apply ml-auto w-fit max-w-[85%] rounded-[12px] border border-primary/10 bg-user-bubble px-3.5 py-2 text-user-bubble-foreground whitespace-pre-wrap;
   }
 
   .agui-message--user .agui-message__bubble p {
@@ -707,6 +707,14 @@
 
   .agui-message--assistant .tool-call {
     @apply mx-0 mb-0.5 max-w-none px-0;
+  }
+
+  .agui-message--assistant .tool-group {
+    @apply mx-0 mb-1 max-w-none px-0;
+  }
+
+  .agui-message--assistant .tool-group:last-child {
+    @apply mb-0;
   }
 
   .agui-message--assistant .tool-call__header {
@@ -1015,6 +1023,67 @@
 
   .tool-call__code {
     @apply m-0 max-h-[200px] overflow-auto whitespace-pre-wrap break-words rounded-md border border-border/50 bg-muted/25 px-2 py-1 font-mono text-[11px] leading-snug text-foreground/90;
+  }
+
+  .tool-group {
+    @apply overflow-hidden;
+  }
+
+  .tool-group__header {
+    @apply flex w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent px-0 py-1 text-left text-[13px] text-muted-foreground;
+  }
+
+  .tool-group__chevron {
+    @apply shrink-0 opacity-60;
+  }
+
+  .tool-group__summary {
+    @apply min-w-0 flex-1 truncate font-normal;
+    color: color-mix(in oklch, var(--foreground) 72%, transparent);
+  }
+
+  .tool-group__status {
+    @apply shrink-0 text-xs text-muted-foreground/80;
+  }
+
+  .tool-group--running .tool-group__status {
+    @apply text-primary/80;
+  }
+
+  .tool-group__timeline {
+    @apply ml-[7px] flex flex-col gap-1 border-l border-border/60 py-1 pl-3;
+  }
+
+  .tool-call-item {
+    @apply flex flex-col gap-1;
+  }
+
+  .tool-call-item__row {
+    @apply flex min-w-0 items-baseline gap-2 text-[13px];
+  }
+
+  .tool-call-item__name {
+    @apply shrink-0 font-normal text-foreground/85;
+  }
+
+  .tool-call-item__detail {
+    @apply min-w-0 flex-1 truncate text-xs text-muted-foreground/70;
+  }
+
+  .tool-call-item__status {
+    @apply shrink-0 text-xs text-muted-foreground/80;
+  }
+
+  .tool-call-item--running .tool-call-item__name {
+    color: color-mix(in oklch, var(--primary) 55%, var(--foreground));
+  }
+
+  .tool-call-item__result {
+    @apply shrink-0 rounded border border-border/70 bg-muted/30 px-1 py-px text-[10px] font-medium leading-none text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground;
+  }
+
+  .tool-call-item__body {
+    @apply flex flex-col gap-1.5 pb-1;
   }
 
   .hitl-prompt {

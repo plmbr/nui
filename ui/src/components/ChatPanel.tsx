@@ -18,15 +18,16 @@ import { ThinkingIndicator } from '@/components/ThinkingIndicator'
 import { MentionMenu } from '@/components/MentionMenu'
 import { SlashCommandMenu } from '@/components/SlashCommandMenu'
 import { HitlPromptCard } from '@/components/HitlPromptCard'
-import { ToolCallBubble } from '@/components/ToolCallBubble'
+import { ToolCallGroup } from '@/components/ToolCallGroup'
 import { VisualizationFrame } from '@/components/VisualizationFrame'
-import { imageSrc, useSessionChat, type AssistantPart } from '@/hooks/useSessionChat'
+import { imageSrc, useSessionChat } from '@/hooks/useSessionChat'
+import { segmentAssistantParts } from '@/lib/toolCallDisplay'
 import { useMentionMenu } from '@/hooks/useMentionMenu'
 import { useSlashCommandMenu } from '@/hooks/useSlashCommandMenu'
 import { looksLikeDiff } from '@/lib/diff'
 import { normalizeMarkdown, stripInlineCodeDelimiters } from '@/lib/markdown'
 import { getCodeBlockInfo } from '@/lib/reactNodeText'
-import { extractVisualization, normalizeVisualizationParts, shouldHideToolBubble, shouldRenderVisualization } from '@/lib/visualization'
+import { normalizeVisualizationParts } from '@/lib/visualization'
 import type { PromptSuggestion, Session } from '@/types'
 
 const AUTO_PROMPT_FALLBACK = 'Follow your system instructions and run.'
@@ -465,30 +466,26 @@ export function ChatPanel({
     </ReactMarkdown>
   )
 
-  const renderAssistantPart = (part: AssistantPart, partIndex: number, msgId: string, allParts: AssistantPart[]) => {
-    if (part.type === 'tool') {
-      if (!shouldRenderVisualization(part, allParts, partIndex)) {
-        if (shouldHideToolBubble(part)) return null
-        return <ToolCallBubble key={part.id} part={part} />
-      }
-      const viz = extractVisualization(part)
-      if (viz) {
+  const renderAssistantSegments = (parts: NonNullable<(typeof messages)[number]['parts']>, msgId: string) =>
+    segmentAssistantParts(parts).map((segment) => {
+      if (segment.type === 'text') {
         return (
-          <div key={part.id} className="agui-message__visualization-part">
-            <VisualizationFrame html={viz.html} title={viz.title} />
+          <div key={`${msgId}-${segment.key}`} className="agui-message__text-part">
+            {renderAssistantText(segment.content)}
           </div>
         )
       }
-      if (shouldHideToolBubble(part)) return null
-      return <ToolCallBubble key={part.id} part={part} />
-    }
 
-    return (
-      <div key={`${msgId}-text-${partIndex}`} className="agui-message__text-part">
-        {renderAssistantText(part.content)}
-      </div>
-    )
-  }
+      if (segment.type === 'visualization') {
+        return (
+          <div key={segment.key} className="agui-message__visualization-part">
+            <VisualizationFrame html={segment.html} title={segment.title} />
+          </div>
+        )
+      }
+
+      return <ToolCallGroup key={segment.key} parts={segment.parts} />
+    })
 
   return (
     <div className="agui-chat flex flex-col flex-1 min-h-0">
@@ -526,9 +523,7 @@ export function ChatPanel({
                       />
                     ))}
                     {hasParts ? (
-                      normalizeVisualizationParts(parts!).map((part, index, normalized) =>
-                        renderAssistantPart(part, index, msg.id, normalized),
-                      )
+                      renderAssistantSegments(normalizeVisualizationParts(parts!), msg.id)
                     ) : msg.content ? (
                       renderAssistantText(msg.content)
                     ) : null}

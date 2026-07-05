@@ -4,34 +4,98 @@ import { useState } from 'react'
 import { McpAppFrame } from '@/components/McpAppFrame'
 import { imageSrc, type ToolCallPart } from '@/hooks/useSessionChat'
 import { formatToolCallDisplay } from '@/lib/formatToolCallDisplay'
+import { formatToolDisplayName } from '@/lib/toolCallDisplay'
 import { formatToolCallSummary } from '@/lib/toolCallSummary'
 import { extractImagesFromValue } from '@/lib/images'
 
 interface Props {
   part: ToolCallPart
+  nested?: boolean
 }
 
-export function ToolCallBubble({ part: msg }: Props) {
+export function ToolCallBubble({ part: msg, nested = false }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const baseName = msg.toolName?.split(':').pop() ?? msg.toolName ?? 'tool'
+  const displayName = formatToolDisplayName(msg.toolName)
   const detail = formatToolCallSummary(msg.toolName, msg.toolArgs)
+  const isDone = msg.toolResult !== undefined
+  const hasDetails =
+    (msg.toolArgs && Object.keys(msg.toolArgs).length > 0) || msg.toolResult !== undefined
   const toolImages =
     msg.toolResult !== undefined ? extractImagesFromValue(msg.toolResult) : []
+
+  if (nested) {
+    return (
+      <div className={`tool-call-item${isDone ? '' : ' tool-call-item--running'}`}>
+        <div className="tool-call-item__row">
+          <span className="tool-call-item__name">{displayName}</span>
+          {detail && <span className="tool-call-item__detail">{detail}</span>}
+          {!isDone && <span className="tool-call-item__status">Running…</span>}
+          {hasDetails && isDone && (
+            <button
+              type="button"
+              className="tool-call-item__result"
+              onClick={() => setExpanded((value) => !value)}
+              aria-expanded={expanded}
+            >
+              {expanded ? 'Hide' : 'Result'}
+            </button>
+          )}
+        </div>
+
+        {expanded && (
+          <div className="tool-call-item__body">
+            {msg.toolArgs && Object.keys(msg.toolArgs).length > 0 && (
+              <div className="tool-call__section">
+                <div className="tool-call__label">Input</div>
+                <pre className="tool-call__code">{formatToolCallDisplay(msg.toolArgs)}</pre>
+              </div>
+            )}
+            {msg.toolResult !== undefined && (
+              <div className="tool-call__section">
+                <div className="tool-call__label">Output</div>
+                <pre className="tool-call__code">{formatToolCallDisplay(msg.toolResult)}</pre>
+              </div>
+            )}
+          </div>
+        )}
+
+        {toolImages.map((img) => (
+          <img
+            key={img.id}
+            src={imageSrc(img)}
+            alt="Tool result"
+            className="agui-message__image"
+            loading="lazy"
+          />
+        ))}
+
+        {msg.mcpAppResourceUri && msg.mcpAppServerName && (
+          <McpAppFrame
+            serverName={msg.mcpAppServerName}
+            resourceUri={msg.mcpAppResourceUri}
+            toolName={msg.toolName}
+            toolInput={msg.mcpAppToolInput}
+            toolResult={msg.toolResult}
+          />
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="tool-call">
       <button
         type="button"
         className="tool-call__header"
-        onClick={() => setExpanded((e) => !e)}
+        onClick={() => setExpanded((value) => !value)}
       >
         <span className="tool-call__icon">⚙</span>
         <div className="tool-call__summary">
-          <span className="tool-call__name">{baseName}</span>
+          <span className="tool-call__name">{displayName}</span>
           {detail && <span className="tool-call__detail">{detail}</span>}
         </div>
         <span className="tool-call__status">
-          {msg.toolResult !== undefined ? '✓ done' : '⋯ running'}
+          {isDone ? '✓ done' : '⋯ running'}
         </span>
         <span className="tool-call__toggle">{expanded ? '▲' : '▼'}</span>
       </button>
