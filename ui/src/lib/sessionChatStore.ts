@@ -637,11 +637,17 @@ function startSend(sessionId: string, text: string) {
           setEntry(sessionId, (ent) => ({
             messages: ent.messages.map((m) => {
               if (m.id !== assistantMsgId || !m.parts) return m
-              const parts = m.parts.map((part) =>
-                part.type === 'tool' && part.id === partId
-                  ? { ...part, toolArgs: { ...part.toolArgs, ...args } }
-                  : part,
-              )
+              const parts = m.parts.map((part) => {
+                if (part.type !== 'tool' || part.id !== partId) return part
+                const toolArgs = { ...part.toolArgs, ...args }
+                const viz = visualizationFromArgs(part.toolName, toolArgs)
+                return {
+                  ...part,
+                  toolArgs,
+                  visualizationHtml: viz?.html ?? part.visualizationHtml,
+                  visualizationTitle: viz?.title ?? part.visualizationTitle,
+                }
+              })
               return { ...m, parts }
             }),
           }))
@@ -688,6 +694,29 @@ function startSend(sessionId: string, text: string) {
         }
         if (e.name === 'hitl_request') {
           handleHitlCustomEvent(sessionId, e.value)
+          return
+        }
+        if (e.name === 'visualization') {
+          const { toolCallId, html, title } = e.value as {
+            toolCallId?: string
+            html?: string
+            title?: string
+          }
+          if (!toolCallId || !html) return
+          const partId = current.pendingTools[toolCallId]
+          if (!partId) return
+          setEntry(sessionId, (ent) => ({
+            messages: ent.messages.map((m) => {
+              if (m.id !== assistantMsgId || !m.parts) return m
+              return {
+                ...m,
+                parts: updateToolPart(m.parts, partId, {
+                  visualizationHtml: html,
+                  visualizationTitle: typeof title === 'string' ? title : undefined,
+                }),
+              }
+            }),
+          }))
           return
         }
         if (e.name !== 'mcp_app') return

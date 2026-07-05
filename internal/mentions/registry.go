@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"unicode"
 )
 
 var mentionTokenPattern = regexp.MustCompile(`@([^\s@]+)`)
@@ -125,6 +126,9 @@ func (r *Registry) ResolveMessage(ctx context.Context, workingDir, message strin
 	for _, match := range matches {
 		start, end := match[0], match[1]
 		valueStart, valueEnd := match[2], match[3]
+		if start > 0 && !unicode.IsSpace(rune(message[start-1])) {
+			continue
+		}
 		b.WriteString(message[last:start])
 		value := message[valueStart:valueEnd]
 		resolved, err := r.Resolve(ctx, ResolveRequest{

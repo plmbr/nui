@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"loop/internal/agent"
 	"loop/internal/model"
+	"loop/internal/viz"
 )
 
 type assistantPartAccumulator struct {
@@ -69,42 +70,63 @@ func (a *assistantPartAccumulator) applyEvent(ev agent.Event, mcpLookup func(str
 			return
 		}
 		for i := range a.parts {
-			if a.parts[i].Type == "tool" && a.parts[i].ID == partID {
-				if a.parts[i].ToolArgs == nil {
-					a.parts[i].ToolArgs = map[string]any{}
-				}
-				for k, v := range args {
-					a.parts[i].ToolArgs[k] = v
-				}
-				break
+			if a.parts[i].Type != "tool" || a.parts[i].ID != partID {
+				continue
 			}
+			for k, v := range args {
+				a.parts[i].ToolArgs[k] = v
+			}
+			toolName := ev.ToolName
+			if toolName == "" {
+				toolName = a.parts[i].ToolName
+			}
+			if html, title, ok := viz.ParseFromTool(toolName, a.parts[i].ToolArgs); ok {
+				a.parts[i].VisualizationHTML = html
+				a.parts[i].VisualizationTitle = title
+			}
+			break
 		}
 	case agent.EventToolCallEnd:
-		if ev.ToolCallID == "" || mcpLookup == nil {
+		if ev.ToolCallID == "" {
 			return
 		}
 		partID, ok := a.pendingTools[ev.ToolCallID]
 		if !ok {
 			return
 		}
-		uri, server, found := mcpLookup(ev.ToolName)
-		if !found {
-			return
-		}
 		var toolInput map[string]any
 		if ev.ToolArgs != "" {
 			_ = json.Unmarshal([]byte(ev.ToolArgs), &toolInput)
 		}
-		if toolInput == nil {
-			toolInput = map[string]any{}
-		}
 		for i := range a.parts {
-			if a.parts[i].Type == "tool" && a.parts[i].ID == partID {
-				a.parts[i].MCPAppResourceURI = uri
-				a.parts[i].MCPAppServerName = server
-				a.parts[i].MCPAppToolInput = toolInput
+			if a.parts[i].Type != "tool" || a.parts[i].ID != partID {
+				continue
+			}
+			if toolInput == nil && len(a.parts[i].ToolArgs) > 0 {
+				toolInput = a.parts[i].ToolArgs
+			}
+			toolName := ev.ToolName
+			if toolName == "" {
+				toolName = a.parts[i].ToolName
+			}
+			if html, title, ok := viz.ParseFromTool(toolName, toolInput); ok {
+				a.parts[i].VisualizationHTML = html
+				a.parts[i].VisualizationTitle = title
+			}
+			if mcpLookup == nil {
 				break
 			}
+			uri, server, found := mcpLookup(ev.ToolName)
+			if !found {
+				break
+			}
+			if toolInput == nil {
+				toolInput = map[string]any{}
+			}
+			a.parts[i].MCPAppResourceURI = uri
+			a.parts[i].MCPAppServerName = server
+			a.parts[i].MCPAppToolInput = toolInput
+			break
 		}
 	case agent.EventToolCallResult:
 		if ev.ToolCallID == "" {
@@ -143,6 +165,19 @@ func (a *assistantPartAccumulator) applyEvent(ev agent.Event, mcpLookup func(str
 	}
 }
 
+func (a *assistantPartAccumulator) toolPartForCall(toolCallID string) *model.ChatMessagePart {
+	partID, ok := a.pendingTools[toolCallID]
+	if !ok {
+		return nil
+	}
+	for i := range a.parts {
+		if a.parts[i].Type == "tool" && a.parts[i].ID == partID {
+			return &a.parts[i]
+		}
+	}
+	return nil
+}
+
 func (a *assistantPartAccumulator) toMessage(messageID string) model.ChatMessage {
 	msg := model.ChatMessage{
 		ID:        messageID,
@@ -152,7 +187,7 @@ func (a *assistantPartAccumulator) toMessage(messageID string) model.ChatMessage
 		Error:     a.errored,
 	}
 	if len(a.parts) > 0 {
-		msg.Parts = a.parts
+		msg.Parts = viz.NormalizeParts(a.parts)
 	}
 	if len(a.images) > 0 {
 		msg.Images = a.images

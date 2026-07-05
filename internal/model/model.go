@@ -31,6 +31,8 @@ type ChatMessagePart struct {
 	MCPAppResourceURI string         `json:"mcpAppResourceUri,omitempty"`
 	MCPAppServerName  string         `json:"mcpAppServerName,omitempty"`
 	MCPAppToolInput   map[string]any `json:"mcpAppToolInput,omitempty"`
+	VisualizationHTML string         `json:"visualizationHtml,omitempty"`
+	VisualizationTitle string        `json:"visualizationTitle,omitempty"`
 }
 
 type ChatMessage struct {

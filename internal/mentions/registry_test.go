@@ -175,6 +175,25 @@ func TestRegistryResolveMessage(t *testing.T) {
 	}
 }
 
+func TestRegistryResolveMessageSkipsEmailAddresses(t *testing.T) {
+	dir := t.TempDir()
+	filePath := filepath.Join(dir, "hello.txt")
+	if err := os.WriteFile(filePath, []byte("hi"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	reg := mentions.NewRegistry(nil)
+	msg := "email mbektas@netflix.com then read @file:hello.txt"
+	got, err := reg.ResolveMessage(context.Background(), dir, msg, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "email mbektas@netflix.com then read @" + filePath
+	if got != want {
+		t.Fatalf("resolved = %q, want %q", got, want)
+	}
+}
+
 func TestRegistryResolveMessageAbsoluteUploadPath(t *testing.T) {
 	uploadDir := filepath.Join(os.TempDir(), "loop-uploads", "sess-1")
 	if err := os.MkdirAll(uploadDir, 0o700); err != nil {

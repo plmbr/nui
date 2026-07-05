@@ -550,14 +550,17 @@ func TestExpandHarnessDepsCustomMCP(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(expanded.MCPServers) != 2 {
+	if len(expanded.MCPServers) != 3 {
 		t.Fatalf("mcp servers: %+v", expanded.MCPServers)
 	}
 	if expanded.MCPServers[0].Name != "ext-corp-pack-corp-tools" || expanded.MCPServers[0].Type != "stdio" {
 		t.Fatalf("server: %+v", expanded.MCPServers[0])
 	}
-	if expanded.MCPServers[1].Name != loopHitlMCPName {
-		t.Fatalf("loop-hitl server: %+v", expanded.MCPServers[1])
+	if expanded.MCPServers[1].Name != "loop-viz" {
+		t.Fatalf("loop-viz server: %+v", expanded.MCPServers[1])
+	}
+	if expanded.MCPServers[2].Name != loopHitlMCPName {
+		t.Fatalf("loop-hitl server: %+v", expanded.MCPServers[2])
 	}
 
 	configDir, err := ProvisionHarnessConfig(sessionID, "claude-code", expanded)

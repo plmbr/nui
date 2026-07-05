@@ -15,6 +15,9 @@ import (
 
 func TestWriteClaudeHITLHooksAllowsLoopHitlMCP(t *testing.T) {
 	tmp := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmp, ".claude.json"), []byte(`{"mcpServers":{"loop-hitl":{},"loop-viz":{}}}`), 0644); err != nil {
+		t.Fatal(err)
+	}
 	if err := writeClaudeHITLHooks(tmp); err != nil {
 		t.Fatal(err)
 	}
@@ -30,8 +33,11 @@ func TestWriteClaudeHITLHooksAllowsLoopHitlMCP(t *testing.T) {
 	if err := json.Unmarshal(data, &settings); err != nil {
 		t.Fatal(err)
 	}
-	if len(settings.Permissions.Allow) != 1 || settings.Permissions.Allow[0] != claudeLoopHitlAllowedTool {
+	if len(settings.Permissions.Allow) != 3 {
 		t.Fatalf("permissions.allow = %v", settings.Permissions.Allow)
+	}
+	if _, err := os.Stat(filepath.Join(tmp, claudeVizBridgeScript)); err != nil {
+		t.Fatalf("expected viz bridge script: %v", err)
 	}
 }
 
@@ -60,16 +66,53 @@ func TestAppendClaudeInteractiveHitlArgs(t *testing.T) {
 	}
 }
 
-func TestProvisionClaudeHarnessSkipsHITLSettingsWithoutLoopHitl(t *testing.T) {
+func TestProvisionClaudeHarnessWritesVizPermissionsWithoutHitl(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", filepath.Join(tmp, "home"))
 
-	configDir, err := ProvisionHarnessConfig("no-hitl", "claude-code", HarnessDeps{})
+	expanded, err := ExpandHarnessDeps(HarnessDeps{}, nil, "viz-only", model.ADLDefinition{
+		HITL: model.ADLHITL{Mode: hitl.ModeOff},
+	}, map[string]any{"hitlMode": "off"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(configDir, "settings.json")); !os.IsNotExist(err) {
-		t.Fatalf("expected no settings.json without loop-hitl, err=%v", err)
+	configDir, err := ProvisionHarnessConfig("viz-only", "claude-code", expanded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(configDir, "settings.json"))
+	if err != nil {
+		t.Fatalf("expected settings.json for loop-viz permissions: %v", err)
+	}
+	var settings struct {
+		Permissions struct {
+			Allow []string `json:"allow"`
+		} `json:"permissions"`
+	}
+	if err := json.Unmarshal(data, &settings); err != nil {
+		t.Fatal(err)
+	}
+	if len(settings.Permissions.Allow) != 2 {
+		t.Fatalf("permissions.allow = %v", settings.Permissions.Allow)
+	}
+	if _, err := os.Stat(filepath.Join(configDir, claudeVizBridgeScript)); err != nil {
+		t.Fatalf("expected viz bridge script: %v", err)
+	}
+	var hookSettings struct {
+		Hooks struct {
+			PreToolUse []struct {
+				Matcher string `json:"matcher"`
+			} `json:"PreToolUse"`
+		} `json:"hooks"`
+	}
+	if err := json.Unmarshal(data, &hookSettings); err != nil {
+		t.Fatal(err)
+	}
+	if len(hookSettings.Hooks.PreToolUse) != 1 || hookSettings.Hooks.PreToolUse[0].Matcher != "Skill|Bash" {
+		t.Fatalf("PreToolUse hooks = %+v", hookSettings.Hooks.PreToolUse)
+	}
+	if _, err := os.Stat(filepath.Join(configDir, claudeHitlBridgeScript)); !os.IsNotExist(err) {
+		t.Fatalf("expected no HITL bridge without loop-hitl, err=%v", err)
 	}
 }
 

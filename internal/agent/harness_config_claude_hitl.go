@@ -6,17 +6,22 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"loop/internal/hitl"
+	"loop/internal/model"
 )
 
 const (
 	claudeHitlBridgeScript    = "hitl-bridge.sh"
+	claudeVizBridgeScript     = "viz-bridge.sh"
 	claudeLoopHitlAllowedTool = "mcp__loop-hitl__*"
+	claudeLoopVizAllowedTool  = "mcp__loop-viz__*"
+	claudeWriteAllowedTool    = "Write"
 )
 
-func sessionHasLoopHitlMCP(configDir string) bool {
-	if configDir == "" {
+func sessionHasNamedMCP(configDir, name string) bool {
+	if configDir == "" || strings.TrimSpace(name) == "" {
 		return false
 	}
 	data, err := os.ReadFile(filepath.Join(configDir, ".claude.json"))
@@ -29,49 +34,107 @@ func sessionHasLoopHitlMCP(configDir string) bool {
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return false
 	}
-	_, ok := cfg.MCPServers[loopHitlMCPName]
+	_, ok := cfg.MCPServers[name]
 	return ok
+}
+
+func sessionHasLoopHitlMCP(configDir string) bool {
+	return sessionHasNamedMCP(configDir, loopHitlMCPName)
 }
 
 func appendClaudeInteractiveHitlArgs(args []string, req RunRequest) []string {
 	if req.HarnessPermissions != hitl.PermissionsInteractive {
 		return args
 	}
-	if !sessionHasLoopHitlMCP(req.ConfigDir) {
-		return args
+	if sessionHasLoopHitlMCP(req.ConfigDir) {
+		args = append(args, "--allowedTools", claudeLoopHitlAllowedTool)
 	}
-	return append(args, "--allowedTools", claudeLoopHitlAllowedTool)
+	if sessionHasLoopVizMCP(req.ConfigDir) {
+		args = append(args, "--allowedTools", claudeLoopVizAllowedTool)
+		args = append(args, "--allowedTools", claudeWriteAllowedTool)
+	}
+	return args
 }
 
-func writeClaudeHITLHooks(configDir string) error {
-	bridgePath := filepath.Join(configDir, claudeHitlBridgeScript)
-	if err := os.WriteFile(bridgePath, []byte(claudeHitlBridgeSh), 0755); err != nil {
-		return err
+func claudeAllowedTools(configDir string, servers []model.ADLMCPServer) []string {
+	var allowed []string
+	if hasLoopHitlMCP(servers) || sessionHasLoopHitlMCP(configDir) {
+		allowed = append(allowed, claudeLoopHitlAllowedTool)
 	}
-	settingsPath := filepath.Join(configDir, "settings.json")
-	settings := map[string]any{
-		"permissions": map[string]any{
-			"allow": []string{claudeLoopHitlAllowedTool},
-		},
-		"hooks": map[string]any{
-			"PreToolUse": []map[string]any{
+	if hasLoopVizMCP(servers) || sessionHasLoopVizMCP(configDir) {
+		allowed = append(allowed, claudeLoopVizAllowedTool, claudeWriteAllowedTool)
+	}
+	return allowed
+}
+
+func claudePreToolUseHooks(configDir string) ([]map[string]any, error) {
+	var hooks []map[string]any
+	if sessionHasLoopHitlMCP(configDir) {
+		bridgePath := filepath.Join(configDir, claudeHitlBridgeScript)
+		if err := os.WriteFile(bridgePath, []byte(claudeHitlBridgeSh), 0755); err != nil {
+			return nil, err
+		}
+		hooks = append(hooks, map[string]any{
+			"matcher": "AskUserQuestion|PermissionRequest",
+			"hooks": []map[string]any{
 				{
-					"matcher": "AskUserQuestion|PermissionRequest",
-					"hooks": []map[string]any{
-						{
-							"type":    "command",
-							"command": bridgePath,
-						},
-					},
+					"type":    "command",
+					"command": bridgePath,
 				},
 			},
-		},
+		})
+	}
+	if sessionHasLoopVizMCP(configDir) {
+		bridgePath := filepath.Join(configDir, claudeVizBridgeScript)
+		if err := os.WriteFile(bridgePath, []byte(claudeVizBridgeSh), 0755); err != nil {
+			return nil, err
+		}
+		hooks = append(hooks, map[string]any{
+			"matcher": "Skill|Bash",
+			"hooks": []map[string]any{
+				{
+					"type":    "command",
+					"command": bridgePath,
+				},
+			},
+		})
+	}
+	return hooks, nil
+}
+
+func writeClaudeSessionSettings(configDir string, servers []model.ADLMCPServer) error {
+	allowed := claudeAllowedTools(configDir, servers)
+	preToolUse, err := claudePreToolUseHooks(configDir)
+	if err != nil {
+		return err
+	}
+	if len(allowed) == 0 && len(preToolUse) == 0 {
+		return nil
+	}
+	settings := map[string]any{}
+	if len(allowed) > 0 {
+		settings["permissions"] = map[string]any{
+			"allow": allowed,
+		}
+	}
+	if len(preToolUse) > 0 {
+		settings["hooks"] = map[string]any{
+			"PreToolUse": preToolUse,
+		}
 	}
 	data, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(settingsPath, data, 0644)
+	return os.WriteFile(filepath.Join(configDir, "settings.json"), data, 0644)
+}
+
+func writeClaudeLoopMCPPermissions(configDir string, servers []model.ADLMCPServer) error {
+	return writeClaudeSessionSettings(configDir, servers)
+}
+
+func writeClaudeHITLHooks(configDir string) error {
+	return writeClaudeSessionSettings(configDir, nil)
 }
 
 const claudeHitlBridgeSh = `#!/usr/bin/env bash
@@ -210,6 +273,62 @@ def main():
             return
 
     allow_simple()
+
+if __name__ == "__main__":
+    main()
+PY
+`
+
+const claudeVizBridgeSh = `#!/usr/bin/env bash
+set -euo pipefail
+export PAYLOAD="$(cat)"
+python3 <<'PY'
+import json, os, sys
+
+def deny(reason):
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": reason,
+        }
+    }))
+
+def allow():
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "allow",
+        }
+    }))
+
+def is_dataviz_skill(tool_input):
+    skill = tool_input.get("skill") or tool_input.get("name") or ""
+    return "dataviz" in str(skill).lower()
+
+def is_dataviz_bash(tool_input):
+    cmd = tool_input.get("command") or ""
+    lower = str(cmd).lower()
+    return "dataviz" in lower and "bundled-skills" in lower
+
+def main():
+    raw = os.environ.get("PAYLOAD", "")
+    if not raw.strip():
+        allow()
+        return
+    payload = json.loads(raw)
+    tool = payload.get("tool_name") or payload.get("toolName") or ""
+    tool_input = payload.get("tool_input") or payload.get("toolInput") or payload.get("input") or {}
+
+    if tool == "Skill" and is_dataviz_skill(tool_input):
+        deny("Use show_visualization on the loop-viz MCP server instead of the dataviz skill. Build self-contained HTML and call show_visualization in the same turn before any closing text.")
+        return
+
+    if tool == "Bash" and is_dataviz_bash(tool_input):
+        deny("Use show_visualization on the loop-viz MCP server instead of dataviz scripts. Build self-contained HTML and call show_visualization in the same turn.")
+        return
+
+    allow()
 
 if __name__ == "__main__":
     main()

@@ -193,6 +193,11 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 		deps.PendingCustomMCPServers = nil
 	}
 	var err error
+	deps.MCPServers, err = appendLoopVizMCP(deps.MCPServers)
+	if err != nil {
+		return deps, err
+	}
+	deps.SystemPrompt = appendVizSystemPrompt(deps.SystemPrompt)
 	if hitl.RuntimeAllowed(def, agentConfig) {
 		deps.SystemPrompt = appendHitlSystemPrompt(deps.SystemPrompt)
 		deps.Skills = appendHitlAskUserSkill(deps.Skills)

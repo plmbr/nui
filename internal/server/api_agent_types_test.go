@@ -99,7 +99,7 @@ func TestAgentTypeInfoFromDef_skills(t *testing.T) {
 		}},
 	}
 	info := agentTypeInfoFromDef(def, false)
-	want := []string{"code-review", "commit-helper", "step-skill", "create-agent"}
+	want := []string{"code-review", "commit-helper", "step-skill", "create-agent", "visualize"}
 	if len(info.Skills) != len(want) {
 		t.Fatalf("Skills = %v, want %v", info.Skills, want)
 	}
@@ -115,8 +115,8 @@ func TestSkillNamesFromADL_legacySkill(t *testing.T) {
 		Skill: "./skills/code-review/SKILL.md",
 	}
 	got := skillNamesFromADL(def)
-	if len(got) != 2 || got[0] != "code-review" || got[1] != "create-agent" {
-		t.Fatalf("skillNamesFromADL() = %v, want [code-review create-agent]", got)
+	if len(got) != 3 || got[0] != "code-review" || got[1] != "create-agent" || got[2] != "visualize" {
+		t.Fatalf("skillNamesFromADL() = %v, want [code-review create-agent visualize]", got)
 	}
 }
 

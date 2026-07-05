@@ -135,6 +135,8 @@ export interface ChatMessagePart {
   mcpAppResourceUri?: string
   mcpAppServerName?: string
   mcpAppToolInput?: Record<string, unknown>
+  visualizationHtml?: string
+  visualizationTitle?: string
 }
 
 export interface ChatImage {

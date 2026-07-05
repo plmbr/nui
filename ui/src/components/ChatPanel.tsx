@@ -19,12 +19,14 @@ import { MentionMenu } from '@/components/MentionMenu'
 import { SlashCommandMenu } from '@/components/SlashCommandMenu'
 import { HitlPromptCard } from '@/components/HitlPromptCard'
 import { ToolCallBubble } from '@/components/ToolCallBubble'
+import { VisualizationFrame } from '@/components/VisualizationFrame'
 import { imageSrc, useSessionChat, type AssistantPart } from '@/hooks/useSessionChat'
 import { useMentionMenu } from '@/hooks/useMentionMenu'
 import { useSlashCommandMenu } from '@/hooks/useSlashCommandMenu'
 import { looksLikeDiff } from '@/lib/diff'
 import { normalizeMarkdown, stripInlineCodeDelimiters } from '@/lib/markdown'
 import { getCodeBlockInfo } from '@/lib/reactNodeText'
+import { extractVisualization, normalizeVisualizationParts, shouldHideToolBubble, shouldRenderVisualization } from '@/lib/visualization'
 import type { PromptSuggestion, Session } from '@/types'
 
 const AUTO_PROMPT_FALLBACK = 'Follow your system instructions and run.'
@@ -463,8 +465,21 @@ export function ChatPanel({
     </ReactMarkdown>
   )
 
-  const renderAssistantPart = (part: AssistantPart, partIndex: number, msgId: string) => {
+  const renderAssistantPart = (part: AssistantPart, partIndex: number, msgId: string, allParts: AssistantPart[]) => {
     if (part.type === 'tool') {
+      if (!shouldRenderVisualization(part, allParts, partIndex)) {
+        if (shouldHideToolBubble(part)) return null
+        return <ToolCallBubble key={part.id} part={part} />
+      }
+      const viz = extractVisualization(part)
+      if (viz) {
+        return (
+          <div key={part.id} className="agui-message__visualization-part">
+            <VisualizationFrame html={viz.html} title={viz.title} />
+          </div>
+        )
+      }
+      if (shouldHideToolBubble(part)) return null
       return <ToolCallBubble key={part.id} part={part} />
     }
 
@@ -511,7 +526,9 @@ export function ChatPanel({
                       />
                     ))}
                     {hasParts ? (
-                      parts!.map((part, index) => renderAssistantPart(part, index, msg.id))
+                      normalizeVisualizationParts(parts!).map((part, index, normalized) =>
+                        renderAssistantPart(part, index, msg.id, normalized),
+                      )
                     ) : msg.content ? (
                       renderAssistantText(msg.content)
                     ) : null}

@@ -124,6 +124,8 @@ func TestClaudeStreamParserCompletesTurnOnAssistantSnapshotAfterToolResult(t *te
 		[]byte(`{"type":"user","parent_tool_use_id":"tool-1","tool_use_result":{"answers":["animal"]}}`),
 		[]byte(`{"type":"stream_event","event":{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Here's a joke."}}}`),
 		[]byte(`{"type":"assistant","message":{"content":[{"type":"text","text":"Here's a joke."}]}}`),
+		[]byte(`{"type":"stream_event","session_id":"sess-1","event":{"type":"message_delta","delta":{"stop_reason":"end_turn"}}}`),
+		[]byte(`{"type":"stream_event","session_id":"sess-1","event":{"type":"message_stop"}}`),
 	}
 	for _, line := range lines {
 		parser.handleLine(line, events)
@@ -138,6 +140,42 @@ func TestClaudeStreamParserCompletesTurnOnAssistantSnapshotAfterToolResult(t *te
 	}
 	if done.Type != EventDone {
 		t.Fatal("expected EventDone after post-tool assistant snapshot")
+	}
+}
+
+func TestClaudeStreamParserDoesNotCompleteBeforeFollowUpToolUse(t *testing.T) {
+	parser := newClaudeStreamParser()
+	events := make(chan Event, 16)
+
+	lines := [][]byte{
+		[]byte(`{"type":"stream_event","event":{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"tool-1","name":"run_query"}}}`),
+		[]byte(`{"type":"stream_event","event":{"type":"content_block_stop","index":0}}`),
+		[]byte(`{"type":"user","parent_tool_use_id":"tool-1","tool_use_result":{"rows":[]}}`),
+		[]byte(`{"type":"stream_event","event":{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Let me try a different table:"}}}`),
+		[]byte(`{"type":"assistant","message":{"content":[{"type":"text","text":"Let me try a different table:"}]}}`),
+	}
+	for _, line := range lines {
+		parser.handleLine(line, events)
+	}
+	if parser.completedTurn() {
+		t.Fatal("turn should not complete before follow-up tool_use")
+	}
+
+	parser.handleLine([]byte(`{"type":"stream_event","event":{"type":"content_block_start","index":2,"content_block":{"type":"tool_use","id":"tool-2","name":"discover_tables"}}}`), events)
+	parser.handleLine([]byte(`{"type":"stream_event","event":{"type":"content_block_stop","index":2}}`), events)
+	close(events)
+
+	var toolStarts int
+	for ev := range events {
+		if ev.Type == EventToolCallStart && ev.ToolCallID == "tool-2" {
+			toolStarts++
+		}
+		if ev.Type == EventDone {
+			t.Fatal("should not emit EventDone before turn actually ends")
+		}
+	}
+	if toolStarts != 1 {
+		t.Fatalf("expected follow-up tool start, got %d", toolStarts)
 	}
 }
 

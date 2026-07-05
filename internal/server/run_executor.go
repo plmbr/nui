@@ -16,6 +16,7 @@ import (
 	"loop/internal/model"
 	"loop/internal/skills"
 	"loop/internal/store"
+	"loop/internal/viz"
 )
 
 type resolvedRunAgent struct {
@@ -108,6 +109,9 @@ func persistAssistantTurn(sessionID, content, newAgentSessionID string, isADL bo
 func persistRichAssistantTurn(sessionID string, assistantMsg model.ChatMessage, newAgentSessionID string, isADL bool) {
 	if assistantMsg.Content == "" && len(assistantMsg.Parts) == 0 {
 		return
+	}
+	if len(assistantMsg.Parts) > 0 {
+		assistantMsg.Parts = viz.NormalizeParts(assistantMsg.Parts)
 	}
 	if assistantMsg.ID == "" {
 		assistantMsg.ID = uuid.NewString()

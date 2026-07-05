@@ -695,6 +695,16 @@
     @apply mt-3;
   }
 
+  .agui-message--assistant .agui-message__visualization-part {
+    @apply my-3;
+  }
+
+  .visualization-frame {
+    @apply block w-full max-w-full border-0 rounded-lg;
+    min-height: 120px;
+    background: transparent;
+  }
+
   .agui-message--assistant .tool-call {
     @apply mx-0 mb-0.5 max-w-none px-0;
   }

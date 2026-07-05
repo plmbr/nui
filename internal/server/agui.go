@@ -15,6 +15,7 @@ import (
 	"loop/internal/agent"
 	"loop/internal/hitl"
 	"loop/internal/model"
+	"loop/internal/viz"
 )
 
 type aguiRunInput struct {
@@ -238,11 +239,13 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 				"toolCallId": ev.ToolCallID,
 				"delta":      ev.ToolArgs,
 			})
+			emitVisualizationEvent(reqCtx, w, flusher, acc, ev.ToolCallID, ev.ToolName, ev.ToolArgs)
 		case agent.EventToolCallEnd:
 			writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
 				"type":       "TOOL_CALL_END",
 				"toolCallId": ev.ToolCallID,
 			})
+			emitVisualizationEvent(reqCtx, w, flusher, acc, ev.ToolCallID, ev.ToolName, ev.ToolArgs)
 			if uri, server, ok := mcpManager.LookupToolUI(ev.ToolName); ok {
 				var toolInput map[string]any
 				if ev.ToolArgs != "" {
@@ -375,4 +378,37 @@ func writeAGUIEvent(w http.ResponseWriter, flusher http.Flusher, event any) {
 	}
 	fmt.Fprintf(w, "data: %s\n\n", data)
 	flusher.Flush()
+}
+
+func emitVisualizationEvent(reqCtx context.Context, w http.ResponseWriter, flusher http.Flusher, acc *assistantPartAccumulator, toolCallID, toolName, toolArgsJSON string) {
+	if toolCallID == "" {
+		return
+	}
+	var toolInput map[string]any
+	if toolArgsJSON != "" {
+		_ = json.Unmarshal([]byte(toolArgsJSON), &toolInput)
+	}
+	if toolInput == nil {
+		if part := acc.toolPartForCall(toolCallID); part != nil && len(part.ToolArgs) > 0 {
+			toolInput = part.ToolArgs
+		}
+	}
+	if toolName == "" {
+		if part := acc.toolPartForCall(toolCallID); part != nil {
+			toolName = part.ToolName
+		}
+	}
+	html, title, ok := viz.ParseFromTool(toolName, toolInput)
+	if !ok {
+		return
+	}
+	writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
+		"type": "CUSTOM",
+		"name": "visualization",
+		"value": map[string]any{
+			"toolCallId": toolCallID,
+			"html":       html,
+			"title":      title,
+		},
+	})
 }

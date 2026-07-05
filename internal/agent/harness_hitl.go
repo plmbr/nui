@@ -4,6 +4,7 @@ package agent
 
 import (
 	"os"
+	"os/exec"
 	"strings"
 
 	"loop/internal/model"
@@ -24,7 +25,17 @@ func defaultLoopAPIURL() string {
 }
 
 func loopExecutable() (string, error) {
-	return os.Executable()
+	exe, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	// go run uses an ephemeral binary; prefer a stable loop on PATH when available.
+	if strings.Contains(exe, string(os.PathSeparator)+"go-build") {
+		if path, lookErr := exec.LookPath("loop"); lookErr == nil {
+			return path, nil
+		}
+	}
+	return exe, nil
 }
 
 func loopHitlMCPServer(sessionID, apiURL string) (model.ADLMCPServer, error) {

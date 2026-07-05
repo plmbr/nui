@@ -227,8 +227,6 @@ func (p *claudeStreamParser) handleAssistant(raw json.RawMessage, events chan<- 
 		return
 	}
 
-	hasToolUse := false
-	hasTextBlock := false
 	for _, blockRaw := range msg.Content {
 		var blockType struct {
 			Type string `json:"type"`
@@ -239,7 +237,6 @@ func (p *claudeStreamParser) handleAssistant(raw json.RawMessage, events chan<- 
 
 		switch blockType.Type {
 		case "text":
-			hasTextBlock = true
 			var block struct {
 				Text string `json:"text"`
 			}
@@ -253,7 +250,6 @@ func (p *claudeStreamParser) handleAssistant(raw json.RawMessage, events chan<- 
 			}
 			p.emitText(block.Text, events)
 		case "tool_use":
-			hasToolUse = true
 			p.markTextSepNeeded()
 			var block struct {
 				ID    string         `json:"id"`
@@ -290,9 +286,6 @@ func (p *claudeStreamParser) handleAssistant(raw json.RawMessage, events chan<- 
 		case "image":
 			emitImageEvents(blockRaw, events)
 		}
-	}
-	if hasTextBlock && !hasToolUse && len(p.seenToolStarts) > 0 && len(p.seenToolResults) > 0 && p.emittedText {
-		p.emitDone("", events)
 	}
 }
 

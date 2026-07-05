@@ -1,6 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import type { ChatImage, ChatMessage, ChatMessagePart } from '@/types'
+import { extractVisualization, normalizeVisualizationParts } from '@/lib/visualization'
 
 export interface ToolCallPart {
   type: 'tool'
@@ -12,6 +13,8 @@ export interface ToolCallPart {
   mcpAppResourceUri?: string
   mcpAppServerName?: string
   mcpAppToolInput?: Record<string, unknown>
+  visualizationHtml?: string
+  visualizationTitle?: string
 }
 
 export interface TextPart {
@@ -77,7 +80,7 @@ function mapPart(part: ChatMessagePart): AssistantPart {
   if (part.type === 'text') {
     return { type: 'text', content: part.content ?? '' }
   }
-  return {
+  const mapped: ToolCallPart = {
     type: 'tool',
     id: part.id ?? '',
     toolCallId: part.toolCallId,
@@ -87,7 +90,15 @@ function mapPart(part: ChatMessagePart): AssistantPart {
     mcpAppResourceUri: part.mcpAppResourceUri,
     mcpAppServerName: part.mcpAppServerName,
     mcpAppToolInput: part.mcpAppToolInput,
+    visualizationHtml: part.visualizationHtml,
+    visualizationTitle: part.visualizationTitle,
   }
+  const viz = extractVisualization(mapped)
+  if (viz && !mapped.visualizationHtml) {
+    mapped.visualizationHtml = viz.html
+    mapped.visualizationTitle = viz.title
+  }
+  return mapped
 }
 
 export function dedupeChatMessages(messages: SessionChatMessage[]): SessionChatMessage[] {
@@ -109,14 +120,17 @@ export function dedupeChatMessages(messages: SessionChatMessage[]): SessionChatM
 export function apiMessagesToSessionMessages(history: ChatMessage[]): SessionChatMessage[] {
   return history
     .filter((m) => m.role === 'user' || m.role === 'assistant')
-    .map((m) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      parts: m.parts?.map(mapPart),
-      images: m.images,
-      error: m.error,
-    }))
+    .map((m) => {
+      const parts = m.parts?.map(mapPart)
+      return {
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        parts: parts ? normalizeVisualizationParts(parts) : undefined,
+        images: m.images,
+        error: m.error,
+      }
+    })
 }
 
 export function imageSrc(image: ChatImage): string {
