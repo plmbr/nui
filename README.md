@@ -7,7 +7,8 @@ Loop is a self-hosted UI for interactive AI agent sessions. A Go backend embeds 
 ## Documentation
 
 - [Product & technical spec](dev/dev.md) — architecture, ADL schema, roadmap
-- [Harness protocols](dev/harness-design.md) — HTTP/SSE and TCP JSON-RPC for custom harnesses
+- [Harness protocols](dev/harness-design.md) — HTTP/SSE and JSON-RPC for custom harnesses
+- [Extension API](dev/extension-api.md) — extension manifest, HITL, deployers
 - [ADL examples](dev/adl/examples/) — sample agent/workflow YAML files
 
 ## Architecture
@@ -67,7 +68,7 @@ loop/
 │   ├── server/                # HTTP mux, REST + AG-UI streaming
 │   └── store/                 # JSON persistence (~/.loop/)
 ├── docker/                    # Builtin sandbox images (HTTP/SSE, port 8090)
-├── harness-sdk/               # Python harness author SDK (TCP/stdio JSON-RPC; not loaded at runtime)
+├── harness-sdk/               # Python extension author SDK (see harness-sdk/README.md)
 ├── dev/
 │   ├── dev.md                 # product spec
 │   ├── harness-design.md      # custom harness protocols
@@ -108,9 +109,15 @@ loop ui --open       # open http://localhost:8080 with a new blank session
 loop run -a claude-code -m "Review README" --wait  # headless run via REST API
 loop agent list      # list agent types (requires loop ui)
 loop agent add ./my-agent.yaml  # install ADL to ~/.loop/agents/ (offline)
+loop agent deploy ext:docker-deployer/docker my-agent  # deploy via extension deployer
+loop agent deployers # list installed agent deployers
 loop mcp             # MCP server (stdio) for agent discovery and runs
+loop hitl-mcp        # HITL tools MCP server (stdio)
+loop viz-mcp         # Visualization MCP server (stdio) for show_visualization
 loop extension add   # install extension from git URL, directory, or zip
 loop extension remove # remove installed extension by id
+loop skills add|list|remove  # manage ~/.loop/skills/ catalog
+loop schedule list|add|enable|disable|delete|run-now  # recurring autonomous runs
 ```
 
 ### Launch an agent from the CLI
@@ -197,10 +204,13 @@ Stored in `~/.loop/settings.json` and restored on reload:
 | `lastAgentType` | Session create (UI or CLI) | Default in New Session dialog |
 | `lastSessionId` | Session selection | Auto-select on startup (if session still exists) |
 | `sidebarOpen` | Sidebar toggle | Sidebar expanded/collapsed state (offcanvas — no gutter when closed) |
+| `disabledExtensions` | Extensions tab toggle | Extension contributions excluded at runtime |
 
 `PUT /api/settings` accepts partial updates — send only the fields you want to change.
 
 ## API endpoints
+
+Full reference: [`dev/dev.md`](dev/dev.md#api-surface).
 
 | Path | Description |
 |---|---|
@@ -209,20 +219,38 @@ Stored in `~/.loop/settings.json` and restored on reload:
 | `/health` | JSON health check |
 | `GET/POST /api/sessions` | List / create sessions |
 | `POST /api/sessions/ensure-default` | Return or create the default session |
+| `GET /api/sessions/events` | Global session list SSE (`changed`) |
 | `GET/PATCH/DELETE /api/sessions/:id` | Get / rename / delete a session |
 | `GET/PUT /api/sessions/:id/messages` | Read / replace persisted UI messages |
+| `POST/GET /api/sessions/:id/uploads[/:file]` | File uploads for chat attachments |
+| `GET /api/sessions/:id/mentions` | @-mention autocomplete |
 | `POST /api/sessions/:id/ag-ui` | **Primary chat** — AG-UI SSE stream |
 | `POST /api/sessions/:id/runs` | Start async headless run (`202` + `runId`) |
 | `GET /api/sessions/:id/runs` | List runs for a session |
+| `GET /api/sessions/:id/runs/:runId` | Run status |
 | `GET /api/sessions/:id/runs/:runId/events` | SSE run events with `Last-Event-ID` replay |
+| `POST /api/sessions/:id/runs/:runId/hitl` | Create HITL request scoped to run |
 | `POST /api/sessions/:id/stop` | Cancel in-flight run |
 | `POST /api/sessions/:id/chat` | Legacy raw agent-event SSE (unused by UI) |
 | `GET /api/sessions/:id/history` | Load history from agent session files |
-| `GET /api/agent-types` | Builtin + user-defined ADL agent types |
+| `GET /api/agent-types` | Builtin + user + extension ADL agent types |
 | `GET /api/directories` | Working-directory autocomplete |
-| `GET/PUT /api/settings` | User preferences (theme, last agent/session, sidebar) |
+| `GET/PUT /api/settings` | User preferences (theme, last agent/session, sidebar, disabled extensions) |
 | `GET /api/bootstrap` | One-shot CLI bootstrap state (`sessionId`, `initialPrompt`) |
+| `POST /api/launch` | Create session + optional initial prompt |
 | `GET /api/capabilities` | Sandbox capabilities (bwrap availability) |
+| `GET /api/extensions` | Installed extensions |
+| `POST /api/extensions/reload` | Rescan extensions |
+| `GET/PUT /api/mcp-servers` | User MCP server config |
+| `GET/DELETE /api/skills[/:name]` | Skill catalog |
+| `GET/POST/PUT/DELETE /api/agents[/:file]` | User ADL agent CRUD |
+| `POST /api/agents/:id/deploy` | Deploy agent via extension deployer |
+| `GET /api/agent-deployers` | List deployers |
+| `GET/POST/PATCH/DELETE /api/schedules[/:id]` | Schedule CRUD |
+| `POST /api/schedules/:id/run-now` | Trigger schedule immediately |
+| `POST/GET /api/hitl/requests[/:id]` | HITL requests (create, list, wait, respond) |
+| `GET /api/hitl-channels` | Available HITL delivery channels |
+| `POST /mcp-call-tool`, `GET /mcp-resource` | MCP proxy for UI tool frames |
 
 ## Agent types
 

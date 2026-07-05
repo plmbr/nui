@@ -106,10 +106,22 @@ Bind mounts per harness when bwrap is active:
 
 On delete/shutdown, Loop calls `POST /shutdown` on managed containers, then `docker stop`.
 
-#### Reference code (not wired to Manager)
+#### Extension harnesses (stdio / TCP / HTTP)
 
-- `ExtensionAgent` in `extension.go` — TCP JSON-RPC 2.0 client; implemented but not called by `Manager.GetAgent()`
-- `harness-sdk/` and `dev/harness-examples/py|ts/` — reference harness SDK for custom harness authors
+Installed extensions contribute harnesses via `contributions.harnesses`. `Manager.getExtensionHarnessAgent()` wires them:
+
+| Transport | Go client |
+|---|---|
+| `stdio` (default) | `stdioHarnessAgent` |
+| `tcp` | `ExtensionAgent` (JSON-RPC 2.0) |
+| `http` | `HTTPExtensionAgent` |
+
+ADL agents use `harness.type: ext:<extension>/<harness-id>`. Framework: `harness-sdk/loop_agent_stdio.py`. See `dev/extension-api.md`.
+
+#### Standalone reference examples (not registered)
+
+- `dev/harness-examples/py|ts/` — TCP JSON-RPC demos without an `extension.yaml`; not selectable as agent types
+- `harness-sdk/loop_agent.py` — TCP framework used by those examples
 
 ### HTTP/SSE protocol (docker + remote)
 

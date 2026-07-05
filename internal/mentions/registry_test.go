@@ -183,12 +183,12 @@ func TestRegistryResolveMessageSkipsEmailAddresses(t *testing.T) {
 	}
 
 	reg := mentions.NewRegistry(nil)
-	msg := "email mbektas@netflix.com then read @file:hello.txt"
+	msg := "email example@example.com then read @file:hello.txt"
 	got, err := reg.ResolveMessage(context.Background(), dir, msg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "email mbektas@netflix.com then read @" + filePath
+	want := "email example@example.com then read @" + filePath
 	if got != want {
 		t.Fatalf("resolved = %q, want %q", got, want)
 	}

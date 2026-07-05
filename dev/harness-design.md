@@ -2,24 +2,24 @@
 
 > **Source of truth:** the Go code in `internal/agent/` and the runnable examples in `dev/harness-examples/`.
 
-Loop uses **two custom harness transports**, depending on how the agent runs:
+Loop uses **three production harness paths** plus standalone reference examples:
 
 ```mermaid
 flowchart LR
   subgraph production [Production — wired to Manager]
     GoHarnesses["Go harness agents\n(claude / pi / codex / opencode)"]
-    HTTPExt["HTTPExtensionAgent\n(docker / remote)"]
+    HTTPExt["HTTPExtensionAgent\n(docker / remote / sandbox:docker)"]
+    ExtHarness["Extension harness\n(stdio / tcp / http)"]
   end
 
   subgraph reference [Reference — examples only]
-    TCPExt["ExtensionAgent\n(TCP JSON-RPC)"]
-    PyTS["dev/harness-examples/py|ts/"]
+    PyTS["dev/harness-examples/py|ts/\n(no extension.yaml)"]
   end
 
   Loop[Loop Manager] --> GoHarnesses
   Loop --> HTTPExt
-  TCPExt -.->|not wired| Loop
-  PyTS -.-> TCPExt
+  Loop --> ExtHarness
+  PyTS -.->|not registered| Loop
 ```
 
 ## 1. Builtin harnesses (Go subprocess) — primary path
@@ -81,19 +81,17 @@ Extended types (tool calls, images) are supported by the Go client in `extension
 
 See [docker/instructions.md](harness-examples/docker/instructions.md) and [remote/instructions.md](harness-examples/remote/instructions.md).
 
-## 3. TCP JSON-RPC — reference for custom harness authors
+## 3. Extension harnesses (stdio / TCP / HTTP) — production path
 
-`ExtensionAgent` in `internal/agent/extension.go` implements a TCP JSON-RPC 2.0 **client**, but `Manager.GetAgent()` does **not** launch or connect to TCP harnesses today. The protocol and frameworks exist for third-party agents and future wiring.
+Installed extensions contribute harnesses under `contributions.harnesses`. ADL agents reference them as `harness.type: ext:<extension>/<harness-id>`. `Manager.getExtensionHarnessAgent()` in `manager.go` launches and connects to them:
 
-### Connection file
+| Transport | Go client | Runtime |
+|---|---|---|
+| `stdio` (default) | `stdioHarnessAgent` | Loop spawns the extension host process |
+| `tcp` | `ExtensionAgent` | Host writes `~/.loop/connections/<id>.json`; Loop dials JSON-RPC 2.0 |
+| `http` | `HTTPExtensionAgent` | Same HTTP/SSE protocol as docker/remote |
 
-Harness processes write `~/.loop/connections/<id>.json`:
-
-```json
-{"host": "127.0.0.1", "port": 52341, "session_id": "...", "pid": 9876}
-```
-
-### Methods
+Wire protocol methods (stdio and TCP):
 
 | Method | Description |
 |---|---|
@@ -102,11 +100,23 @@ Harness processes write `~/.loop/connections/<id>.json`:
 | `harness.cancel` | Params: `{runId}` |
 | `harness.shutdown` | Release resources |
 
-### Frameworks
+Framework: [`harness-sdk/loop_agent_stdio.py`](../harness-sdk/loop_agent_stdio.py). Example extension: [`dev/extension-examples/corp-pack/`](../dev/extension-examples/corp-pack/).
+
+### TCP connection file
+
+TCP and HTTP extension hosts write `~/.loop/connections/<id>.json`:
+
+```json
+{"host": "127.0.0.1", "port": 52341, "session_id": "...", "pid": 9876}
+```
+
+## 4. Standalone reference examples (not wired)
+
+The folders [`dev/harness-examples/py/`](harness-examples/py/) and [`dev/harness-examples/ts/`](harness-examples/ts/) demonstrate the TCP JSON-RPC protocol and SDK without an `extension.yaml`. They are **not** registered with Loop's extension system and are not selectable as agent types. Use them to learn the wire protocol; ship production harnesses as installed extensions.
 
 | Language | Framework | Example |
 |---|---|---|
-| Python | `harness-sdk/loop_agent.py` (canonical) | `dev/harness-examples/py/echo_agent.py` |
+| Python | `harness-sdk/loop_agent.py` | `dev/harness-examples/py/echo_agent.py` |
 | TypeScript | `dev/harness-examples/ts/loop_agent.ts` | `dev/harness-examples/ts/echo_agent.ts` |
 
 Test with `dev/harness-examples/py/client.py` or `ts/client.ts`.
@@ -116,8 +126,9 @@ Test with `dev/harness-examples/py/client.py` or `ts/client.ts`.
 The research below evaluated JSON-RPC over stdio/TCP, go-plugin, ZeroMQ, and MCP as harness transports. The production implementation chose:
 
 - **Go-native subprocess management** for builtin CLI harnesses (simpler, no IPC overhead)
-- **HTTP/SSE** for docker/remote (proxy-friendly, standard tooling)
-- **TCP JSON-RPC kept as reference** for custom harness authors
+- **HTTP/SSE** for docker/remote and extension HTTP harnesses (proxy-friendly, standard tooling)
+- **JSON-RPC over stdio/TCP** for installed extension harnesses (`getExtensionHarnessAgent`)
+- **Standalone py/ts examples** kept as reference for authors learning the wire protocol
 
 ---
 
@@ -142,8 +153,7 @@ MCP uses JSON-RPC 2.0 over stdio or SSE with official SDKs. Loop already surface
 
 ## Open Questions
 
-1. **Wire TCP harnesses into Manager?** Add a `custom` harness type that launches harness SDK scripts?
-2. **Crash policy:** respawn on connection loss or surface error to user?
-3. **MCP as wire protocol?** Reduces custom protocol surface but binds to evolving external spec.
+1. **Crash policy:** respawn extension harness on connection loss or surface error to user?
+2. **MCP as wire protocol?** Reduces custom protocol surface but binds to evolving external spec.
 
 [Harness Examples](harness-examples)

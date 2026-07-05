@@ -1,5 +1,7 @@
 # Loop Sandboxing Options — Research Report
 
+> **Status:** Historical research (March 2026). The **active decision** is documented in [sandboxing-bwrap-vs-go-sandbox.md](sandboxing-bwrap-vs-go-sandbox.md): **use bubblewrap**, not go-sandbox. Loop implements bwrap via `internal/agent/sandbox.go` (`WrapWithBwrap()`).
+
 > Sources: SandboxEscapeBench (Oxford/UK AISI, March 2026), go-sandbox, bubblewrap, nsjail, gVisor docs.
 
 ## Summary
@@ -12,24 +14,9 @@ The current `ClaudeCodeAgent` path (direct subprocess in `internal/agent/claude_
 
 ## Linux options (ranked)
 
-### 1. go-sandbox — recommended
+> **Note:** go-sandbox was initially ranked first in this report but was **rejected** after further evaluation. See [sandboxing-bwrap-vs-go-sandbox.md](sandboxing-bwrap-vs-go-sandbox.md). Loop ships **bubblewrap** for the four CLI harnesses.
 
-A Go-native library combining namespace isolation, seccomp-bpf, ptrace, rlimits, and cgroups in a pre-forked container model.
-
-**Latency benchmarks:**
-- ~2ms — pre-forked container reuse (BenchmarkContainer)
-- ~14ms — full unshare per invocation (BenchmarkUnshareAll)
-- ~24ms — unshare + pivot_root (BenchmarkUnshareMountPivot)
-
-**Isolation layers:** mount, PID, user, UTS, cgroup, IPC, network namespaces + `SECCOMP_RET_KILL_PROCESS` (kernel ≥4.14) + ptrace + rlimits + cgroups v1/v2.
-
-**Integration:** The `Runner` interface (`Run(context.Context) Result`) maps onto Loop's `Agent` interface. Replace the `exec.Command("claude", ...)` call in `ClaudeCodeAgent.Run()` with an `Environment.Execve()` call.
-
-Source: https://github.com/criyle/go-sandbox
-
----
-
-### 2. bubblewrap (bwrap) via os/exec
+### 1. bubblewrap (bwrap) via os/exec — **implemented**
 
 Construct bwrap arguments programmatically, append `-- claude ...` at the end.
 
@@ -57,6 +44,14 @@ A Go wrapper package exists: `github.com/0xmhha/cli-wrapper/pkg/sandbox/provider
 **Caveat:** bwrap setuid mode has NOT been fully removed — privilege requirements depend on distro and `kernel.unprivileged_userns_clone` sysctl. Test on target distro before assuming unprivileged operation.
 
 Source: https://github.com/containers/bubblewrap
+
+---
+
+### 2. go-sandbox — not adopted
+
+A Go-native library combining namespace isolation, seccomp-bpf, ptrace, rlimits, and cgroups. Evaluated and rejected — see [sandboxing-bwrap-vs-go-sandbox.md](sandboxing-bwrap-vs-go-sandbox.md). No production users outside competitive-programming judge ecosystems; Anthropic uses bubblewrap for claude CLI sandboxing on Linux.
+
+Source: https://github.com/criyle/go-sandbox
 
 ---
 
@@ -145,13 +140,12 @@ Loop's Docker connector (`docker run -d -p 127.0.0.1::containerPort`) is reasona
 
 ## Integration plan
 
-| Platform | Approach | Effort |
+| Platform | Approach | Status |
 |---|---|---|
-| Linux | `go-sandbox` wrapping `ClaudeCodeAgent.Run()` | Medium — adapt Runner interface |
-| Linux (simpler) | `bwrap` via `WrapWithBwrap()` in `sandbox.go` | **Done** for claude-code, pi, codex, opencode |
-| Linux (no deps) | `SysProcAttr.Cloneflags` inline | Low — no seccomp/fs restriction |
-| macOS | `sandbox-exec` profile + limited user | Medium — profile authoring |
-| Both | Keep Docker for extension/remote agents | Already done |
+| Linux | `bwrap` via `WrapWithBwrap()` in `sandbox.go` | **Done** for claude-code, pi, codex, opencode |
+| Linux (no deps) | `SysProcAttr.Cloneflags` inline | Not implemented |
+| macOS | `sandbox-exec` profile + limited user | Not implemented |
+| Both | Docker for extension/remote agents and `sandbox: docker` | Done |
 
 ---
 

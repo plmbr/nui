@@ -1,0 +1,55 @@
+adl: "1.0"
+
+# Two-step workflow with a human approval gate between draft and publish.
+# Demonstrates: steps[].type: hitl, hitl.actions, display from prior step output.
+# Requires hitl.mode: interactive (default) and loop-ui channel.
+
+id: hitl-workflow-gate
+name: HITL Workflow Gate
+description: Drafts a summary, pauses for human approval, then finalizes.
+version: 0.1.0
+kind: workflow
+
+harness:
+  type: claude-code
+  model: claude-sonnet-4-6
+
+hitl:
+  mode: interactive
+  channels:
+    - loop-ui
+
+steps:
+  - name: draft
+    systemPrompt: |
+      You are a concise technical writer. Given the user's topic, produce a
+      short 2-paragraph summary. Output only the summary text.
+    outputs:
+      - name: summary
+        type: text
+
+  - name: review-gate
+    type: hitl
+    dependsOn: [draft]
+    hitl:
+      kind: approval
+      title: Approve summary
+      message: Review the draft summary below. Approve to continue or reject to stop the workflow.
+      actions:
+        - id: approve
+          label: Approve
+        - id: reject
+          label: Reject
+      display:
+        - from: draft.summary
+      channels:
+        - loop-ui
+
+  - name: finalize
+    dependsOn: [review-gate]
+    inputs:
+      - from: draft.summary
+        as: approvedSummary
+    systemPrompt: |
+      You received an approved summary. Add a one-line headline and format
+      the result as markdown ready to publish. Use the approved summary as-is.

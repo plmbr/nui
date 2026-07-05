@@ -1,5 +1,7 @@
 # Human written features
 
+> **Status:** Historical pre-implementation notes. Largely superseded by [`dev/dev.md`](../dev.md). Terminology here uses "projects" — the implementation uses "sessions".
+
 1. The Loop UI allows creating and managing projects. Projects can be interactive chat sessions, autonomous agents, or semi-autonomus agents. Autonomous agents can be run at desired intervals. Semi-autonomus agents and interactive chat sessions usually require human in the loop. Human in the loop will be implemented as UI interaction on the chat interface for initial version. In future versions human in the loop will be done with other interfaces such as Slack, WhatsApp, Telegram etc.
 
 2. This is a Go application that bundles the web UI. It will provide extensibility for various features.

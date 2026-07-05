@@ -1,5 +1,7 @@
 # ACP vs Loop — Research Findings [AI generated]
 
+> **Status:** Historical research (non-normative). API paths in this document may reference `/api/projects/` — the current Loop API uses `/api/sessions/`. See [`dev/dev.md`](../dev.md) for the implemented architecture.
+
 ---
 
 ## Summary

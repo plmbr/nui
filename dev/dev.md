@@ -52,9 +52,11 @@ flowchart TB
 
 2. **Chat uses AG-UI, not raw SSE.** The UI (`useSessionChat.ts`) streams via `POST /api/sessions/:id/ag-ui` using the [AG-UI protocol](https://github.com/ag-ui-protocol/ag-ui). Tool calls, images, and MCP app frames are translated from agent `Event` types in `agui.go`. The legacy `POST /chat` endpoint still exists but the UI does not use it.
 
-3. **Two custom harness transports.**
-   - **Production path:** builtin harnesses are Go structs that manage CLI subprocesses; docker/remote use `HTTPExtensionAgent`.
-   - **Reference path:** TCP JSON-RPC 2.0 in `dev/harness-examples/py|ts/` and `ExtensionAgent` in Go — implemented but **not wired** to `Manager.GetAgent()`. For third-party custom harnesses.
+3. **Three production harness paths.**
+   - **Go subprocess:** builtin harnesses (`claude-code`, `pi`, `codex`, `opencode`) managed directly in Go.
+   - **HTTP/SSE:** docker, remote, and builtin `sandbox: docker` via `HTTPExtensionAgent`.
+   - **Extension harnesses:** installed extensions contribute harnesses wired via `Manager.getExtensionHarnessAgent()` — stdio (default), TCP (`ExtensionAgent`), or HTTP (`HTTPExtensionAgent`). ADL references them as `harness.type: ext:<extension>/<harness-id>`.
+   - **Reference only:** standalone examples in `dev/harness-examples/py|ts/` (no `extension.yaml`) demonstrate the TCP JSON-RPC protocol but are not registered as agent types.
 
 4. **Docker/remote via custom ADL.** There is no built-in "Docker" or "Remote" picker in the UI. Users copy an ADL template from `dev/harness-examples/` into `~/.loop/agents/` (e.g. `docker-echo.yaml`), then select it under **Custom Agents**. Loop validates the connector on session create.
 
@@ -70,7 +72,7 @@ ADL is a YAML format for declaring an agent type or multi-step workflow. It is a
 
 - **ADL** — agent identity, steps, harness, `aiAssets` (*this layer*)
 - **MCP** — runtime tool protocol; ADL `aiAssets.mcpServers` is provisioned into per-session harness config; Loop UI MCP tool frames also use `~/.loop/.mcp.json`
-- **SKILL.md** — referenced via ADL `skill` (path to skill directory or `SKILL.md`); copied into session harness config
+- **SKILL.md** — referenced via `aiAssets.skills` (path, ref, content, or git+path); copied into session harness config. Legacy top-level `skill:` is still supported.
 
 ### Schema
 
@@ -81,14 +83,19 @@ id: string                      # stable identifier; used by CLI (-a) and Sessio
 name: string                    # display name in UI
 description: string
 version: semver
-kind: agent | workflow          # workflow = multi-step; omitted defaults to agent
+kind: agent | workflow          # workflow = multi-step orchestration; not selectable at session create
 
 promptMode: user | auto         # auto hides input and runs default or launch prompt
 defaultPrompt: string           # optional; auto mode when no launch prompt (default: built-in phrase)
 workingDirInput: bool           # true = user picks working dir at session create; default uses ~/.loop/workspaces/<session-id>
 
+promptSuggestions:              # quick-start pills above chat input (optional)
+  - title: Review code
+    prompt: Review the current changes and suggest improvements.
+    icon: sparkles              # lucide icon name (optional)
+
 harness:
-  type: claude-code | pi | codex | opencode | docker | remote
+  type: claude-code | pi | codex | opencode | docker | remote | ext:<extension>/<harness-id>
   model: string
   sandbox: none | bubblewrap | docker   # subprocess harnesses only; default: none
   image: string                   # sandbox:docker or harness.type:docker
@@ -108,7 +115,9 @@ toolApprovals:                    # selective auto-approve when harness.permissi
 
 hitl:
   mode: interactive | auto | off
+  required: bool                  # semi-autonomous: human involvement mandatory (conflicts with promptMode auto)
   channels: [loop-ui, ext:...]
+  ttlSeconds: 3600                # optional request TTL
   # approvals: [bash, write]      # deprecated; use toolApprovals with policy denylist instead
 
 env:                              # global env for all harness subprocesses
@@ -122,6 +131,7 @@ skill: /path/to/skill-dir        # deprecated; use aiAssets.skills
 aiAssets:
   mcpServers:
     - name: my-mcp-server        # required; used as the MCP server key in harness config
+      ref: ext:corp-pack/tools   # or inline url/command (see extension-api.md)
       url: http://localhost:3000/mcp   # HTTP/SSE MCP (remote)
       type: http                 # http | sse (default: http when url is set)
     - name: local-mcp
@@ -132,7 +142,7 @@ aiAssets:
     - name: code-review          # required; install dir name in harness config
       path: ./skills/code-review # local dir or SKILL.md
     - name: commit-helper
-      ref: commit-helper         # ~/.loop/skills/<ref>/skill/
+      ref: commit-helper         # ~/.loop/skills/<ref>/ or builtin:* / ext:*
     - name: greeting
       content: |                 # inline SKILL.md (including frontmatter)
         ---
@@ -144,9 +154,15 @@ aiAssets:
       git: https://github.com/example/agent-skills.git
       path: skills/shared-style  # required with git; relative skill dir in repo
       version: v1.0.0            # optional tag/commit
+  rules:
+    - name: corp-guidelines
+      ref: ext:corp-pack/corp-guidelines   # or path/content
+  mentionProviders:
+    - ref: ext:corp-pack/corp-refs         # @-mention autocomplete sources
 
 steps:                            # omit for single-step agents
   - name: research
+    type: agent                   # default; runs a harness step
     harness:                      # optional per-step override
       type: claude-code
       model: claude-opus-4-8
@@ -164,6 +180,22 @@ steps:                            # omit for single-step agents
     inputs:
       - from: other.report
         as: alias
+
+  - name: approve-release
+    type: hitl                    # orchestration gate — pauses workflow for human input
+    dependsOn: [research]
+    hitl:
+      kind: approval              # approval | question | review
+      title: Release approval
+      message: Review the research report and approve release.
+      actions:
+        - id: approve
+          label: Approve
+        - id: reject
+          label: Reject
+      display:
+        - from: research.report   # inject prior step output into HITL payload
+      channels: [loop-ui]
 ```
 
 Example
@@ -219,6 +251,11 @@ ADL `env` (global) and `harness.env` are merged and set on harness subprocess en
 | `opencode` | `OpenCodeAgent` → `opencode serve/run` | bwrap + `~/.local/share/opencode` | `loop-opencode:latest` :8090 |
 | `docker` | — | — | User image at ADL `containerPort` (e.g. 9090) |
 | `remote` | — | — | User `host:port` over HTTP/SSE |
+| `ext:<ext>/<id>` | Extension host (stdio/tcp/http) | — | — |
+
+Extension harnesses are contributed by installed extensions. See [extension-api.md](extension-api.md).
+
+Loop also auto-injects the `loop-viz` MCP server and `builtin:visualize` skill for inline chart rendering in chat (`internal/agent/harness_viz.go`).
 
 Sandbox config flows: ADL `harness.sandbox` → `harnessBuiltinConfig()` → `Manager.getBuiltinAgent()` → agent struct `Sandbox` field.
 
@@ -236,6 +273,11 @@ Sandbox config flows: ADL `harness.sandbox` → `harnessBuiltinConfig()` → `Ma
 | `aiAssets.skills` → resolve + install into session | Done |
 | `env` / `harness.env` → subprocess environment | Done |
 | `promptMode` / `defaultPrompt` → UI auto-run | Done |
+| `promptSuggestions` → chat UI pills | Done |
+| `aiAssets.rules` → harness rule files | Done |
+| `aiAssets.mentionProviders` → @-mention menu | Done |
+| `steps[].type: hitl` orchestration gates | Done |
+| Extension harness `ext:<ext>/<id>` | Done |
 
 ---
 
@@ -275,9 +317,9 @@ Also supported: `tool_call_start`, `tool_call_args`, `tool_call_end`, `tool_call
 
 Examples: `dev/harness-examples/docker/`, `dev/harness-examples/remote/`, `docker/http_loop_agent.py`.
 
-### TCP JSON-RPC protocol (reference only)
+### Extension harness protocol (stdio / TCP)
 
-For custom harness authors. Not connected to `Manager` today.
+Used by installed extension harnesses (`ext:<extension>/<harness-id>`). See [extension-api.md](extension-api.md) and [harness-design.md](harness-design.md) §3.
 
 | Method | Description |
 |---|---|
@@ -286,7 +328,7 @@ For custom harness authors. Not connected to `Manager` today.
 | `harness.cancel` | Cancel run |
 | `harness.shutdown` | Release resources |
 
-Framework: `harness-sdk/loop_agent.py`, `dev/harness-examples/py/loop_agent.py`.
+Framework: `harness-sdk/loop_agent_stdio.py` (stdio), `harness-sdk/loop_agent.py` (TCP reference).
 
 ---
 
@@ -298,9 +340,17 @@ Framework: `harness-sdk/loop_agent.py`, `dev/harness-examples/py/loop_agent.py`.
 - On session open: load `sessionMessages` if present, else fall back to agent history files
 - Tool call bubbles and images are **not** persisted across restarts (AG-UI state is in-memory during the session)
 
-### Reconnection (*planned*)
+### Reconnection
 
-Offset-based durable stream with `Last-Event-ID` replay is designed but not implemented. A disconnect mid-run currently loses the in-flight stream.
+| Stream | Replay on disconnect? | Status |
+|---|---|---|
+| `GET /api/sessions/:id/runs/:runId/events` | Yes — `Last-Event-ID` replays from `~/.loop/runs/<runId>.jsonl` | Done |
+| UI refresh during active headless run | Partial — `sessionChatStore.reconnectActiveRun()` re-attaches via runs API | Done |
+| `POST /api/sessions/:id/ag-ui` (interactive chat) | No durable offset replay | *Planned* |
+
+Headless runs persist events to JSONL and support SSE replay via the `Last-Event-ID` header (`runs_api.go`). The UI re-attaches to in-flight runs after page refresh by listing active runs and subscribing to their event streams.
+
+Interactive AG-UI chat does not yet support mid-stream offset replay. A disconnect during an AG-UI turn loses the in-flight stream (persisted text messages survive via `sessionMessages`).
 
 ---
 
@@ -309,7 +359,7 @@ Offset-based durable stream with `Last-Event-ID` replay is designed but not impl
 | Store | Format | Location | Status |
 |---|---|---|---|
 | Sessions + agent session IDs + UI messages | JSON | `~/.loop/data.json` | Done |
-| Settings | JSON | `~/.loop/settings.json` | Done (`theme`, `lastAgentType`, `lastSessionId`, `sidebarOpen`) |
+| Settings | JSON | `~/.loop/settings.json` | Done (`theme`, `lastAgentType`, `lastSessionId`, `sidebarOpen`, `disabledExtensions`) |
 | ADL definitions | YAML | `~/.loop/agents/*.yaml` | Done |
 | Run event log | JSONL | `~/.loop/runs/<runID>.jsonl` | Done |
 | Schedules | JSON | `~/.loop/schedules.json` | Done |
@@ -327,23 +377,39 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 | Method | Path | Purpose |
 |---|---|---|
 | `GET/POST` | `/api/sessions` | List / create (docker/remote config validated on create; agents start on first message) |
+| `POST` | `/api/sessions/ensure-default` | Return last session or create one with the default agent |
+| `GET` | `/api/sessions/events` | Global session list SSE (`changed`) |
 | `GET/PATCH/DELETE` | `/api/sessions/:id` | Get / rename / delete |
 | `GET/PUT` | `/api/sessions/:id/messages` | Persisted UI messages |
+| `POST/GET` | `/api/sessions/:id/uploads[/:file]` | File uploads for chat attachments |
+| `GET` | `/api/sessions/:id/mentions` | @-mention autocomplete |
 | `POST` | `/api/sessions/:id/ag-ui` | AG-UI chat stream |
 | `POST` | `/api/sessions/:id/chat` | Legacy agent-event SSE |
 | `POST` | `/api/sessions/:id/runs` | Start async headless run (`202` + `runId`) |
 | `GET` | `/api/sessions/:id/runs` | List runs for session |
 | `GET` | `/api/sessions/:id/runs/:runId` | Run status and output |
 | `GET` | `/api/sessions/:id/runs/:runId/events` | SSE event stream with `Last-Event-ID` replay |
+| `POST` | `/api/sessions/:id/runs/:runId/hitl` | Create HITL request scoped to run |
 | `POST` | `/api/sessions/:id/stop` | Cancel in-flight run (`?runId=` optional) |
 | `GET` | `/api/sessions/:id/history` | Agent-side history |
-| `GET` | `/api/agent-types` | Builtin + ADL agent types |
+| `GET` | `/api/agent-types` | Builtin + ADL + extension agent types |
 | `GET` | `/api/directories` | Working-dir suggestions |
 | `GET/PUT` | `/api/settings` | User preferences (partial PUT) |
 | `GET` | `/api/bootstrap` | One-shot CLI bootstrap (`sessionId`, `initialPrompt`) |
+| `POST` | `/api/launch` | Create session + optional initial prompt |
 | `GET` | `/api/capabilities` | Bwrap availability |
-| `GET/POST/PATCH/DELETE` | `/api/schedules` | Schedule CRUD |
+| `GET` | `/api/extensions` | Installed extensions |
+| `POST` | `/api/extensions/reload` | Rescan extensions |
+| `GET/PUT` | `/api/mcp-servers` | User MCP server config |
+| `GET/DELETE` | `/api/skills[/:name]` | Skill catalog |
+| `GET/POST/PUT/DELETE` | `/api/agents[/:file]` | User ADL agent CRUD |
+| `POST` | `/api/agents/:id/deploy` | Deploy agent via extension deployer |
+| `GET` | `/api/agent-deployers` | List deployers |
+| `GET/POST/PATCH/DELETE` | `/api/schedules[/:id]` | Schedule CRUD |
 | `POST` | `/api/schedules/:id/run-now` | Trigger schedule immediately |
+| `POST/GET` | `/api/hitl/requests[/:id]` | HITL request CRUD + wait/respond |
+| `GET` | `/api/hitl-channels` | Available HITL delivery channels |
+| `POST/GET` | `/mcp-call-tool`, `/mcp-resource` | MCP proxy for UI tool frames |
 
 ### Planned
 
@@ -393,7 +459,7 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 
 ## Open Questions
 
-1. **Wire TCP JSON-RPC harnesses?** `ExtensionAgent` exists but is unused — adopt for a `custom` harness type, or remove?
+1. **AG-UI chat replay** — add offset-based durable replay for interactive chat streams?
 2. **Chat persistence scope** — persist tool calls/images in `sessionMessages` or separate store?
 3. **Docker security** — gVisor/Firecracker for untrusted agents?
 

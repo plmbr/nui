@@ -26,10 +26,11 @@ The executor in `internal/agent/adl.go` runs multi-step pipelines in topological
 | `16-ai-assets-skills.yaml` | Basic | `aiAssets.skills` (path, ref, content, git) |
 | `17-auto-scheduled-agent.yaml` | Basic | `promptMode: auto` agent for Customize → Schedules |
 | `18-tool-approvals.yaml` | Basic | Top-level `toolApprovals` with `harness.permissions: interactive` |
+| `19-hitl-workflow-gate.yaml` | Intermediate | Workflow step `type: hitl` orchestration gate |
 
 ## Harness types
 
-All six types are supported by the executor:
+Builtin and connector types supported by the executor:
 
 | Type | How it runs |
 |---|---|
@@ -39,6 +40,7 @@ All six types are supported by the executor:
 | `opencode` | `opencode serve` + `opencode run` |
 | `docker` | HTTP/SSE in user-managed Docker container |
 | `remote` | HTTP/SSE at configured `host:port` |
+| `ext:<extension>/<harness-id>` | Installed extension harness (stdio/tcp/http) |
 
 ## Key concepts
 
@@ -119,6 +121,59 @@ loop skills list
 ```
 
 `systemPrompt` is written as harness-native markdown (`CLAUDE.md`, `AGENTS.md`, etc.). Skills are copied into the session harness skills directory (full directory tree, not just `SKILL.md`).
+
+### Rules and mention providers
+
+```yaml
+aiAssets:
+  rules:
+    - ref: ext:corp-pack/corp-guidelines
+  mentionProviders:
+    - ref: ext:corp-pack/corp-refs
+```
+
+Rules materialize into harness-specific rule files. Mention providers power `@`-mention autocomplete when opted in via ADL.
+
+### Prompt suggestions
+
+Quick-start pills above the chat input:
+
+```yaml
+promptSuggestions:
+  - title: Review code
+    prompt: Review the current changes and suggest improvements.
+    icon: sparkles
+```
+
+### HITL workflow gates
+
+Workflow steps with `type: hitl` pause the DAG for human approval, questions, or review:
+
+```yaml
+steps:
+  - name: draft
+    outputs:
+      - name: summary
+        type: text
+
+  - name: review-gate
+    type: hitl
+    dependsOn: [draft]
+    hitl:
+      kind: approval
+      title: Approve summary
+      message: Review the draft before publishing.
+      actions:
+        - id: approve
+          label: Approve
+        - id: reject
+          label: Reject
+      display:
+        - from: draft.summary
+      channels: [loop-ui]
+```
+
+See `19-hitl-workflow-gate.yaml` for a full example.
 
 ### Environment variables
 
@@ -210,12 +265,19 @@ harness:
 | Topological scheduling | Done |
 | Per-step harness / model / systemPrompt | Done |
 | Named outputs → inputs | Done |
-| Six harness types + sandbox | Done |
+| Builtin + connector harness types + sandbox | Done |
+| Extension harness `ext:<ext>/<id>` | Done |
 | `aiAssets.mcpServers` → harness config | Done |
 | `aiAssets.skills` → harness config | Done |
+| `aiAssets.rules` → harness config | Done |
+| `aiAssets.mentionProviders` → @-mention menu | Done |
 | `skill` + `systemPrompt` → harness config | Done |
 | `env` / `harness.env` → subprocess env | Done |
 | `promptMode` / `defaultPrompt` | Done |
+| `promptSuggestions` → chat UI pills | Done |
+| `workingDirInput` → session create dialog | Done |
 | `toolApprovals` selective auto-approve | Done (Claude; requires `harness.permissions: interactive`) |
+| `steps[].type: hitl` orchestration gates | Done |
+| `promptMode: auto` → schedules | Done |
 
 See [dev/dev.md](../../dev.md) for the full architecture and [orchestration-research.md](../orchestration-research.md) for design research.
