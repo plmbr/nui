@@ -1,10 +1,12 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Check, Folder, Plus, Search, X } from 'lucide-react'
+import { Folder, Plus, Search, X } from 'lucide-react'
+import { HarnessIcon } from '@/components/HarnessIcon'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
 import { api } from '@/api'
 import { harnessLabel } from '@/lib/agentDisplay'
 import {
@@ -34,11 +36,14 @@ function agentMatchesSearch(agent: AgentType, query: string): boolean {
   return haystack.includes(query)
 }
 
+type AgentCategoryTab = 'standard' | 'custom'
+
 export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorkingDir, onClose, onCreated }: Props) {
   const [name, setName] = useState('')
   const [workingDir, setWorkingDir] = useState(initialWorkingDir ?? '')
   const [selectedId, setSelectedId] = useState('')
   const [customSearch, setCustomSearch] = useState('')
+  const [agentTab, setAgentTab] = useState<AgentCategoryTab>('standard')
   const [selectedSourceKeys, setSelectedSourceKeys] = useState<Set<string>>(() => new Set())
   const [extensions, setExtensions] = useState<ExtensionInfo[]>([])
   const [loading, setLoading] = useState(false)
@@ -50,13 +55,32 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   const [activeDirectoryIndex, setActiveDirectoryIndex] = useState(0)
   const suppressDirectoryLookupForValue = useRef<string | null>(null)
   const customAgentsScrollRef = useRef<HTMLDivElement>(null)
+  const initialTabSynced = useRef(false)
+
+  const builtins = useMemo(
+    () => selectableAgentTypes(agentTypes).filter((a) => a.isBuiltin),
+    [agentTypes],
+  )
+  const userDefined = useMemo(
+    () => sortCustomAgentsByName(
+      selectableAgentTypes(agentTypes).filter((a) => !a.isBuiltin),
+    ),
+    [agentTypes],
+  )
+
+  function selectAgent(id: string) {
+    setSelectedId(id)
+    if (userDefined.some((a) => a.id === id)) setAgentTab('custom')
+    else if (builtins.some((a) => a.id === id)) setAgentTab('standard')
+  }
 
   useEffect(() => {
     if (agentTypes.length === 0) return
     const selectable = selectableAgentTypes(agentTypes)
     if (selectable.length === 0) return
+
     if (initialAgentTypeId && selectable.some((t) => t.id === initialAgentTypeId)) {
-      setSelectedId(initialAgentTypeId)
+      selectAgent(initialAgentTypeId)
       return
     }
     api.settings.get()
@@ -69,7 +93,14 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
       .catch(() => {
         setSelectedId((current) => current || pickDefaultAgentTypeId(agentTypes))
       })
-  }, [agentTypes, initialAgentTypeId])
+  }, [agentTypes, initialAgentTypeId, builtins, userDefined])
+
+  useEffect(() => {
+    if (initialTabSynced.current || !selectedId) return
+    initialTabSynced.current = true
+    if (userDefined.some((a) => a.id === selectedId)) setAgentTab('custom')
+    else if (builtins.some((a) => a.id === selectedId)) setAgentTab('standard')
+  }, [selectedId, userDefined, builtins])
 
   useEffect(() => {
     api.extensions.list()
@@ -122,6 +153,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
     setHarnessPermissionsEnabled(true)
     setDirectorySuggestions([])
     setDirectoryInputFocused(false)
+    initialTabSynced.current = false
   }
 
   function handleClose() {
@@ -130,13 +162,6 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   }
 
   const selected = agentTypes.find((a) => a.id === selectedId)
-  const builtins = selectableAgentTypes(agentTypes).filter((a) => a.isBuiltin)
-  const userDefined = useMemo(
-    () => sortCustomAgentsByName(
-      selectableAgentTypes(agentTypes).filter((a) => !a.isBuiltin),
-    ),
-    [agentTypes],
-  )
   const customSourceOptions = useMemo(
     () => buildCustomAgentSourceOptions(userDefined, extensions),
     [userDefined, extensions],
@@ -179,7 +204,9 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
     }
     setSelectedSourceKeys(new Set(allSourceKeys))
   }
-  const isBasicLoopSelected = builtins.some((a) => a.id === selectedId)
+  const showStandardTab = builtins.length > 0
+  const showCustomTab = userDefined.length > 0
+  const showAgentTabs = showStandardTab && showCustomTab
   const directoryListOpen = directoryInputFocused && directorySuggestions.length > 0
   const showUserScopeOption = selected ? harnessSupportsUserScope(selected.harness) : false
   const showHarnessPermissionsOption = selected ? showToolApprovalsOption(selected) : false
@@ -282,125 +309,140 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
         <div className="flex flex-1 flex-col min-h-0 overflow-hidden p-6">
           <div className="customize-tab-content mx-auto flex w-full min-h-0 flex-1 flex-col gap-5">
 
-            {(builtins.length > 0 || userDefined.length > 0) && (
-            <div className="flex min-h-0 flex-1 flex-col gap-2">
-              {builtins.length > 0 && <Label className="shrink-0">Built-in Agents</Label>}
-              <div className="flex min-h-0 flex-1 flex-col gap-1.5">
-                {builtins.length > 0 && (
-                  <div className={[
-                    'shrink-0 rounded-lg border px-3 py-2.5 transition-colors',
-                    isBasicLoopSelected
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border bg-background',
-                  ].join(' ')}>
-                    <span className="block text-sm font-medium leading-tight mb-2">Standard</span>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {builtins.map((a) => (
+            {(showStandardTab || showCustomTab) && (
+            <div className="flex min-h-0 flex-1 flex-col gap-3">
+              {showAgentTabs && (
+                <div className="new-session-tabs shrink-0" role="tablist" aria-label="Agent categories">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={agentTab === 'standard'}
+                    className={cn('new-session-tab', agentTab === 'standard' && 'new-session-tab--active')}
+                    onClick={() => setAgentTab('standard')}
+                  >
+                    Standard
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={agentTab === 'custom'}
+                    className={cn('new-session-tab', agentTab === 'custom' && 'new-session-tab--active')}
+                    onClick={() => setAgentTab('custom')}
+                  >
+                    Custom
+                    <span className="text-muted-foreground font-normal">({userDefined.length})</span>
+                  </button>
+                </div>
+              )}
+
+              {showStandardTab && (!showAgentTabs || agentTab === 'standard') && (
+                <div
+                  role={showAgentTabs ? 'tabpanel' : undefined}
+                  aria-label="Standard agents"
+                  className="min-h-0 flex-1 overflow-y-auto"
+                >
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {builtins.map((a) => (
+                      <StandardAgentCard
+                        key={a.id}
+                        agent={a}
+                        selected={selectedId === a.id}
+                        onSelect={() => selectAgent(a.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {showCustomTab && (!showAgentTabs || agentTab === 'custom') && (
+                <div
+                  role={showAgentTabs ? 'tabpanel' : undefined}
+                  aria-label="Custom agents"
+                  className="flex min-h-0 flex-1 flex-col gap-2"
+                >
+                  {customSourceOptions.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 shrink-0">
+                      <Label className="shrink-0 text-muted-foreground">Source</Label>
+                      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by agent source">
                         <button
-                          key={a.id}
                           type="button"
-                          onClick={() => setSelectedId(a.id)}
+                          aria-pressed={allSourcesActive}
+                          onClick={toggleAllSourceFilters}
                           className={[
                             'rounded-md px-2.5 py-1 text-xs font-medium transition-colors border',
-                            selectedId === a.id
+                            allSourcesActive
                               ? 'border-primary bg-primary text-primary-foreground'
                               : 'border-border bg-background text-muted-foreground hover:bg-muted',
                           ].join(' ')}
                         >
-                          {a.label}
+                          All
                         </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {userDefined.length > 0 && (
-                  <div className="flex min-h-0 flex-1 flex-col gap-2">
-                    <Label className="shrink-0">Custom Agents</Label>
-                    {customSourceOptions.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 shrink-0">
-                        <Label className="shrink-0 text-muted-foreground">Source</Label>
-                        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by agent source">
-                          <button
-                            type="button"
-                            aria-pressed={allSourcesActive}
-                            onClick={toggleAllSourceFilters}
-                            className={[
-                              'rounded-md px-2.5 py-1 text-xs font-medium transition-colors border',
-                              allSourcesActive
-                                ? 'border-primary bg-primary text-primary-foreground'
-                                : 'border-border bg-background text-muted-foreground hover:bg-muted',
-                            ].join(' ')}
-                          >
-                            All
-                          </button>
-                          {customSourceOptions.map((option) => {
-                            const active = selectedSourceKeys.has(option.key)
-                            return (
-                              <button
-                                key={option.key}
-                                type="button"
-                                aria-pressed={active}
-                                onClick={() => toggleSourceFilter(option.key)}
-                                className={[
-                                  'rounded-md px-2.5 py-1 text-xs font-medium transition-colors border',
-                                  active
-                                    ? 'border-primary bg-primary text-primary-foreground'
-                                    : 'border-border bg-background text-muted-foreground hover:bg-muted',
-                                ].join(' ')}
-                              >
-                                {option.label}
-                              </button>
-                            )
-                          })}
-                        </div>
+                        {customSourceOptions.map((option) => {
+                          const active = selectedSourceKeys.has(option.key)
+                          return (
+                            <button
+                              key={option.key}
+                              type="button"
+                              aria-pressed={active}
+                              onClick={() => toggleSourceFilter(option.key)}
+                              className={[
+                                'rounded-md px-2.5 py-1 text-xs font-medium transition-colors border',
+                                active
+                                  ? 'border-primary bg-primary text-primary-foreground'
+                                  : 'border-border bg-background text-muted-foreground hover:bg-muted',
+                              ].join(' ')}
+                            >
+                              {option.label}
+                            </button>
+                          )
+                        })}
                       </div>
+                    </div>
+                  )}
+                  <div className="relative shrink-0">
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={customSearch}
+                      onChange={(e) => setCustomSearch(e.target.value)}
+                      placeholder="Search by name or description…"
+                      className="pl-8 pr-8"
+                      aria-label="Search custom agents"
+                    />
+                    {customSearch && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        onClick={() => setCustomSearch('')}
+                        aria-label="Clear search"
+                      >
+                        <X className="size-3.5" />
+                      </Button>
                     )}
-                    <div className="relative shrink-0">
-                      <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        value={customSearch}
-                        onChange={(e) => setCustomSearch(e.target.value)}
-                        placeholder="Search by name or description…"
-                        className="pl-8 pr-8"
-                        aria-label="Search custom agents"
-                      />
-                      {customSearch && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          onClick={() => setCustomSearch('')}
-                          aria-label="Clear search"
-                        >
-                          <X className="size-3.5" />
-                        </Button>
+                  </div>
+                  <div ref={customAgentsScrollRef} className="min-h-0 flex-1 overflow-y-auto">
+                    <div className="flex flex-col gap-1.5 pr-1">
+                      {filteredCustom.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-2">
+                          {searchQuery || selectedSourceKeys.size > 0
+                            ? 'No agents match your filters.'
+                            : 'No custom agents available.'}
+                        </p>
+                      ) : (
+                        filteredCustom.map((a) => (
+                          <AgentCard
+                            key={a.id}
+                            agent={a}
+                            selected={selectedId === a.id}
+                            onSelect={() => selectAgent(a.id)}
+                          />
+                        ))
                       )}
                     </div>
-                    <div ref={customAgentsScrollRef} className="min-h-0 flex-1 overflow-y-auto">
-                      <div className="flex flex-col gap-1.5 pr-1">
-                        {filteredCustom.length === 0 ? (
-                          <p className="text-sm text-muted-foreground py-2">
-                            {searchQuery || selectedSourceKeys.size > 0
-                              ? 'No agents match your filters.'
-                              : 'No custom agents available.'}
-                          </p>
-                        ) : (
-                          filteredCustom.map((a) => (
-                            <AgentCard
-                              key={a.id}
-                              agent={a}
-                              selected={selectedId === a.id}
-                              onSelect={() => setSelectedId(a.id)}
-                            />
-                          ))
-                        )}
-                      </div>
-                    </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
             )}
 
@@ -547,6 +589,34 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   )
 }
 
+interface StandardAgentCardProps {
+  agent: AgentType
+  selected: boolean
+  onSelect: () => void
+}
+
+function StandardAgentCard({ agent, selected, onSelect }: StandardAgentCardProps) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={cn(
+        'flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center transition-colors',
+        selected
+          ? 'border-primary bg-primary/5 text-foreground'
+          : 'border-border bg-background hover:bg-muted/60',
+      )}
+    >
+      <HarnessIcon harness={agent.harness} size="xl" />
+      <span className={cn(
+        'text-xs leading-tight',
+        selected ? 'font-medium text-foreground' : 'text-muted-foreground',
+      )}>{agent.label}</span>
+    </button>
+  )
+}
+
 interface AgentCardProps {
   agent: AgentType
   selected: boolean
@@ -560,18 +630,13 @@ function AgentCard({ agent, selected, onSelect }: AgentCardProps) {
       data-agent-id={agent.id}
       onClick={onSelect}
       className={[
-        'flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
+        'flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
         selected
           ? 'border-primary bg-primary/5 text-foreground'
           : 'border-border bg-background hover:bg-muted/60',
       ].join(' ')}
     >
-      <span className={[
-        'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border',
-        selected ? 'border-primary bg-primary' : 'border-muted-foreground/40',
-      ].join(' ')}>
-        {selected && <Check className="size-2.5 text-primary-foreground stroke-[3]" />}
-      </span>
+      <HarnessIcon harness={agent.harness} size="lg" className="shrink-0" />
       <span className="flex-1 min-w-0">
         <span className="block text-sm font-medium leading-tight">{agent.label}</span>
         {agent.description && (
@@ -580,7 +645,7 @@ function AgentCard({ agent, selected, onSelect }: AgentCardProps) {
           </span>
         )}
       </span>
-      <span className="mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground bg-muted">
+      <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground bg-muted">
         {harnessLabel(agent.harness, agent.sandbox)}
       </span>
     </button>

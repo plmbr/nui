@@ -614,6 +614,18 @@
     @apply max-w-3xl;
   }
 
+  .new-session-tabs {
+    @apply inline-flex w-full rounded-lg border border-border bg-muted/30 p-1;
+  }
+
+  .new-session-tab {
+    @apply flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground;
+  }
+
+  .new-session-tab--active {
+    @apply bg-background text-foreground shadow-sm;
+  }
+
   /* ─── Sessions list table ────────────────────────────────────── */
   .sessions-table {
     @apply border-collapse;
@@ -750,6 +762,11 @@
 
   .agui-message--assistant .agui-message__bubble :where(p:last-child) {
     margin-bottom: 0;
+  }
+
+  .agui-message--assistant .agui-message__bubble :where(hr) {
+    margin-top: 0.75em;
+    margin-bottom: 0.75em;
   }
 
   .agui-message__bubble--error {
