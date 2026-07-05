@@ -87,6 +87,9 @@ func loadAgentsFromFile(path string) ([]model.ADLDefinition, error) {
 		if wrap.Agents[i].ID == "" && wrap.Agents[i].Name == "" {
 			return nil, fmt.Errorf("%s: agents[%d]: id or name is required", path, i)
 		}
+		if err := model.ValidateADLDefinition(wrap.Agents[i]); err != nil {
+			return nil, fmt.Errorf("%s: agents[%d]: %w", path, i, err)
+		}
 	}
 	return wrap.Agents, nil
 }

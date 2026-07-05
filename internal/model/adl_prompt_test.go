@@ -41,3 +41,21 @@ defaultPrompt: Run the daily check.
 		t.Fatalf("defaultPrompt = %q", def.DefaultPrompt)
 	}
 }
+
+func TestIsMultiStepWorkflow(t *testing.T) {
+	if IsMultiStepWorkflow(ADLDefinition{Harness: ADLHarness{Type: "claude-code"}}) {
+		t.Fatal("single-step agent should not be multi-step workflow")
+	}
+	if !IsMultiStepWorkflow(ADLDefinition{
+		Harness: ADLHarness{Type: "claude-code"},
+		Steps:   []ADLStep{{Name: "a"}},
+	}) {
+		t.Fatal("expected multi-step when steps present")
+	}
+	if !IsMultiStepWorkflow(ADLDefinition{
+		Kind:    "workflow",
+		Harness: ADLHarness{Type: "claude-code"},
+	}) {
+		t.Fatal("expected multi-step for kind workflow")
+	}
+}

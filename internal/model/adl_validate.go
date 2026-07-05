@@ -1,0 +1,161 @@
+// Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
+
+package model
+
+import (
+	"fmt"
+	"strings"
+)
+
+// ValidateADLDefinition checks an ADL definition for structural and semantic errors.
+func ValidateADLDefinition(def ADLDefinition) error {
+	if def.ID == "" && def.Name == "" {
+		return fmt.Errorf("agent must define id or name")
+	}
+	if err := validateHarness(def.Harness, "harness"); err != nil {
+		return err
+	}
+	if err := ValidateADLSkills(def.AIAssets.Skills); err != nil {
+		return fmt.Errorf("aiAssets.skills: %w", err)
+	}
+	if err := ValidateADLToolApprovals(def); err != nil {
+		return err
+	}
+	if err := ValidateADLHITL(def); err != nil {
+		return err
+	}
+	if len(def.Steps) == 0 {
+		return nil
+	}
+
+	stepNames := map[string]bool{}
+	for _, step := range def.Steps {
+		name := strings.TrimSpace(step.Name)
+		if name == "" {
+			return fmt.Errorf("step name is required")
+		}
+		if stepNames[name] {
+			return fmt.Errorf("duplicate step name %q", name)
+		}
+		stepNames[name] = true
+	}
+
+	for _, step := range def.Steps {
+		if err := validateStep(step, stepNames); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateStep(step ADLStep, stepNames map[string]bool) error {
+	name := strings.TrimSpace(step.Name)
+	stepType := strings.TrimSpace(step.Type)
+	if stepType == "" {
+		stepType = "agent"
+	}
+	switch stepType {
+	case "agent":
+		harness := step.Harness
+		if harness != nil {
+			if err := validateHarness(*harness, fmt.Sprintf("step %q harness", name)); err != nil {
+				return err
+			}
+		}
+		if err := ValidateADLSkills(step.AIAssets.Skills); err != nil {
+			return fmt.Errorf("step %q aiAssets.skills: %w", name, err)
+		}
+	case "hitl":
+		if step.HITL == nil {
+			return fmt.Errorf("step %q: hitl block required for type hitl", name)
+		}
+	default:
+		return fmt.Errorf("step %q: unknown type %q", name, stepType)
+	}
+
+	for _, dep := range step.DependsOn {
+		if !stepNames[dep] {
+			return fmt.Errorf("step %q depends on unknown step %q", name, dep)
+		}
+	}
+
+	for _, inp := range step.Inputs {
+		stepRef, _ := splitStepOutputRef(inp.From)
+		if stepRef == "" {
+			return fmt.Errorf("step %q: input from is required", name)
+		}
+		if !stepNames[stepRef] {
+			return fmt.Errorf("step %q input from %q references unknown step", name, inp.From)
+		}
+	}
+
+	for _, out := range step.Outputs {
+		if strings.TrimSpace(out.Name) == "" {
+			return fmt.Errorf("step %q: output name is required", name)
+		}
+	}
+
+	return nil
+}
+
+func validateHarness(h ADLHarness, path string) error {
+	t := strings.TrimSpace(h.Type)
+	if t == "" {
+		t = "claude-code"
+	}
+	if !isValidHarnessType(t) {
+		return fmt.Errorf("%s.type: unknown harness type %q", path, h.Type)
+	}
+	switch t {
+	case "docker":
+		if strings.TrimSpace(h.Image) == "" {
+			return fmt.Errorf("%s: docker harness requires image", path)
+		}
+		if h.ContainerPort == 0 {
+			return fmt.Errorf("%s: docker harness requires containerPort", path)
+		}
+	case "remote":
+		if strings.TrimSpace(h.Host) == "" {
+			return fmt.Errorf("%s: remote harness requires host", path)
+		}
+		if h.Port == 0 {
+			return fmt.Errorf("%s: remote harness requires port", path)
+		}
+	}
+	if sb := strings.TrimSpace(h.Sandbox); sb != "" && sb != "none" && sb != "bubblewrap" && sb != "docker" {
+		return fmt.Errorf("%s.sandbox: unknown value %q", path, sb)
+	}
+	if p := strings.TrimSpace(h.Permissions); p != "" && p != "interactive" && p != "bypass" {
+		return fmt.Errorf("%s.permissions: unknown value %q", path, p)
+	}
+	return nil
+}
+
+func isValidHarnessType(t string) bool {
+	switch t {
+	case "claude-code", "pi", "codex", "opencode", "docker", "remote":
+		return true
+	}
+	if strings.HasPrefix(t, "ext:") {
+		rest := strings.TrimPrefix(t, "ext:")
+		before, after, ok := strings.Cut(rest, "/")
+		return ok && before != "" && after != ""
+	}
+	// Extension-registered harness agent ids (ext:name/harness-id without ext: prefix in some paths)
+	if strings.Contains(t, "/") {
+		return true
+	}
+	return false
+}
+
+func splitStepOutputRef(ref string) (stepName, outputName string) {
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		return "", ""
+	}
+	parts := strings.SplitN(ref, ".", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return parts[0], ""
+}

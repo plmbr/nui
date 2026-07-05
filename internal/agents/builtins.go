@@ -2,31 +2,72 @@
 
 package agents
 
-import "loop/internal/model"
+import (
+	"loop/internal/hitl"
+	"loop/internal/model"
+)
 
+var builtinPromptSuggestions = []model.ADLPromptSuggestion{
+	{
+		Title:  "Surprise me",
+		Icon:   "sparkles",
+		Prompt: "Surprise me with something fun you can do right now. Keep it short and cheerful.",
+	},
+	{
+		Title:  "Hot take",
+		Icon:   "flame",
+		Prompt: "Share a playful hot take about anything, then argue the opposite side just as passionately.",
+	},
+	{
+		Title:  "Play a game",
+		Icon:   "gamepad-2",
+		Prompt: "Invent a silly chat game we can play together. Explain the rules in one paragraph.",
+	},
+}
+
+// builtinAgentDefs are the compiled-in ADL definitions shipped with Loop.
 var builtinAgentDefs = []model.ADLDefinition{
 	{
-		ID:          "claude-code",
-		Name:        "Claude Code",
-		Description: "Claude Code running as a local subprocess",
-		Harness:     model.ADLHarness{Type: "claude-code", Sandbox: "none"},
+		ID:                "claude-code",
+		Name:              "Claude Code",
+		Description:       "Claude Code running as a local subprocess",
+		Harness:           model.ADLHarness{Type: "claude-code", Sandbox: "none", Permissions: hitl.PermissionsBypass},
+		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelLoopUI}},
+		WorkingDirInput:   true,
+		PromptSuggestions: builtinPromptSuggestions,
 	},
 	{
-		ID:          "pi",
-		Name:        "Pi",
-		Description: "Pi running as a local subprocess",
-		Harness:     model.ADLHarness{Type: "pi", Sandbox: "none"},
+		ID:                "pi",
+		Name:              "Pi",
+		Description:       "Pi running as a local subprocess",
+		Harness:           model.ADLHarness{Type: "pi", Sandbox: "none"},
+		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelLoopUI}},
+		WorkingDirInput:   true,
+		PromptSuggestions: builtinPromptSuggestions,
 	},
 	{
-		ID:          "codex",
-		Name:        "Codex",
-		Description: "Codex running as a local subprocess",
-		Harness:     model.ADLHarness{Type: "codex", Sandbox: "none"},
+		ID:                "codex",
+		Name:              "Codex",
+		Description:       "Codex running as a local subprocess",
+		Harness:           model.ADLHarness{Type: "codex", Sandbox: "none", Permissions: hitl.PermissionsBypass},
+		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelLoopUI}},
+		WorkingDirInput:   true,
+		PromptSuggestions: builtinPromptSuggestions,
 	},
 	{
-		ID:          "opencode",
-		Name:        "OpenCode",
-		Description: "OpenCode running as a local subprocess",
-		Harness:     model.ADLHarness{Type: "opencode", Sandbox: "none"},
+		ID:                "opencode",
+		Name:              "OpenCode",
+		Description:       "OpenCode running as a local subprocess",
+		Harness:           model.ADLHarness{Type: "opencode", Sandbox: "none"},
+		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelLoopUI}},
+		WorkingDirInput:   true,
+		PromptSuggestions: builtinPromptSuggestions,
 	},
+}
+
+// BuiltinAgentDefs returns compiled-in ADL agent definitions shipped with Loop.
+func BuiltinAgentDefs() []model.ADLDefinition {
+	out := make([]model.ADLDefinition, len(builtinAgentDefs))
+	copy(out, builtinAgentDefs)
+	return out
 }

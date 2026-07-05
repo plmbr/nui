@@ -5,6 +5,7 @@ package server
 import (
 	"testing"
 
+	"loop/internal/agents"
 	"loop/internal/model"
 )
 
@@ -138,7 +139,7 @@ func TestSkillNamesFromADL_includesBuiltinSkills(t *testing.T) {
 }
 
 func TestBuiltinAgentDefs_havePromptSuggestions(t *testing.T) {
-	for _, def := range builtinAgentDefs {
+	for _, def := range agents.BuiltinAgentDefs() {
 		if len(def.PromptSuggestions) < 2 {
 			t.Fatalf("%q: expected at least 2 promptSuggestions, got %d", def.ID, len(def.PromptSuggestions))
 		}

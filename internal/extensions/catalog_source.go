@@ -81,11 +81,18 @@ func (p *catalogProvider) ListAgents() ([]model.ADLDefinition, error) {
 	if err := p.rpc.Call("extension.listAgents", map[string]any{}, &result); err != nil {
 		return nil, err
 	}
-	for i := range result.Agents {
-		model.NormalizeADLDefinition(&result.Agents[i])
-		model.NormalizeADLSkills(&result.Agents[i])
+	var valid []model.ADLDefinition
+	for _, def := range result.Agents {
+		defCopy := def
+		model.NormalizeADLDefinition(&defCopy)
+		model.NormalizeADLSkills(&defCopy)
+		if err := model.ValidateADLDefinition(defCopy); err != nil {
+			fmt.Fprintf(os.Stderr, "warn: skip invalid extension agent: %v\n", err)
+			continue
+		}
+		valid = append(valid, defCopy)
 	}
-	return result.Agents, nil
+	return valid, nil
 }
 
 func (p *catalogProvider) Close() error {

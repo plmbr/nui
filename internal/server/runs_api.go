@@ -193,13 +193,13 @@ func runInBackground(sessionID string, session model.Session, agentSessionID, ru
 		status = RunStatusCompleted
 	}
 
-	persistAssistantTurn(sessionID, result.AssistantContent, result.NewAgentSessionID, isSessionADLWorkflow(session))
+	persistAssistantTurn(sessionID, result.AssistantContent, result.NewAgentSessionID, isSessionMultiStepWorkflow(session))
 	finishRunRecord(runID, status, result.AssistantContent, errMsg)
 }
 
-func isSessionADLWorkflow(session model.Session) bool {
+func isSessionMultiStepWorkflow(session model.Session) bool {
 	def, ok := findADLDef(session.AgentType)
-	return ok && (len(def.Steps) > 0 || def.Kind == "workflow")
+	return ok && model.IsMultiStepWorkflow(def)
 }
 
 func handleSessionRunsRouter(w http.ResponseWriter, r *http.Request, sessionID, rest string) {

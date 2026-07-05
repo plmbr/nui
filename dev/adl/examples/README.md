@@ -6,7 +6,7 @@ Echo-specific docker/remote walkthroughs (with runnable harness servers) live un
 
 Each agent requires an `id` (stable identifier used by the CLI and sessions) and a `name` (display label). The UI shows the name with the description below it.
 
-The executor in `internal/agent/adl.go` runs multi-step pipelines in topological order.
+The executor in `internal/agent/adl.go` runs multi-step pipelines in **sequential** topological order (no parallel fan-out).
 
 ## Examples
 
@@ -16,7 +16,7 @@ The executor in `internal/agent/adl.go` runs multi-step pipelines in topological
 | `02-sequential-research-write.yaml` | Basic | `dependsOn`, named outputs, per-step `systemPrompt` |
 | `03-docker-code-runner.yaml` | Basic | Docker harness |
 | `04-remote-agent.yaml` | Basic | Remote harness |
-| `05-parallel-research-fan-out.yaml` | Intermediate | Fan-in via `dependsOn`, multiple inputs |
+| `05-parallel-research-fan-out.yaml` | Intermediate | Fan-in via `dependsOn` (steps still run sequentially) |
 | `09-multi-harness-pipeline.yaml` | Advanced | Per-step harness/model override |
 | `11-complex-research-pipeline.yaml` | Complex | Multi-harness pipeline with MCP and verification |
 | `12-codex-sandbox-variants.yaml` | Basic | codex: none / bubblewrap / docker |
@@ -76,7 +76,7 @@ aiAssets:
 
 Loop provisions these into `~/.loop/sessions/<session-id>/` and sets the harness config-dir env var (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `PI_CODING_AGENT_DIR`, or `OPENCODE_CONFIG_DIR`) before each run.
 
-Per-step overrides:
+Per-step overrides merge with top-level `aiAssets` by name (step entries override same name):
 
 ```yaml
 steps:
@@ -224,6 +224,8 @@ defaultPrompt: Follow your system instructions and run.
 
 ### Named outputs and inputs
 
+Each step's collected text is stored under declared `outputs` names (or an implicit default when omitted). Reference downstream with `from: stepName.outputName`:
+
 ```yaml
 steps:
   - name: research
@@ -237,6 +239,8 @@ steps:
       - from: research.brief
         as: researchBrief
 ```
+
+Each user chat turn re-runs all workflow steps from the beginning.
 
 ### Sandbox variants
 

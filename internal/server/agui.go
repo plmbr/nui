@@ -135,10 +135,10 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 	createRunRecord(sessionID, runID, resolvedMessage)
 
 	var ag agent.Agent
-	var isADL bool
+	var multiStepWorkflow bool
 	if def, found := findADLDef(session.AgentType); found {
 		ag = agent.NewADLAgent(def, session.ID, extensionManager)
-		isADL = len(def.Steps) > 0 || def.Kind == "workflow"
+		multiStepWorkflow = model.IsMultiStepWorkflow(def)
 	} else {
 		var err error
 		ag, err = extensionManager.GetAgent(session.ID, session.AgentType, workingDir, session.AgentConfig)
@@ -176,7 +176,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 			runReq.HarnessPermissions = hitl.EffectivePermissions(def, session.AgentConfig)
 			runReq.ToolApprovalPolicy, runReq.ToolApprovalTools = hitl.EffectiveToolApprovals(def, session.AgentConfig)
 		}
-		if !isADL {
+		if !multiStepWorkflow {
 			runReq.SessionID = agentSessionID
 		}
 		err := ag.Run(runCtx, runReq, events)
@@ -341,7 +341,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 			assistantMsg.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 		}
 		if assistantMsg.Content != "" || len(assistantMsg.Parts) > 0 {
-			persistRichAssistantTurn(sessionID, assistantMsg, newAgentSessionID, isADL)
+			persistRichAssistantTurn(sessionID, assistantMsg, newAgentSessionID, multiStepWorkflow)
 		}
 		finishRunRecord(runID, RunStatusCancelled, assistantContent.String(), "cancelled")
 	case runErrored:
@@ -350,7 +350,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 			assistantMsg.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 		}
 		if assistantMsg.Content != "" || len(assistantMsg.Parts) > 0 {
-			persistRichAssistantTurn(sessionID, assistantMsg, newAgentSessionID, isADL)
+			persistRichAssistantTurn(sessionID, assistantMsg, newAgentSessionID, multiStepWorkflow)
 		}
 		finishRunRecord(runID, RunStatusFailed, assistantContent.String(), "error")
 	default:
@@ -359,7 +359,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 			assistantMsg.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 		}
 		if assistantMsg.Content != "" || len(assistantMsg.Parts) > 0 {
-			persistRichAssistantTurn(sessionID, assistantMsg, newAgentSessionID, isADL)
+			persistRichAssistantTurn(sessionID, assistantMsg, newAgentSessionID, multiStepWorkflow)
 		}
 		finishRunRecord(runID, RunStatusCompleted, assistantContent.String(), "")
 	}

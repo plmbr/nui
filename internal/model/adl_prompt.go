@@ -13,6 +13,12 @@ const ADLPromptModeUser = "user"
 // ADLPromptModeAuto hides the prompt input and runs with a launch or default prompt.
 const ADLPromptModeAuto = "auto"
 
+// IsMultiStepWorkflow reports whether the agent re-runs all steps on each user turn.
+// Multi-step workflows do not map harness session IDs in agentSessions.
+func IsMultiStepWorkflow(def ADLDefinition) bool {
+	return len(def.Steps) > 0 || def.Kind == "workflow"
+}
+
 // IsADLAutoPrompt reports whether the agent runs without waiting for user input.
 func IsADLAutoPrompt(def ADLDefinition) bool {
 	return strings.TrimSpace(def.PromptMode) == ADLPromptModeAuto

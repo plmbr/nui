@@ -1,6 +1,6 @@
 # ADL Multi-Step Orchestration — Research Findings [AI generated]
 
-> **Status:** Historical research (non-normative). Loop implemented its own DAG executor in `internal/agent/adl.go` rather than adopting go-workflow. Some details below are outdated — see [`dev/dev.md`](../dev.md) for the current schema and API.
+> **Status:** Historical research (non-normative, partially outdated). Loop runs steps **sequentially** only (no parallel ready-steps). Parallel policies and go-workflow adoption described below were not implemented. See [`dev/dev.md`](../dev.md) for the current schema and API.
 
 > **Note:** Some harness wiring below is outdated. Builtin CLI harnesses are Go-managed subprocesses, not TCP `ExtensionAgent` processes. API paths use `/api/sessions/`, not `/api/projects/`. ADL no longer includes step `policy`, `approval`, `constraints`, or `schedule` — see [dev.md](../dev.md) for the current schema.
 

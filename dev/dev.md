@@ -198,6 +198,36 @@ steps:                            # omit for single-step agents
       channels: [loop-ui]
 ```
 
+#### Multi-step execution semantics
+
+- Steps run **sequentially** in topological order (`dependsOn`). Independent branches are not executed in parallel.
+- Each user chat turn **re-runs all steps** from the beginning. There is no cross-turn step state.
+- Multi-step workflows do not persist harness session IDs in `agentSessions`; single-step agents do.
+
+#### Named outputs and inputs
+
+- When a step omits `outputs`, its full text is stored as an implicit default output.
+- When `outputs` lists names (e.g. `brief`), the step's collected text is stored under each declared name (text-only; all names alias the same content).
+- Downstream steps reference outputs with `inputs[].from: stepName.outputName` (e.g. `research.brief`) or `dependsOn` for the step's default output.
+- `inputs[].filter` is reserved and not yet implemented.
+
+#### HITL configuration
+
+| Mechanism | When to use |
+|---|---|
+| `harness.permissions: interactive` + `toolApprovals` | Per-tool approve/deny during an agent run (Claude Code, Codex) |
+| Top-level `hitl` block | Runtime ask-user via Loop HITL MCP + skill injection |
+| `steps[].type: hitl` | Orchestration gate between workflow steps |
+
+`hitl.approvals` is deprecated; use `toolApprovals` with `harness.permissions: interactive` instead.
+
+#### MCP configuration
+
+- **ADL `aiAssets.mcpServers`** — provisioned into per-session harness config (agent subprocess tools).
+- **`~/.loop/.mcp.json`** — Loop UI MCP tool frames only; not merged with ADL agent tools.
+
+Per-step `aiAssets` **merges** with top-level entries by name (step entries override same name).
+
 Example
 
 ```yaml
@@ -292,7 +322,7 @@ type Agent interface {
 }
 ```
 
-`ADLAgent` is the orchestrator. `Manager` caches one builtin agent per session ID and manages Docker container lifecycle (idle reaper at 30 min).
+`ADLAgent` is the orchestrator. `Manager` caches one builtin agent per session ID **and harness type** and manages Docker container lifecycle (idle reaper at 30 min).
 
 ### HTTP/SSE harness protocol
 

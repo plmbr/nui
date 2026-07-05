@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"loop/internal/agent"
+	"loop/internal/agents"
 	"loop/internal/browser"
 	"loop/internal/extensions"
 	"loop/internal/model"
@@ -298,7 +299,7 @@ func defaultAgentTypeCandidates() []string {
 		seen[primary] = true
 	}
 
-	for _, def := range builtinAgentDefs {
+	for _, def := range agents.BuiltinAgentDefs() {
 		id := model.ADLAgentID(def)
 		if seen[id] || !agent.CLIAvailable(def.Harness.Type) {
 			continue
@@ -321,7 +322,7 @@ func ensureDefaultAgentType(settings *store.Settings) string {
 		}
 	}
 
-	for _, def := range builtinAgentDefs {
+	for _, def := range agents.BuiltinAgentDefs() {
 		id := model.ADLAgentID(def)
 		if !agent.CLIAvailable(def.Harness.Type) {
 			continue

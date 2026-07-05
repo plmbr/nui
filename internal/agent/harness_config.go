@@ -113,17 +113,49 @@ func harnessDepsFromADL(def model.ADLDefinition, step *model.ADLStep, workingDir
 		if step.SystemPrompt != "" {
 			deps.SystemPrompt = step.SystemPrompt
 		}
-		if servers := adlMCPServersFromStep(*step); len(servers) > 0 {
-			deps.MCPServers = servers
-		}
-		if stepSkills := adlSkillsFromStep(*step); len(stepSkills) > 0 {
-			deps.Skills = stepSkills
-		}
-		if stepRules := adlRulesFromStep(*step); len(stepRules) > 0 {
-			deps.Rules = stepRules
-		}
+		deps.MCPServers = mergeMCPServers(deps.MCPServers, adlMCPServersFromStep(*step))
+		deps.Skills = mergeSkills(deps.Skills, adlSkillsFromStep(*step))
+		deps.Rules = mergeRules(deps.Rules, adlRulesFromStep(*step))
 	}
 	return deps
+}
+
+func mergeMCPServers(base, step []model.ADLMCPServer) []model.ADLMCPServer {
+	return mergeByName(base, step, func(s model.ADLMCPServer) string { return s.Name })
+}
+
+func mergeSkills(base, step []model.ADLSkill) []model.ADLSkill {
+	return mergeByName(base, step, func(s model.ADLSkill) string { return s.Name })
+}
+
+func mergeRules(base, step []model.ADLRule) []model.ADLRule {
+	return mergeByName(base, step, func(r model.ADLRule) string { return r.Name })
+}
+
+func mergeByName[T any](base, override []T, nameFn func(T) string) []T {
+	if len(base) == 0 {
+		return append([]T(nil), override...)
+	}
+	if len(override) == 0 {
+		return append([]T(nil), base...)
+	}
+	index := map[string]int{}
+	out := make([]T, 0, len(base)+len(override))
+	for _, item := range base {
+		name := nameFn(item)
+		index[name] = len(out)
+		out = append(out, item)
+	}
+	for _, item := range override {
+		name := nameFn(item)
+		if i, ok := index[name]; ok {
+			out[i] = item
+			continue
+		}
+		index[name] = len(out)
+		out = append(out, item)
+	}
+	return out
 }
 
 func adlSkillsFromDef(def model.ADLDefinition) []model.ADLSkill {

@@ -12,9 +12,13 @@ agents:
       model: claude-sonnet-4-6
     aiAssets:
       skills:
-        - ref: ext:corp-pack/code-review
+        - name: code-review
+          ref: ext:corp-pack/code-review
       mcpServers:
-        - ref: ext:corp-pack/echo-tool
-        - ref: ext:corp-pack/corp-tools
+        - name: echo-tool
+          ref: ext:corp-pack/echo-tool
+        - name: corp-tools
+          ref: ext:corp-pack/corp-tools
       rules:
-        - ref: ext:corp-pack/corp-guidelines
+        - name: corp-guidelines
+          ref: ext:corp-pack/corp-guidelines

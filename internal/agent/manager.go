@@ -33,9 +33,9 @@ const containerIdleTimeout = 30 * time.Minute
 type Manager struct {
 	registry      *extensions.Registry
 	builtinMu     sync.Mutex
-	builtinAgents map[string]Agent // projectID → agent
+	builtinAgents map[string]Agent // projectID + harnessType → agent
 	extMu         sync.Mutex
-	extAgents     map[string]Agent // projectID → extension harness agent
+	extAgents     map[string]Agent // projectID + harnessID → extension harness agent
 	containerMu   sync.Mutex       // protects containers, dockerURLs, and lastActivity
 	agentMu       sync.Map         // map[projectID]*sync.Mutex — serialises per-project launch
 	containers    map[string]string // projectID → containerID
@@ -176,47 +176,6 @@ func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[s
 		}
 		m.touchActivity(projectID)
 		return NewHTTPExtensionAgent(agentType, baseURL), nil
-	case "docker-claude":
-		image, _ := config["image"].(string)
-		if image == "" {
-			image = "loop-claude-code:latest"
-		}
-		baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "claude-code", "", ".claude", true, false)
-		if err != nil {
-			return nil, err
-		}
-		m.touchActivity(projectID)
-		return NewHTTPExtensionAgent(agentType, baseURL), nil
-	case "docker-pi":
-		image, _ := config["image"].(string)
-		if image == "" {
-			image = "loop-pi:latest"
-		}
-		home, _ := os.UserHomeDir()
-		piSessions := filepath.Join(home, ".pi", "agent", "sessions")
-		os.MkdirAll(piSessions, 0755) //nolint:errcheck
-		baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "pi", "", "", false, false,
-			piSessions+":/home/loop/.pi/agent/sessions")
-		if err != nil {
-			return nil, err
-		}
-		m.touchActivity(projectID)
-		return NewHTTPExtensionAgent(agentType, baseURL), nil
-	case "docker-opencode":
-		image, _ := config["image"].(string)
-		if image == "" {
-			image = "loop-opencode:latest"
-		}
-		home, _ := os.UserHomeDir()
-		ocSessions := filepath.Join(home, ".loop", "opencode-sessions")
-		os.MkdirAll(ocSessions, 0755) //nolint:errcheck
-		baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "opencode", "", "", false, false,
-			ocSessions+":/home/loop/.local/share/opencode")
-		if err != nil {
-			return nil, err
-		}
-		m.touchActivity(projectID)
-		return NewHTTPExtensionAgent(agentType, baseURL), nil
 	case "remote":
 		baseURL, err := m.connectRemote(config)
 		if err != nil {
@@ -236,9 +195,22 @@ func (m *Manager) GetAgent(projectID, agentType, workingDir string, config map[s
 	}
 }
 
+func agentCacheKey(projectID, agentType string) string {
+	return projectID + "\x00" + agentType
+}
+
+func projectIDFromCacheKey(key string) string {
+	if i := strings.IndexByte(key, '\x00'); i >= 0 {
+		return key[:i]
+	}
+	return key
+}
+
 func (m *Manager) getExtensionHarnessAgent(projectID string, ref extensions.HarnessRef) (Agent, error) {
+	cacheKey := agentCacheKey(projectID, ref.AgentID)
+
 	m.extMu.Lock()
-	if ag, ok := m.extAgents[projectID]; ok {
+	if ag, ok := m.extAgents[cacheKey]; ok {
 		m.extMu.Unlock()
 		return ag, nil
 	}
@@ -251,7 +223,7 @@ func (m *Manager) getExtensionHarnessAgent(projectID string, ref extensions.Harn
 
 	m.extMu.Lock()
 	defer m.extMu.Unlock()
-	if ag, ok := m.extAgents[projectID]; ok {
+	if ag, ok := m.extAgents[cacheKey]; ok {
 		return ag, nil
 	}
 
@@ -283,7 +255,7 @@ func (m *Manager) getExtensionHarnessAgent(projectID string, ref extensions.Harn
 	if err != nil {
 		return nil, err
 	}
-	m.extAgents[projectID] = ag
+	m.extAgents[cacheKey] = ag
 	return ag, nil
 }
 
@@ -352,12 +324,16 @@ func (m *Manager) startHTTPHarness(ref extensions.HarnessRef) (string, error) {
 
 func (m *Manager) getBuiltinAgent(projectID, agentType string, config map[string]any) (Agent, error) {
 	sandbox := sandboxFromConfig(config)
+	cacheKey := agentCacheKey(projectID, agentType)
 
 	m.builtinMu.Lock()
-	if ag, ok := m.builtinAgents[projectID]; ok {
+	if ag, ok := m.builtinAgents[cacheKey]; ok {
 		if builtinAgentSandbox(ag) != sandbox {
 			m.builtinMu.Unlock()
-			m.stopBuiltinAgent(projectID)
+			m.stopBuiltinAgentKey(cacheKey)
+		} else if ag.Name() != agentType {
+			m.builtinMu.Unlock()
+			m.stopBuiltinAgentKey(cacheKey)
 		} else {
 			applyBuiltinSandbox(ag, sandbox)
 			m.builtinMu.Unlock()
@@ -374,7 +350,7 @@ func (m *Manager) getBuiltinAgent(projectID, agentType string, config map[string
 
 	m.builtinMu.Lock()
 	defer m.builtinMu.Unlock()
-	if ag, ok := m.builtinAgents[projectID]; ok {
+	if ag, ok := m.builtinAgents[cacheKey]; ok {
 		return ag, nil
 	}
 
@@ -391,16 +367,16 @@ func (m *Manager) getBuiltinAgent(projectID, agentType string, config map[string
 	default:
 		return nil, fmt.Errorf("unknown agent type: %q", agentType)
 	}
-	m.builtinAgents[projectID] = ag
+	m.builtinAgents[cacheKey] = ag
 	applyBuiltinSandbox(ag, sandbox)
 	return ag, nil
 }
 
-func (m *Manager) stopBuiltinAgent(projectID string) {
+func (m *Manager) stopBuiltinAgentKey(cacheKey string) {
 	m.builtinMu.Lock()
-	ag, ok := m.builtinAgents[projectID]
+	ag, ok := m.builtinAgents[cacheKey]
 	if ok {
-		delete(m.builtinAgents, projectID)
+		delete(m.builtinAgents, cacheKey)
 	}
 	m.builtinMu.Unlock()
 	if !ok {
@@ -408,6 +384,20 @@ func (m *Manager) stopBuiltinAgent(projectID string) {
 	}
 	if s, ok := ag.(interface{ Stop() }); ok {
 		s.Stop()
+	}
+}
+
+func (m *Manager) stopBuiltinAgent(projectID string) {
+	m.builtinMu.Lock()
+	var keys []string
+	for key := range m.builtinAgents {
+		if projectIDFromCacheKey(key) == projectID {
+			keys = append(keys, key)
+		}
+	}
+	m.builtinMu.Unlock()
+	for _, key := range keys {
+		m.stopBuiltinAgentKey(key)
 	}
 }
 
@@ -433,11 +423,11 @@ func (m *Manager) Stop(projectID string) {
 	}
 }
 
-func (m *Manager) stopExtensionAgent(projectID string) {
+func (m *Manager) stopExtensionAgentKey(cacheKey string) {
 	m.extMu.Lock()
-	ag, ok := m.extAgents[projectID]
+	ag, ok := m.extAgents[cacheKey]
 	if ok {
-		delete(m.extAgents, projectID)
+		delete(m.extAgents, cacheKey)
 	}
 	m.extMu.Unlock()
 	if !ok {
@@ -445,6 +435,20 @@ func (m *Manager) stopExtensionAgent(projectID string) {
 	}
 	if s, ok := ag.(interface{ Stop() }); ok {
 		s.Stop()
+	}
+}
+
+func (m *Manager) stopExtensionAgent(projectID string) {
+	m.extMu.Lock()
+	var keys []string
+	for key := range m.extAgents {
+		if projectIDFromCacheKey(key) == projectID {
+			keys = append(keys, key)
+		}
+	}
+	m.extMu.Unlock()
+	for _, key := range keys {
+		m.stopExtensionAgentKey(key)
 	}
 }
 
@@ -458,20 +462,20 @@ func (m *Manager) StopAll() {
 	}
 
 	m.builtinMu.Lock()
-	builtinIDs := make([]string, 0, len(m.builtinAgents))
-	for id := range m.builtinAgents {
-		builtinIDs = append(builtinIDs, id)
+	builtinKeys := make([]string, 0, len(m.builtinAgents))
+	for key := range m.builtinAgents {
+		builtinKeys = append(builtinKeys, key)
 	}
 	m.builtinMu.Unlock()
 
 	m.extMu.Lock()
-	extIDs := make([]string, 0, len(m.extAgents))
-	for id := range m.extAgents {
-		extIDs = append(extIDs, id)
+	extKeys := make([]string, 0, len(m.extAgents))
+	for key := range m.extAgents {
+		extKeys = append(extKeys, key)
 	}
 	m.extMu.Unlock()
-	for _, id := range extIDs {
-		m.stopExtensionAgent(id)
+	for _, key := range extKeys {
+		m.stopExtensionAgentKey(key)
 	}
 
 	m.containerMu.Lock()
@@ -489,8 +493,8 @@ func (m *Manager) StopAll() {
 	}
 	m.containerMu.Unlock()
 
-	for _, id := range builtinIDs {
-		m.stopBuiltinAgent(id)
+	for _, key := range builtinKeys {
+		m.stopBuiltinAgentKey(key)
 	}
 	for _, entry := range entries {
 		if entry.baseURL != "" {
@@ -511,7 +515,7 @@ func (m *Manager) StopAll() {
 
 // ── Docker agent ─────────────────────────────────────────────────────────────
 
-// ── Builtin Docker agents (docker-claude, docker-pi) ─────────────────────────
+// ── Builtin Docker agents (sandbox: docker) ───────────────────────────────────
 
 const builtinContainerPort = 8090
 

@@ -4,6 +4,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -117,6 +118,10 @@ func handleAgents(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "content is required", http.StatusBadRequest)
 			return
 		}
+		if err := validateAgentYAMLContent(req.Content); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		path, err := agentFilePath(filename)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -203,6 +208,10 @@ func handleAgentFile(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "content is required", http.StatusBadRequest)
 			return
 		}
+		if err := validateAgentYAMLContent(req.Content); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		if err := os.WriteFile(path, []byte(req.Content), 0644); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -284,6 +293,16 @@ var errInvalidAgentFile = &agentFileError{"invalid agent filename"}
 type agentFileError struct{ msg string }
 
 func (e *agentFileError) Error() string { return e.msg }
+
+func validateAgentYAMLContent(content string) error {
+	var def model.ADLDefinition
+	if err := yaml.Unmarshal([]byte(content), &def); err != nil {
+		return fmt.Errorf("parse agent ADL: %w", err)
+	}
+	model.NormalizeADLDefinition(&def)
+	model.NormalizeADLSkills(&def)
+	return model.ValidateADLDefinition(def)
+}
 
 func agentFileInfoFromPath(path string) (agentFileInfo, error) {
 	data, err := os.ReadFile(path)

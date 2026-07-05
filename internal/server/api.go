@@ -15,6 +15,7 @@ import (
 	"sync"
 
 	"loop/internal/agent"
+	"loop/internal/agents"
 	"loop/internal/extensions"
 	"loop/internal/hitl"
 	"loop/internal/model"
@@ -47,68 +48,8 @@ type AgentTypeInfo struct {
 	Available     bool   `json:"available"` // false when the required CLI is not installed
 }
 
-// builtinAgentDefs are the compiled-in ADL definitions shipped with Loop.
-// They are expressed in the same ADL format as user-defined agents in ~/.loop/agents/*.yaml.
-// Four builtin CLI harnesses (claude-code, pi, codex, opencode).
-// Docker and remote harness types are configured via user ADL in ~/.loop/agents/*.yaml.
-var builtinPromptSuggestions = []model.ADLPromptSuggestion{
-	{
-		Title:  "Surprise me",
-		Icon:   "sparkles",
-		Prompt: "Surprise me with something fun you can do right now. Keep it short and cheerful.",
-	},
-	{
-		Title:  "Hot take",
-		Icon:   "flame",
-		Prompt: "Share a playful hot take about anything, then argue the opposite side just as passionately.",
-	},
-	{
-		Title:  "Play a game",
-		Icon:   "gamepad-2",
-		Prompt: "Invent a silly chat game we can play together. Explain the rules in one paragraph.",
-	},
-}
-
-var builtinAgentDefs = []model.ADLDefinition{
-	{
-		ID:                "claude-code",
-		Name:              "Claude Code",
-		Description:       "Claude Code running as a local subprocess",
-		Harness:           model.ADLHarness{Type: "claude-code", Sandbox: "none", Permissions: hitl.PermissionsBypass},
-		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelLoopUI}},
-		WorkingDirInput:   true,
-		PromptSuggestions: builtinPromptSuggestions,
-	},
-	{
-		ID:                "pi",
-		Name:              "Pi",
-		Description:       "Pi running as a local subprocess",
-		Harness:           model.ADLHarness{Type: "pi", Sandbox: "none"},
-		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelLoopUI}},
-		WorkingDirInput:   true,
-		PromptSuggestions: builtinPromptSuggestions,
-	},
-	{
-		ID:                "codex",
-		Name:              "Codex",
-		Description:       "Codex running as a local subprocess",
-		Harness:           model.ADLHarness{Type: "codex", Sandbox: "none", Permissions: hitl.PermissionsBypass},
-		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelLoopUI}},
-		WorkingDirInput:   true,
-		PromptSuggestions: builtinPromptSuggestions,
-	},
-	{
-		ID:                "opencode",
-		Name:              "OpenCode",
-		Description:       "OpenCode running as a local subprocess",
-		Harness:           model.ADLHarness{Type: "opencode", Sandbox: "none"},
-		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelLoopUI}},
-		WorkingDirInput:   true,
-		PromptSuggestions: builtinPromptSuggestions,
-	},
-}
-
 // legacyAgentTypeNames maps old Session.AgentType strings to ADL ids.
+// New sessions must use ADL ids from GET /api/agent-types.
 var legacyAgentTypeNames = map[string]string{
 	"claude-code":     "claude-code",
 	"pi":              "pi",
@@ -423,7 +364,7 @@ func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var all []AgentTypeInfo
-	for _, def := range builtinAgentDefs {
+	for _, def := range agents.BuiltinAgentDefs() {
 		all = append(all, agentTypeInfoFromDef(def, true))
 	}
 
@@ -538,7 +479,7 @@ func findADLDef(agentType string) (model.ADLDefinition, bool) {
 	}
 	agentType = strings.TrimPrefix(agentType, "adl:")
 
-	for _, def := range builtinAgentDefs {
+	for _, def := range agents.BuiltinAgentDefs() {
 		if adlDefMatches(def, agentType) {
 			return def, true
 		}
@@ -1013,7 +954,7 @@ func handleSessionChat(w http.ResponseWriter, r *http.Request, sessionID string)
 	})
 
 	if result.AssistantContent != "" {
-		persistAssistantTurn(sessionID, result.AssistantContent, result.NewAgentSessionID, isSessionADLWorkflow(session))
+		persistAssistantTurn(sessionID, result.AssistantContent, result.NewAgentSessionID, isSessionMultiStepWorkflow(session))
 	}
 }
 
@@ -1036,7 +977,7 @@ func handleSessionHistory(w http.ResponseWriter, r *http.Request, sessionID stri
 		return
 	}
 	// Multi-step workflow sessions don't have a single agent history file.
-	if def, ok := findADLDef(session.AgentType); ok && (len(def.Steps) > 0 || def.Kind == "workflow") {
+	if def, ok := findADLDef(session.AgentType); ok && model.IsMultiStepWorkflow(def) {
 		writeJSON(w, http.StatusOK, []model.ChatMessage{})
 		return
 	}

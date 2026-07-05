@@ -280,8 +280,15 @@ func TestAdlMCPServersFromAIAssets(t *testing.T) {
 		},
 	}
 	deps := harnessDepsFromADL(def, &step, "")
-	if len(deps.MCPServers) != 1 || deps.MCPServers[0].Name != "step" {
+	if len(deps.MCPServers) != 2 {
 		t.Fatalf("step aiAssets: %v", deps.MCPServers)
+	}
+	names := map[string]string{}
+	for _, s := range deps.MCPServers {
+		names[s.Name] = s.URL
+	}
+	if names["a"] != "http://a" || names["step"] != "http://step" {
+		t.Fatalf("merged mcp: %v", names)
 	}
 }
 
@@ -297,8 +304,15 @@ func TestHarnessDepsFromADLSkills(t *testing.T) {
 		},
 	}
 	deps := harnessDepsFromADL(def, &step, "/workspace")
-	if len(deps.Skills) != 1 || deps.Skills[0].Name != "step-skill" {
+	if len(deps.Skills) != 2 {
 		t.Fatalf("step skills: %v", deps.Skills)
+	}
+	names := map[string]bool{}
+	for _, s := range deps.Skills {
+		names[s.Name] = true
+	}
+	if !names["agent-skill"] || !names["step-skill"] {
+		t.Fatalf("merged skills: %v", names)
 	}
 }
 
@@ -665,4 +679,41 @@ func TestProvisionHarnessRules(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+}
+
+func TestHarnessDepsFromADLMergesStepAIAssets(t *testing.T) {
+	def := model.ADLDefinition{
+		AIAssets: model.ADLAIAssets{
+			MCPServers: []model.ADLMCPServer{
+				{Name: "global-mcp", URL: "http://localhost:1/mcp", Type: "http"},
+			},
+			Skills: []model.ADLSkill{
+				{Name: "global-skill", Ref: "global-skill"},
+			},
+		},
+	}
+	step := &model.ADLStep{
+		AIAssets: model.ADLAIAssets{
+			MCPServers: []model.ADLMCPServer{
+				{Name: "step-mcp", URL: "http://localhost:2/mcp", Type: "http"},
+			},
+			Skills: []model.ADLSkill{
+				{Name: "global-skill", Ref: "overridden"},
+			},
+		},
+	}
+	deps := harnessDepsFromADL(def, step, "")
+	if len(deps.MCPServers) != 2 {
+		t.Fatalf("mcp servers = %d, want 2", len(deps.MCPServers))
+	}
+	if len(deps.Skills) != 1 || deps.Skills[0].Ref != "overridden" {
+		t.Fatalf("skills = %+v", deps.Skills)
+	}
+	names := map[string]bool{}
+	for _, s := range deps.MCPServers {
+		names[s.Name] = true
+	}
+	if !names["global-mcp"] || !names["step-mcp"] {
+		t.Fatalf("mcp names = %v", names)
+	}
 }

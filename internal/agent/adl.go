@@ -39,8 +39,8 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 		return err
 	}
 
-	// stepOutputs holds the accumulated text output from each named step.
-	stepOutputs := map[string]string{}
+	// stepOutputs holds accumulated text output from each step (named outputs supported).
+	stepOutputs := newStepOutputStore()
 
 	for i, step := range sorted {
 		if ctx.Err() != nil {
@@ -57,7 +57,7 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 			if err != nil {
 				return err
 			}
-			stepOutputs[step.Name] = out
+			stepOutputs.setRaw(step.Name, out)
 			continue
 		}
 
@@ -89,7 +89,7 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 			return err
 		}
 		collecting.finish()
-		stepOutputs[step.Name] = collecting.text
+		stepOutputs.set(step, collecting.text)
 	}
 
 	return nil
@@ -122,162 +122,10 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 		req.ToolApprovalPolicy, req.ToolApprovalTools = hitl.EffectiveToolApprovals(a.def, req.AgentConfig)
 	}
 
-	switch harness.Type {
-	case "claude-code", "":
-		switch harness.Sandbox {
-		case "docker":
-			ag, err := a.manager.GetClaudeCodeDocker(a.projectID, harness.Image, req.WorkingDir, req.ConfigDir, req.UserScopeHarness)
-			if err != nil {
-				return fmt.Errorf("claude-code docker harness: %w", err)
-			}
-			return ag.Run(ctx, req, events)
-		default:
-			if harness.Sandbox == "bubblewrap" {
-				bwrap := GetBwrapStatus()
-				if !bwrap.Available {
-					return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
-				}
-			}
-			ag, err := a.manager.GetAgent(a.projectID, "claude-code", req.WorkingDir, harnessBuiltinConfig(harness))
-			if err != nil {
-				return fmt.Errorf("claude-code harness: %w", err)
-			}
-			return ag.Run(ctx, req, events)
-		}
-
-	case "pi":
-		switch harness.Sandbox {
-		case "docker":
-			ag, err := a.manager.GetPiDocker(a.projectID, harness.Image, req.WorkingDir, req.ConfigDir)
-			if err != nil {
-				return fmt.Errorf("pi docker harness: %w", err)
-			}
-			return ag.Run(ctx, req, events)
-		default:
-			if harness.Sandbox == "bubblewrap" {
-				bwrap := GetBwrapStatus()
-				if !bwrap.Available {
-					return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
-				}
-			}
-			ag, err := a.manager.GetAgent(a.projectID, "pi", req.WorkingDir, harnessBuiltinConfig(harness))
-			if err != nil {
-				return fmt.Errorf("pi harness: %w", err)
-			}
-			return ag.Run(ctx, req, events)
-		}
-
-	case "codex":
-		switch harness.Sandbox {
-		case "docker":
-			ag, err := a.manager.GetCodexDocker(a.projectID, harness.Image, req.WorkingDir, req.ConfigDir, req.UserScopeHarness)
-			if err != nil {
-				return fmt.Errorf("codex docker harness: %w", err)
-			}
-			return ag.Run(ctx, req, events)
-		default:
-			if harness.Sandbox == "bubblewrap" {
-				bwrap := GetBwrapStatus()
-				if !bwrap.Available {
-					return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
-				}
-			}
-			ag, err := a.manager.GetAgent(a.projectID, "codex", req.WorkingDir, harnessBuiltinConfig(harness))
-			if err != nil {
-				return fmt.Errorf("codex harness: %w", err)
-			}
-			return ag.Run(ctx, req, events)
-		}
-
-	case "opencode":
-		switch harness.Sandbox {
-		case "docker":
-			ag, err := a.manager.GetOpenCodeDocker(a.projectID, harness.Image, req.WorkingDir, req.ConfigDir)
-			if err != nil {
-				return fmt.Errorf("opencode docker harness: %w", err)
-			}
-			return ag.Run(ctx, req, events)
-		default:
-			if harness.Sandbox == "bubblewrap" {
-				bwrap := GetBwrapStatus()
-				if !bwrap.Available {
-					return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
-				}
-			}
-			ag, err := a.manager.GetAgent(a.projectID, "opencode", req.WorkingDir, harnessBuiltinConfig(harness))
-			if err != nil {
-				return fmt.Errorf("opencode harness: %w", err)
-			}
-			return ag.Run(ctx, req, events)
-		}
-
-	case "docker":
-		// External HTTP/SSE agent in a user-managed Docker container.
-		ag, err := a.manager.GetAgent(a.projectID, "docker", req.WorkingDir, map[string]any{
-			"image":         harness.Image,
-			"containerPort": harness.ContainerPort,
-		})
-		if err != nil {
-			return fmt.Errorf("docker harness: %w", err)
-		}
-		return ag.Run(ctx, req, events)
-
-	case "remote":
-		ag, err := a.manager.GetAgent(a.projectID, "remote", req.WorkingDir, map[string]any{
-			"host": harness.Host,
-			"port": harness.Port,
-		})
-		if err != nil {
-			return fmt.Errorf("remote harness: %w", err)
-		}
-		return ag.Run(ctx, req, events)
-
-	default:
-		if extensions.IsExtRef(harness.Type) || (a.manager.registry != nil && a.manager.registry.IsExtensionHarnessAgent(harness.Type)) {
-			ag, err := a.manager.GetAgent(a.projectID, harness.Type, req.WorkingDir, nil)
-			if err != nil {
-				return fmt.Errorf("extension harness: %w", err)
-			}
-			return ag.Run(ctx, req, events)
-		}
-		return fmt.Errorf("unknown harness type: %q", harness.Type)
-	}
+	return a.dispatchHarness(ctx, req, harness, events)
 }
 
-// buildStepMessage constructs the message sent to a step, injecting upstream outputs.
-func buildStepMessage(userMsg string, step model.ADLStep, outputs map[string]string) string {
-	if len(step.Inputs) > 0 {
-		var b strings.Builder
-		for _, inp := range step.Inputs {
-			parts := strings.SplitN(inp.From, ".", 2)
-			if len(parts) != 2 {
-				continue
-			}
-			stepName := parts[0]
-			if out, ok := outputs[stepName]; ok {
-				label := inp.As
-				if label == "" {
-					label = inp.From
-				}
-				fmt.Fprintf(&b, "## %s\n\n%s\n\n", label, out)
-			}
-		}
-		if b.Len() > 0 {
-			return b.String() + userMsg
-		}
-	} else if len(step.DependsOn) > 0 {
-		var b strings.Builder
-		for _, dep := range step.DependsOn {
-			if out, ok := outputs[dep]; ok {
-				fmt.Fprintf(&b, "## Output from %s\n\n%s\n\n", dep, out)
-			}
-		}
-		if b.Len() > 0 {
-			return b.String() + userMsg
-		}
-	}
-	return userMsg
-}
+// buildStepMessage is defined in adl_step_io.go.
 
 // topoSort returns steps in dependency order using Kahn's algorithm.
 func topoSort(steps []model.ADLStep) ([]model.ADLStep, error) {
@@ -363,7 +211,7 @@ func (c *collectingEvents) finish() {
 	c.pipe = nil
 }
 
-func (a *ADLAgent) runHITLStep(ctx context.Context, req RunRequest, step model.ADLStep, outputs map[string]string, events chan<- Event) (string, error) {
+func (a *ADLAgent) runHITLStep(ctx context.Context, req RunRequest, step model.ADLStep, outputs stepOutputStore, events chan<- Event) (string, error) {
 	gate := orchestrationGateFn()
 	if gate == nil {
 		return "", fmt.Errorf("orchestration HITL gate not configured")
@@ -390,12 +238,9 @@ func (a *ADLAgent) runHITLStep(ctx context.Context, req RunRequest, step model.A
 		payload["actions"] = actions
 	}
 	for _, disp := range step.HITL.Display {
-		parts := strings.SplitN(disp.From, ".", 2)
-		if len(parts) != 2 {
-			continue
-		}
-		if out, ok := outputs[parts[0]]; ok {
-			payload["display_"+parts[0]] = out
+		if text, ok := outputs.resolve(disp.From); ok {
+			key := "display_" + strings.ReplaceAll(disp.From, ".", "_")
+			payload[key] = text
 		}
 	}
 	channels := []string{"loop-ui"}

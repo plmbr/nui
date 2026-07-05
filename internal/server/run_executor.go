@@ -20,16 +20,15 @@ import (
 )
 
 type resolvedRunAgent struct {
-	Agent agent.Agent
-	IsADL bool
+	Agent               agent.Agent
+	IsMultiStepWorkflow bool
 }
 
 func resolveRunAgent(session model.Session, workingDir string) (resolvedRunAgent, error) {
 	if def, found := findADLDef(session.AgentType); found {
-		isADL := len(def.Steps) > 0 || def.Kind == "workflow"
 		return resolvedRunAgent{
-			Agent: agent.NewADLAgent(def, session.ID, extensionManager),
-			IsADL: isADL,
+			Agent:               agent.NewADLAgent(def, session.ID, extensionManager),
+			IsMultiStepWorkflow: model.IsMultiStepWorkflow(def),
 		}, nil
 	}
 	ag, err := extensionManager.GetAgent(session.ID, session.AgentType, workingDir, session.AgentConfig)
@@ -97,16 +96,18 @@ func appendUserMessage(sessionID, content string) {
 	mu.Unlock()
 }
 
-func persistAssistantTurn(sessionID, content, newAgentSessionID string, isADL bool) {
+func persistAssistantTurn(sessionID, content, newAgentSessionID string, multiStepWorkflow bool) {
 	persistRichAssistantTurn(sessionID, model.ChatMessage{
 		ID:        uuid.NewString(),
 		Role:      "assistant",
 		Content:   content,
 		CreatedAt: time.Now().UTC().Format(time.RFC3339),
-	}, newAgentSessionID, isADL)
+	}, newAgentSessionID, multiStepWorkflow)
 }
 
-func persistRichAssistantTurn(sessionID string, assistantMsg model.ChatMessage, newAgentSessionID string, isADL bool) {
+// persistRichAssistantTurn saves assistant content. When multiStepWorkflow is true,
+// harness session IDs are not stored — each user turn re-executes all ADL steps.
+func persistRichAssistantTurn(sessionID string, assistantMsg model.ChatMessage, newAgentSessionID string, multiStepWorkflow bool) {
 	if assistantMsg.Content == "" && len(assistantMsg.Parts) == 0 {
 		return
 	}
@@ -124,7 +125,7 @@ func persistRichAssistantTurn(sessionID string, assistantMsg model.ChatMessage, 
 	}
 	mu.Lock()
 	sessionMessages[sessionID] = append(sessionMessages[sessionID], assistantMsg)
-	if newAgentSessionID != "" && !isADL {
+	if newAgentSessionID != "" && !multiStepWorkflow {
 		agentSessions[sessionID] = newAgentSessionID
 	}
 	snapshot := snapshotData()
@@ -165,7 +166,8 @@ func executeRun(ctx context.Context, opts executeRunOptions) executeRunResult {
 			runReq.HarnessPermissions = hitl.EffectivePermissions(def, opts.Session.AgentConfig)
 			runReq.ToolApprovalPolicy, runReq.ToolApprovalTools = hitl.EffectiveToolApprovals(def, opts.Session.AgentConfig)
 		}
-		if !ra.IsADL {
+		// Multi-step workflows re-run all steps per turn; harness session continuity uses Manager cache only.
+		if !ra.IsMultiStepWorkflow {
 			runReq.SessionID = opts.AgentSessionID
 		}
 		runErr := ra.Agent.Run(ctx, runReq, events)

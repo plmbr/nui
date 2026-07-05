@@ -5,6 +5,7 @@ package store
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -204,6 +205,10 @@ func LoadADLDefinitions() ([]model.ADLDefinition, error) {
 		model.NormalizeADLDefinition(&def)
 		model.NormalizeADLSkills(&def)
 		if def.ID == "" && def.Name == "" {
+			continue
+		}
+		if err := model.ValidateADLDefinition(def); err != nil {
+			fmt.Fprintf(os.Stderr, "warn: skip invalid ADL %q: %v\n", e.Name(), err)
 			continue
 		}
 		defs = append(defs, def)

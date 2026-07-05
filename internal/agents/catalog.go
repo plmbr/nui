@@ -28,8 +28,9 @@ func Install(source string) (string, error) {
 		return "", fmt.Errorf("parse agent ADL: %w", err)
 	}
 	model.NormalizeADLDefinition(&def)
-	if def.ID == "" && def.Name == "" {
-		return "", fmt.Errorf("agent ADL must define id or name")
+	model.NormalizeADLSkills(&def)
+	if err := model.ValidateADLDefinition(def); err != nil {
+		return "", fmt.Errorf("invalid agent ADL: %w", err)
 	}
 	if def.Kind == "workflow" {
 		return "", fmt.Errorf("workflow ADL files cannot be installed as agent types")
