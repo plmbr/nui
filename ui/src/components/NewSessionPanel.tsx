@@ -12,7 +12,7 @@ import {
   filterCustomAgentsBySources,
   sortCustomAgentsByName,
 } from '@/lib/agentSources'
-import { pickDefaultAgentTypeId, selectableAgentTypes, harnessSupportsUserScope, defaultUserScopeHarnessConfig, agentSupportsHarnessPermissions } from '@/lib/agentTypes'
+import { pickDefaultAgentTypeId, selectableAgentTypes, harnessSupportsUserScope, defaultUserScopeHarnessConfig, showToolApprovalsOption } from '@/lib/agentTypes'
 import type { AgentType, CreateSessionRequest, ExtensionInfo, Session } from '@/types'
 
 interface Props {
@@ -182,7 +182,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   const isBasicLoopSelected = builtins.some((a) => a.id === selectedId)
   const directoryListOpen = directoryInputFocused && directorySuggestions.length > 0
   const showUserScopeOption = selected ? harnessSupportsUserScope(selected.harness) : false
-  const showHarnessPermissionsOption = selected ? agentSupportsHarnessPermissions(selected) : false
+  const showHarnessPermissionsOption = selected ? showToolApprovalsOption(selected) : false
 
   useEffect(() => {
     const agent = agentTypes.find((a) => a.id === selectedId)

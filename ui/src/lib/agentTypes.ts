@@ -36,6 +36,14 @@ export function agentSupportsHarnessPermissions(agent: AgentType | undefined): b
   return harnessSupportsPermissions(agent.harness)
 }
 
+/** Whether the new-session UI should offer the tool-approvals toggle. */
+export function showToolApprovalsOption(agent: AgentType | undefined): boolean {
+  if (!agentSupportsHarnessPermissions(agent)) return false
+  // ADL toolApprovals.policy: all auto-approves every tool; no session override needed.
+  if (agent?.toolApprovalPolicy === 'all') return false
+  return true
+}
+
 /** Default user-scope checkbox state for a newly selected agent type. */
 export function defaultUserScopeHarnessConfig(agent: AgentType | undefined): boolean {
   if (!agent || !harnessSupportsUserScope(agent.harness)) return false
