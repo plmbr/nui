@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { api } from '@/api'
 import { dismissHitlRequest } from '@/lib/sessionChatStore'
 import {
+  formatHitlApprovalInline,
   formatHitlApprovalSummary,
   hitlApprovalCommand,
   isRedundantHitlApprovalMessage,
@@ -45,18 +46,10 @@ function ApprovalToolPreview({
   message?: string
 }) {
   const [expanded, setExpanded] = useState(false)
-  const summary = formatHitlApprovalSummary(toolName, toolInput, message)
+  const inline = formatHitlApprovalInline(toolName, toolInput)
   const command = hitlApprovalCommand(toolInput)
-  const extraInput = toolInput
-    ? Object.fromEntries(
-        Object.entries(toolInput).filter(
-          ([key]) => !['command', 'cmd', 'description'].includes(key),
-        ),
-      )
-    : {}
   const hasDetails =
-    command.length > 0 ||
-    Object.keys(extraInput).length > 0 ||
+    Boolean(toolInput && Object.keys(toolInput).length > 0) ||
     (message?.trim() && !isRedundantHitlApprovalMessage(message, toolInput))
 
   return (
@@ -67,9 +60,17 @@ function ApprovalToolPreview({
         onClick={() => hasDetails && setExpanded((value) => !value)}
         disabled={!hasDetails}
         aria-expanded={hasDetails ? expanded : undefined}
+        title={inline}
       >
-        <span className="hitl-prompt__approval-tool">{bareToolName(toolName)}</span>
-        <span className="hitl-prompt__approval-text" title={summary}>{summary}</span>
+        <span className="hitl-prompt__approval-inline">
+          <span className="hitl-prompt__approval-tool">{bareToolName(toolName)}</span>
+          {toolInput && Object.keys(toolInput).length > 0 && (
+            <span className="hitl-prompt__approval-params">
+              {' '}
+              {JSON.stringify(toolInput)}
+            </span>
+          )}
+        </span>
         {hasDetails && (
           <span className="hitl-prompt__approval-toggle">{expanded ? '▲' : '▼'}</span>
         )}
@@ -89,15 +90,7 @@ function ApprovalToolPreview({
               <pre className="hitl-prompt__approval-code">{command}</pre>
             </div>
           )}
-          {Object.keys(extraInput).length > 0 && (
-            <div className="hitl-prompt__approval-section">
-              <div className="hitl-prompt__approval-label">Parameters</div>
-              <pre className="hitl-prompt__approval-code">
-                {JSON.stringify(extraInput, null, 2)}
-              </pre>
-            </div>
-          )}
-          {!command && toolInput && Object.keys(toolInput).length > 0 && (
+          {toolInput && Object.keys(toolInput).length > 0 && (
             <div className="hitl-prompt__approval-section">
               <div className="hitl-prompt__approval-label">Parameters</div>
               <pre className="hitl-prompt__approval-code">
@@ -223,14 +216,17 @@ export function HitlPromptCard({ sessionId, request }: Props) {
   const showApprovalPreview = isApproval && Boolean(payload.toolName)
   const showMessage =
     Boolean(message) &&
-    !(showApprovalPreview && isRedundantHitlApprovalMessage(message, payload.toolInput))
+    !showApprovalPreview &&
+    !(isApproval && isRedundantHitlApprovalMessage(message, payload.toolInput))
   const showDescription =
     Boolean(payload.description) &&
+    !showApprovalPreview &&
     String(payload.description).trim() !== formatHitlApprovalSummary(
       payload.toolName,
       payload.toolInput,
       message,
     )
+  const showApprovalTitle = Boolean(title) && !showApprovalPreview
 
   const questionReady = questions.length > 0
     ? questions.every((q, index) => {
@@ -241,7 +237,11 @@ export function HitlPromptCard({ sessionId, request }: Props) {
     : freeformText.trim().length > 0
 
   return (
-    <div className="hitl-prompt" role="region" aria-label={title || kindLabel(request.kind)}>
+    <div
+      className={`hitl-prompt${showApprovalPreview ? ' hitl-prompt--approval' : ''}`}
+      role="region"
+      aria-label={title || kindLabel(request.kind)}
+    >
       {!isApproval && (
         <div className="hitl-prompt__header">
           <span className="hitl-prompt__badge">{kindLabel(request.kind)}</span>
@@ -251,7 +251,7 @@ export function HitlPromptCard({ sessionId, request }: Props) {
         </div>
       )}
 
-      {title && <h3 className="hitl-prompt__title">{title}</h3>}
+      {showApprovalTitle && <h3 className="hitl-prompt__title">{title}</h3>}
       {showMessage && <p className="hitl-prompt__message">{message}</p>}
 
       {showDescription && (

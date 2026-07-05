@@ -1021,6 +1021,10 @@
     @apply flex flex-col gap-3;
   }
 
+  .hitl-prompt--approval {
+    @apply gap-1.5;
+  }
+
   .hitl-prompt__header {
     @apply flex items-center gap-2;
   }
@@ -1047,15 +1051,19 @@
   }
 
   .hitl-prompt__approval-summary {
-    @apply flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-muted/40 disabled:cursor-default disabled:hover:bg-transparent;
+    @apply flex w-full min-w-0 items-center gap-2 px-2 py-1 text-left transition-colors hover:bg-muted/40 disabled:cursor-default disabled:hover:bg-transparent;
+  }
+
+  .hitl-prompt__approval-inline {
+    @apply min-w-0 flex-1 truncate text-xs leading-snug;
   }
 
   .hitl-prompt__approval-tool {
-    @apply shrink-0 rounded-md bg-background px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground;
+    @apply font-medium text-foreground/90;
   }
 
-  .hitl-prompt__approval-text {
-    @apply min-w-0 flex-1 truncate text-xs leading-snug text-foreground/90;
+  .hitl-prompt__approval-params {
+    @apply font-mono text-muted-foreground;
   }
 
   .hitl-prompt__approval-toggle {

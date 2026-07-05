@@ -35,6 +35,16 @@ function pickString(record: Record<string, unknown>, ...keys: string[]): string 
   return ''
 }
 
+export function formatHitlApprovalInline(
+  toolName: string | undefined,
+  toolInput: Record<string, unknown> | undefined,
+): string {
+  const bareName = toolName?.split(':').pop()?.split('__').pop()?.trim() || 'Tool'
+  const input = toolInput ?? {}
+  if (Object.keys(input).length === 0) return bareName
+  return `${bareName} ${JSON.stringify(input)}`
+}
+
 export function formatHitlApprovalSummary(
   toolName: string | undefined,
   toolInput: Record<string, unknown> | undefined,

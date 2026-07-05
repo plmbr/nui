@@ -5,6 +5,7 @@ package agent
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -180,6 +181,35 @@ func TestProvisionClaudeHarnessWritesVizPermissionsWithoutHitl(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(configDir, claudeHitlBridgeScript)); !os.IsNotExist(err) {
 		t.Fatalf("expected no HITL bridge without loop-hitl, err=%v", err)
+	}
+}
+
+func TestVizBridgeDoesNotAutoApproveBash(t *testing.T) {
+	tmp := t.TempDir()
+	scriptPath := filepath.Join(tmp, claudeVizBridgeScript)
+	if err := os.WriteFile(scriptPath, []byte(claudeVizBridgeSh), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	payload := `{"tool_name":"Bash","tool_input":{"command":"mkdir created-dir"}}`
+	cmd := exec.Command(scriptPath)
+	cmd.Stdin = strings.NewReader(payload)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("viz bridge failed: %v\n%s", err, out)
+	}
+	if strings.TrimSpace(string(out)) != "" {
+		t.Fatalf("expected no hook output for normal Bash, got %q", string(out))
+	}
+
+	cmd = exec.Command(scriptPath)
+	cmd.Stdin = strings.NewReader(`{"tool_name":"Bash","tool_input":{"command":"python bundled-skills/dataviz/run.py"}}`)
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("viz bridge failed: %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), `"permissionDecision": "deny"`) {
+		t.Fatalf("expected deny for dataviz bash, got %q", string(out))
 	}
 }
 

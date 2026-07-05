@@ -287,14 +287,6 @@ def deny(reason):
         }
     }))
 
-def allow():
-    print(json.dumps({
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "allow",
-        }
-    }))
-
 def is_dataviz_skill(tool_input):
     skill = tool_input.get("skill") or tool_input.get("name") or ""
     return "dataviz" in str(skill).lower()
@@ -307,7 +299,6 @@ def is_dataviz_bash(tool_input):
 def main():
     raw = os.environ.get("PAYLOAD", "")
     if not raw.strip():
-        allow()
         return
     payload = json.loads(raw)
     tool = payload.get("tool_name") or payload.get("toolName") or ""
@@ -320,8 +311,6 @@ def main():
     if tool == "Bash" and is_dataviz_bash(tool_input):
         deny("Use show_visualization on the loop-viz MCP server instead of dataviz scripts. Build self-contained HTML and call show_visualization in the same turn.")
         return
-
-    allow()
 
 if __name__ == "__main__":
     main()
