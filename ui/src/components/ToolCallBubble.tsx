@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { McpAppFrame } from '@/components/McpAppFrame'
 import { imageSrc, type ToolCallPart } from '@/hooks/useSessionChat'
-import { formatToolCallDisplay } from '@/lib/formatToolCallDisplay'
+import { ToolCallCode } from '@/components/ToolCallCode'
 import { formatToolDisplayName } from '@/lib/toolCallDisplay'
 import { formatToolCallSummary } from '@/lib/toolCallSummary'
 import { extractImagesFromValue } from '@/lib/images'
@@ -47,13 +47,13 @@ export function ToolCallBubble({ part: msg, nested = false }: Props) {
             {msg.toolArgs && Object.keys(msg.toolArgs).length > 0 && (
               <div className="tool-call__section">
                 <div className="tool-call__label">Input</div>
-                <pre className="tool-call__code">{formatToolCallDisplay(msg.toolArgs)}</pre>
+                <ToolCallCode value={msg.toolArgs} />
               </div>
             )}
             {msg.toolResult !== undefined && (
               <div className="tool-call__section">
                 <div className="tool-call__label">Output</div>
-                <pre className="tool-call__code">{formatToolCallDisplay(msg.toolResult)}</pre>
+                <ToolCallCode value={msg.toolResult} />
               </div>
             )}
           </div>
@@ -105,13 +105,13 @@ export function ToolCallBubble({ part: msg, nested = false }: Props) {
           {msg.toolArgs && Object.keys(msg.toolArgs).length > 0 && (
             <div className="tool-call__section">
               <div className="tool-call__label">Input</div>
-              <pre className="tool-call__code">{formatToolCallDisplay(msg.toolArgs)}</pre>
+              <ToolCallCode value={msg.toolArgs} />
             </div>
           )}
           {msg.toolResult !== undefined && (
             <div className="tool-call__section">
               <div className="tool-call__label">Output</div>
-              <pre className="tool-call__code">{formatToolCallDisplay(msg.toolResult)}</pre>
+              <ToolCallCode value={msg.toolResult} />
             </div>
           )}
         </div>

@@ -1022,7 +1022,14 @@
   }
 
   .tool-call__code {
-    @apply m-0 max-h-[200px] overflow-auto whitespace-pre-wrap break-words rounded-md border border-border/50 bg-muted/25 px-2 py-1 font-mono text-[11px] leading-snug text-foreground/90;
+    @apply m-0 max-h-[200px] overflow-auto rounded-md border border-border/50 bg-muted/25 px-2 py-1 font-mono text-[11px] leading-snug text-foreground/90;
+  }
+
+  .tool-call__code code.hljs {
+    @apply block bg-transparent p-0 whitespace-pre-wrap break-words;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
   }
 
   .tool-group {
