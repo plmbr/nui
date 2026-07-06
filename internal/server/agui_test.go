@@ -34,6 +34,43 @@ func TestHandleSessionAGUI_notFound(t *testing.T) {
 	}
 }
 
+func TestHandleSessionAGUI_persistsSlashCommandNotExpandedSkill(t *testing.T) {
+	mgr := setupTestServerEnv(t)
+	var harnessMessage string
+	mgr.SetTestHarnessRun(func(_ context.Context, req agent.RunRequest, events chan<- agent.Event) error {
+		harnessMessage = req.Message
+		events <- agent.Event{Type: agent.EventText, Content: "ok"}
+		events <- agent.Event{Type: agent.EventDone, SessionID: "s1"}
+		return nil
+	})
+	seedSession("sess-skill", "Test", testStubAgentType, t.TempDir())
+
+	userInput := "/create-agent save as helper"
+	code, _ := postAGUI(t, "sess-skill", userInput)
+	if code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", code)
+	}
+
+	mu.RLock()
+	msgs := sessionMessages["sess-skill"]
+	mu.RUnlock()
+	if len(msgs) < 1 {
+		t.Fatalf("expected persisted user message, got %d messages", len(msgs))
+	}
+	if msgs[0].Content != userInput {
+		t.Fatalf("persisted user message = %q, want %q", msgs[0].Content, userInput)
+	}
+	if strings.HasPrefix(strings.TrimSpace(harnessMessage), "/create-agent") {
+		t.Fatalf("harness received unexpanded message %q", harnessMessage)
+	}
+	if !strings.Contains(harnessMessage, "Create Agent") {
+		t.Fatalf("harness message missing skill body: %q", harnessMessage)
+	}
+	if !strings.Contains(harnessMessage, "save as helper") {
+		t.Fatalf("harness message missing user args: %q", harnessMessage)
+	}
+}
+
 func TestHandleSessionAGUI_streamsEventsAndPersistsMessages(t *testing.T) {
 	mgr := setupTestServerEnv(t)
 	mgr.SetTestHarnessRun(stubHarnessRun("hello from stub"))

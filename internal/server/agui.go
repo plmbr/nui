@@ -94,7 +94,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 	userMsg := model.ChatMessage{
 		ID:        userID,
 		Role:      "user",
-		Content:   resolvedMessage,
+		Content:   lastUserMessage,
 		CreatedAt: time.Now().UTC().Format(time.RFC3339),
 	}
 	mu.Lock()
