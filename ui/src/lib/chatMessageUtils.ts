@@ -64,6 +64,27 @@ export function updateToolPart(
   )
 }
 
+/** Merge streamed tool-call arg deltas; tolerates partial JSON fragments. */
+export function mergeToolCallArgsDelta(
+  existingArgs: Record<string, unknown> | undefined,
+  buffer: string,
+  delta: string,
+): { toolArgs: Record<string, unknown>; buffer: string } {
+  const nextBuffer = buffer + delta
+  try {
+    const parsed: unknown = JSON.parse(nextBuffer)
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return {
+        toolArgs: { ...(existingArgs ?? {}), ...(parsed as Record<string, unknown>) },
+        buffer: nextBuffer,
+      }
+    }
+  } catch {
+    /* partial JSON — keep buffer for the next delta */
+  }
+  return { toolArgs: existingArgs ?? {}, buffer: nextBuffer }
+}
+
 export function applyAssistantError(msg: SessionChatMessage, text: string): SessionChatMessage {
   const content = text || assistantTextContent(msg) || 'An error occurred.'
   if (!msg.parts?.length) {

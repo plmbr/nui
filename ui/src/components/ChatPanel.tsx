@@ -477,6 +477,11 @@ export function ChatPanel({
             loading="lazy"
           />
         ),
+        a: ({ href, children, ...props }) => (
+          <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+            {children}
+          </a>
+        ),
       }}
     >
       {normalizeMarkdown(content)}

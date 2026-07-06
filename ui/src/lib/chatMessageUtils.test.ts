@@ -6,6 +6,7 @@ import {
   applyAssistantError,
   assistantTextContent,
   dedupeChatMessages,
+  mergeToolCallArgsDelta,
   updateToolPart,
   type SessionChatMessage,
 } from '@/lib/chatMessageUtils'
@@ -60,5 +61,21 @@ describe('chatMessageUtils', () => {
     ]
     const deduped = dedupeChatMessages(msgs)
     expect(deduped).toHaveLength(2)
+  })
+
+  it('merges complete and partial tool-call arg deltas', () => {
+    const complete = mergeToolCallArgsDelta({}, '', '{"command":"gh issue view 378"}')
+    expect(complete.toolArgs).toEqual({ command: 'gh issue view 378' })
+
+    const partial = mergeToolCallArgsDelta({}, '', '{"command":')
+    expect(partial.toolArgs).toEqual({})
+    expect(partial.buffer).toBe('{"command":')
+
+    const finished = mergeToolCallArgsDelta(
+      partial.toolArgs,
+      partial.buffer,
+      '"gh issue view 378"}',
+    )
+    expect(finished.toolArgs).toEqual({ command: 'gh issue view 378' })
   })
 })

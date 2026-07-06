@@ -11,11 +11,13 @@ import {
   appendTextPart,
   applyAssistantError,
   assistantTextContent,
+  mergeToolCallArgsDelta,
   type SessionChatMessage,
   type ToolCallPart,
   updateToolPart,
 } from '@/lib/chatMessageUtils'
 import { deriveSessionProgress, encodeSessionProgress, type SessionProgress } from '@/lib/sessionProgress'
+import { visualizationFromArgs } from '@/lib/visualization'
 
 type StopFn = () => void | Promise<void>
 
@@ -27,6 +29,7 @@ interface SessionEntry {
   assistantMsgId: string | null
   activeRunId: string | null
   pendingTools: Record<string, string>
+  pendingToolArgBuffers: Record<string, string>
   pendingHitl: Record<string, HitlRequest>
   agent: HttpAgent
   subscription: { unsubscribe: () => void } | null
@@ -68,6 +71,7 @@ function getOrCreateEntry(sessionId: string): SessionEntry {
       assistantMsgId: null,
       activeRunId: null,
       pendingTools: {},
+      pendingToolArgBuffers: {},
       pendingHitl: {},
       agent: createSessionAgent(sessionId),
       subscription: null,
@@ -115,6 +119,65 @@ function emitSession(sessionId: string) {
   }
   emitRunning()
   emitProgress()
+}
+
+function applyToolArgsToPart(
+  part: ToolCallPart,
+  argBuffer: string,
+  delta: string,
+): { part: ToolCallPart; buffer: string } {
+  const { toolArgs, buffer } = mergeToolCallArgsDelta(part.toolArgs, argBuffer, delta)
+  const viz = visualizationFromArgs(part.toolName, toolArgs)
+  return {
+    buffer,
+    part: {
+      ...part,
+      toolArgs,
+      visualizationHtml: viz?.html ?? part.visualizationHtml,
+      visualizationTitle: viz?.title ?? part.visualizationTitle,
+    },
+  }
+}
+
+function finalizeToolCallArgs(part: ToolCallPart, argBuffer: string): ToolCallPart {
+  if (part.toolArgs && Object.keys(part.toolArgs).length > 0) return part
+  if (!argBuffer.trim()) return part
+  try {
+    const parsed: unknown = JSON.parse(argBuffer)
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      const toolArgs = { ...(part.toolArgs ?? {}), ...(parsed as Record<string, unknown>) }
+      const viz = visualizationFromArgs(part.toolName, toolArgs)
+      return {
+        ...part,
+        toolArgs,
+        visualizationHtml: viz?.html ?? part.visualizationHtml,
+        visualizationTitle: viz?.title ?? part.visualizationTitle,
+      }
+    }
+  } catch {
+    /* ignore invalid JSON */
+  }
+  return part
+}
+
+function updateToolArgsInMessage(
+  msg: SessionChatMessage,
+  partId: string,
+  delta: string,
+  argBuffers: Record<string, string>,
+  toolCallId: string,
+): SessionChatMessage {
+  if (!msg.parts) return msg
+  const buffer = argBuffers[toolCallId] ?? ''
+  let nextBuffer = buffer
+  const parts = msg.parts.map((part) => {
+    if (part.type !== 'tool' || part.id !== partId) return part
+    const updated = applyToolArgsToPart(part, nextBuffer, delta)
+    nextBuffer = updated.buffer
+    return updated.part
+  })
+  argBuffers[toolCallId] = nextBuffer
+  return { ...msg, parts }
 }
 
 function setEntry(
@@ -262,6 +325,7 @@ function applyAgentEvent(
 
   setEntry(sessionId, (entry) => {
     const pendingTools = { ...entry.pendingTools }
+    const pendingToolArgBuffers = { ...entry.pendingToolArgBuffers }
     const messages = entry.messages.map((m) => {
       if (m.id !== assistantMsgId) return m
 
@@ -287,18 +351,8 @@ function applyAgentEvent(
         case 'tool_call_args': {
           if (!ev.toolCallId || !ev.toolArgs) return m
           const partId = pendingTools[ev.toolCallId]
-          if (!partId || !m.parts) return m
-          try {
-            const args = JSON.parse(ev.toolArgs) as Record<string, unknown>
-            const parts = m.parts.map((part) =>
-              part.type === 'tool' && part.id === partId
-                ? { ...part, toolArgs: { ...part.toolArgs, ...args } }
-                : part,
-            )
-            return { ...m, parts }
-          } catch {
-            return m
-          }
+          if (!partId) return m
+          return updateToolArgsInMessage(m, partId, ev.toolArgs, pendingToolArgBuffers, ev.toolCallId)
         }
         case 'tool_call_result': {
           if (!ev.toolCallId) return m
@@ -332,7 +386,7 @@ function applyAgentEvent(
           return m
       }
     })
-    return { messages, pendingTools }
+    return { messages, pendingTools, pendingToolArgBuffers }
   })
 }
 
@@ -406,6 +460,7 @@ async function reconnectActiveRun(sessionId: string) {
   entry.activeRunId = active.runId
   entry.isRunning = true
   entry.pendingTools = {}
+  entry.pendingToolArgBuffers = {}
   entry.messages = entry.messages.map((m) =>
     m.id === assistantMsgId &&
     m.role === 'assistant' &&
@@ -566,6 +621,7 @@ function startSend(sessionId: string, text: string) {
   entry.assistantMsgId = assistantMsgId
   entry.activeRunId = runId
   entry.pendingTools = {}
+  entry.pendingToolArgBuffers = {}
   entry.subscription?.unsubscribe()
   entry.subscription = null
   entry.agent = createSessionAgent(sessionId)
@@ -629,31 +685,39 @@ function startSend(sessionId: string, text: string) {
         }
       } else if (event.type === EventType.TOOL_CALL_ARGS) {
         const e = event as { toolCallId?: string; delta?: string }
+        if (!e.toolCallId || !e.delta) return
+        setEntry(sessionId, (ent) => {
+          const partId = ent.pendingTools[e.toolCallId!]
+          if (!partId) return
+          const pendingToolArgBuffers = { ...ent.pendingToolArgBuffers }
+          return {
+            pendingToolArgBuffers,
+            messages: ent.messages.map((m) =>
+              m.id === assistantMsgId
+                ? updateToolArgsInMessage(m, partId, e.delta!, pendingToolArgBuffers, e.toolCallId!)
+                : m,
+            ),
+          }
+        })
+      } else if (event.type === EventType.TOOL_CALL_END) {
+        const e = event as { toolCallId?: string }
         if (!e.toolCallId) return
-        const partId = current.pendingTools[e.toolCallId]
-        if (!partId || !e.delta) return
-        try {
-          const args = JSON.parse(e.delta) as Record<string, unknown>
-          setEntry(sessionId, (ent) => ({
+        setEntry(sessionId, (ent) => {
+          const partId = ent.pendingTools[e.toolCallId!]
+          const argBuffer = ent.pendingToolArgBuffers[e.toolCallId!] ?? ''
+          if (!partId || !argBuffer) return
+          return {
             messages: ent.messages.map((m) => {
               if (m.id !== assistantMsgId || !m.parts) return m
-              const parts = m.parts.map((part) => {
-                if (part.type !== 'tool' || part.id !== partId) return part
-                const toolArgs = { ...part.toolArgs, ...args }
-                const viz = visualizationFromArgs(part.toolName, toolArgs)
-                return {
-                  ...part,
-                  toolArgs,
-                  visualizationHtml: viz?.html ?? part.visualizationHtml,
-                  visualizationTitle: viz?.title ?? part.visualizationTitle,
-                }
-              })
+              const parts = m.parts.map((part) =>
+                part.type === 'tool' && part.id === partId
+                  ? finalizeToolCallArgs(part, argBuffer)
+                  : part,
+              )
               return { ...m, parts }
             }),
-          }))
-        } catch {
-          /* ignore partial JSON */
-        }
+          }
+        })
       } else if (event.type === EventType.TOOL_CALL_RESULT) {
         const e = event as { toolCallId?: string; content?: string }
         if (!e.toolCallId) return
