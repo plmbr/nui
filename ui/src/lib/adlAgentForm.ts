@@ -358,12 +358,12 @@ function buildMCPEntry(
 
   const opt = options.find((o) => o.id === server.optionId)
   const name = server.name.trim() || opt?.name || 'mcp-server'
-  if (opt?.ref) return { name, ref: opt.ref }
   if (opt?.server) {
     return Object.fromEntries(
       Object.entries({ ...opt.server, name }).filter(([, v]) => v != null && v !== ''),
     )
   }
+  if (opt?.ref) return { name, ref: opt.ref }
   if (server.optionId.startsWith('custom:ref:')) {
     return { name, ref: server.optionId.slice('custom:ref:'.length) }
   }

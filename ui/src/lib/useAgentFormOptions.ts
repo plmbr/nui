@@ -63,14 +63,19 @@ export function useAgentFormOptions() {
       for (const ext of extensions) {
         if (ext.disabled) continue
         const extLabel = ext.displayName || ext.name
+        const configByName = new Map(
+          (ext.mcpServerConfigs ?? []).map((s) => [s.name, s]),
+        )
         for (const server of ext.mcpServers ?? []) {
           const ref = `ext:${ext.name}/${server}`
+          const config = configByName.get(server)
           mcpOptions.push({
             id: `ext-mcp:${ref}`,
             label: `${server} (${extLabel})`,
             group: 'Extension MCP servers',
             name: server,
-            ref,
+            ref: config ? undefined : ref,
+            server: config,
           })
         }
       }

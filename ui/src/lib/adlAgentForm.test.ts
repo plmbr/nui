@@ -154,4 +154,60 @@ steps:
     expect(result.parseError).toBe(true)
     expect(result.form).toEqual(defaultAgentForm())
   })
+
+  it('inlines extension MCP server config instead of writing a ref', () => {
+    const options: AgentFormOptions = {
+      ...emptyOptions,
+      mcpServers: [
+        {
+          id: 'ext-mcp:ext:corp-pack/docs',
+          label: 'docs (Corp Pack)',
+          group: 'Extension MCP servers',
+          name: 'docs',
+          server: {
+            name: 'docs',
+            url: 'http://localhost:3040/mcp',
+            type: 'http',
+          },
+        },
+      ],
+    }
+    const form = {
+      ...defaultAgentForm(),
+      mcpServers: [{ optionId: 'ext-mcp:ext:corp-pack/docs', name: 'docs' }],
+    }
+    const merged = mergeFormIntoAgentYaml(
+      `adl: "1.0"\nid: my-agent\nname: My Agent\nharness:\n  type: claude-code\n`,
+      form,
+      options,
+    )
+    expect(merged).toContain('url: http://localhost:3040/mcp')
+    expect(merged).toContain('type: http')
+    expect(merged).not.toContain('ref:')
+  })
+
+  it('writes ref for custom extension MCP servers without inline config', () => {
+    const options: AgentFormOptions = {
+      ...emptyOptions,
+      mcpServers: [
+        {
+          id: 'ext-mcp:ext:corp-pack/corp-tools',
+          label: 'corp-tools (Corp Pack)',
+          group: 'Extension MCP servers',
+          name: 'corp-tools',
+          ref: 'ext:corp-pack/corp-tools',
+        },
+      ],
+    }
+    const form = {
+      ...defaultAgentForm(),
+      mcpServers: [{ optionId: 'ext-mcp:ext:corp-pack/corp-tools', name: 'corp-tools' }],
+    }
+    const merged = mergeFormIntoAgentYaml(
+      `adl: "1.0"\nid: my-agent\nname: My Agent\nharness:\n  type: claude-code\n`,
+      form,
+      options,
+    )
+    expect(merged).toContain('ref: ext:corp-pack/corp-tools')
+  })
 })

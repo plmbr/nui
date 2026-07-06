@@ -175,6 +175,7 @@ export interface ExtensionInfo {
   disabled: boolean
   harnesses?: string[]
   mcpServers?: string[]
+  mcpServerConfigs?: MCPServer[]
   skills?: string[]
   rules?: string[]
   mentionProviders?: string[]

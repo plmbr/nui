@@ -478,7 +478,8 @@ type ExtensionInfo struct {
 	Description string   `json:"description,omitempty"`
 	Disabled    bool     `json:"disabled"`
 	Harnesses   []string `json:"harnesses,omitempty"`
-	MCPServers    []string `json:"mcpServers,omitempty"`
+	MCPServers         []string             `json:"mcpServers,omitempty"`
+	MCPServerConfigs   []model.ADLMCPServer `json:"mcpServerConfigs,omitempty"`
 	Skills        []string `json:"skills,omitempty"`
 	Rules            []string `json:"rules,omitempty"`
 	AgentDeployers   []string `json:"agentDeployers,omitempty"`
@@ -506,6 +507,7 @@ func (r *Registry) Info() []ExtensionInfo {
 		}
 		for _, s := range ext.MCPServers {
 			info.MCPServers = append(info.MCPServers, s.Name)
+			info.MCPServerConfigs = append(info.MCPServerConfigs, s)
 		}
 		for _, s := range ext.CustomMCPServers {
 			info.MCPServers = append(info.MCPServers, s.Name)

@@ -118,6 +118,21 @@ contributions:
 	if ref.Runtime.Transport != "stdio" {
 		t.Fatalf("transport: %q", ref.Runtime.Transport)
 	}
+
+	infos := reg.Info()
+	var corpInfo *extensions.ExtensionInfo
+	for i := range infos {
+		if infos[i].Name == "corp-pack" {
+			corpInfo = &infos[i]
+			break
+		}
+	}
+	if corpInfo == nil {
+		t.Fatal("corp-pack info missing")
+	}
+	if len(corpInfo.MCPServerConfigs) != 1 || corpInfo.MCPServerConfigs[0].Name != "docs" {
+		t.Fatalf("mcpServerConfigs: %+v", corpInfo.MCPServerConfigs)
+	}
 }
 
 func TestParseExtRef(t *testing.T) {
