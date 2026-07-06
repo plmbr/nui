@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select'
 import { api } from '@/api'
 import { pickDefaultAgentTypeId, selectableAgentTypes } from '@/lib/agentTypes'
+import { BUILTIN_AGENTS_LABEL, INSTALLED_AGENTS_LABEL } from '@/lib/sessionGroups'
 import type { AgentType, Capabilities } from '@/types'
 
 export function GeneralTab() {
@@ -75,7 +76,7 @@ export function GeneralTab() {
             <SelectContent>
               {selectableAgentTypesList.some((a) => a.isBuiltin) && (
                 <SelectGroup>
-                  <SelectLabel>Built-in</SelectLabel>
+                  <SelectLabel>{BUILTIN_AGENTS_LABEL}</SelectLabel>
                   {selectableAgentTypesList.filter((a) => a.isBuiltin).map((a) => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.label}
@@ -85,7 +86,7 @@ export function GeneralTab() {
               )}
               {selectableAgentTypesList.some((a) => !a.isBuiltin) && (
                 <SelectGroup>
-                  <SelectLabel>Custom</SelectLabel>
+                  <SelectLabel>{INSTALLED_AGENTS_LABEL}</SelectLabel>
                   {selectableAgentTypesList.filter((a) => !a.isBuiltin).map((a) => (
                     <SelectItem key={a.id} value={a.id}>
                       {a.label}

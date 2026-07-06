@@ -26,7 +26,7 @@ cp dev/harness-examples/docker/docker-echo.yaml ~/.loop/agents/
 ```
 
 2. Create a new session.
-3. Under **Custom Agents**, select **docker-echo**.
+3. Under **Installed agents**, select **docker-echo**.
 4. Click **Create**.
 
 Loop validates the connector on create (`docker run` + `GET /info`), then connects on each chat message.

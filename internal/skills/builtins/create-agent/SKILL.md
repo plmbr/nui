@@ -59,7 +59,7 @@ Optional fields when relevant: `defaultPrompt`, `promptMode`, `workingDirInput`,
 - Filename: `<id>.yaml` (must match the `id` field)
 - Create the directory if needed.
 - If a file with the same id already exists, ask before overwriting unless the user explicitly requested an update.
-- After saving, tell the user the file path and that the agent will appear under **Custom Agents** in Loop (they may need to refresh agent types).
+- After saving, tell the user the file path and that the agent will appear under **Installed agents** in Loop (they may need to refresh agent types).
 
 ## Quality bar
 

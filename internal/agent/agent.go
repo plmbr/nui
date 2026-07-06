@@ -30,6 +30,15 @@ type Event struct {
 	ImageMediaType string    `json:"imageMediaType,omitempty"`
 }
 
+// EphemeralAgentSuffix is appended to a Loop session id for one-off harness runs that must
+// not resume or share the main conversation's persistent agent instance.
+const EphemeralAgentSuffix = "::ephemeral"
+
+// EphemeralProjectID returns the Manager cache key for ephemeral harness runs.
+func EphemeralProjectID(projectID string) string {
+	return projectID + EphemeralAgentSuffix
+}
+
 type RunRequest struct {
 	SessionID string
 	// LoopSessionID is the Loop session id for HITL/MCP env (distinct from harness resume SessionID).
@@ -55,6 +64,9 @@ type RunRequest struct {
 	ToolApprovalTools []string
 	// AgentConfig is the Loop session override map (hitlMode, harnessPermissions, …).
 	AgentConfig map[string]any
+	// Ephemeral runs use a separate harness agent instance and never resume SessionID.
+	// Docker sandbox harnesses honor this via the HTTP "ephemeral" flag on a shared container.
+	Ephemeral bool
 }
 
 type Agent interface {

@@ -30,7 +30,7 @@ func Run(ctx context.Context, baseURL string) error {
 func registerTools(server *mcp.Server, client *loopclient.Client) {
 	server.AddTool(&mcp.Tool{
 		Name:        "list_agents",
-		Description: "List available Loop agent types (builtin and custom ADL)",
+		Description: "List available Loop agent types (built-in and installed ADL)",
 		InputSchema: emptyObjectSchema(),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		agents, err := client.ListAgents(ctx)

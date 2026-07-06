@@ -17,6 +17,115 @@ from harness_env import subprocess_env
 WrapArgsFn = Callable[[list[str], str], list[str]]
 
 
+def run_ephemeral_claude_turn(
+    message: str,
+    working_dir: str,
+    model: str = "",
+    system_prompt: str = "",
+    wrap_args: WrapArgsFn | None = None,
+    **kwargs: Any,
+) -> Generator[dict[str, Any], None, None]:
+    """One-shot Claude turn that never resumes an existing session or mutates a persistent session."""
+    wrap = wrap_args or (lambda args, _wd: args)
+    wd = working_dir or os.getcwd()
+
+    claude_args = [
+        "claude",
+        "-p",
+        "--input-format",
+        "stream-json",
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--dangerously-skip-permissions",
+        "--include-partial-messages",
+    ]
+    if model:
+        claude_args += ["--model", model]
+    if system_prompt:
+        claude_args += ["--system-prompt", system_prompt]
+    if kwargs.get("userScopeHarness"):
+        claude_args += ["--setting-sources", "user,project,local"]
+        mcp_path = os.path.join("/home/loop/.loop/session-config", ".claude.json")
+        if os.path.isfile(mcp_path):
+            claude_args += ["--mcp-config", mcp_path]
+
+    args = wrap(claude_args, wd)
+    cwd = None if os.environ.get("LOOP_BWRAP_PATH") else wd
+
+    proc = subprocess.Popen(
+        args,
+        stdin=PIPE,
+        stdout=PIPE,
+        stderr=PIPE,
+        cwd=cwd,
+        env=subprocess_env(kwargs),
+        start_new_session=True,
+    )
+    assert proc.stdin is not None and proc.stdout is not None
+
+    def drain_stderr() -> None:
+        assert proc.stderr is not None
+        for line in proc.stderr:
+            print(f"[claude stderr] {line.decode(errors='replace').rstrip()}", file=sys.stderr, flush=True)
+
+    threading.Thread(target=drain_stderr, daemon=True).start()
+
+    user_msg: dict[str, Any] = {
+        "type": "user",
+        "message": {
+            "role": "user",
+            "content": [{"type": "text", "text": message}],
+        },
+    }
+    payload = (json.dumps(user_msg) + "\n").encode()
+    try:
+        proc.stdin.write(payload)
+        proc.stdin.flush()
+        proc.stdin.close()
+    except (BrokenPipeError, OSError):
+        proc.kill()
+        yield {"type": "error", "error": "claude process ended unexpectedly"}
+        return
+
+    parser = new_claude_stream_parser()
+    while True:
+        raw = proc.stdout.readline()
+        if not raw:
+            proc.wait(timeout=5)
+            yield {"type": "error", "error": "claude process ended unexpectedly"}
+            return
+
+        line = raw.decode(errors="replace").strip()
+        if not line:
+            continue
+
+        try:
+            envelope = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        yield from parser.handle_envelope(envelope)
+
+        msg_type = envelope.get("type")
+        if msg_type == "result":
+            if envelope.get("is_error"):
+                err = envelope.get("error")
+                if isinstance(err, dict):
+                    err = err.get("message") or json.dumps(err)
+                yield {"type": "error", "error": str(err or "unknown error")}
+            proc.wait(timeout=5)
+            return
+
+        if msg_type == "error":
+            err = envelope.get("error")
+            if isinstance(err, dict):
+                err = err.get("message") or json.dumps(err)
+            yield {"type": "error", "error": str(err or "unknown error")}
+            proc.wait(timeout=5)
+            return
+
+
 class PersistentClaudeSession:
     """Keep one Claude CLI process alive and send each prompt over stdin."""
 

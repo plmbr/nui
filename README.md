@@ -254,9 +254,9 @@ Full reference: [`dev/dev.md`](dev/dev.md#api-surface).
 
 ## Agent types
 
-### Built-in (UI → Standard)
+### Built-in agents
 
-Four CLI harnesses, selectable as pills in the New Session dialog:
+Four CLI harnesses, selectable in the New Session dialog under **Built-in agents**:
 
 | Name | Harness | Runs |
 |---|---|---|
@@ -265,9 +265,9 @@ Four CLI harnesses, selectable as pills in the New Session dialog:
 | codex | `codex` | `codex exec` subprocess |
 | opencode | `opencode` | `opencode serve` + `opencode run` |
 
-### Custom (UI → Custom Agents)
+### Installed agents
 
-ADL YAML files in `~/.loop/agents/*.yaml` that you create or copy yourself. Example templates for `docker` and `remote` harness types live under [`dev/harness-examples/`](dev/harness-examples/) and [`dev/adl/examples/`](dev/adl/examples/).
+ADL YAML from `~/.loop/agents/*.yaml`, extensions, and other non-built-in agent types. Select them under **Installed agents** in the New Session dialog. Example templates for `docker` and `remote` harness types live under [`dev/harness-examples/`](dev/harness-examples/) and [`dev/adl/examples/`](dev/adl/examples/).
 
 Use custom ADL for `docker` and `remote` harness types, sandbox variants (`bubblewrap`, `docker`), and multi-step workflows.
 

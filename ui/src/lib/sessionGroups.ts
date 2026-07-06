@@ -2,7 +2,14 @@
 
 import type { AgentType, Session } from '@/types'
 
-export const STANDARD_GROUP_ID = '__standard__'
+export const BUILTIN_AGENTS_LABEL = 'Built-in agents'
+export const INSTALLED_AGENTS_LABEL = 'Installed agents'
+
+/** Session sidebar group id for compiled-in harness agents (Claude Code, Pi, …). */
+export const BUILTIN_GROUP_ID = '__builtin__'
+
+/** @deprecated Use BUILTIN_GROUP_ID */
+export const STANDARD_GROUP_ID = BUILTIN_GROUP_ID
 
 const LEGACY_AGENT_TYPE_IDS: Record<string, string> = {
   'claude-code': 'claude-code',
@@ -27,18 +34,18 @@ function resolveAgentTypeId(agentType: string): string {
   return LEGACY_AGENT_TYPE_IDS[agentType] ?? agentType.replace(/^adl:/, '')
 }
 
-function isStandardAgent(agentTypeId: string, agent: AgentType | undefined): boolean {
+function isBuiltinAgent(agentTypeId: string, agent: AgentType | undefined): boolean {
   if (agent?.isBuiltin) return true
   return BUILTIN_AGENT_IDS.has(agentTypeId)
 }
 
 function groupLabel(agentTypeId: string, agent: AgentType | undefined): string {
-  if (isStandardAgent(agentTypeId, agent)) return 'Standard'
+  if (isBuiltinAgent(agentTypeId, agent)) return BUILTIN_AGENTS_LABEL
   return agent?.label ?? agentTypeId
 }
 
 function groupId(agentTypeId: string, agent: AgentType | undefined): string {
-  if (isStandardAgent(agentTypeId, agent)) return STANDARD_GROUP_ID
+  if (isBuiltinAgent(agentTypeId, agent)) return BUILTIN_GROUP_ID
   return agentTypeId
 }
 
@@ -46,7 +53,7 @@ export function defaultAgentTypeForGroup(
   group: SessionGroup,
   agentTypes: AgentType[],
 ): string | undefined {
-  if (group.id !== STANDARD_GROUP_ID) {
+  if (group.id !== BUILTIN_GROUP_ID) {
     return agentTypes.some((t) => t.id === group.id) ? group.id : undefined
   }
   if (group.sessions.length > 0) {
@@ -86,8 +93,8 @@ export function groupSessionsByAgentType(
   }
 
   result.sort((a, b) => {
-    if (a.id === STANDARD_GROUP_ID) return -1
-    if (b.id === STANDARD_GROUP_ID) return 1
+    if (a.id === BUILTIN_GROUP_ID) return -1
+    if (b.id === BUILTIN_GROUP_ID) return 1
     return a.label.localeCompare(b.label)
   })
 

@@ -13,7 +13,7 @@ export interface Session {
 }
 
 export interface CreateSessionRequest {
-  name: string
+  name?: string
   workingDir: string
   agentType: string
   agentConfig?: {

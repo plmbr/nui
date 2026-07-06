@@ -6,7 +6,7 @@ import { sessionDisplayName } from '@/lib/sessionDisplay'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
-import type { SessionGroup } from '@/lib/sessionGroups'
+import { BUILTIN_GROUP_ID, type SessionGroup } from '@/lib/sessionGroups'
 
 interface Props {
   group: SessionGroup
@@ -73,7 +73,9 @@ export function SessionsListPanel({
       <div className="conversation-header justify-between">
         <div className="flex items-center gap-2 min-w-0">
           <List className="size-4 shrink-0 text-muted-foreground" />
-          <h1 className="text-sm font-semibold truncate">{group.label} sessions</h1>
+          <h1 className="text-sm font-semibold truncate">
+            {group.id === BUILTIN_GROUP_ID ? group.label : `${group.label} sessions`}
+          </h1>
           <span className="text-xs text-muted-foreground tabular-nums">{group.sessions.length}</span>
         </div>
         <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close session list">

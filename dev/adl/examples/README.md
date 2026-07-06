@@ -1,6 +1,6 @@
 # ADL Examples
 
-ADL (Agent Definition Language) is a YAML format for declaring agent types and multi-step workflows. Place files in `~/.loop/agents/` to make them selectable in the Loop UI under **Custom Agents**.
+ADL (Agent Definition Language) is a YAML format for declaring agent types and multi-step workflows. Place files in `~/.loop/agents/` to make them selectable in the Loop UI under **Installed agents**.
 
 Echo-specific docker/remote walkthroughs (with runnable harness servers) live under [`dev/harness-examples/`](../harness-examples/).
 

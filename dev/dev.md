@@ -58,7 +58,7 @@ flowchart TB
    - **Extension harnesses:** installed extensions contribute harnesses wired via `Manager.getExtensionHarnessAgent()` — stdio (default), TCP (`ExtensionAgent`), or HTTP (`HTTPExtensionAgent`). ADL references them as `harness.type: ext:<extension>/<harness-id>`.
    - **Reference only:** standalone examples in `dev/harness-examples/py|ts/` (no `extension.yaml`) demonstrate the TCP JSON-RPC protocol but are not registered as agent types.
 
-4. **Docker/remote via custom ADL.** There is no built-in "Docker" or "Remote" picker in the UI. Users copy an ADL template from `dev/harness-examples/` into `~/.loop/agents/` (e.g. `docker-echo.yaml`), then select it under **Custom Agents**. Loop validates the connector on session create.
+4. **Docker/remote via custom ADL.** There is no built-in "Docker" or "Remote" picker in the UI. Users copy an ADL template from `dev/harness-examples/` into `~/.loop/agents/` (e.g. `docker-echo.yaml`), then select it under **Installed agents**. Loop validates the connector on session create.
 
 5. **CLI launch + UI preferences.** `loop ui -a <agent-id> --prompt --open` starts the HTTP server first, then creates a session via the same logic as `POST /api/launch` (shared with the warm-attach path when the server is already running). Session creation saves `lastAgentType` / `lastSessionId` to `settings.json` and exposes the prompt once via `GET /api/bootstrap`. `loop ui --open` (without `-a`) also creates a fresh session with the default agent. With `--open`, Loop opens the browser to `/sessions/<id>` after the session is ready. If no sessions exist at startup and no launch flags were passed, Loop auto-creates one with the default agent when the UI loads. Sidebar state and last-selected session/agent are also persisted in `settings.json`.
 
@@ -254,7 +254,7 @@ aiAssets:
       type: http
 ```
 
-Place agent YAML files in `~/.loop/agents/` to make them selectable under **Custom Agents** in the UI.
+Place agent YAML files in `~/.loop/agents/` to make them selectable under **Installed agents** in the UI.
 
 ### Session harness config
 

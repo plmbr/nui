@@ -11,7 +11,7 @@ import sys
 import threading
 
 sys.path.insert(0, "/app")
-from claude_session import PersistentClaudeSession
+from claude_session import PersistentClaudeSession, run_ephemeral_claude_turn
 from http_loop_agent import HttpLoopAgent
 
 
@@ -29,6 +29,13 @@ class ClaudeCodeAgent(HttpLoopAgent):
         working_dir = kwargs.get("workingDir", "") or os.getcwd()
         model = kwargs.get("model", "")
         system_prompt = kwargs.get("systemPrompt", "")
+
+        if kwargs.get("ephemeral"):
+            for event in run_ephemeral_claude_turn(
+                message, working_dir, model, system_prompt, **kwargs,
+            ):
+                yield event
+            return
 
         latest_session_id = ""
         for event in self._claude.run_turn(

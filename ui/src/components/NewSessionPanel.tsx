@@ -15,6 +15,7 @@ import {
   sortCustomAgentsByName,
 } from '@/lib/agentSources'
 import { pickDefaultAgentTypeId, selectableAgentTypes, harnessSupportsUserScope, defaultUserScopeHarnessConfig, showToolApprovalsOption } from '@/lib/agentTypes'
+import { BUILTIN_AGENTS_LABEL, INSTALLED_AGENTS_LABEL } from '@/lib/sessionGroups'
 import type { AgentType, CreateSessionRequest, ExtensionInfo, Session } from '@/types'
 
 interface Props {
@@ -36,14 +37,13 @@ function agentMatchesSearch(agent: AgentType, query: string): boolean {
   return haystack.includes(query)
 }
 
-type AgentCategoryTab = 'standard' | 'custom'
+type AgentCategoryTab = 'builtin' | 'installed'
 
 export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorkingDir, onClose, onCreated }: Props) {
-  const [name, setName] = useState('')
   const [workingDir, setWorkingDir] = useState(initialWorkingDir ?? '')
   const [selectedId, setSelectedId] = useState('')
   const [customSearch, setCustomSearch] = useState('')
-  const [agentTab, setAgentTab] = useState<AgentCategoryTab>('standard')
+  const [agentTab, setAgentTab] = useState<AgentCategoryTab>('builtin')
   const [selectedSourceKeys, setSelectedSourceKeys] = useState<Set<string>>(() => new Set())
   const [extensions, setExtensions] = useState<ExtensionInfo[]>([])
   const [loading, setLoading] = useState(false)
@@ -70,8 +70,8 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
 
   function selectAgent(id: string) {
     setSelectedId(id)
-    if (userDefined.some((a) => a.id === id)) setAgentTab('custom')
-    else if (builtins.some((a) => a.id === id)) setAgentTab('standard')
+    if (userDefined.some((a) => a.id === id)) setAgentTab('installed')
+    else if (builtins.some((a) => a.id === id)) setAgentTab('builtin')
   }
 
   useEffect(() => {
@@ -98,8 +98,8 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   useEffect(() => {
     if (initialTabSynced.current || !selectedId) return
     initialTabSynced.current = true
-    if (userDefined.some((a) => a.id === selectedId)) setAgentTab('custom')
-    else if (builtins.some((a) => a.id === selectedId)) setAgentTab('standard')
+    if (userDefined.some((a) => a.id === selectedId)) setAgentTab('installed')
+    else if (builtins.some((a) => a.id === selectedId)) setAgentTab('builtin')
   }, [selectedId, userDefined, builtins])
 
   useEffect(() => {
@@ -144,7 +144,6 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   }, [directoryInputFocused, workingDir])
 
   function reset() {
-    setName('')
     setWorkingDir('')
     setCustomSearch('')
     setSelectedSourceKeys(new Set())
@@ -204,9 +203,9 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
     }
     setSelectedSourceKeys(new Set(allSourceKeys))
   }
-  const showStandardTab = builtins.length > 0
-  const showCustomTab = userDefined.length > 0
-  const showAgentTabs = showStandardTab && showCustomTab
+  const showBuiltinTab = builtins.length > 0
+  const showInstalledTab = userDefined.length > 0
+  const showAgentTabs = showBuiltinTab && showInstalledTab
   const directoryListOpen = directoryInputFocused && directorySuggestions.length > 0
   const showUserScopeOption = selected ? harnessSupportsUserScope(selected.harness) : false
   const showHarnessPermissionsOption = selected ? showToolApprovalsOption(selected) : false
@@ -256,13 +255,10 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
       setError('Select an agent type.')
       return
     }
-    const displayLabel = selected?.label ?? selectedId
-    const sessionName = name.trim() || displayLabel
     setLoading(true)
     setError('')
     try {
       const req: CreateSessionRequest = {
-        name: sessionName,
         workingDir: workingDir.trim(),
         agentType: selectedId,
       }
@@ -309,41 +305,41 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
         <div className="flex flex-1 flex-col min-h-0 overflow-hidden p-6">
           <div className="customize-tab-content mx-auto flex w-full min-h-0 flex-1 flex-col gap-5">
 
-            {(showStandardTab || showCustomTab) && (
+            {(showBuiltinTab || showInstalledTab) && (
             <div className="flex min-h-0 flex-1 flex-col gap-3">
               {showAgentTabs && (
                 <div className="new-session-tabs shrink-0" role="tablist" aria-label="Agent categories">
                   <button
                     type="button"
                     role="tab"
-                    aria-selected={agentTab === 'standard'}
-                    className={cn('new-session-tab', agentTab === 'standard' && 'new-session-tab--active')}
-                    onClick={() => setAgentTab('standard')}
+                    aria-selected={agentTab === 'builtin'}
+                    className={cn('new-session-tab', agentTab === 'builtin' && 'new-session-tab--active')}
+                    onClick={() => setAgentTab('builtin')}
                   >
-                    Standard
+                    {BUILTIN_AGENTS_LABEL}
                   </button>
                   <button
                     type="button"
                     role="tab"
-                    aria-selected={agentTab === 'custom'}
-                    className={cn('new-session-tab', agentTab === 'custom' && 'new-session-tab--active')}
-                    onClick={() => setAgentTab('custom')}
+                    aria-selected={agentTab === 'installed'}
+                    className={cn('new-session-tab', agentTab === 'installed' && 'new-session-tab--active')}
+                    onClick={() => setAgentTab('installed')}
                   >
-                    Custom
+                    {INSTALLED_AGENTS_LABEL}
                     <span className="text-muted-foreground font-normal">({userDefined.length})</span>
                   </button>
                 </div>
               )}
 
-              {showStandardTab && (!showAgentTabs || agentTab === 'standard') && (
+              {showBuiltinTab && (!showAgentTabs || agentTab === 'builtin') && (
                 <div
                   role={showAgentTabs ? 'tabpanel' : undefined}
-                  aria-label="Standard agents"
+                  aria-label={BUILTIN_AGENTS_LABEL}
                   className="min-h-0 flex-1 overflow-y-auto"
                 >
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {builtins.map((a) => (
-                      <StandardAgentCard
+                      <BuiltinAgentCard
                         key={a.id}
                         agent={a}
                         selected={selectedId === a.id}
@@ -354,10 +350,10 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
                 </div>
               )}
 
-              {showCustomTab && (!showAgentTabs || agentTab === 'custom') && (
+              {showInstalledTab && (!showAgentTabs || agentTab === 'installed') && (
                 <div
                   role={showAgentTabs ? 'tabpanel' : undefined}
-                  aria-label="Custom agents"
+                  aria-label={INSTALLED_AGENTS_LABEL}
                   className="flex min-h-0 flex-1 flex-col gap-2"
                 >
                   {customSourceOptions.length > 0 && (
@@ -445,18 +441,6 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
               )}
             </div>
             )}
-
-            <div className="shrink-0 space-y-1.5">
-              <Label htmlFor="name">
-                Name <span className="text-muted-foreground font-normal">(optional)</span>
-              </Label>
-              <Input
-                id="name"
-                placeholder={selected?.label ?? 'my-session'}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
 
             {selected?.workingDirInput && (
               <div className="shrink-0 space-y-1.5">
@@ -589,13 +573,13 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   )
 }
 
-interface StandardAgentCardProps {
+interface BuiltinAgentCardProps {
   agent: AgentType
   selected: boolean
   onSelect: () => void
 }
 
-function StandardAgentCard({ agent, selected, onSelect }: StandardAgentCardProps) {
+function BuiltinAgentCard({ agent, selected, onSelect }: BuiltinAgentCardProps) {
   return (
     <button
       type="button"

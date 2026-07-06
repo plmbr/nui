@@ -282,6 +282,9 @@ func (a *HTTPExtensionAgent) Run(ctx context.Context, req RunRequest, events cha
 	if req.UserScopeHarness {
 		params["userScopeHarness"] = true
 	}
+	if req.Ephemeral {
+		params["ephemeral"] = true
+	}
 
 	body, _ := json.Marshal(params)
 	httpReq, err := http.NewRequestWithContext(ctx, "POST", a.baseURL+"/run", bytes.NewReader(body))

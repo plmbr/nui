@@ -31,7 +31,7 @@ cp dev/harness-examples/remote/remote-echo.yaml ~/.loop/agents/
 ```
 
 3. Create a new session.
-4. Under **Custom Agents**, select **remote-echo**.
+4. Under **Installed agents**, select **remote-echo**.
 5. Click **Create**.
 
 Loop checks docker/remote ADL configuration on session create. Reachability is validated when the first message is sent. Edit the ADL to point at a different host:

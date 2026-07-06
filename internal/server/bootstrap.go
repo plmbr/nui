@@ -153,7 +153,7 @@ func launchSessionFromRequest(req launchRequest) (launchResult, error) {
 		}
 	}
 
-	s, err := createSession(model.ADLAgentLabel(def), workingDir, model.ADLAgentID(def), nil)
+	s, err := createSession("", workingDir, model.ADLAgentID(def), nil)
 	if err != nil {
 		return launchResult{}, err
 	}
@@ -375,7 +375,7 @@ func createSessionEx(opts sessionCreateOpts) (model.Session, error) {
 		return model.Session{}, fmt.Errorf("unknown agent type: %s", agentType)
 	}
 	if strings.TrimSpace(name) == "" {
-		name = model.ADLAgentLabel(def)
+		name = PendingSessionTitle
 	}
 
 	sessionID := uuid.NewString()
@@ -467,7 +467,7 @@ func handleNewSession(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	s, err := createSession(model.ADLAgentLabel(def), workingDir, model.ADLAgentID(def), nil)
+	s, err := createSession("", workingDir, model.ADLAgentID(def), nil)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("agent unavailable: %v", err), http.StatusServiceUnavailable)
 		return

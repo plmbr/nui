@@ -195,6 +195,8 @@ func runInBackground(sessionID string, session model.Session, agentSessionID, ru
 
 	persistAssistantTurn(sessionID, result.AssistantContent, result.NewAgentSessionID, isSessionMultiStepWorkflow(session))
 	finishRunRecord(runID, status, result.AssistantContent, errMsg)
+
+	go maybeGenerateSessionTitle(sessionID)
 }
 
 func isSessionMultiStepWorkflow(session model.Session) bool {

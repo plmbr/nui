@@ -27,6 +27,15 @@ func NewADLAgent(def model.ADLDefinition, projectID string, manager *Manager) *A
 
 func (a *ADLAgent) Name() string { return "adl:" + model.ADLAgentID(a.def) }
 
+// RunEphemeral executes a single top-level harness turn without resuming the session's
+// main agent conversation or polluting its persistent harness cache entry.
+func (a *ADLAgent) RunEphemeral(ctx context.Context, req RunRequest, events chan<- Event) error {
+	req.Ephemeral = true
+	req.SessionID = ""
+	req.HarnessPermissions = hitl.PermissionsBypass
+	return a.runStep(ctx, req, a.def.Harness, nil, events)
+}
+
 func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event) error {
 	steps := a.def.Steps
 	if len(steps) == 0 {
@@ -98,13 +107,20 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 // runStep resolves the harness and runs the agent for a single step.
 func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.ADLHarness, step *model.ADLStep, events chan<- Event) error {
 	req.UserScopeHarness = effectiveUserScopeHarness(harness.Type, req.UserScopeHarness)
+	titleSystemPrompt := req.SystemPrompt
 	var reg *extensions.Registry
 	if a.manager != nil {
 		reg = a.manager.registry
 	}
-	deps, err := buildHarnessDeps(a.projectID, a.def, step, req.WorkingDir, reg, req.AgentConfig)
-	if err != nil {
-		return fmt.Errorf("expand harness deps: %w", err)
+	var deps HarnessDeps
+	var err error
+	if req.Ephemeral {
+		deps = HarnessDeps{WorkingDir: req.WorkingDir}
+	} else {
+		deps, err = buildHarnessDeps(a.projectID, a.def, step, req.WorkingDir, reg, req.AgentConfig)
+		if err != nil {
+			return fmt.Errorf("expand harness deps: %w", err)
+		}
 	}
 	deps.UserScope = req.UserScopeHarness
 	configDir, err := ProvisionHarnessConfig(a.projectID, harness.Type, deps)
@@ -112,9 +128,17 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 		return fmt.Errorf("provision harness config: %w", err)
 	}
 	req.ConfigDir = configDir
-	req.SystemPrompt = deps.SystemPrompt
+	if titleSystemPrompt != "" {
+		req.SystemPrompt = titleSystemPrompt
+	} else {
+		req.SystemPrompt = deps.SystemPrompt
+	}
 	req.Model = harness.Model
-	req.Env = mergeLoopHarnessEnv(mergeADLEnv(a.def, harness), loopSessionIDForRun(req, a.projectID), req.RunID, defaultLoopAPIURL())
+	if req.Ephemeral {
+		req.Env = mergeADLEnv(a.def, harness)
+	} else {
+		req.Env = mergeLoopHarnessEnv(mergeADLEnv(a.def, harness), loopSessionIDForRun(req, a.projectID), req.RunID, defaultLoopAPIURL())
+	}
 	if req.HarnessPermissions == "" {
 		req.HarnessPermissions = hitl.EffectivePermissions(a.def, req.AgentConfig)
 	}
