@@ -229,5 +229,35 @@ func TestHandleSessionAGUI_visualizationCustomEvent(t *testing.T) {
 	}
 }
 
+func TestHandleSessionAGUI_subAgentRoutedCustomEvent(t *testing.T) {
+	mgr := setupTestServerEnv(t)
+	mgr.SetTestHarnessRun(func(_ context.Context, _ agent.RunRequest, events chan<- agent.Event) error {
+		events <- agent.Event{
+			Type:             agent.EventSubAgentRouted,
+			RoutedAgentID:    "code-reviewer",
+			RoutedAgentLabel: "Code Reviewer",
+		}
+		events <- agent.Event{Type: agent.EventText, Content: "Review complete."}
+		events <- agent.Event{Type: agent.EventDone, SessionID: "sub-s1"}
+		return nil
+	})
+	seedSession("sess-sub", "Test", testStubAgentType, t.TempDir())
+
+	_, events := postAGUI(t, "sess-sub", "review my PR")
+	var sawRouted bool
+	for _, ev := range events {
+		if ev.Type == "CUSTOM" && ev.Raw["name"] == "sub_agent_routed" {
+			sawRouted = true
+			val, _ := ev.Raw["value"].(map[string]any)
+			if val["agentId"] != "code-reviewer" || val["label"] != "Code Reviewer" {
+				t.Fatalf("routed value = %+v", val)
+			}
+		}
+	}
+	if !sawRouted {
+		t.Fatalf("expected sub_agent_routed custom event, got %+v", events)
+	}
+}
+
 // Ensure bytes helper compiles for concurrent test.
 var _ = bytes.NewReader

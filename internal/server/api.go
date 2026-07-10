@@ -912,7 +912,7 @@ func handleSessionChat(w http.ResponseWriter, r *http.Request, sessionID string)
 	})
 
 	if result.AssistantContent != "" {
-		persistAssistantTurn(sessionID, result.AssistantContent, result.NewAgentSessionID, isSessionMultiStepWorkflow(session))
+		persistAssistantTurn(sessionID, result.AssistantContent, result.NewAgentSessionID, sessionSkipsTopLevelHarnessSession(session))
 	}
 }
 

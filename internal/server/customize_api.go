@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"loop/internal/agents"
 	"loop/internal/model"
 	"loop/internal/skills"
 	"loop/internal/store"
@@ -311,7 +312,10 @@ func validateAgentYAMLContent(content string) error {
 	}
 	model.NormalizeADLDefinition(&def)
 	model.NormalizeADLSkills(&def)
-	return model.ValidateADLDefinition(def)
+	if err := model.ValidateADLDefinition(def); err != nil {
+		return err
+	}
+	return agents.ValidateOrchestratorRefs(def)
 }
 
 func agentFileInfoFromPath(path string) (agentFileInfo, error) {

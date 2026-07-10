@@ -161,6 +161,10 @@ aiAssets:
   mentionProviders:
     - ref: ext:corp-pack/corp-refs         # @-mention autocomplete sources
 
+subAgents:                        # orchestrator: route each user turn to a registry agent (mutually exclusive with steps)
+  - hello-world
+  - code-reviewer
+
 steps:                            # omit for single-step agents
   - name: research
     type: agent                   # default; runs a harness step
@@ -205,6 +209,13 @@ steps:                            # omit for single-step agents
 - Each user chat turn **re-runs all steps** from the beginning. There is no cross-turn step state.
 - Multi-step workflows do not persist harness session IDs in `agentSessions`; single-step agents do.
 
+#### Orchestrator sub-agents
+
+- `subAgents` lists canonical registry agent IDs only (builtins, `~/.loop/agents/`, `ext:…`). Names and descriptions are resolved from the registry at runtime — do not duplicate them in the orchestrator YAML.
+- Mutually exclusive with `steps[]` / `kind: workflow`.
+- Each user message triggers an ephemeral routing turn on the orchestrator harness, then delegates to the selected sub-agent with full event streaming (not tool-calling).
+- Each sub-agent maintains its own harness session within the Loop session (`agentSessions` key `{sessionId}#{subAgentId}`).
+
 #### Named outputs and inputs
 
 - When a step omits `outputs`, its full text is stored as an implicit default output.
@@ -219,6 +230,7 @@ steps:                            # omit for single-step agents
 | `harness.permissions: interactive` + `toolApprovals` | Per-tool approve/deny during an agent run (Claude Code, Codex) |
 | Top-level `hitl` block | Runtime ask-user via Loop HITL MCP + skill injection |
 | `steps[].type: hitl` | Orchestration gate between workflow steps |
+| `subAgents` | Orchestrator routes user prompts to registry agents by id |
 
 `hitl.approvals` is deprecated; use `toolApprovals` with `harness.permissions: interactive` instead.
 
@@ -309,6 +321,7 @@ Sandbox config flows: ADL `harness.sandbox` → `harnessBuiltinConfig()` → `Ma
 | `aiAssets.rules` → harness rule files | Done |
 | `aiAssets.mentionProviders` → @-mention menu | Done |
 | `steps[].type: hitl` orchestration gates | Done |
+| `subAgents` orchestrator routing | Done |
 | Extension harness `ext:<ext>/<id>` | Done |
 
 ---

@@ -111,3 +111,37 @@ func TestValidateADLDefinitionWorkflowSteps(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestValidateADLDefinitionSubAgentsValid(t *testing.T) {
+	err := ValidateADLDefinition(ADLDefinition{
+		ID:        "triage",
+		Harness:   ADLHarness{Type: "claude-code"},
+		SubAgents: []string{"hello-world", "code-reviewer"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestValidateADLDefinitionSubAgentsMutuallyExclusiveWithSteps(t *testing.T) {
+	err := ValidateADLDefinition(ADLDefinition{
+		ID:        "bad",
+		Harness:   ADLHarness{Type: "claude-code"},
+		SubAgents: []string{"hello-world"},
+		Steps:     []ADLStep{{Name: "step1"}},
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestValidateADLDefinitionSubAgentsDuplicate(t *testing.T) {
+	err := ValidateADLDefinition(ADLDefinition{
+		ID:        "bad",
+		Harness:   ADLHarness{Type: "claude-code"},
+		SubAgents: []string{"hello-world", "hello-world"},
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}

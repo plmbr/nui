@@ -535,6 +535,11 @@ export function ChatPanel({
               >
                 {msg.role === 'assistant' ? (
                   <>
+                    {msg.routedAgentLabel ? (
+                      <p className="agui-message__sub-agent-badge text-xs text-muted-foreground mb-2">
+                        via {msg.routedAgentLabel}
+                      </p>
+                    ) : null}
                     {msg.images?.map((img) => (
                       <img
                         key={img.id}

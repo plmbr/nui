@@ -29,6 +29,7 @@ The executor in `internal/agent/adl.go` runs multi-step pipelines in **sequentia
 | `18-tool-approvals.yaml` | Basic | Top-level `toolApprovals` with `harness.permissions: interactive` |
 | `19-hitl-workflow-gate.yaml` | Intermediate | Workflow step `type: hitl` orchestration gate |
 | `20-evals.yaml` | Basic | `evals` test cases for `loop agent eval run` |
+| `21-orchestrator-sub-agents.yaml` | Intermediate | `subAgents` orchestrator routing to registry agents |
 
 ## Harness types
 

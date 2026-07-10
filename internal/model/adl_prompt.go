@@ -19,6 +19,17 @@ func IsMultiStepWorkflow(def ADLDefinition) bool {
 	return len(def.Steps) > 0 || def.Kind == "workflow"
 }
 
+// IsOrchestratorAgent reports whether the agent routes user prompts to sub-agents.
+// Orchestrator agents do not map a top-level harness session ID in agentSessions.
+func IsOrchestratorAgent(def ADLDefinition) bool {
+	return len(def.SubAgents) > 0
+}
+
+// SkipsHarnessSessionPersistence reports whether the top-level agentSessions key is unused.
+func SkipsHarnessSessionPersistence(def ADLDefinition) bool {
+	return IsMultiStepWorkflow(def) || IsOrchestratorAgent(def)
+}
+
 // IsADLAutoPrompt reports whether the agent runs without waiting for user input.
 func IsADLAutoPrompt(def ADLDefinition) bool {
 	return strings.TrimSpace(def.PromptMode) == ADLPromptModeAuto

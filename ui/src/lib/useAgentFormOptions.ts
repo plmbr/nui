@@ -5,6 +5,7 @@ import { api } from '@/api'
 import {
   buildHarnessOptions,
   type AgentFormOptions,
+  type AgentOption,
   type MCPOption,
   type SkillOption,
 } from '@/lib/adlAgentForm'
@@ -14,6 +15,7 @@ export function useAgentFormOptions() {
     harnesses: buildHarnessOptions([]),
     skills: [],
     mcpServers: [],
+    agents: [],
   })
   const [loading, setLoading] = useState(true)
 
@@ -28,6 +30,15 @@ export function useAgentFormOptions() {
       ])
 
       const harnesses = buildHarnessOptions(agentTypes)
+
+      const agentOptions: AgentOption[] = agentTypes
+        .filter((t) => t.available)
+        .map((t) => ({
+          id: t.id,
+          label: t.label,
+          description: t.description ?? '',
+          group: t.isBuiltin ? 'Built-in' : t.source === 'extension' ? 'Extension' : 'Installed',
+        }))
 
       const skillOptions: SkillOption[] = skills.map((s) => ({
         id: `skill:${s.name}`,
@@ -80,7 +91,7 @@ export function useAgentFormOptions() {
         }
       }
 
-      setOptions({ harnesses, skills: skillOptions, mcpServers: mcpOptions })
+      setOptions({ harnesses, skills: skillOptions, mcpServers: mcpOptions, agents: agentOptions })
     } finally {
       setLoading(false)
     }

@@ -2,7 +2,11 @@
 
 package agent
 
-import "context"
+import (
+	"context"
+
+	"loop/internal/model"
+)
 
 type EventType string
 
@@ -16,6 +20,7 @@ const (
 	EventToolCallResult  EventType = "tool_call_result"
 	EventImage           EventType = "image"
 	EventHITLRequest     EventType = "hitl_request"
+	EventSubAgentRouted  EventType = "sub_agent_routed"
 )
 
 type Event struct {
@@ -28,6 +33,8 @@ type Event struct {
 	ToolArgs       string    `json:"toolArgs,omitempty"`
 	ImageData      string    `json:"imageData,omitempty"`
 	ImageMediaType string    `json:"imageMediaType,omitempty"`
+	RoutedAgentID    string `json:"routedAgentId,omitempty"`
+	RoutedAgentLabel string `json:"routedAgentLabel,omitempty"`
 }
 
 // EphemeralAgentSuffix is appended to a Loop session id for one-off harness runs that must
@@ -67,7 +74,16 @@ type RunRequest struct {
 	// Ephemeral runs use a separate harness agent instance and never resume SessionID.
 	// Docker sandbox harnesses honor this via the HTTP "ephemeral" flag on a shared container.
 	Ephemeral bool
+	// ResolveADL looks up registry agent definitions (orchestrator sub-agent routing).
+	ResolveADL ADLResolver
+	// SubAgentHarnessSession returns the harness resume session id for a sub-agent.
+	SubAgentHarnessSession func(subAgentID string) string
+	// OnSubAgentHarnessSession persists a sub-agent harness session id after a delegated run.
+	OnSubAgentHarnessSession func(subAgentID, harnessSessionID string)
 }
+
+// ADLResolver resolves an ADL definition by canonical agent id.
+type ADLResolver func(agentID string) (model.ADLDefinition, bool)
 
 type Agent interface {
 	Name() string

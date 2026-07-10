@@ -760,6 +760,16 @@ function startSend(sessionId: string, text: string) {
           handleHitlCustomEvent(sessionId, e.value)
           return
         }
+        if (e.name === 'sub_agent_routed') {
+          const { label } = e.value as { agentId?: string; label?: string }
+          if (!label) return
+          setEntry(sessionId, (ent) => ({
+            messages: ent.messages.map((m) =>
+              m.id === assistantMsgId ? { ...m, routedAgentLabel: label } : m,
+            ),
+          }))
+          return
+        }
         if (e.name === 'visualization') {
           const { toolCallId, html, title } = e.value as {
             toolCallId?: string

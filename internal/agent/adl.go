@@ -37,6 +37,10 @@ func (a *ADLAgent) RunEphemeral(ctx context.Context, req RunRequest, events chan
 }
 
 func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event) error {
+	if model.IsOrchestratorAgent(a.def) {
+		return a.runOrchestrator(ctx, req, events)
+	}
+
 	steps := a.def.Steps
 	if len(steps) == 0 {
 		// Single-step definition — run the top-level harness directly.

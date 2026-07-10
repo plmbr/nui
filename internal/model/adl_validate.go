@@ -27,6 +27,9 @@ func ValidateADLDefinition(def ADLDefinition) error {
 	if err := ValidateADLEvals(def.Evals); err != nil {
 		return err
 	}
+	if err := validateSubAgents(def); err != nil {
+		return err
+	}
 	if len(def.Steps) == 0 {
 		return nil
 	}
@@ -171,6 +174,27 @@ func isDevcontainerInnerHarness(t string) bool {
 // IsDevcontainerInnerHarness reports whether t is a valid innerHarness for devcontainer.
 func IsDevcontainerInnerHarness(t string) bool {
 	return isDevcontainerInnerHarness(strings.TrimSpace(t))
+}
+
+func validateSubAgents(def ADLDefinition) error {
+	if len(def.SubAgents) == 0 {
+		return nil
+	}
+	if len(def.Steps) > 0 || def.Kind == "workflow" {
+		return fmt.Errorf("subAgents cannot be combined with workflow steps")
+	}
+	seen := map[string]bool{}
+	for i, id := range def.SubAgents {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			return fmt.Errorf("subAgents[%d]: agent id is required", i)
+		}
+		if seen[id] {
+			return fmt.Errorf("subAgents: duplicate agent id %q", id)
+		}
+		seen[id] = true
+	}
+	return nil
 }
 
 func splitStepOutputRef(ref string) (stepName, outputName string) {

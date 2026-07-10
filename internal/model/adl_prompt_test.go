@@ -59,3 +59,21 @@ func TestIsMultiStepWorkflow(t *testing.T) {
 		t.Fatal("expected multi-step for kind workflow")
 	}
 }
+
+func TestIsOrchestratorAgent(t *testing.T) {
+	if IsOrchestratorAgent(ADLDefinition{Harness: ADLHarness{Type: "claude-code"}}) {
+		t.Fatal("single-step agent should not be orchestrator")
+	}
+	if !IsOrchestratorAgent(ADLDefinition{
+		Harness:   ADLHarness{Type: "claude-code"},
+		SubAgents: []string{"hello-world"},
+	}) {
+		t.Fatal("expected orchestrator when subAgents present")
+	}
+	if !SkipsHarnessSessionPersistence(ADLDefinition{
+		Harness:   ADLHarness{Type: "claude-code"},
+		SubAgents: []string{"hello-world"},
+	}) {
+		t.Fatal("orchestrator should skip top-level harness session persistence")
+	}
+}

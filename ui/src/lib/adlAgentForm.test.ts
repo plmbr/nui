@@ -15,6 +15,10 @@ const emptyOptions: AgentFormOptions = {
   ],
   skills: [],
   mcpServers: [],
+  agents: [
+    { id: 'hello-world', label: 'Hello World', description: 'Greeter', group: 'Installed' },
+    { id: 'code-reviewer', label: 'Code Reviewer', description: 'Reviews code', group: 'Installed' },
+  ],
 }
 
 describe('adlAgentForm toolApprovals and hitl', () => {
@@ -300,5 +304,51 @@ evals:
     const { form } = parseAgentYaml(original, emptyOptions)
     const merged = mergeFormIntoAgentYaml(original, { ...form, evals: [] }, emptyOptions)
     expect(merged).not.toContain('evals:')
+  })
+})
+
+describe('adlAgentForm subAgents', () => {
+  it('parses subAgents from YAML', () => {
+    const yaml = `adl: "1.0"
+id: triage-bot
+name: Triage Bot
+harness:
+  type: claude-code
+subAgents:
+  - hello-world
+  - code-reviewer
+`
+    const { form, hasSubAgents } = parseAgentYaml(yaml, emptyOptions)
+    expect(hasSubAgents).toBe(true)
+    expect(form.subAgents).toEqual(['hello-world', 'code-reviewer'])
+  })
+
+  it('round-trips subAgents', () => {
+    const original = `adl: "1.0"
+id: triage-bot
+name: Triage Bot
+harness:
+  type: claude-code
+subAgents:
+  - hello-world
+`
+    const { form } = parseAgentYaml(original, emptyOptions)
+    const merged = mergeFormIntoAgentYaml(original, form, emptyOptions)
+    const { form: reparsed } = parseAgentYaml(merged, emptyOptions)
+    expect(reparsed.subAgents).toEqual(['hello-world'])
+  })
+
+  it('removes subAgents when cleared in form', () => {
+    const original = `adl: "1.0"
+id: triage-bot
+name: Triage Bot
+harness:
+  type: claude-code
+subAgents:
+  - hello-world
+`
+    const { form } = parseAgentYaml(original, emptyOptions)
+    const merged = mergeFormIntoAgentYaml(original, { ...form, subAgents: [] }, emptyOptions)
+    expect(merged).not.toContain('subAgents:')
   })
 })

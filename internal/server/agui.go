@@ -135,10 +135,10 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 	createRunRecord(sessionID, runID, resolvedMessage)
 
 	var ag agent.Agent
-	var multiStepWorkflow bool
+	var skipTopLevelHarnessSession bool
 	if def, found := findADLDef(session.AgentType); found {
 		ag = agent.NewADLAgent(def, session.ID, extensionManager)
-		multiStepWorkflow = model.IsMultiStepWorkflow(def)
+		skipTopLevelHarnessSession = model.SkipsHarnessSessionPersistence(def)
 	} else {
 		var err error
 		ag, err = extensionManager.GetAgent(session.ID, session.AgentType, workingDir, session.AgentConfig)
@@ -175,8 +175,9 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 		if def, ok := findADLDef(session.AgentType); ok {
 			runReq.HarnessPermissions = hitl.EffectivePermissions(def, session.AgentConfig)
 			runReq.ToolApprovalPolicy, runReq.ToolApprovalTools = hitl.EffectiveToolApprovals(def, session.AgentConfig)
+			wireOrchestratorRunRequest(&runReq, sessionID, def)
 		}
-		if !multiStepWorkflow {
+		if !skipTopLevelHarnessSession {
 			runReq.SessionID = agentSessionID
 		}
 		err := ag.Run(runCtx, runReq, events)
@@ -291,6 +292,15 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 					"data":      ev.ImageData,
 				},
 			})
+		case agent.EventSubAgentRouted:
+			writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
+				"type": "CUSTOM",
+				"name": "sub_agent_routed",
+				"value": map[string]any{
+					"agentId": ev.RoutedAgentID,
+					"label":   ev.RoutedAgentLabel,
+				},
+			})
 		case agent.EventHITLRequest:
 			if req, err := coordinator().Get(runCtx, ev.Content); err == nil {
 				writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
@@ -341,7 +351,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 			assistantMsg.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 		}
 		if assistantMsg.Content != "" || len(assistantMsg.Parts) > 0 {
-			persistRichAssistantTurn(sessionID, assistantMsg, newAgentSessionID, multiStepWorkflow)
+			persistRichAssistantTurn(sessionID, assistantMsg, newAgentSessionID, skipTopLevelHarnessSession)
 		}
 		finishRunRecord(runID, RunStatusCancelled, assistantContent.String(), "cancelled")
 	case runErrored:
@@ -350,7 +360,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 			assistantMsg.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 		}
 		if assistantMsg.Content != "" || len(assistantMsg.Parts) > 0 {
-			persistRichAssistantTurn(sessionID, assistantMsg, newAgentSessionID, multiStepWorkflow)
+			persistRichAssistantTurn(sessionID, assistantMsg, newAgentSessionID, skipTopLevelHarnessSession)
 		}
 		finishRunRecord(runID, RunStatusFailed, assistantContent.String(), "error")
 	default:
@@ -359,7 +369,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 			assistantMsg.CreatedAt = time.Now().UTC().Format(time.RFC3339)
 		}
 		if assistantMsg.Content != "" || len(assistantMsg.Parts) > 0 {
-			persistRichAssistantTurn(sessionID, assistantMsg, newAgentSessionID, multiStepWorkflow)
+			persistRichAssistantTurn(sessionID, assistantMsg, newAgentSessionID, skipTopLevelHarnessSession)
 		}
 		finishRunRecord(runID, RunStatusCompleted, assistantContent.String(), "")
 	}

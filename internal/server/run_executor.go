@@ -20,15 +20,15 @@ import (
 )
 
 type resolvedRunAgent struct {
-	Agent               agent.Agent
-	IsMultiStepWorkflow bool
+	Agent                       agent.Agent
+	SkipsTopLevelHarnessSession bool
 }
 
 func resolveRunAgent(session model.Session, workingDir string) (resolvedRunAgent, error) {
 	if def, found := findADLDef(session.AgentType); found {
 		return resolvedRunAgent{
-			Agent:               agent.NewADLAgent(def, session.ID, extensionManager),
-			IsMultiStepWorkflow: model.IsMultiStepWorkflow(def),
+			Agent:                       agent.NewADLAgent(def, session.ID, extensionManager),
+			SkipsTopLevelHarnessSession: model.SkipsHarnessSessionPersistence(def),
 		}, nil
 	}
 	ag, err := extensionManager.GetAgent(session.ID, session.AgentType, workingDir, session.AgentConfig)
@@ -96,18 +96,18 @@ func appendUserMessage(sessionID, content string) {
 	mu.Unlock()
 }
 
-func persistAssistantTurn(sessionID, content, newAgentSessionID string, multiStepWorkflow bool) {
+func persistAssistantTurn(sessionID, content, newAgentSessionID string, skipTopLevelHarnessSession bool) {
 	persistRichAssistantTurn(sessionID, model.ChatMessage{
 		ID:        uuid.NewString(),
 		Role:      "assistant",
 		Content:   content,
 		CreatedAt: time.Now().UTC().Format(time.RFC3339),
-	}, newAgentSessionID, multiStepWorkflow)
+	}, newAgentSessionID, skipTopLevelHarnessSession)
 }
 
-// persistRichAssistantTurn saves assistant content. When multiStepWorkflow is true,
-// harness session IDs are not stored — each user turn re-executes all ADL steps.
-func persistRichAssistantTurn(sessionID string, assistantMsg model.ChatMessage, newAgentSessionID string, multiStepWorkflow bool) {
+// persistRichAssistantTurn saves assistant content. When skipTopLevelHarnessSession is true,
+// harness session IDs are not stored on the top-level session key.
+func persistRichAssistantTurn(sessionID string, assistantMsg model.ChatMessage, newAgentSessionID string, skipTopLevelHarnessSession bool) {
 	if assistantMsg.Content == "" && len(assistantMsg.Parts) == 0 {
 		return
 	}
@@ -125,7 +125,7 @@ func persistRichAssistantTurn(sessionID string, assistantMsg model.ChatMessage, 
 	}
 	mu.Lock()
 	sessionMessages[sessionID] = append(sessionMessages[sessionID], assistantMsg)
-	if newAgentSessionID != "" && !multiStepWorkflow {
+	if newAgentSessionID != "" && !skipTopLevelHarnessSession {
 		agentSessions[sessionID] = newAgentSessionID
 	}
 	snapshot := snapshotData()
@@ -165,9 +165,9 @@ func executeRun(ctx context.Context, opts executeRunOptions) executeRunResult {
 		if def, ok := findADLDef(opts.Session.AgentType); ok {
 			runReq.HarnessPermissions = hitl.EffectivePermissions(def, opts.Session.AgentConfig)
 			runReq.ToolApprovalPolicy, runReq.ToolApprovalTools = hitl.EffectiveToolApprovals(def, opts.Session.AgentConfig)
+			wireOrchestratorRunRequest(&runReq, opts.Session.ID, def)
 		}
-		// Multi-step workflows re-run all steps per turn; harness session continuity uses Manager cache only.
-		if !ra.IsMultiStepWorkflow {
+		if !ra.SkipsTopLevelHarnessSession {
 			runReq.SessionID = opts.AgentSessionID
 		}
 		runErr := ra.Agent.Run(ctx, runReq, events)

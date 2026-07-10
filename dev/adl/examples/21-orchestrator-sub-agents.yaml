@@ -1,0 +1,17 @@
+adl: "1.0"
+
+id: triage-bot
+name: Triage Bot
+description: Routes user requests to specialized agents.
+
+harness:
+  type: claude-code
+  model: claude-haiku-4-5-20251001
+
+systemPrompt: |
+  You are a router. Given the user message and available sub-agents,
+  respond with ONLY the agent id of the best match.
+
+subAgents:
+  - hello-world
+  - code-reviewer

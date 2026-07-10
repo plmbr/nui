@@ -110,3 +110,29 @@ env:
 		t.Fatalf("harness env: %v", def.Harness.Env)
 	}
 }
+
+func TestADLDefinitionYAML_subAgents(t *testing.T) {
+	raw := []byte(`adl: "1.0"
+id: triage-bot
+name: Triage Bot
+harness:
+  type: claude-code
+subAgents:
+  - hello-world
+  - code-reviewer
+`)
+
+	var def ADLDefinition
+	if err := yaml.Unmarshal(raw, &def); err != nil {
+		t.Fatal(err)
+	}
+	if len(def.SubAgents) != 2 {
+		t.Fatalf("subAgents: %v", def.SubAgents)
+	}
+	if def.SubAgents[0] != "hello-world" || def.SubAgents[1] != "code-reviewer" {
+		t.Fatalf("subAgents: %v", def.SubAgents)
+	}
+	if !IsOrchestratorAgent(def) {
+		t.Fatal("expected orchestrator")
+	}
+}

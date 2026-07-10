@@ -33,6 +33,8 @@ interface Props {
   form: AgentFormModel
   options: AgentFormOptions
   hasWorkflowSteps?: boolean
+  hasSubAgents?: boolean
+  editingAgentId?: string
   onChange: (form: AgentFormModel) => void
 }
 
@@ -175,7 +177,7 @@ function SelectGrouped<T extends { id: string; label: string; group: string }>({
   )
 }
 
-export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) {
+export function AgentForm({ form, options, hasWorkflowSteps, hasSubAgents, editingAgentId, onChange }: Props) {
   const harness = selectedHarness(form, options)
   const harnessType = harness?.harnessType
 
@@ -208,12 +210,27 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
     patch({ evals: [...form.evals, base] })
   }
 
+  const addSubAgent = (agentId: string) => {
+    if (!agentId || form.subAgents.includes(agentId)) return
+    patch({ subAgents: [...form.subAgents, agentId] })
+  }
+
+  const selectableAgents = options.agents.filter(
+    (a) => a.id !== editingAgentId && !form.subAgents.includes(a.id),
+  )
+
   return (
     <div className="agent-form space-y-6 max-w-2xl">
       {hasWorkflowSteps && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
           This agent has workflow steps defined in YAML. The form edits top-level fields only; steps
           are preserved when you save.
+        </div>
+      )}
+      {hasSubAgents && hasWorkflowSteps && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          This agent defines both sub-agents and workflow steps. Only one orchestration mode is
+          supported — remove steps or sub-agents in YAML.
         </div>
       )}
 
@@ -617,6 +634,69 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
           <p className="text-xs text-muted-foreground">
             No MCP servers available. Add servers under Customize → MCP servers or enable extensions.
           </p>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold">Sub-agents</h3>
+        <p className="text-xs text-muted-foreground">
+          Orchestrator agents route each user message to the best matching sub-agent. Agent names and
+          descriptions come from the registry.
+        </p>
+        {form.subAgents.length > 0 && (
+          <ul className="space-y-2">
+            {form.subAgents.map((agentId) => {
+              const opt = options.agents.find((a) => a.id === agentId)
+              return (
+                <li key={agentId} className="flex items-center gap-2 rounded-md border px-3 py-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{opt?.label ?? agentId}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {opt?.description || agentId}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => patch({ subAgents: form.subAgents.filter((id) => id !== agentId) })}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        {selectableAgents.length > 0 ? (
+          <Select
+            key={`add-sub-agent-${form.subAgents.length}`}
+            onValueChange={(v) => v && addSubAgent(v)}
+            items={selectItemData(selectableAgents.map((a) => ({ id: a.id, label: a.label, group: a.group })))}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Add sub-agent…" />
+            </SelectTrigger>
+            <SelectContent>
+              {[...groupBy(selectableAgents).entries()].map(([group, items]) => (
+                <SelectGroup key={group}>
+                  <SelectLabel>{group}</SelectLabel>
+                  {items.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>
+                      <span className="block">{item.label}</span>
+                      {item.description ? (
+                        <span className="block text-xs text-muted-foreground truncate max-w-md">
+                          {item.description}
+                        </span>
+                      ) : null}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <p className="text-xs text-muted-foreground">No other agents available to add.</p>
         )}
       </section>
 

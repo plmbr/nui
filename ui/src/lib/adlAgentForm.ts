@@ -63,12 +63,21 @@ export interface AgentFormModel {
   toolApprovalTools: string[]
   hitlMode: HitlMode
   evals: FormEval[]
+  subAgents: string[]
 }
 
 export interface AgentFormOptions {
   harnesses: HarnessOption[]
   skills: SkillOption[]
   mcpServers: MCPOption[]
+  agents: AgentOption[]
+}
+
+export interface AgentOption {
+  id: string
+  label: string
+  description: string
+  group: 'Built-in' | 'Installed' | 'Extension'
 }
 
 export interface HarnessOption {
@@ -99,6 +108,7 @@ export interface MCPOption {
 export interface ParsedAgentDoc {
   form: AgentFormModel
   hasWorkflowSteps: boolean
+  hasSubAgents: boolean
   parseError?: boolean
 }
 
@@ -133,6 +143,7 @@ export function defaultAgentForm(): AgentFormModel {
     toolApprovalTools: [],
     hitlMode: '',
     evals: [],
+    subAgents: [],
   }
 }
 
@@ -290,16 +301,22 @@ function parseEvals(doc: Record<string, unknown>): FormEval[] {
   return raw.map((e) => parseFormEval(e)).filter(Boolean) as FormEval[]
 }
 
+function parseSubAgents(doc: Record<string, unknown>): string[] {
+  const raw = doc.subAgents
+  if (!Array.isArray(raw)) return []
+  return raw.map((item) => String(item).trim()).filter(Boolean)
+}
+
 /** Read supported form fields from YAML without modifying the source text. */
 export function parseAgentYaml(content: string, options: AgentFormOptions): ParsedAgentDoc {
   let doc: Record<string, unknown> | null = null
   try {
     doc = parse(content) as Record<string, unknown> | null
   } catch {
-    return { form: defaultAgentForm(), hasWorkflowSteps: false, parseError: true }
+    return { form: defaultAgentForm(), hasWorkflowSteps: false, hasSubAgents: false, parseError: true }
   }
   if (!doc || typeof doc !== 'object') {
-    return { form: defaultAgentForm(), hasWorkflowSteps: false }
+    return { form: defaultAgentForm(), hasWorkflowSteps: false, hasSubAgents: false }
   }
 
   const harness = doc.harness as Record<string, unknown> | undefined
@@ -308,6 +325,8 @@ export function parseAgentYaml(content: string, options: AgentFormOptions): Pars
   const { skills: skillsRaw, mcpServers: mcpRaw } = aiAssetsLists(doc)
   const steps = doc.steps as unknown[] | undefined
   const hasWorkflowSteps = Array.isArray(steps) && steps.length > 0
+  const subAgents = parseSubAgents(doc)
+  const hasSubAgents = subAgents.length > 0
 
   const form: AgentFormModel = {
     id: String(doc.id ?? doc.name ?? 'my-agent'),
@@ -330,9 +349,10 @@ export function parseAgentYaml(content: string, options: AgentFormOptions): Pars
     toolApprovalTools: parseStringList(toolApprovals?.tools),
     hitlMode: parseHitlMode(hitl?.mode),
     evals: parseEvals(doc),
+    subAgents,
   }
 
-  return { form, hasWorkflowSteps }
+  return { form, hasWorkflowSteps, hasSubAgents }
 }
 
 function resolveHarnessOption(optionId: string, options: HarnessOption[]): HarnessOption | undefined {
@@ -612,10 +632,20 @@ export function mergeFormIntoAgentYaml(
   mergeToolApprovals(root, form)
   mergeHitl(root, form)
   mergeEvals(root, form)
+  mergeSubAgents(root, form)
 
   if (!root.has('version')) root.set('version', '0.1.0')
 
   return doc.toString()
+}
+
+function mergeSubAgents(root: YAMLMap, form: AgentFormModel) {
+  const ids = form.subAgents.map((id) => id.trim()).filter(Boolean)
+  if (ids.length === 0) {
+    root.delete('subAgents')
+    return
+  }
+  root.set('subAgents', ids)
 }
 
 /** Generate YAML for a brand-new agent (no original file). */

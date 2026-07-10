@@ -155,6 +155,7 @@ export interface ChatMessage {
   parts?: ChatMessagePart[]
   images?: ChatImage[]
   error?: boolean
+  routedAgentLabel?: string
 }
 
 export interface Settings {

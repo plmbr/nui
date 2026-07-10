@@ -69,6 +69,7 @@ type ADLDefinition struct {
 	HITL              ADLHITL              `yaml:"hitl"              json:"hitl,omitempty"`
 	ToolApprovals     ADLToolApprovals     `yaml:"toolApprovals"     json:"toolApprovals,omitempty"`
 	Evals             []ADLEval            `yaml:"evals"             json:"evals,omitempty"`
+	SubAgents         []string             `yaml:"subAgents"         json:"subAgents,omitempty"` // orchestrator: registry agent IDs only
 	Steps        []ADLStep      `yaml:"steps"        json:"steps,omitempty"`
 }
 
