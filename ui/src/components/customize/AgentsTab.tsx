@@ -1,7 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useCallback, useEffect, useState } from 'react'
-import { FileCode2, FormInput, Plus, Rocket, Trash2 } from 'lucide-react'
+import { FileCode2, FlaskConical, FormInput, Plus, Rocket, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -27,7 +27,7 @@ import {
 import { useAgentFormOptions } from '@/lib/useAgentFormOptions'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { api } from '@/api'
-import type { AgentDeployerInfo, AgentDeployResult, AgentFileInfo } from '@/types'
+import type { AgentDeployerInfo, AgentDeployResult, AgentEvalSummary, AgentFileInfo } from '@/types'
 
 type EditMode = 'form' | 'yaml'
 
@@ -92,6 +92,10 @@ export function AgentsTab({ onChanged }: Props) {
   const [deployerId, setDeployerId] = useState('')
   const [deploying, setDeploying] = useState(false)
   const [deployResult, setDeployResult] = useState<AgentDeployResult | null>(null)
+  const [evalOpen, setEvalOpen] = useState(false)
+  const [evalWorkingDir, setEvalWorkingDir] = useState('')
+  const [runningEvals, setRunningEvals] = useState(false)
+  const [evalSummary, setEvalSummary] = useState<AgentEvalSummary | null>(null)
 
   const syncFormFromContent = useCallback(
     (yaml: string) => {
@@ -233,6 +237,31 @@ export function AgentsTab({ onChanged }: Props) {
 
   const agentIdForDeploy = form.id.trim() || agents.find((a) => a.file === selectedFile)?.id || ''
 
+  const enabledEvals = form.evals.filter((e) => !e.disabled && e.name.trim())
+
+  const openEval = () => {
+    setEvalSummary(null)
+    setEvalWorkingDir('')
+    setEvalOpen(true)
+  }
+
+  const runEvals = async () => {
+    if (!agentIdForDeploy || enabledEvals.length === 0) return
+    setRunningEvals(true)
+    setError(null)
+    try {
+      const summary = await api.agents.runEvals(agentIdForDeploy, {
+        workingDir: evalWorkingDir.trim() || undefined,
+      })
+      setEvalSummary(summary)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Eval run failed')
+      setEvalOpen(false)
+    } finally {
+      setRunningEvals(false)
+    }
+  }
+
   const openDeploy = () => {
     setDeployResult(null)
     setDeployerId(deployers[0]?.id ?? '')
@@ -355,6 +384,12 @@ export function AgentsTab({ onChanged }: Props) {
                     <Button size="sm" onClick={() => void save()} disabled={saving}>
                       {saving ? 'Saving…' : 'Save changes'}
                     </Button>
+                    {enabledEvals.length > 0 && agentIdForDeploy && (
+                      <Button variant="outline" size="sm" onClick={openEval}>
+                        <FlaskConical className="size-3.5" />
+                        Run evals
+                      </Button>
+                    )}
                     {deployers.length > 0 && agentIdForDeploy && (
                       <Button variant="outline" size="sm" onClick={openDeploy}>
                         <Rocket className="size-3.5" />
@@ -439,6 +474,74 @@ export function AgentsTab({ onChanged }: Props) {
                 <Button variant="outline" onClick={() => setDeployOpen(false)}>Cancel</Button>
                 <Button onClick={() => void runDeploy()} disabled={deploying || !deployerId}>
                   {deploying ? 'Deploying…' : 'Deploy'}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={evalOpen} onOpenChange={setEvalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Run evals</DialogTitle>
+            <DialogDescription>
+              Run {enabledEvals.length} eval case{enabledEvals.length === 1 ? '' : 's'} for{' '}
+              <strong>{agentIdForDeploy}</strong>. Save the agent first so the latest eval
+              definitions are used.
+            </DialogDescription>
+          </DialogHeader>
+          {evalSummary ? (
+            <div className="space-y-2 max-h-64 overflow-y-auto text-sm">
+              {evalSummary.results.map((res) => (
+                <div
+                  key={res.name}
+                  className={cn(
+                    'rounded-md border px-3 py-2',
+                    res.status === 'pass' && 'border-green-500/40 bg-green-500/5',
+                    res.status === 'fail' && 'border-destructive/40 bg-destructive/5',
+                    (res.status === 'error' || res.status === 'skip') && 'border-amber-500/40 bg-amber-500/5',
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium">{res.name}</span>
+                    <span className="text-xs uppercase text-muted-foreground">{res.status}</span>
+                  </div>
+                  {(res.message || res.error) && (
+                    <p className="text-xs text-muted-foreground mt-1">{res.error || res.message}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-0.5">{res.duration}</p>
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground pt-1">
+                {evalSummary.passed} passed, {evalSummary.failed} failed
+                {evalSummary.errors > 0 ? `, ${evalSummary.errors} errors` : ''}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="eval-working-dir">Working directory (optional)</Label>
+              <Input
+                id="eval-working-dir"
+                value={evalWorkingDir}
+                onChange={(e) => setEvalWorkingDir(e.target.value)}
+                placeholder="Defaults to server process working directory"
+              />
+              <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
+                {enabledEvals.map((ev) => (
+                  <li key={ev.name}>{ev.name}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <DialogFooter>
+            {evalSummary ? (
+              <Button onClick={() => setEvalOpen(false)}>Close</Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => setEvalOpen(false)}>Cancel</Button>
+                <Button onClick={() => void runEvals()} disabled={runningEvals}>
+                  {runningEvals ? 'Running evals…' : 'Run evals'}
                 </Button>
               </>
             )}

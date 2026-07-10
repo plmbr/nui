@@ -28,6 +28,7 @@ The executor in `internal/agent/adl.go` runs multi-step pipelines in **sequentia
 | `17-auto-scheduled-agent.yaml` | Basic | `promptMode: auto` agent for Customize → Schedules |
 | `18-tool-approvals.yaml` | Basic | Top-level `toolApprovals` with `harness.permissions: interactive` |
 | `19-hitl-workflow-gate.yaml` | Intermediate | Workflow step `type: hitl` orchestration gate |
+| `20-evals.yaml` | Basic | `evals` test cases for `loop agent eval run` |
 
 ## Harness types
 
@@ -224,6 +225,29 @@ promptMode: auto
 defaultPrompt: Follow your system instructions and run.
 ```
 
+### Evals
+
+Define test cases on an agent to verify behavior with `loop agent eval run -a <agent-id>`:
+
+```yaml
+evals:
+  - name: polite-greeting
+    description: Agent introduces itself politely
+    input: |
+      Hello, who are you?
+    expect:
+      type: contains      # contains | exact | regex | llm | none
+      value: assistant
+    tags: [smoke]
+    timeout: 120          # seconds (optional; default 120, 300 for devcontainer)
+    workingDir: ./fixtures   # optional per-case override
+    disabled: false
+```
+
+Multi-turn evals use `messages` instead of `input` (must end with a `user` turn). Graders: `contains`, `exact`, `regex`, `llm` (criteria rubric), or `none` (informational). Use `hitl.mode: off` and non-interactive tool approvals for unattended eval runs.
+
+See `20-evals.yaml` for a full example.
+
 ### Named outputs and inputs
 
 Each step's collected text is stored under declared `outputs` names (or an implicit default when omitted). Reference downstream with `from: stepName.outputName`:
@@ -285,5 +309,6 @@ harness:
 | `toolApprovals` selective auto-approve | Done (Claude; requires `harness.permissions: interactive`) |
 | `steps[].type: hitl` orchestration gates | Done |
 | `promptMode: auto` → schedules | Done |
+| `evals` → `loop agent eval run` | Done |
 
 See [dev/dev.md](../../dev.md) for the full architecture and [orchestration-research.md](../orchestration-research.md) for design research.

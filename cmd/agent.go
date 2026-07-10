@@ -162,6 +162,6 @@ var agentDeployersCmd = &cobra.Command{
 
 func init() {
 	agentListCmd.Flags().StringVar(&agentListURL, "url", "", "Loop server base URL (default LOOP_URL or http://127.0.0.1:8080)")
-	agentCmd.AddCommand(NewRunCmd(), NewScheduleCmd(), agentListCmd, agentAddCmd, agentRemoveCmd, agentDeployCmd, agentDeployersCmd)
+	agentCmd.AddCommand(NewRunCmd(), NewScheduleCmd(), agentListCmd, agentAddCmd, agentRemoveCmd, agentDeployCmd, agentDeployersCmd, agentEvalCmd)
 	rootCmd.AddCommand(agentCmd)
 }

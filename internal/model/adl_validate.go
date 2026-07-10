@@ -24,6 +24,9 @@ func ValidateADLDefinition(def ADLDefinition) error {
 	if err := ValidateADLHITL(def); err != nil {
 		return err
 	}
+	if err := ValidateADLEvals(def.Evals); err != nil {
+		return err
+	}
 	if len(def.Steps) == 0 {
 		return nil
 	}

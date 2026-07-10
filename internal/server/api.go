@@ -49,19 +49,6 @@ type AgentTypeInfo struct {
 	Available     bool   `json:"available"` // false when the required CLI is not installed
 }
 
-// legacyAgentTypeNames maps old Session.AgentType strings to ADL ids.
-// New sessions must use ADL ids from GET /api/agent-types.
-var legacyAgentTypeNames = map[string]string{
-	"claude-code":     "claude-code",
-	"pi":              "pi",
-	"codex":           "codex",
-	"opencode":        "opencode",
-	"docker-claude":   "claude-code",
-	"docker-pi":       "pi",
-	"docker-opencode": "opencode",
-	"Claude Code":     "claude-code",
-}
-
 type SandboxCapabilities struct {
 	Bwrap agent.BwrapStatus `json:"bwrap"`
 }
@@ -478,47 +465,7 @@ func harnessAvailable(def model.ADLDefinition) bool {
 // findADLDef looks up an ADL definition by id from builtins and user-defined definitions.
 // It also handles legacy Session.AgentType strings (harness names, old display names, "adl:id").
 func findADLDef(agentType string) (model.ADLDefinition, bool) {
-	if mapped, ok := legacyAgentTypeNames[agentType]; ok {
-		agentType = mapped
-	}
-	agentType = strings.TrimPrefix(agentType, "adl:")
-
-	for _, def := range agents.BuiltinAgentDefs() {
-		if adlDefMatches(def, agentType) {
-			return def, true
-		}
-	}
-	userDefs, _ := store.LoadADLDefinitions()
-	for _, def := range userDefs {
-		if adlDefMatches(def, agentType) {
-			return def, true
-		}
-	}
-	if extensions.Default != nil {
-		if def, ok := extensions.Default.FindAgent(agentType); ok {
-			return def, true
-		}
-		if ref, ok := extensions.Default.ResolveHarness(agentType); ok {
-			label := ref.Entry.DisplayName
-			if label == "" {
-				label = ref.Entry.ID
-			}
-			return model.ADLDefinition{
-				ID:          agentType,
-				Name:        label,
-				Description: ref.Entry.Description,
-				Harness:     model.ADLHarness{Type: agentType},
-			}, true
-		}
-	}
-	return model.ADLDefinition{}, false
-}
-
-func adlDefMatches(def model.ADLDefinition, key string) bool {
-	if key == "" {
-		return false
-	}
-	return def.ID == key || def.Name == key || model.ADLAgentID(def) == key
+	return agents.LookupDefinition(agentType)
 }
 
 func validateSessionConnector(s model.Session) error {

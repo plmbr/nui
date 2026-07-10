@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, AgentFileContent, AgentFileInfo, AgentDeployerInfo, AgentDeployResult, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, HitlRequest, HitlResponse, MCPServer, MentionListResponse, Schedule, Session, Settings, SkillEntry, UploadedImage } from './types'
+import type { AgentType, AgentFileContent, AgentFileInfo, AgentDeployerInfo, AgentDeployResult, AgentEvalSummary, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, HitlRequest, HitlResponse, MCPServer, MentionListResponse, Schedule, Session, Settings, SkillEntry, UploadedImage } from './types'
 
 export interface RunRecord {
   runId: string
@@ -340,6 +340,15 @@ export const api = {
       request(`/agents/${encodeURIComponent(agentId)}/deploy`, {
         method: 'POST',
         body: JSON.stringify({ deployerId }),
+      }),
+
+    runEvals: (
+      agentId: string,
+      options?: { workingDir?: string; cases?: string[]; parallel?: number },
+    ): Promise<AgentEvalSummary> =>
+      request(`/agents/${encodeURIComponent(agentId)}/evals/run`, {
+        method: 'POST',
+        body: JSON.stringify(options ?? {}),
       }),
   },
 

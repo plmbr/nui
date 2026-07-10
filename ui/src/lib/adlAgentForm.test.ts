@@ -211,3 +211,94 @@ steps:
     expect(merged).toContain('ref: ext:corp-pack/corp-tools')
   })
 })
+
+describe('adlAgentForm evals', () => {
+  it('parses single-turn eval with expect', () => {
+    const yaml = `adl: "1.0"
+id: eval-agent
+name: Eval Agent
+harness:
+  type: claude-code
+evals:
+  - name: polite-greeting
+    description: Greets politely
+    input: Hello
+    expect:
+      type: contains
+      value: assistant
+    tags: [smoke, greeting]
+    timeout: 60
+`
+    const { form } = parseAgentYaml(yaml, emptyOptions)
+    expect(form.evals).toHaveLength(1)
+    expect(form.evals[0].name).toBe('polite-greeting')
+    expect(form.evals[0].inputMode).toBe('single')
+    expect(form.evals[0].input).toBe('Hello')
+    expect(form.evals[0].expectType).toBe('contains')
+    expect(form.evals[0].expectValue).toBe('assistant')
+    expect(form.evals[0].tags).toBe('smoke, greeting')
+    expect(form.evals[0].timeout).toBe('60')
+  })
+
+  it('parses multi-turn eval messages', () => {
+    const yaml = `adl: "1.0"
+id: eval-agent
+name: Eval Agent
+harness:
+  type: claude-code
+evals:
+  - name: follow-up
+    messages:
+      - role: user
+        content: What is 2+2?
+      - role: assistant
+        content: "4"
+      - role: user
+        content: Are you sure?
+    expect:
+      type: contains
+      value: "4"
+`
+    const { form } = parseAgentYaml(yaml, emptyOptions)
+    expect(form.evals[0].inputMode).toBe('conversation')
+    expect(form.evals[0].messages).toHaveLength(3)
+    expect(form.evals[0].messages[2].role).toBe('user')
+  })
+
+  it('round-trips evals', () => {
+    const original = `adl: "1.0"
+id: eval-agent
+name: Eval Agent
+harness:
+  type: claude-code
+evals:
+  - name: smoke
+    input: hi
+    expect:
+      type: exact
+      value: hello
+`
+    const { form } = parseAgentYaml(original, emptyOptions)
+    const merged = mergeFormIntoAgentYaml(original, form, emptyOptions)
+    const { form: reparsed } = parseAgentYaml(merged, emptyOptions)
+    expect(reparsed.evals).toHaveLength(1)
+    expect(reparsed.evals[0].name).toBe('smoke')
+    expect(reparsed.evals[0].expectType).toBe('exact')
+    expect(reparsed.evals[0].expectValue).toBe('hello')
+  })
+
+  it('removes evals when cleared in form', () => {
+    const original = `adl: "1.0"
+id: eval-agent
+name: Eval Agent
+harness:
+  type: claude-code
+evals:
+  - name: smoke
+    input: hi
+`
+    const { form } = parseAgentYaml(original, emptyOptions)
+    const merged = mergeFormIntoAgentYaml(original, { ...form, evals: [] }, emptyOptions)
+    expect(merged).not.toContain('evals:')
+  })
+})

@@ -20,6 +20,27 @@ export interface FormMCPServer {
 
 export type ToolApprovalPolicy = 'default' | 'all' | 'allowlist' | 'denylist' | ''
 export type HitlMode = 'interactive' | 'auto' | 'off' | ''
+export type EvalExpectType = 'contains' | 'exact' | 'regex' | 'llm' | 'none' | ''
+
+export interface FormEvalMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface FormEval {
+  name: string
+  description: string
+  inputMode: 'single' | 'conversation'
+  input: string
+  messages: FormEvalMessage[]
+  expectType: EvalExpectType
+  expectValue: string
+  expectCriteria: string
+  tags: string
+  timeout: string
+  workingDir: string
+  disabled: boolean
+}
 
 export interface AgentFormModel {
   id: string
@@ -41,6 +62,7 @@ export interface AgentFormModel {
   toolApprovalPolicy: ToolApprovalPolicy
   toolApprovalTools: string[]
   hitlMode: HitlMode
+  evals: FormEval[]
 }
 
 export interface AgentFormOptions {
@@ -110,6 +132,7 @@ export function defaultAgentForm(): AgentFormModel {
     toolApprovalPolicy: '',
     toolApprovalTools: [],
     hitlMode: '',
+    evals: [],
   }
 }
 
@@ -220,6 +243,53 @@ function parseStringList(value: unknown): string[] {
   return value.map((item) => String(item).trim()).filter(Boolean)
 }
 
+const EVAL_EXPECT_TYPES = new Set(['contains', 'exact', 'regex', 'llm', 'none'])
+
+function parseEvalExpectType(value: unknown): EvalExpectType {
+  const t = String(value ?? '').trim()
+  return EVAL_EXPECT_TYPES.has(t) ? (t as EvalExpectType) : ''
+}
+
+function parseFormEval(raw: Record<string, unknown>): FormEval | null {
+  const name = String(raw.name ?? '').trim()
+  if (!name) return null
+
+  const messagesRaw = (raw.messages as Record<string, unknown>[] | undefined) ?? []
+  const messages: FormEvalMessage[] = messagesRaw
+    .map((m) => ({
+      role: String(m.role ?? 'user').trim() === 'assistant' ? 'assistant' as const : 'user' as const,
+      content: String(m.content ?? ''),
+    }))
+    .filter((m) => m.content.trim() !== '')
+
+  const input = String(raw.input ?? '').trim()
+  const inputMode: 'single' | 'conversation' = messages.length > 0 ? 'conversation' : 'single'
+
+  const expect = raw.expect as Record<string, unknown> | undefined
+  const tags = parseStringList(raw.tags)
+
+  return {
+    name,
+    description: String(raw.description ?? ''),
+    inputMode,
+    input,
+    messages,
+    expectType: parseEvalExpectType(expect?.type),
+    expectValue: String(expect?.value ?? ''),
+    expectCriteria: String(expect?.criteria ?? ''),
+    tags: tags.join(', '),
+    timeout: raw.timeout != null ? String(raw.timeout) : '',
+    workingDir: String(raw.workingDir ?? ''),
+    disabled: raw.disabled === true,
+  }
+}
+
+function parseEvals(doc: Record<string, unknown>): FormEval[] {
+  const raw = doc.evals as Record<string, unknown>[] | undefined
+  if (!Array.isArray(raw)) return []
+  return raw.map((e) => parseFormEval(e)).filter(Boolean) as FormEval[]
+}
+
 /** Read supported form fields from YAML without modifying the source text. */
 export function parseAgentYaml(content: string, options: AgentFormOptions): ParsedAgentDoc {
   let doc: Record<string, unknown> | null = null
@@ -259,6 +329,7 @@ export function parseAgentYaml(content: string, options: AgentFormOptions): Pars
     toolApprovalPolicy: parseToolApprovalPolicy(toolApprovals?.policy),
     toolApprovalTools: parseStringList(toolApprovals?.tools),
     hitlMode: parseHitlMode(hitl?.mode),
+    evals: parseEvals(doc),
   }
 
   return { form, hasWorkflowSteps }
@@ -429,6 +500,64 @@ function mergeHitl(root: YAMLMap, form: AgentFormModel) {
   hitl.set('mode', mode)
 }
 
+function buildEvalEntry(ev: FormEval): Record<string, unknown> | null {
+  const name = ev.name.trim()
+  if (!name) return null
+
+  const entry: Record<string, unknown> = { name }
+  const description = ev.description.trim()
+  if (description) entry.description = description
+
+  if (ev.inputMode === 'conversation') {
+    const messages = ev.messages
+      .filter((m) => m.content.trim())
+      .map((m) => ({ role: m.role, content: m.content.trim() }))
+    if (messages.length > 0) entry.messages = messages
+  } else {
+    const input = ev.input.trim()
+    if (input) entry.input = input
+  }
+
+  const expectType = ev.expectType.trim()
+  if (expectType) {
+    const expect: Record<string, unknown> = { type: expectType }
+    const value = ev.expectValue.trim()
+    const criteria = ev.expectCriteria.trim()
+    if (value && (expectType === 'contains' || expectType === 'exact' || expectType === 'regex')) {
+      expect.value = value
+    }
+    if (criteria && expectType === 'llm') {
+      expect.criteria = criteria
+    }
+    entry.expect = expect
+  }
+
+  const tags = ev.tags
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean)
+  if (tags.length > 0) entry.tags = tags
+
+  const timeout = ev.timeout.trim()
+  if (timeout) entry.timeout = Number(timeout)
+
+  const workingDir = ev.workingDir.trim()
+  if (workingDir) entry.workingDir = workingDir
+
+  if (ev.disabled) entry.disabled = true
+
+  return entry
+}
+
+function mergeEvals(root: YAMLMap, form: AgentFormModel) {
+  const evals = form.evals.map((e) => buildEvalEntry(e)).filter(Boolean)
+  if (evals.length === 0) {
+    root.delete('evals')
+    return
+  }
+  root.set('evals', evals)
+}
+
 /** Best-effort merge of form fields into YAML, preserving unsupported sections. */
 export function syncYamlFromForm(
   content: string,
@@ -482,6 +611,7 @@ export function mergeFormIntoAgentYaml(
   mergeAiAssets(root, form, options, original)
   mergeToolApprovals(root, form)
   mergeHitl(root, form)
+  mergeEvals(root, form)
 
   if (!root.has('version')) root.set('version', '0.1.0')
 
@@ -503,4 +633,21 @@ export function slugFromName(name: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || 'my-agent'
+}
+
+export function defaultFormEval(name = ''): FormEval {
+  return {
+    name,
+    description: '',
+    inputMode: 'single',
+    input: '',
+    messages: [{ role: 'user', content: '' }],
+    expectType: 'contains',
+    expectValue: '',
+    expectCriteria: '',
+    tags: '',
+    timeout: '',
+    workingDir: '',
+    disabled: false,
+  }
 }

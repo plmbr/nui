@@ -68,6 +68,7 @@ type ADLDefinition struct {
 	WorkingDirInput   bool                 `yaml:"workingDirInput"   json:"workingDirInput,omitempty"`   // true = user picks working dir at session create
 	HITL              ADLHITL              `yaml:"hitl"              json:"hitl,omitempty"`
 	ToolApprovals     ADLToolApprovals     `yaml:"toolApprovals"     json:"toolApprovals,omitempty"`
+	Evals             []ADLEval            `yaml:"evals"             json:"evals,omitempty"`
 	Steps        []ADLStep      `yaml:"steps"        json:"steps,omitempty"`
 }
 

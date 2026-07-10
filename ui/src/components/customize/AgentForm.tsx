@@ -19,11 +19,13 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   type AgentFormModel,
   type AgentFormOptions,
+  type FormEval,
   type FormMCPServer,
   type FormSkill,
   type HitlMode,
   type KeyValue,
   type ToolApprovalPolicy,
+  defaultFormEval,
   slugFromName,
 } from '@/lib/adlAgentForm'
 
@@ -193,6 +195,17 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
     if (form.mcpServers.some((s) => s.optionId === optionId)) return
     const next: FormMCPServer[] = [...form.mcpServers, { optionId, name: opt.name }]
     patch({ mcpServers: next })
+  }
+
+  const updateEval = (index: number, partial: Partial<FormEval>) => {
+    const next = [...form.evals]
+    next[index] = { ...next[index], ...partial }
+    patch({ evals: next })
+  }
+
+  const addEval = () => {
+    const base = defaultFormEval(`eval-${form.evals.length + 1}`)
+    patch({ evals: [...form.evals, base] })
   }
 
   return (
@@ -605,6 +618,251 @@ export function AgentForm({ form, options, hasWorkflowSteps, onChange }: Props) 
             No MCP servers available. Add servers under Customize → MCP servers or enable extensions.
           </p>
         )}
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold">Evals</h3>
+        <p className="text-xs text-muted-foreground">
+          Test cases for verifying agent behavior. Run with{' '}
+          <code className="font-mono">loop agent eval run -a …</code>.
+        </p>
+        {form.evals.length > 0 && (
+          <ul className="space-y-3">
+            {form.evals.map((ev, index) => (
+              <li key={`eval-${index}`} className="rounded-md border p-3 space-y-3">
+                <div className="flex items-start gap-2">
+                  <div className="flex-1 grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <FieldLabel required>Name</FieldLabel>
+                      <Input
+                        value={ev.name}
+                        onChange={(e) => updateEval(index, { name: e.target.value })}
+                        placeholder="polite-greeting"
+                      />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label>Description</Label>
+                      <Input
+                        value={ev.description}
+                        onChange={(e) => updateEval(index, { description: e.target.value })}
+                        placeholder="What this eval verifies"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Input mode</Label>
+                      <Select
+                        value={ev.inputMode}
+                        onValueChange={(v) =>
+                          updateEval(index, {
+                            inputMode: (v ?? 'single') as 'single' | 'conversation',
+                          })
+                        }
+                        items={[
+                          { value: 'single', label: 'Single prompt' },
+                          { value: 'conversation', label: 'Conversation' },
+                        ]}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="single">Single prompt</SelectItem>
+                          <SelectItem value="conversation">Conversation</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Grader</Label>
+                      <Select
+                        value={ev.expectType || 'none'}
+                        onValueChange={(v) =>
+                          updateEval(index, {
+                            expectType: (v ?? 'none') as FormEval['expectType'],
+                          })
+                        }
+                        items={[
+                          { value: 'contains', label: 'Contains' },
+                          { value: 'exact', label: 'Exact match' },
+                          { value: 'regex', label: 'Regex' },
+                          { value: 'llm', label: 'LLM judge' },
+                          { value: 'none', label: 'Manual (none)' },
+                        ]}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="contains">Contains</SelectItem>
+                          <SelectItem value="exact">Exact match</SelectItem>
+                          <SelectItem value="regex">Regex</SelectItem>
+                          <SelectItem value="llm">LLM judge</SelectItem>
+                          <SelectItem value="none">Manual (none)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => patch({ evals: form.evals.filter((_, i) => i !== index) })}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
+
+                {ev.inputMode === 'single' ? (
+                  <div className="space-y-1.5">
+                    <FieldLabel required>Prompt</FieldLabel>
+                    <Textarea
+                      value={ev.input}
+                      onChange={(e) => updateEval(index, { input: e.target.value })}
+                      rows={3}
+                      placeholder="User message sent to the agent"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label>Messages</Label>
+                    {ev.messages.map((msg, msgIndex) => (
+                      <div
+                        key={msgIndex}
+                        className="grid grid-cols-[minmax(6rem,8rem)_minmax(0,1fr)_auto] gap-2 items-center"
+                      >
+                        <Select
+                          value={msg.role}
+                          onValueChange={(v) => {
+                            const messages = [...ev.messages]
+                            messages[msgIndex] = {
+                              ...msg,
+                              role: (v ?? 'user') as 'user' | 'assistant',
+                            }
+                            updateEval(index, { messages })
+                          }}
+                          items={[
+                            { value: 'user', label: 'User' },
+                            { value: 'assistant', label: 'Assistant' },
+                          ]}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="user">User</SelectItem>
+                            <SelectItem value="assistant">Assistant</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          value={msg.content}
+                          onChange={(e) => {
+                            const messages = [...ev.messages]
+                            messages[msgIndex] = { ...msg, content: e.target.value }
+                            updateEval(index, { messages })
+                          }}
+                          placeholder="Message content"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            updateEval(index, {
+                              messages: ev.messages.filter((_, i) => i !== msgIndex),
+                            })
+                          }
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        updateEval(index, {
+                          messages: [...ev.messages, { role: 'user', content: '' }],
+                        })
+                      }
+                    >
+                      <Plus className="size-3.5" />
+                      Add message
+                    </Button>
+                  </div>
+                )}
+
+                {(ev.expectType === 'contains' ||
+                  ev.expectType === 'exact' ||
+                  ev.expectType === 'regex') && (
+                  <div className="space-y-1.5">
+                    <FieldLabel required>Expected value</FieldLabel>
+                    <Input
+                      value={ev.expectValue}
+                      onChange={(e) => updateEval(index, { expectValue: e.target.value })}
+                      placeholder={
+                        ev.expectType === 'regex' ? 'pattern' : 'expected substring or text'
+                      }
+                    />
+                  </div>
+                )}
+
+                {ev.expectType === 'llm' && (
+                  <div className="space-y-1.5">
+                    <FieldLabel required>Criteria</FieldLabel>
+                    <Textarea
+                      value={ev.expectCriteria}
+                      onChange={(e) => updateEval(index, { expectCriteria: e.target.value })}
+                      rows={2}
+                      placeholder="Rubric for the LLM judge"
+                    />
+                  </div>
+                )}
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Tags</Label>
+                    <Input
+                      value={ev.tags}
+                      onChange={(e) => updateEval(index, { tags: e.target.value })}
+                      placeholder="smoke, regression"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Timeout (seconds)</Label>
+                    <Input
+                      value={ev.timeout}
+                      onChange={(e) => updateEval(index, { timeout: e.target.value })}
+                      placeholder="120"
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Working dir override</Label>
+                    <Input
+                      value={ev.workingDir}
+                      onChange={(e) => updateEval(index, { workingDir: e.target.value })}
+                      placeholder="Optional path for this eval case"
+                    />
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={!ev.disabled}
+                    onChange={(e) => updateEval(index, { disabled: !e.target.checked })}
+                    className="rounded border"
+                  />
+                  Enabled
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+        <Button type="button" variant="outline" size="sm" onClick={addEval}>
+          <Plus className="size-3.5" />
+          Add eval
+        </Button>
       </section>
 
       <section className="space-y-3">

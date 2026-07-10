@@ -279,3 +279,22 @@ export interface AgentDeployResult {
   message?: string
   endpoint?: DeployEndpoint
 }
+
+export interface AgentEvalResult {
+  name: string
+  status: 'pass' | 'fail' | 'error' | 'skip'
+  output?: string
+  passed?: boolean | null
+  message?: string
+  error?: string
+  duration: string
+}
+
+export interface AgentEvalSummary {
+  agentId: string
+  results: AgentEvalResult[]
+  passed: number
+  failed: number
+  errors: number
+  skipped: number
+}

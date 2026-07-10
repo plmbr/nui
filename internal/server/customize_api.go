@@ -154,6 +154,16 @@ func handleAgentFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid agent file", http.StatusBadRequest)
 		return
 	}
+	if strings.HasSuffix(rest, "/evals/run") {
+		agentID := strings.TrimSuffix(rest, "/evals/run")
+		agentID = strings.Trim(agentID, "/")
+		if agentID == "" || strings.Contains(agentID, "/") {
+			http.Error(w, "invalid agent id", http.StatusBadRequest)
+			return
+		}
+		handleAgentEvalRun(w, r, agentID)
+		return
+	}
 	if strings.HasSuffix(rest, "/deploy") {
 		agentID := strings.TrimSuffix(rest, "/deploy")
 		agentID = strings.Trim(agentID, "/")
