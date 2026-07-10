@@ -5,7 +5,9 @@ package agent
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"loop/internal/devcontainer"
 	"loop/internal/extensions"
 	"loop/internal/model"
 )
@@ -13,20 +15,21 @@ import (
 type harnessRunner func(ctx context.Context, a *ADLAgent, req RunRequest, harness model.ADLHarness, events chan<- Event) error
 
 var harnessRunners = map[string]harnessRunner{
-	"claude-code": runClaudeCodeHarness,
-	"pi":          runPiHarness,
-	"codex":       runCodexHarness,
-	"opencode":    runOpenCodeHarness,
-	"docker":      runDockerHarness,
-	"remote":      runRemoteHarness,
+	"claude-code":  runClaudeCodeHarness,
+	"pi":           runPiHarness,
+	"codex":        runCodexHarness,
+	"opencode":     runOpenCodeHarness,
+	"docker":       runDockerHarness,
+	"devcontainer": runDevcontainerHarness,
+	"remote":       runRemoteHarness,
 }
 
 func (a *ADLAgent) harnessProjectID(req RunRequest, harness model.ADLHarness) string {
 	if !req.Ephemeral {
 		return a.projectID
 	}
-	// Docker shares one container per Loop session; ephemeral turns use the HTTP flag instead.
-	if harness.Sandbox == "docker" {
+	// Docker and devcontainer share one container per Loop session; ephemeral turns use flags instead.
+	if harness.Sandbox == "docker" || harness.Type == "devcontainer" {
 		return a.projectID
 	}
 	return EphemeralProjectID(a.projectID)
@@ -160,6 +163,21 @@ func runDockerHarness(ctx context.Context, a *ADLAgent, req RunRequest, harness 
 	if err != nil {
 		return fmt.Errorf("docker harness: %w", err)
 	}
+	return ag.Run(ctx, req, events)
+}
+
+func runDevcontainerHarness(ctx context.Context, a *ADLAgent, req RunRequest, harness model.ADLHarness, events chan<- Event) error {
+	projectID := a.harnessProjectID(req, harness)
+	inner := strings.TrimSpace(harness.InnerHarness)
+	if inner == "" {
+		return fmt.Errorf("devcontainer harness requires innerHarness")
+	}
+	ag, err := a.manager.GetDevcontainerAgent(projectID, inner, req.WorkingDir, req.ConfigDir, harness.Image)
+	if err != nil {
+		return fmt.Errorf("devcontainer harness: %w", err)
+	}
+	req.WorkingDir = devcontainer.ContainerWorkspace()
+	req.ConfigDir = devcontainer.SessionConfigMountPath()
 	return ag.Run(ctx, req, events)
 }
 

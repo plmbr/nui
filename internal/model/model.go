@@ -85,8 +85,9 @@ type ADLPromptSuggestion struct {
 //   - "pi"          — runs the pi CLI as a host subprocess
 //   - "codex"       — runs the codex CLI as a host subprocess
 //   - "opencode"    — runs the opencode CLI as a host subprocess
-//   - "docker"      — connects to an HTTP/SSE agent in a Docker container (requires image + containerPort)
-//   - "remote"      — connects to a pre-running HTTP/SSE agent over the network (requires host + port)
+//   - "docker"        — connects to an HTTP/SSE agent in a Docker container (requires image + containerPort)
+//   - "devcontainer"  — Loop-managed dev container sandbox (requires innerHarness)
+//   - "remote"        — connects to a pre-running HTTP/SSE agent over the network (requires host + port)
 //
 // Sandbox options (harness.sandbox) — applies to "claude-code", "pi", "codex", and "opencode" harnesses:
 //   - "none"        — run directly on the host (default)
@@ -95,8 +96,9 @@ type ADLPromptSuggestion struct {
 type ADLHarness struct {
 	Type          string `yaml:"type"          json:"type"`
 	Model         string `yaml:"model"         json:"model,omitempty"`
+	InnerHarness  string `yaml:"innerHarness"  json:"innerHarness,omitempty"`  // harness type=devcontainer: claude-code | pi | codex | opencode
 	Sandbox       string `yaml:"sandbox"       json:"sandbox,omitempty"`       // "none" | "bubblewrap" | "docker"
-	Image         string `yaml:"image"         json:"image,omitempty"`          // Docker image (sandbox=docker or harness type=docker)
+	Image         string `yaml:"image"         json:"image,omitempty"`          // Docker image (sandbox=docker, harness type=docker, or devcontainer override)
 	ContainerPort int    `yaml:"containerPort" json:"containerPort,omitempty"` // harness type=docker only
 	Host          string            `yaml:"host"          json:"host,omitempty"`           // harness type=remote only
 	Port          int               `yaml:"port"          json:"port,omitempty"`           // harness type=remote only

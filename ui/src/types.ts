@@ -62,7 +62,7 @@ export interface AgentType {
   id: string
   label: string
   description?: string
-  harness: 'claude-code' | 'pi' | 'codex' | 'opencode' | 'docker' | 'remote'
+  harness: 'claude-code' | 'pi' | 'codex' | 'opencode' | 'docker' | 'devcontainer' | 'remote'
   sandbox?: 'none' | 'bubblewrap' | 'docker'
   promptMode?: 'user' | 'auto'
   defaultPrompt?: string

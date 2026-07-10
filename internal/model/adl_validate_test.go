@@ -32,6 +32,26 @@ func TestValidateADLDefinitionDockerRequiresFields(t *testing.T) {
 	}
 }
 
+func TestValidateADLDefinitionDevcontainerRequiresContainerPort(t *testing.T) {
+	err := ValidateADLDefinition(ADLDefinition{
+		ID:      "devcontainer-agent",
+		Harness: ADLHarness{Type: "devcontainer"},
+	})
+	if err == nil {
+		t.Fatal("expected error for devcontainer without innerHarness")
+	}
+}
+
+func TestValidateADLDefinitionDevcontainerValid(t *testing.T) {
+	err := ValidateADLDefinition(ADLDefinition{
+		ID:      "devcontainer-agent",
+		Harness: ADLHarness{Type: "devcontainer", InnerHarness: "claude-code"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestValidateADLDefinitionStepDependsOnUnknown(t *testing.T) {
 	err := ValidateADLDefinition(ADLDefinition{
 		ID:      "wf",

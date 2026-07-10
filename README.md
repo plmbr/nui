@@ -54,7 +54,8 @@ flowchart TB
 - Go 1.22+
 - Node.js 18+
 - Agent CLIs on `PATH` as needed: `claude`, `pi`, `codex`, `opencode`
-- Docker (optional) — for `sandbox: docker` and custom docker-harness ADL agents
+- Docker (optional) — for `sandbox: docker`, custom docker-harness ADL agents, and devcontainer harnesses
+- Dev Container CLI (optional) — for `harness.type: devcontainer` (`npm install -g @devcontainers/cli`)
 
 ## Project structure
 
@@ -267,9 +268,9 @@ Four CLI harnesses, selectable in the New Session dialog under **Built-in agents
 
 ### Installed agents
 
-ADL YAML from `~/.loop/agents/*.yaml`, extensions, and other non-built-in agent types. Select them under **Installed agents** in the New Session dialog. Example templates for `docker` and `remote` harness types live under [`dev/harness-examples/`](dev/harness-examples/) and [`dev/adl/examples/`](dev/adl/examples/).
+ADL YAML from `~/.loop/agents/*.yaml`, extensions, and other non-built-in agent types. Select them under **Installed agents** in the New Session dialog. Example templates for `docker`, `devcontainer`, and `remote` harness types live under [`dev/harness-examples/`](dev/harness-examples/) and [`dev/adl/examples/`](dev/adl/examples/).
 
-Use custom ADL for `docker` and `remote` harness types, sandbox variants (`bubblewrap`, `docker`), and multi-step workflows.
+Use custom ADL for `docker`, `devcontainer`, and `remote` harness types, sandbox variants (`bubblewrap`, `docker`), and multi-step workflows.
 
 ### Sandbox options
 
@@ -283,6 +284,6 @@ For `claude-code`, `pi`, `codex`, and `opencode` (set in ADL `harness.sandbox`):
 
 ### Docker / remote connectors
 
-Custom ADL agents with `harness.type: docker` or `remote` use the HTTP/SSE protocol. Loop validates connector configuration on session create; containers and remote connections start on the first message. See [harness examples](dev/harness-examples/).
+Custom ADL agents with `harness.type: docker`, `devcontainer`, or `remote` use the HTTP/SSE protocol. Loop validates connector configuration on session create; containers and remote connections start on the first message. See [harness examples](dev/harness-examples/).
 
 **Port note:** builtin sandbox images in `docker/` listen on **8090**; custom harness examples use **9090** (configured via ADL `containerPort`).

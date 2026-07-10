@@ -121,6 +121,14 @@ func validateHarness(h ADLHarness, path string) error {
 		if h.Port == 0 {
 			return fmt.Errorf("%s: remote harness requires port", path)
 		}
+	case "devcontainer":
+		inner := strings.TrimSpace(h.InnerHarness)
+		if inner == "" {
+			return fmt.Errorf("%s: devcontainer harness requires innerHarness", path)
+		}
+		if !isDevcontainerInnerHarness(inner) {
+			return fmt.Errorf("%s.innerHarness: unknown value %q", path, h.InnerHarness)
+		}
 	}
 	if sb := strings.TrimSpace(h.Sandbox); sb != "" && sb != "none" && sb != "bubblewrap" && sb != "docker" {
 		return fmt.Errorf("%s.sandbox: unknown value %q", path, sb)
@@ -133,7 +141,7 @@ func validateHarness(h ADLHarness, path string) error {
 
 func isValidHarnessType(t string) bool {
 	switch t {
-	case "claude-code", "pi", "codex", "opencode", "docker", "remote":
+	case "claude-code", "pi", "codex", "opencode", "docker", "devcontainer", "remote":
 		return true
 	}
 	if strings.HasPrefix(t, "ext:") {
@@ -146,6 +154,20 @@ func isValidHarnessType(t string) bool {
 		return true
 	}
 	return false
+}
+
+func isDevcontainerInnerHarness(t string) bool {
+	switch t {
+	case "claude-code", "pi", "codex", "opencode":
+		return true
+	default:
+		return false
+	}
+}
+
+// IsDevcontainerInnerHarness reports whether t is a valid innerHarness for devcontainer.
+func IsDevcontainerInnerHarness(t string) bool {
+	return isDevcontainerInnerHarness(strings.TrimSpace(t))
 }
 
 func splitStepOutputRef(ref string) (stepName, outputName string) {

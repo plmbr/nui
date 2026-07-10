@@ -3,6 +3,7 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -16,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"loop/internal/devcontainer"
 	"loop/internal/extensions"
 )
 
@@ -40,6 +42,7 @@ type Manager struct {
 	containerMu   sync.Mutex       // protects containers, dockerURLs, and lastActivity
 	agentMu       sync.Map         // map[projectID]*sync.Mutex — serialises per-project launch
 	containers    map[string]string // projectID → containerID
+	devcontainerDirs map[string]string // projectID → Loop-managed devcontainer up folder
 	dockerURLs    map[string]string // projectID → http base URL
 	lastActivity  map[string]time.Time
 }
@@ -53,8 +56,9 @@ func NewManager() *Manager {
 	m := &Manager{
 		builtinAgents: make(map[string]Agent),
 		extAgents:     make(map[string]Agent),
-		containers:    make(map[string]string),
-		dockerURLs:    make(map[string]string),
+		containers:       make(map[string]string),
+		devcontainerDirs: make(map[string]string),
+		dockerURLs:       make(map[string]string),
 		lastActivity:  make(map[string]time.Time),
 	}
 	go m.idleReaper()
@@ -81,6 +85,7 @@ func (m *Manager) idleReaper() {
 						baseURL     string
 					}{projectID, cid, m.dockerURLs[projectID]})
 					delete(m.containers, projectID)
+					delete(m.devcontainerDirs, projectID)
 					delete(m.dockerURLs, projectID)
 					delete(m.lastActivity, projectID)
 				}
@@ -337,6 +342,7 @@ func (m *Manager) getBuiltinAgent(projectID, agentType string, config map[string
 			m.stopBuiltinAgentKey(cacheKey)
 		} else {
 			applyBuiltinSandbox(ag, sandbox)
+			applyDevcontainerRuntime(ag, devcontainerWorkspaceFromConfig(config), devcontainerContainerIDFromConfig(config))
 			m.builtinMu.Unlock()
 			return ag, nil
 		}
@@ -352,6 +358,8 @@ func (m *Manager) getBuiltinAgent(projectID, agentType string, config map[string
 	m.builtinMu.Lock()
 	defer m.builtinMu.Unlock()
 	if ag, ok := m.builtinAgents[cacheKey]; ok {
+		applyBuiltinSandbox(ag, sandbox)
+		applyDevcontainerRuntime(ag, devcontainerWorkspaceFromConfig(config), devcontainerContainerIDFromConfig(config))
 		return ag, nil
 	}
 
@@ -370,6 +378,27 @@ func (m *Manager) getBuiltinAgent(projectID, agentType string, config map[string
 	}
 	m.builtinAgents[cacheKey] = ag
 	applyBuiltinSandbox(ag, sandbox)
+	applyDevcontainerRuntime(ag, devcontainerWorkspaceFromConfig(config), devcontainerContainerIDFromConfig(config))
+	return ag, nil
+}
+
+// GetDevcontainerAgent provisions a Loop-managed devcontainer and returns the inner CLI agent.
+func (m *Manager) GetDevcontainerAgent(projectID, innerHarness, workingDir, sessionConfigDir, image string) (Agent, error) {
+	managedDir, containerID, err := m.ensureDevcontainerUp(projectID, innerHarness, workingDir, sessionConfigDir, image)
+	if err != nil {
+		return nil, err
+	}
+	cfg := map[string]any{
+		"sandbox":                 sandboxDevcontainer,
+		"devcontainerWorkspace":   managedDir,
+		"devcontainerContainerID": containerID,
+	}
+	ag, err := m.getBuiltinAgent(projectID, innerHarness, cfg)
+	if err != nil {
+		return nil, err
+	}
+	applyDevcontainerRuntime(ag, managedDir, containerID)
+	m.touchActivity(projectID)
 	return ag, nil
 }
 
@@ -412,6 +441,7 @@ func (m *Manager) Stop(projectID string) {
 	containerID, hasContainer := m.containers[projectID]
 	if hasContainer {
 		delete(m.containers, projectID)
+		delete(m.devcontainerDirs, projectID)
 		delete(m.dockerURLs, projectID)
 		delete(m.lastActivity, projectID)
 	}
@@ -489,6 +519,7 @@ func (m *Manager) StopAll() {
 			hasContainer: true,
 		})
 		delete(m.containers, id)
+		delete(m.devcontainerDirs, id)
 		delete(m.dockerURLs, id)
 		delete(m.lastActivity, id)
 	}
@@ -783,6 +814,78 @@ func (m *Manager) launchDocker(projectID string, config map[string]any) (string,
 	m.dockerURLs[projectID] = baseURL
 	m.containerMu.Unlock()
 	return baseURL, nil
+}
+
+// ── Devcontainer sandbox ─────────────────────────────────────────────────────
+
+func (m *Manager) ensureDevcontainerUp(projectID, innerHarness, workingDir, sessionConfigDir, image string) (managedDir, containerID string, err error) {
+	m.containerMu.Lock()
+	if cid, ok := m.containers[projectID]; ok && devcontainer.ContainerRunning(cid) {
+		if dir, ok := m.devcontainerDirs[projectID]; ok {
+			m.containerMu.Unlock()
+			return dir, cid, nil
+		}
+	}
+	m.containerMu.Unlock()
+
+	v, _ := m.agentMu.LoadOrStore(projectID, &sync.Mutex{})
+	agLock := v.(*sync.Mutex)
+	agLock.Lock()
+	defer agLock.Unlock()
+
+	m.containerMu.Lock()
+	if cid, ok := m.containers[projectID]; ok && devcontainer.ContainerRunning(cid) {
+		if dir, ok := m.devcontainerDirs[projectID]; ok {
+			m.containerMu.Unlock()
+			return dir, cid, nil
+		}
+	}
+	m.containerMu.Unlock()
+
+	return m.launchManagedDevcontainer(projectID, innerHarness, workingDir, sessionConfigDir, image)
+}
+
+func (m *Manager) launchManagedDevcontainer(projectID, innerHarness, workingDir, sessionConfigDir, image string) (string, string, error) {
+	m.containerMu.Lock()
+	if oldID, ok := m.containers[projectID]; ok {
+		go devcontainer.Stop(oldID)
+		delete(m.containers, projectID)
+		delete(m.devcontainerDirs, projectID)
+	}
+	m.containerMu.Unlock()
+
+	managedDir, err := devcontainer.ProvisionSession(devcontainer.ProvisionOpts{
+		SessionID:        projectID,
+		InnerHarness:     innerHarness,
+		Image:            image,
+		WorkingDir:       workingDir,
+		SessionConfigDir: sessionConfigDir,
+	})
+	if err != nil {
+		return "", "", err
+	}
+
+	buildCtx, buildCancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	if err := devcontainer.EnsureImage(buildCtx, innerHarness, image); err != nil {
+		buildCancel()
+		return "", "", err
+	}
+	buildCancel()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	result, err := devcontainer.Up(ctx, devcontainer.UpOpts{WorkspaceFolder: managedDir})
+	if err != nil {
+		return "", "", err
+	}
+
+	m.containerMu.Lock()
+	m.containers[projectID] = result.ContainerID
+	m.devcontainerDirs[projectID] = managedDir
+	m.containerMu.Unlock()
+
+	return managedDir, result.ContainerID, nil
 }
 
 func parseDockerPort(s string) (int, error) {

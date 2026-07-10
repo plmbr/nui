@@ -16,6 +16,7 @@ The executor in `internal/agent/adl.go` runs multi-step pipelines in **sequentia
 | `02-sequential-research-write.yaml` | Basic | `dependsOn`, named outputs, per-step `systemPrompt` |
 | `03-docker-code-runner.yaml` | Basic | Docker harness |
 | `04-remote-agent.yaml` | Basic | Remote harness |
+| `06-devcontainer-agent.yaml` | Basic | Devcontainer harness |
 | `05-parallel-research-fan-out.yaml` | Intermediate | Fan-in via `dependsOn` (steps still run sequentially) |
 | `09-multi-harness-pipeline.yaml` | Advanced | Per-step harness/model override |
 | `11-complex-research-pipeline.yaml` | Complex | Multi-harness pipeline with MCP and verification |
@@ -39,6 +40,7 @@ Builtin and connector types supported by the executor:
 | `codex` | `codex exec` subprocess |
 | `opencode` | `opencode serve` + `opencode run` |
 | `docker` | HTTP/SSE in user-managed Docker container |
+| `devcontainer` | Loop-managed devcontainer sandbox (`innerHarness` CLI via devcontainer exec) |
 | `remote` | HTTP/SSE at configured `host:port` |
 | `ext:<extension>/<harness-id>` | Installed extension harness (stdio/tcp/http) |
 

@@ -70,6 +70,8 @@ func (s *persistentOpenCodeSession) runTurn(ctx context.Context, agent *OpenCode
 		}
 		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, wd, ".local/share/opencode", bindDir)
 		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
+	} else if agent.useDevcontainer() {
+		cmd = dockerExecCommand(ctx, agent.DevcontainerContainerID, bin, args)
 	} else {
 		cmd = exec.CommandContext(ctx, bin, args...)
 		if wd != "" {
@@ -161,6 +163,8 @@ func (s *persistentOpenCodeSession) ensureServer(ctx context.Context, agent *Ope
 		}
 		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, serveArgs, wd, ".local/share/opencode", bindDir)
 		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
+	} else if agent.useDevcontainer() {
+		cmd = dockerExecCommand(ctx, agent.DevcontainerContainerID, bin, serveArgs)
 	} else {
 		cmd = exec.CommandContext(ctx, bin, serveArgs...)
 		if wd != "" {

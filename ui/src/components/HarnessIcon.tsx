@@ -17,6 +17,7 @@ const HARNESS_ACCENTS: Partial<Record<Harness, string>> = {
   codex: '#10a37f',
   opencode: '#3b82f6',
   docker: '#2496ed',
+  devcontainer: '#2496ed',
   remote: '#64748b',
 }
 
@@ -50,6 +51,7 @@ const IMG_SIZE = {
 function HarnessGlyph({ harness, className }: { harness: Harness; className?: string }) {
   switch (harness) {
     case 'docker':
+    case 'devcontainer':
       return (
         <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
           <rect x="3" y="10" width="3.5" height="3.5" fill="currentColor" />

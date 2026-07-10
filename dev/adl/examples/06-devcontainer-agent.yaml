@@ -1,0 +1,19 @@
+adl: "1.0"
+
+# Loop-managed devcontainer sandbox — no user .devcontainer/ required.
+# Loop generates devcontainer.json under ~/.loop/sessions/<session-id>/
+# and runs the inner CLI via devcontainer exec.
+
+id: devcontainer-agent
+name: Devcontainer Agent
+description: Runs a builtin CLI harness inside a Loop-managed dev container.
+version: 0.1.0
+
+harness:
+  type: devcontainer
+  innerHarness: claude-code
+
+steps:
+  - name: run
+    systemPrompt: |
+      You are an agent running inside a Loop-managed dev container.

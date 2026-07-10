@@ -54,7 +54,7 @@ flowchart TB
 
 3. **Three production harness paths.**
    - **Go subprocess:** builtin harnesses (`claude-code`, `pi`, `codex`, `opencode`) managed directly in Go.
-   - **HTTP/SSE:** docker, remote, and builtin `sandbox: docker` via `HTTPExtensionAgent`.
+   - **HTTP/SSE:** docker, devcontainer, remote, and builtin `sandbox: docker` via `HTTPExtensionAgent`.
    - **Extension harnesses:** installed extensions contribute harnesses wired via `Manager.getExtensionHarnessAgent()` — stdio (default), TCP (`ExtensionAgent`), or HTTP (`HTTPExtensionAgent`). ADL references them as `harness.type: ext:<extension>/<harness-id>`.
    - **Reference only:** standalone examples in `dev/harness-examples/py|ts/` (no `extension.yaml`) demonstrate the TCP JSON-RPC protocol but are not registered as agent types.
 
@@ -95,11 +95,12 @@ promptSuggestions:              # quick-start pills above chat input (optional)
     icon: sparkles              # lucide icon name (optional)
 
 harness:
-  type: claude-code | pi | codex | opencode | docker | remote | ext:<extension>/<harness-id>
+  type: claude-code | pi | codex | opencode | docker | devcontainer | remote | ext:<extension>/<harness-id>
   model: string
   sandbox: none | bubblewrap | docker   # subprocess harnesses only; default: none
-  image: string                   # sandbox:docker or harness.type:docker
-  containerPort: 9090             # harness.type:docker (user images; builtin sandbox images use 8090)
+  innerHarness: claude-code         # harness.type:devcontainer
+  image: string                   # optional devcontainer image override
+  containerPort: 9090             # harness.type:docker only (user images; builtin sandbox images use 8090)
   host: string                    # harness.type:remote
   port: 9090                      # harness.type:remote
   env:                            # per-harness env (overrides top-level env on conflict)
@@ -280,6 +281,7 @@ ADL `env` (global) and `harness.env` are merged and set on harness subprocess en
 | `codex` | `CodexAgent` → `codex exec` | bwrap + `~/.codex` | `loop-codex:latest` :8090 |
 | `opencode` | `OpenCodeAgent` → `opencode serve/run` | bwrap + `~/.local/share/opencode` | `loop-opencode:latest` :8090 |
 | `docker` | — | — | User image at ADL `containerPort` (e.g. 9090) |
+| `devcontainer` | — | — | Loop-managed devcontainer + `innerHarness` CLI |
 | `remote` | — | — | User `host:port` over HTTP/SSE |
 | `ext:<ext>/<id>` | Extension host (stdio/tcp/http) | — | — |
 

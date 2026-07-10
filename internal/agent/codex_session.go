@@ -66,6 +66,8 @@ func (s *persistentCodexSession) runTurn(ctx context.Context, agent *CodexAgent,
 		}
 		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, req.WorkingDir, ".codex", bindDir)
 		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
+	} else if agent.useDevcontainer() {
+		cmd = devcontainerExecCommand(ctx, agent.DevcontainerWorkspace, bin, args)
 	} else {
 		cmd = exec.CommandContext(ctx, bin, args...)
 		if req.WorkingDir != "" {

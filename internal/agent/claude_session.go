@@ -34,6 +34,8 @@ type persistentClaudeSession struct {
 	harnessPermissions string
 
 	claudeSessionID string
+
+	devcontainerWorkspace string
 }
 
 func (s *persistentClaudeSession) matches(agent *ClaudeCodeAgent, req RunRequest) bool {
@@ -45,6 +47,7 @@ func (s *persistentClaudeSession) matches(agent *ClaudeCodeAgent, req RunRequest
 		s.systemPrompt == req.SystemPrompt &&
 		s.sandbox == agent.Sandbox &&
 		s.useBwrap == agent.useBwrap() &&
+		s.devcontainerWorkspace == agent.DevcontainerWorkspace &&
 		s.workingDir == req.WorkingDir &&
 		s.configDir == req.ConfigDir &&
 		s.userScope == req.UserScopeHarness &&
@@ -266,6 +269,8 @@ func (s *persistentClaudeSession) start(ctx context.Context, agent *ClaudeCodeAg
 			effectiveHarnessConfigBindDir("claude-code", req.ConfigDir, req.UserScopeHarness),
 		)
 		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
+	} else if agent.useDevcontainer() {
+		cmd = devcontainerExecCommand(ctx, agent.DevcontainerWorkspace, bin, args)
 	} else {
 		cmd = exec.CommandContext(ctx, bin, args...)
 		if req.WorkingDir != "" {
@@ -310,6 +315,7 @@ func (s *persistentClaudeSession) start(ctx context.Context, agent *ClaudeCodeAg
 	s.systemPrompt = req.SystemPrompt
 	s.sandbox = agent.Sandbox
 	s.useBwrap = useBwrap
+	s.devcontainerWorkspace = agent.DevcontainerWorkspace
 	s.workingDir = req.WorkingDir
 	s.configDir = req.ConfigDir
 	s.userScope = req.UserScopeHarness

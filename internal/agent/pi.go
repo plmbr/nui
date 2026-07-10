@@ -9,8 +9,10 @@ import (
 )
 
 type PiAgent struct {
-	BinaryPath string
-	Sandbox    string
+	BinaryPath            string
+	Sandbox               string
+	DevcontainerWorkspace   string
+	DevcontainerContainerID string
 
 	sessionMu sync.Mutex
 	session   *persistentPiSession
@@ -42,6 +44,9 @@ func (a *PiAgent) Run(ctx context.Context, req RunRequest, events chan<- Event) 
 }
 
 func (a *PiAgent) validateSandbox() error {
+	if err := requireDevcontainer(a.Sandbox, a.DevcontainerWorkspace); err != nil {
+		return err
+	}
 	if a.Sandbox != "bubblewrap" {
 		return nil
 	}
@@ -70,4 +75,8 @@ func (a *PiAgent) binaryPath() string {
 
 func (a *PiAgent) useBwrap() bool {
 	return a.Sandbox == "bubblewrap" && GetBwrapStatus().Available
+}
+
+func (a *PiAgent) useDevcontainer() bool {
+	return useDevcontainerSandbox(a.Sandbox, a.DevcontainerWorkspace)
 }

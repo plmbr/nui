@@ -39,8 +39,8 @@ For `sandbox: docker`, builtin harnesses use HTTP/SSE inside Loop-managed contai
 
 ## 2. HTTP/SSE — docker and remote harnesses
 
-Used for:
-- ADL agents with `harness.type: docker` or `remote`
+Used by:
+- ADL agents with `harness.type: docker`, `devcontainer`, or `remote`
 - Builtin `sandbox: docker` (via `HTTPExtensionAgent` talking to `loop-*` images)
 
 ### Endpoints
@@ -79,7 +79,22 @@ Extended types (tool calls, images) are supported by the Go client in `extension
 | Session delete | `POST /shutdown` + `docker stop` | Nothing |
 | Server shutdown | Stop all managed containers | Nothing |
 
-See [docker/instructions.md](harness-examples/docker/instructions.md) and [remote/instructions.md](harness-examples/remote/instructions.md).
+See [docker/instructions.md](harness-examples/docker/instructions.md), [devcontainer/instructions.md](harness-examples/devcontainer/instructions.md), and [remote/instructions.md](harness-examples/remote/instructions.md).
+
+## 2b. Devcontainer harness (Loop-managed sandbox)
+
+`harness.type: devcontainer` runs a builtin CLI (`innerHarness`) inside a **Loop-provisioned** dev container. Users do not author `devcontainer.json` — Loop writes it to `~/.loop/sessions/<session-id>/.devcontainer/` and runs `devcontainer up` + `devcontainer exec`.
+
+| Concern | Behavior |
+|---------|----------|
+| Config | Loop-generated per session (not user project) |
+| Inner CLI | ADL `innerHarness`: `claude-code` \| `pi` \| `codex` \| `opencode` |
+| Image | Default `loop-devcontainer-<harness>:latest` (auto-built on first use) or ADL `image` override |
+| API keys | `${localEnv:...}` in generated `remoteEnv` |
+| Lifecycle | `devcontainer up` → `devcontainer exec` → `docker stop` on delete |
+| Prerequisite | `devcontainer` CLI on PATH + Docker |
+
+Example: [`dev/harness-examples/devcontainer/`](harness-examples/devcontainer/).
 
 ## 3. Extension harnesses (stdio / TCP / HTTP) — production path
 

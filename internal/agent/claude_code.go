@@ -11,9 +11,11 @@ import (
 type ClaudeCodeAgent struct {
 	// BinaryPath overrides the claude binary location; defaults to "claude" on PATH.
 	BinaryPath string
-	// Sandbox controls sandboxing: "none" (default) runs on the host,
-	// "bubblewrap" wraps the subprocess with bwrap (Linux only).
+	// Sandbox controls sandboxing: "none" (default), "bubblewrap", or "devcontainer".
 	Sandbox string
+	// DevcontainerWorkspace is the Loop-managed folder for devcontainer up/exec.
+	DevcontainerWorkspace string
+	DevcontainerContainerID string
 
 	sessionMu sync.Mutex
 	session   *persistentClaudeSession
@@ -37,6 +39,9 @@ func (a *ClaudeCodeAgent) Run(ctx context.Context, req RunRequest, events chan<-
 }
 
 func (a *ClaudeCodeAgent) validateSandbox() error {
+	if err := requireDevcontainer(a.Sandbox, a.DevcontainerWorkspace); err != nil {
+		return err
+	}
 	if a.Sandbox != "bubblewrap" {
 		return nil
 	}
@@ -65,4 +70,8 @@ func (a *ClaudeCodeAgent) binaryPath() string {
 
 func (a *ClaudeCodeAgent) useBwrap() bool {
 	return a.Sandbox == "bubblewrap" && GetBwrapStatus().Available
+}
+
+func (a *ClaudeCodeAgent) useDevcontainer() bool {
+	return useDevcontainerSandbox(a.Sandbox, a.DevcontainerWorkspace)
 }

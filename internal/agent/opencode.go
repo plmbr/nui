@@ -9,8 +9,10 @@ import (
 )
 
 type OpenCodeAgent struct {
-	BinaryPath string
-	Sandbox    string
+	BinaryPath            string
+	Sandbox               string
+	DevcontainerWorkspace   string
+	DevcontainerContainerID string
 
 	sessionMu sync.Mutex
 	session   *persistentOpenCodeSession
@@ -39,6 +41,14 @@ func (a *OpenCodeAgent) Run(ctx context.Context, req RunRequest, events chan<- E
 }
 
 func (a *OpenCodeAgent) validateSandbox() error {
+	if useDevcontainerSandbox(a.Sandbox, a.DevcontainerWorkspace) {
+		if err := requireDevcontainer(a.Sandbox, a.DevcontainerWorkspace); err != nil {
+			return err
+		}
+		if a.DevcontainerContainerID == "" {
+			return fmt.Errorf("opencode devcontainer requires a running container")
+		}
+	}
 	if a.Sandbox != "bubblewrap" {
 		return nil
 	}
@@ -67,4 +77,8 @@ func (a *OpenCodeAgent) binaryPath() string {
 
 func (a *OpenCodeAgent) useBwrap() bool {
 	return a.Sandbox == "bubblewrap" && GetBwrapStatus().Available
+}
+
+func (a *OpenCodeAgent) useDevcontainer() bool {
+	return useDevcontainerSandbox(a.Sandbox, a.DevcontainerWorkspace)
 }

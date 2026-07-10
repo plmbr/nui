@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"loop/internal/agents"
+	"loop/internal/devcontainer"
 	"loop/internal/model"
 )
 
@@ -31,6 +32,18 @@ func TestHarnessAvailable_nonCLIHarnessesAlwaysAvailable(t *testing.T) {
 		if !harnessAvailable(def) {
 			t.Fatalf("expected %q harness to be available", harnessType)
 		}
+	}
+}
+
+func TestHarnessAvailable_devcontainerRequiresCLIOnly(t *testing.T) {
+	def := model.ADLDefinition{Harness: model.ADLHarness{Type: "devcontainer"}}
+	got := harnessAvailable(def)
+	want := devcontainer.Available()
+	if got != want {
+		t.Fatalf("harnessAvailable(devcontainer) = %v, devcontainer.Available() = %v", got, want)
+	}
+	if got != agentTypeInfoFromDef(def, false).Available {
+		t.Fatal("harnessAvailable and agentTypeInfoFromDef disagree for devcontainer")
 	}
 }
 

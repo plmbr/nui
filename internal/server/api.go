@@ -16,6 +16,7 @@ import (
 
 	"loop/internal/agent"
 	"loop/internal/agents"
+	"loop/internal/devcontainer"
 	"loop/internal/extensions"
 	"loop/internal/hitl"
 	"loop/internal/model"
@@ -466,6 +467,9 @@ func harnessAvailable(def model.ADLDefinition) bool {
 	switch def.Harness.Type {
 	case "claude-code", "pi", "codex", "opencode":
 		return agent.CLIAvailable(def.Harness.Type)
+	case "devcontainer":
+		// List in UI when the devcontainer CLI is installed; Docker is checked at runtime.
+		return devcontainer.Available()
 	default:
 		return true
 	}
@@ -536,6 +540,13 @@ func validateSessionConnector(s model.Session) error {
 			}
 			if def.Harness.Port <= 0 {
 				return fmt.Errorf("remote harness requires port")
+			}
+		case "devcontainer":
+			if strings.TrimSpace(def.Harness.InnerHarness) == "" {
+				return fmt.Errorf("devcontainer harness requires innerHarness")
+			}
+			if !model.IsDevcontainerInnerHarness(def.Harness.InnerHarness) {
+				return fmt.Errorf("devcontainer harness has unknown innerHarness %q", def.Harness.InnerHarness)
 			}
 		}
 		return nil

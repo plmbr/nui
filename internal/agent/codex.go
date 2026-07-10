@@ -63,8 +63,10 @@ func CLIAvailable(harnessType string) bool {
 }
 
 type CodexAgent struct {
-	BinaryPath string
-	Sandbox    string
+	BinaryPath            string
+	Sandbox               string
+	DevcontainerWorkspace   string
+	DevcontainerContainerID string
 
 	sessionMu sync.Mutex
 	session   *persistentCodexSession
@@ -91,6 +93,9 @@ func (a *CodexAgent) Run(ctx context.Context, req RunRequest, events chan<- Even
 }
 
 func (a *CodexAgent) validateSandbox() error {
+	if err := requireDevcontainer(a.Sandbox, a.DevcontainerWorkspace); err != nil {
+		return err
+	}
 	if a.Sandbox != "bubblewrap" {
 		return nil
 	}
@@ -126,4 +131,8 @@ func (a *CodexAgent) useBwrap() bool {
 	default:
 		return false
 	}
+}
+
+func (a *CodexAgent) useDevcontainer() bool {
+	return useDevcontainerSandbox(a.Sandbox, a.DevcontainerWorkspace)
 }

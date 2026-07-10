@@ -32,6 +32,7 @@ type persistentPiSession struct {
 	workingDir   string
 	sandbox      string
 	useBwrap     bool
+	devcontainerWorkspace string
 	configDir    string
 
 	sessionID string
@@ -236,6 +237,7 @@ func (s *persistentPiSession) ensureProcess(agent *PiAgent, req RunRequest, resu
 		s.systemPrompt == req.SystemPrompt &&
 		s.sandbox == agent.Sandbox &&
 		s.useBwrap == agent.useBwrap() &&
+		s.devcontainerWorkspace == agent.DevcontainerWorkspace &&
 		s.configDir == req.ConfigDir {
 		return nil
 	}
@@ -270,6 +272,8 @@ func (s *persistentPiSession) ensureProcess(agent *PiAgent, req RunRequest, resu
 		}
 		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, args, wd, ".pi", bindDir)
 		cmd = exec.Command(wrappedBin, wrappedArgs...)
+	} else if agent.useDevcontainer() {
+		cmd = devcontainerExecCommand(context.Background(), agent.DevcontainerWorkspace, bin, args)
 	} else {
 		cmd = exec.Command(bin, args...)
 		if wd != "" {
@@ -320,6 +324,7 @@ func (s *persistentPiSession) ensureProcess(agent *PiAgent, req RunRequest, resu
 	s.binaryPath = bin
 	s.sandbox = agent.Sandbox
 	s.useBwrap = agent.useBwrap()
+	s.devcontainerWorkspace = agent.DevcontainerWorkspace
 	s.configDir = req.ConfigDir
 	return nil
 }
