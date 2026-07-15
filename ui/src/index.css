@@ -257,6 +257,11 @@
   font-size: 0.875em;
 }
 
+/* Prose adds large pre margins; tool-call code blocks manage spacing themselves */
+.agui-message--assistant .agui-message__bubble :where(.tool-call__code) {
+  margin-block: 0 !important;
+}
+
 @layer components {
   /* ─── Branding ───────────────────────────────────────────────── */
   .app-brand {
@@ -1032,7 +1037,7 @@
   }
 
   .tool-call__body {
-    @apply flex flex-col gap-1.5 px-0 py-1;
+    @apply flex flex-col gap-0.5 px-0 py-1;
   }
 
   .tool-call__section {
@@ -1043,8 +1048,12 @@
     @apply m-0 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70;
   }
 
+  .tool-call__identifier {
+    @apply block break-all font-mono text-[11px] leading-relaxed text-muted-foreground/85;
+  }
+
   .tool-call__code {
-    @apply m-0 max-h-[200px] overflow-auto rounded-md border border-border/50 bg-muted/25 px-2 py-1 font-mono text-[11px] leading-snug text-foreground/90;
+    @apply m-0 max-h-[200px] overflow-auto rounded-md border border-border/50 bg-muted/25 px-2 py-0.5 font-mono text-[11px] leading-snug text-foreground/90;
   }
 
   .tool-call__code code.hljs {
@@ -1091,6 +1100,11 @@
     @apply flex min-w-0 items-baseline gap-2 text-[13px];
   }
 
+  .tool-call-item__server,
+  .tool-call__server {
+    @apply shrink-0 rounded border border-border/70 bg-muted/40 px-1 py-px text-[10px] font-medium leading-none text-muted-foreground;
+  }
+
   .tool-call-item__name {
     @apply shrink-0 font-normal text-foreground/85;
   }
@@ -1112,7 +1126,7 @@
   }
 
   .tool-call-item__body {
-    @apply flex flex-col gap-1.5 pb-1;
+    @apply flex flex-col gap-0.5 pb-1;
   }
 
   .hitl-prompt {
@@ -1279,6 +1293,10 @@
     background-color: color-mix(in oklch, var(--muted) 55%, var(--background));
     color: var(--foreground);
     font-family: var(--font-mono);
+  }
+
+  .agui-message--assistant .tool-call__code {
+    @apply my-0;
   }
 
   .agui-code-block__copy {

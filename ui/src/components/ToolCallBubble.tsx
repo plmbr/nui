@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { McpAppFrame } from '@/components/McpAppFrame'
 import { imageSrc, type ToolCallPart } from '@/hooks/useSessionChat'
 import { ToolCallCode } from '@/components/ToolCallCode'
-import { formatToolDisplayName } from '@/lib/toolCallDisplay'
+import { formatMcpServerLabel, formatToolDisplayName, isMcpToolName } from '@/lib/toolCallDisplay'
 import { formatToolCallSummary } from '@/lib/toolCallSummary'
 import { extractImagesFromValue } from '@/lib/images'
 
@@ -16,6 +16,7 @@ interface Props {
 export function ToolCallBubble({ part: msg, nested = false }: Props) {
   const [expanded, setExpanded] = useState(false)
   const displayName = formatToolDisplayName(msg.toolName)
+  const mcpServer = formatMcpServerLabel(msg.toolName)
   const detail = formatToolCallSummary(msg.toolName, msg.toolArgs)
   const isDone = msg.toolResult !== undefined
   const hasDetails =
@@ -23,10 +24,36 @@ export function ToolCallBubble({ part: msg, nested = false }: Props) {
   const toolImages =
     msg.toolResult !== undefined ? extractImagesFromValue(msg.toolResult) : []
 
+  const mcpToolId = msg.toolName && isMcpToolName(msg.toolName) ? msg.toolName : undefined
+
+  const expandedBody = (
+    <>
+      {mcpToolId && (
+        <div className="tool-call__section">
+          <div className="tool-call__label">Tool</div>
+          <code className="tool-call__identifier">{mcpToolId}</code>
+        </div>
+      )}
+      {msg.toolArgs && Object.keys(msg.toolArgs).length > 0 && (
+        <div className="tool-call__section">
+          <div className="tool-call__label">Input</div>
+          <ToolCallCode value={msg.toolArgs} />
+        </div>
+      )}
+      {msg.toolResult !== undefined && (
+        <div className="tool-call__section">
+          <div className="tool-call__label">Output</div>
+          <ToolCallCode value={msg.toolResult} />
+        </div>
+      )}
+    </>
+  )
+
   if (nested) {
     return (
       <div className={`tool-call-item${isDone ? '' : ' tool-call-item--running'}`}>
         <div className="tool-call-item__row">
+          {mcpServer && <span className="tool-call-item__server">{mcpServer}</span>}
           <span className="tool-call-item__name">{displayName}</span>
           {detail && <span className="tool-call-item__detail">{detail}</span>}
           {!isDone && <span className="tool-call-item__status">Running…</span>}
@@ -42,22 +69,7 @@ export function ToolCallBubble({ part: msg, nested = false }: Props) {
           )}
         </div>
 
-        {expanded && (
-          <div className="tool-call-item__body">
-            {msg.toolArgs && Object.keys(msg.toolArgs).length > 0 && (
-              <div className="tool-call__section">
-                <div className="tool-call__label">Input</div>
-                <ToolCallCode value={msg.toolArgs} />
-              </div>
-            )}
-            {msg.toolResult !== undefined && (
-              <div className="tool-call__section">
-                <div className="tool-call__label">Output</div>
-                <ToolCallCode value={msg.toolResult} />
-              </div>
-            )}
-          </div>
-        )}
+        {expanded && <div className="tool-call-item__body not-prose">{expandedBody}</div>}
 
         {toolImages.map((img) => (
           <img
@@ -91,6 +103,7 @@ export function ToolCallBubble({ part: msg, nested = false }: Props) {
       >
         <span className="tool-call__icon">⚙</span>
         <div className="tool-call__summary">
+          {mcpServer && <span className="tool-call__server">{mcpServer}</span>}
           <span className="tool-call__name">{displayName}</span>
           {detail && <span className="tool-call__detail">{detail}</span>}
         </div>
@@ -100,22 +113,7 @@ export function ToolCallBubble({ part: msg, nested = false }: Props) {
         <span className="tool-call__toggle">{expanded ? '▲' : '▼'}</span>
       </button>
 
-      {expanded && (
-        <div className="tool-call__body">
-          {msg.toolArgs && Object.keys(msg.toolArgs).length > 0 && (
-            <div className="tool-call__section">
-              <div className="tool-call__label">Input</div>
-              <ToolCallCode value={msg.toolArgs} />
-            </div>
-          )}
-          {msg.toolResult !== undefined && (
-            <div className="tool-call__section">
-              <div className="tool-call__label">Output</div>
-              <ToolCallCode value={msg.toolResult} />
-            </div>
-          )}
-        </div>
-      )}
+      {expanded && <div className="tool-call__body not-prose">{expandedBody}</div>}
 
       {toolImages.map((img) => (
         <img

@@ -3,7 +3,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildToolGroupSummary,
+  formatMcpServerLabel,
   formatToolDisplayName,
+  isMcpToolName,
   parseToolName,
   segmentAssistantParts,
 } from '@/lib/toolCallDisplay'
@@ -20,6 +22,23 @@ describe('toolCallDisplay', () => {
     })
   })
 
+  it('parses MCP server names from mcp__ and server/tool formats', () => {
+    expect(parseToolName('mcp__github__list_pull_requests')).toEqual({
+      integration: 'Github',
+      bare: 'list_pull_requests',
+      mcpServer: 'github',
+    })
+    expect(parseToolName('github/list_pull_requests')).toEqual({
+      integration: 'Github',
+      bare: 'list_pull_requests',
+      mcpServer: 'github',
+    })
+    expect(isMcpToolName('mcp__github__list_pull_requests')).toBe(true)
+    expect(isMcpToolName('github/list_pull_requests')).toBe(true)
+    expect(isMcpToolName('Read')).toBe(false)
+    expect(formatMcpServerLabel('mcp__github__list_pull_requests')).toBe('Github')
+  })
+
   it('formats friendly tool names', () => {
     expect(formatToolDisplayName('WebSearch')).toBe('Search the web')
     expect(formatToolDisplayName('run_sql_query')).toBe('Run sql query')
@@ -31,6 +50,15 @@ describe('toolCallDisplay', () => {
       { type: 'tool' as const, id: '2', toolName: 'user-data-analytics:get_results' },
     ]
     expect(buildToolGroupSummary(parts)).toBe('Used Data Analytics integration · 2 tools')
+  })
+
+  it('builds MCP group summaries with server names', () => {
+    const parts = [
+      { type: 'tool' as const, id: '1', toolName: 'mcp__github__list_pull_requests' },
+      { type: 'tool' as const, id: '2', toolName: 'mcp__github__get_pull_request' },
+    ]
+    expect(buildToolGroupSummary(parts)).toBe('Used Github MCP · 2 tools')
+    expect(buildToolGroupSummary([parts[0]])).toBe('Used Github MCP')
   })
 
   it('segments text and consecutive tool calls', () => {

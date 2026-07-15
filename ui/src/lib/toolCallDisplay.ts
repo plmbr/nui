@@ -10,6 +10,7 @@ import {
 export interface ToolNameParts {
   integration?: string
   bare: string
+  mcpServer?: string
 }
 
 export type AssistantRenderSegment =
@@ -57,14 +58,48 @@ function formatIntegrationName(raw: string): string {
   return cleaned.replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
+export function isMcpToolName(toolName: string | undefined): boolean {
+  if (!toolName) return false
+  if (toolName.startsWith('mcp__')) return true
+  const slash = toolName.indexOf('/')
+  return slash > 0 && !toolName.includes(' ')
+}
+
 export function parseToolName(toolName: string | undefined): ToolNameParts {
   if (!toolName) return { bare: 'tool' }
+
+  if (toolName.startsWith('mcp__')) {
+    const body = toolName.slice('mcp__'.length)
+    const splitIdx = body.indexOf('__')
+    if (splitIdx >= 0) {
+      const server = body.slice(0, splitIdx)
+      const bare = body.slice(splitIdx + 2)
+      return {
+        integration: formatIntegrationName(server),
+        bare,
+        mcpServer: server,
+      }
+    }
+  }
 
   if (toolName.includes(':')) {
     const colon = toolName.indexOf(':')
     return {
       integration: formatIntegrationName(toolName.slice(0, colon)),
       bare: toolName.slice(colon + 1),
+    }
+  }
+
+  if (toolName.includes('/')) {
+    const slash = toolName.indexOf('/')
+    const server = toolName.slice(0, slash)
+    const bare = toolName.slice(slash + 1)
+    if (server && bare) {
+      return {
+        integration: formatIntegrationName(server),
+        bare,
+        mcpServer: server,
+      }
     }
   }
 
@@ -81,6 +116,12 @@ export function parseToolName(toolName: string | undefined): ToolNameParts {
   return { bare: toolName.split(':').pop() ?? toolName }
 }
 
+export function formatMcpServerLabel(toolName: string | undefined): string | undefined {
+  const parsed = parseToolName(toolName)
+  if (!isMcpToolName(toolName) || !parsed.integration) return undefined
+  return parsed.integration
+}
+
 export function formatToolDisplayName(toolName: string | undefined): string {
   const { bare } = parseToolName(toolName)
   const normalized = bare.split('__').pop()?.toLowerCase() ?? bare.toLowerCase()
@@ -90,20 +131,25 @@ export function formatToolDisplayName(toolName: string | undefined): string {
 export function buildToolGroupSummary(parts: ToolCallPart[]): string {
   if (parts.length === 0) return 'Tools'
 
-  const integrations = new Set<string>()
+  const integrationLabels = new Set<string>()
   const displayNames = new Set<string>()
   for (const part of parts) {
     const parsed = parseToolName(part.toolName)
-    if (parsed.integration) integrations.add(parsed.integration)
+    if (parsed.integration) {
+      const label = isMcpToolName(part.toolName)
+        ? `${parsed.integration} MCP`
+        : `${parsed.integration} integration`
+      integrationLabels.add(label)
+    }
     displayNames.add(formatToolDisplayName(part.toolName))
   }
 
-  if (integrations.size === 1) {
-    const integration = [...integrations][0]
+  if (integrationLabels.size === 1) {
+    const integration = [...integrationLabels][0]
     if (parts.length === 1) {
-      return `Used ${integration} integration`
+      return `Used ${integration}`
     }
-    return `Used ${integration} integration · ${parts.length} tools`
+    return `Used ${integration} · ${parts.length} tools`
   }
 
   if (displayNames.size === 1 && parts.length > 1) {
