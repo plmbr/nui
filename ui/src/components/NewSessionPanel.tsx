@@ -313,7 +313,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-1 flex-col min-h-0">
-        <div className="flex flex-1 flex-col min-h-0 overflow-hidden p-6">
+        <div className="flex flex-1 flex-col min-h-0 overflow-hidden p-4 md:p-6">
           <div className="customize-tab-content mx-auto flex w-full min-h-0 flex-1 flex-col gap-5">
 
             {(showBuiltinTab || showInstalledTab) && (
@@ -565,8 +565,8 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
           </div>
         </div>
 
-        <div className="shrink-0 border-t px-6 py-4">
-          <div className="customize-tab-content mx-auto flex w-full items-center justify-between gap-4">
+        <div className="shrink-0 border-t px-4 py-4 md:px-6">
+          <div className="customize-tab-content mx-auto flex w-full flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div className="min-w-0">
               {selected ? (
                 <p className="text-sm truncate">

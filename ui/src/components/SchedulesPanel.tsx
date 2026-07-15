@@ -386,7 +386,7 @@ export function SchedulesPanel({ agentTypes, onClose }: Props) {
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
         <div className="flex flex-col gap-6 max-w-3xl mx-auto">
           <div className="flex items-center justify-between gap-4">
             <div>

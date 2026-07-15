@@ -445,10 +445,10 @@ export default function App() {
             The Loop
           </button>
           {selected && selectedAgent && !customizeOpen && !schedulesOpen && !newSessionOpen && !sessionListGroup && !landingOpen && (
-            <>
-              <span className="text-muted-foreground/35 shrink-0 select-none" aria-hidden="true">/</span>
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="text-muted-foreground/35 hidden shrink-0 select-none md:inline" aria-hidden="true">/</span>
               <AgentHeader name={sessionDisplayName(selected)} agent={selectedAgent} />
-            </>
+            </div>
           )}
           <div className="app-header__actions">
             <ThemeSwitch />

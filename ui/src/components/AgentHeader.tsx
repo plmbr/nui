@@ -15,7 +15,7 @@ export function AgentHeader({ name, agent }: Props) {
   return (
     <Tooltip>
       <TooltipTrigger
-        className="app-agent-header min-w-0 max-w-[min(24rem,40vw)] truncate text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        className="app-agent-header min-w-0 max-w-[min(12rem,50vw)] truncate text-sm font-medium text-muted-foreground transition-colors hover:text-foreground md:max-w-[min(24rem,40vw)]"
         aria-label={`${name}, ${agent.label}, ${typeLabel}${agent.description ? `, ${agent.description}` : ''}`}
       >
         {name}

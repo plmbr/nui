@@ -1,7 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useCallback, useEffect, useState } from 'react'
-import { FileCode2, FlaskConical, FormInput, Plus, Rocket, Trash2 } from 'lucide-react'
+import { FileCode2, ChevronLeft, FlaskConical, FormInput, Plus, Rocket, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,6 +25,7 @@ import {
   type AgentFormModel,
 } from '@/lib/adlAgentForm'
 import { useAgentFormOptions } from '@/lib/useAgentFormOptions'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { api } from '@/api'
 import type { AgentDeployerInfo, AgentDeployResult, AgentEvalSummary, AgentFileInfo } from '@/types'
@@ -74,6 +75,7 @@ interface Props {
 }
 
 export function AgentsTab({ onChanged }: Props) {
+  const isMobile = useIsMobile()
   const { options, loading: optionsLoading } = useAgentFormOptions()
   const [agents, setAgents] = useState<AgentFileInfo[]>([])
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
@@ -297,6 +299,12 @@ export function AgentsTab({ onChanged }: Props) {
   }
 
   const editing = creating || selectedFile != null
+  const mobileShowEditor = isMobile && editing
+
+  const closeMobileEditor = () => {
+    setSelectedFile(null)
+    setCreating(false)
+  }
 
   return (
     <div className="customize-tab-content flex flex-col gap-4 min-h-0 max-w-none">
@@ -305,7 +313,8 @@ export function AgentsTab({ onChanged }: Props) {
       </p>
 
       <div className="flex flex-1 min-h-0 gap-4">
-        <div className="w-56 shrink-0 flex flex-col gap-2">
+        {(!isMobile || !mobileShowEditor) && (
+        <div className="w-full shrink-0 flex flex-col gap-2 md:w-56">
           <Button variant="outline" size="sm" className="justify-start" onClick={startCreate}>
             <Plus className="size-3.5" />
             New agent
@@ -326,17 +335,33 @@ export function AgentsTab({ onChanged }: Props) {
             ))}
           </ul>
         </div>
+        )}
 
+        {(!isMobile || mobileShowEditor) && (
         <div className="flex-1 flex flex-col min-w-0 min-h-0 gap-3">
           {editing ? (
             <>
               <div className="flex items-center justify-between gap-2 shrink-0">
-                <div className="min-w-0">
-                  {creating ? (
-                    <p className="text-sm font-medium">New agent</p>
-                  ) : (
-                    <p className="text-sm font-medium truncate">{selectedFile}</p>
+                <div className="flex min-w-0 items-center gap-2">
+                  {isMobile && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={closeMobileEditor}
+                      aria-label="Back to agent list"
+                    >
+                      <ChevronLeft className="size-4" />
+                    </Button>
                   )}
+                  <div className="min-w-0">
+                    {creating ? (
+                      <p className="text-sm font-medium">New agent</p>
+                    ) : (
+                      <p className="text-sm font-medium truncate">{selectedFile}</p>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <ModeToggle mode={editMode} onChange={handleModeChange} />
@@ -376,7 +401,7 @@ export function AgentsTab({ onChanged }: Props) {
                 )}
               </div>
 
-              <div className="flex gap-2 shrink-0">
+              <div className="flex flex-wrap gap-2 shrink-0">
                 {creating ? (
                   <>
                     <Button size="sm" onClick={() => void create()} disabled={saving}>
@@ -408,11 +433,14 @@ export function AgentsTab({ onChanged }: Props) {
               </div>
             </>
           ) : (
+            !isMobile && (
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
               Select an agent to edit, or create a new one.
             </div>
+            )
           )}
         </div>
+        )}
       </div>
 
       {error && <p className="text-sm text-destructive shrink-0">{error}</p>}

@@ -88,7 +88,7 @@ export function SessionsListPanel({
           <div className="empty-state">No sessions in this category.</div>
         ) : (
           <>
-            <div className="flex shrink-0 items-center gap-2 border-b px-4 py-2">
+            <div className="flex shrink-0 items-center gap-2 border-b px-4 py-2 md:px-6">
               <Button
                 variant="destructive"
                 size="sm"
@@ -96,11 +96,59 @@ export function SessionsListPanel({
                 onClick={() => setDeleteOpen(true)}
               >
                 <Trash2 className="size-3.5" />
-                Delete selected{someChecked ? ` (${checkedIds.size})` : ''}
+                <span className="hidden sm:inline">Delete selected</span>
+                {someChecked ? ` (${checkedIds.size})` : ''}
               </Button>
             </div>
 
-            <div className="flex-1 overflow-auto">
+            <ul className="md:hidden flex-1 divide-y overflow-auto">
+              {group.sessions.map((session) => {
+                const isActive = session.id === selectedId
+                const isChecked = checkedIds.has(session.id)
+                return (
+                  <li
+                    key={session.id}
+                    className={cn(
+                      'sessions-card flex cursor-pointer gap-3 px-4 py-3',
+                      isActive && 'sessions-card--active',
+                      isChecked && 'sessions-card--checked',
+                    )}
+                    onClick={() => onSelect(session.id)}
+                  >
+                    <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        className="size-4 cursor-pointer accent-primary"
+                        aria-label={`Select ${session.name}`}
+                        checked={isChecked}
+                        onChange={() => toggleOne(session.id)}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="inline-flex min-w-0 items-center gap-1.5 font-medium">
+                          {session.scheduleId && (
+                            <CalendarClock
+                              className="size-3.5 shrink-0 text-muted-foreground"
+                              title={`Scheduled · ${session.scheduleName || session.scheduleId}`}
+                            />
+                          )}
+                          <span className="truncate">{sessionDisplayName(session)}</span>
+                        </span>
+                        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                          {new Date(session.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground" title={session.workingDir}>
+                        {session.workingDir || '(server working directory)'}
+                      </p>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+
+            <div className="hidden flex-1 overflow-auto md:block">
               <table className="sessions-table w-full text-sm">
                 <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
                   <tr>

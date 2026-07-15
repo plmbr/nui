@@ -16,6 +16,7 @@ import {
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from '@/components/ui/sidebar'
 import { groupSessionsByAgentType, type SessionGroup } from '@/lib/sessionGroups'
 import {
@@ -288,6 +289,7 @@ function CollapsibleSessionGroup({
   onRename,
   onDelete,
 }: CollapsibleSessionGroupProps) {
+  const { closeMobileSidebar } = useSidebar()
   const hasSelected = group.sessions.some((s) => s.id === selectedId)
   const [open, setOpen] = useState(true)
   const sessionCount = group.sessions.length
@@ -333,6 +335,7 @@ function CollapsibleSessionGroup({
               onClick={(event) => {
                 event.stopPropagation()
                 onOpenNewSessionForGroup(group.id)
+                closeMobileSidebar()
               }}
             >
               <Plus className="size-3.5" />
@@ -348,6 +351,7 @@ function CollapsibleSessionGroup({
               onClick={(event) => {
                 event.stopPropagation()
                 onOpenSessionList(group.id)
+                closeMobileSidebar()
               }}
             >
               <List className="size-3.5" />
@@ -368,7 +372,10 @@ function CollapsibleSessionGroup({
                 key={s.id}
                 session={s}
                 isActive={s.id === selectedId}
-                onSelect={() => onSelect(s.id)}
+                onSelect={() => {
+                  onSelect(s.id)
+                  closeMobileSidebar()
+                }}
                 onRename={(newName) => onRename(s.id, newName)}
                 onDelete={() => onDelete(s.id)}
               />
@@ -398,6 +405,7 @@ export function AppSidebar({
   onRename,
   onDelete,
 }: Props) {
+  const { closeMobileSidebar } = useSidebar()
   const runningSessions = useRunningSessions()
   const [runningOnly, setRunningOnly] = useState(false)
 
@@ -432,37 +440,45 @@ export function AppSidebar({
         onWidthCommit={onSidebarWidthCommit}
       />
       <SidebarHeader className="sidebar-actions shrink-0 px-3 py-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             size="sm"
             className={cn(
-              'sidebar-header__btn-primary w-auto gap-2 border-0 shadow-none',
+              'sidebar-header__btn-primary w-auto gap-2 border-0 shadow-none md:min-h-8 min-h-11 min-w-11 md:min-w-0',
               newSessionOpen && 'ring-1 ring-primary/60',
             )}
-            onClick={onOpenNewSession}
+            onClick={() => {
+              onOpenNewSession()
+              closeMobileSidebar()
+            }}
             aria-pressed={newSessionOpen}
+            aria-label="New Session"
           >
             <Plus className="size-4 shrink-0" />
-            <span>New Session</span>
+            <span className="hidden md:inline">New Session</span>
           </Button>
           <Button
             size="sm"
             variant="outline"
             className={cn(
-              'w-auto gap-2 bg-background/40',
+              'w-auto gap-2 bg-background/40 md:min-h-8 min-h-11 min-w-11 md:min-w-0',
               schedulesPanelOpen && 'ring-1 ring-primary/40 bg-primary/10',
             )}
-            onClick={onOpenSchedules}
+            onClick={() => {
+              onOpenSchedules()
+              closeMobileSidebar()
+            }}
             aria-pressed={schedulesPanelOpen}
+            aria-label="Schedule"
           >
             <CalendarClock className="size-4 shrink-0" />
-            <span>Schedule</span>
+            <span className="hidden md:inline">Schedule</span>
           </Button>
           <Button
             size="sm"
             variant="outline"
             className={cn(
-              'ml-auto size-8 shrink-0 bg-background/40 p-0',
+              'ml-auto size-11 shrink-0 bg-background/40 p-0 md:size-8',
               runningOnly && 'ring-1 ring-primary/40 bg-primary/10 text-primary',
             )}
             onClick={() => setRunningOnly((value) => !value)}

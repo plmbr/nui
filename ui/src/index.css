@@ -314,7 +314,8 @@
 
   /* ─── App shell ──────────────────────────────────────────────── */
   .app-header {
-    @apply fixed top-0 left-0 right-0 z-50 flex h-12 shrink-0 items-center gap-3 border-b px-4;
+    @apply fixed top-0 left-0 right-0 z-50 flex h-12 shrink-0 items-center gap-2 border-b px-3 md:gap-3 md:px-4;
+    padding-top: env(safe-area-inset-top, 0px);
     background: color-mix(in oklch, var(--background) 82%, transparent);
     backdrop-filter: blur(12px) saturate(1.4);
     -webkit-backdrop-filter: blur(12px) saturate(1.4);
@@ -335,7 +336,8 @@
   }
 
   .app-body {
-    @apply flex h-screen w-full overflow-hidden pt-12;
+    @apply flex h-screen w-full overflow-hidden;
+    padding-top: calc(3rem + env(safe-area-inset-top, 0px));
   }
 
   .app-sidebar [data-slot="sidebar-container"] {
@@ -452,7 +454,7 @@
 
   /* ─── Conversation header ────────────────────────────────────── */
   .conversation-header {
-    @apply flex shrink-0 items-center gap-2 border-b px-4 py-2.5;
+    @apply flex shrink-0 items-center gap-2 border-b px-3 py-2.5 md:px-4;
     background: color-mix(in oklch, var(--background) 75%, transparent);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -606,7 +608,7 @@
   }
 
   .customize-tab-btn {
-    @apply w-full rounded-md px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground;
+    @apply w-full shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground;
   }
 
   .customize-tab-btn--active {
@@ -664,6 +666,18 @@
     background: color-mix(in oklch, var(--primary) 6%, var(--background));
   }
 
+  .sessions-card--active {
+    background: color-mix(in oklch, var(--primary) 10%, var(--background));
+  }
+
+  .sessions-card--checked {
+    background: color-mix(in oklch, var(--primary) 6%, var(--background));
+  }
+
+  .sessions-card:hover {
+    @apply bg-muted/50;
+  }
+
   /* ─── Chat panel ────────────────────────────────────────────── */
   .agui-chat {
     @apply min-h-0 bg-background;
@@ -692,7 +706,7 @@
 
   .agui-message,
   .tool-call {
-    @apply mx-auto mb-5 max-w-[760px] px-5;
+    @apply mx-auto mb-5 max-w-[760px] px-3 md:px-5;
     margin-bottom: var(--spacing);
   }
 
@@ -740,7 +754,7 @@
   }
 
   .agui-message--assistant .tool-call__header {
-    @apply w-1/2 max-w-[50%] py-0.5;
+    @apply w-full py-0.5 md:w-1/2 md:max-w-[50%];
   }
 
   .agui-message--assistant .tool-call__body {
@@ -828,7 +842,8 @@
   }
 
   .agui-chat__input-area {
-    @apply mx-auto flex w-full max-w-[800px] shrink-0 flex-col gap-3.5 border-t bg-background/80 px-5 py-3.5 backdrop-blur-md;
+    @apply mx-auto flex w-full max-w-[800px] shrink-0 flex-col gap-3.5 border-t bg-background/80 px-3 py-3.5 backdrop-blur-md md:px-5;
+    padding-bottom: calc(0.875rem + env(safe-area-inset-bottom, 0px));
   }
 
   .agui-chat__input-area:has(.agui-chat__suggestions) {
@@ -907,7 +922,7 @@
   }
 
   .mention-menu {
-    @apply absolute bottom-full left-0 z-50 mb-2 max-h-64 w-60 overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-md;
+    @apply absolute bottom-full left-0 z-50 mb-2 max-h-64 w-[min(15rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-md;
   }
 
   .mention-menu__back {

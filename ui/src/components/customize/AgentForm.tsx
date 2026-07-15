@@ -95,7 +95,7 @@ function KeyValueList({
         {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
       </div>
       {entries.map((entry, index) => (
-        <div key={index} className="grid grid-cols-[minmax(7rem,10rem)_minmax(0,1fr)_auto] gap-2 items-center">
+        <div key={index} className="grid grid-cols-1 gap-2 items-center sm:grid-cols-[minmax(7rem,10rem)_minmax(0,1fr)_auto]">
           <Input
             placeholder="KEY"
             value={entry.key}
@@ -808,7 +808,7 @@ export function AgentForm({ form, options, hasWorkflowSteps, hasSubAgents, editi
                     {ev.messages.map((msg, msgIndex) => (
                       <div
                         key={msgIndex}
-                        className="grid grid-cols-[minmax(6rem,8rem)_minmax(0,1fr)_auto] gap-2 items-center"
+                        className="grid grid-cols-1 gap-2 items-center sm:grid-cols-[minmax(6rem,8rem)_minmax(0,1fr)_auto]"
                       >
                         <Select
                           value={msg.role}
