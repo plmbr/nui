@@ -76,12 +76,10 @@ export function looksLikeDiff(text: string, className?: string): boolean {
   const lines = text.replace(/\r\n/g, '\n').split('\n').filter((line) => line.length > 0)
   if (lines.length === 0) return false
 
-  const diffLike = lines.filter((line) =>
-    /^[+\-@ ]/.test(line) ||
-    line.startsWith('diff ') ||
-    line.startsWith('--- ') ||
-    line.startsWith('+++ '),
-  ).length
+  if (lines.some((line) => HUNK_HEADER.test(line))) return true
+  if (lines.some((line) => line.startsWith('diff '))) return true
 
-  return diffLike / lines.length >= 0.5
+  const hasMinusFile = lines.some((line) => line.startsWith('--- '))
+  const hasPlusFile = lines.some((line) => line.startsWith('+++ '))
+  return hasMinusFile && hasPlusFile
 }
