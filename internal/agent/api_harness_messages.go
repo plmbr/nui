@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	anyllm "github.com/mozilla-ai/any-llm-go"
+	"loop/internal/llm"
 )
 
 // normalizeToolCallArguments ensures tool arguments are a JSON object string.
@@ -23,11 +23,11 @@ func normalizeToolCallArguments(args string) string {
 	return args
 }
 
-func normalizeAPIToolCalls(calls []anyllm.ToolCall) []anyllm.ToolCall {
+func normalizeAPIToolCalls(calls []llm.ToolCall) []llm.ToolCall {
 	if len(calls) == 0 {
 		return calls
 	}
-	out := make([]anyllm.ToolCall, len(calls))
+	out := make([]llm.ToolCall, len(calls))
 	copy(out, calls)
 	for i := range out {
 		out[i].Function.Arguments = normalizeToolCallArguments(out[i].Function.Arguments)
@@ -35,14 +35,14 @@ func normalizeAPIToolCalls(calls []anyllm.ToolCall) []anyllm.ToolCall {
 	return out
 }
 
-func normalizeAPIMessages(messages []anyllm.Message) []anyllm.Message {
+func normalizeAPIMessages(messages []llm.Message) []llm.Message {
 	if len(messages) == 0 {
 		return messages
 	}
-	out := make([]anyllm.Message, len(messages))
+	out := make([]llm.Message, len(messages))
 	copy(out, messages)
 	for i := range out {
-		if out[i].Role != anyllm.RoleAssistant || len(out[i].ToolCalls) == 0 {
+		if out[i].Role != llm.RoleAssistant || len(out[i].ToolCalls) == 0 {
 			continue
 		}
 		out[i].ToolCalls = normalizeAPIToolCalls(out[i].ToolCalls)

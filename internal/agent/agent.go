@@ -84,7 +84,7 @@ type RunRequest struct {
 	History []model.ChatMessage
 	// MCPServers are session-scoped MCP servers for the api harness tool loop.
 	MCPServers []model.ADLMCPServer
-	// APIProvider is the any-llm-go provider id (from ADL harness.provider).
+	// APIProvider is the LLM provider id (from ADL harness.provider).
 	APIProvider string
 }
 

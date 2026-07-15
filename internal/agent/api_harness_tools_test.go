@@ -5,7 +5,7 @@ package agent
 import (
 	"testing"
 
-	anyllm "github.com/mozilla-ai/any-llm-go"
+	"loop/internal/llm"
 )
 
 func TestToolArgsStreamUpdate_cumulative(t *testing.T) {
@@ -31,24 +31,24 @@ func TestToolArgsStreamUpdate_snapshot(t *testing.T) {
 }
 
 func TestFilterExecutableToolCalls_skipsPartialViz(t *testing.T) {
-	calls := []anyllm.ToolCall{
+	calls := []llm.ToolCall{
 		{
 			ID: "1",
-			Function: anyllm.FunctionCall{
+			Function: llm.FunctionCall{
 				Name:      "show_visualization",
 				Arguments: `{"html":"<canvas id=","title":""}`,
 			},
 		},
 		{
 			ID: "2",
-			Function: anyllm.FunctionCall{
+			Function: llm.FunctionCall{
 				Name: "show_visualization",
 				Arguments: `{"html":"<script src=\"https://cdn.jsdelivr.net/npm/chart.js\"></script><canvas id=\"c\"></canvas><script>new Chart(document.getElementById('c'), {type:'bar'});","title":"Sales"}`,
 			},
 		},
 		{
 			ID: "3",
-			Function: anyllm.FunctionCall{
+			Function: llm.FunctionCall{
 				Name:      "ask_user",
 				Arguments: `{"question":"Pick one"}`,
 			},

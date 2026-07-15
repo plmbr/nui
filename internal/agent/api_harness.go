@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	anyllm "github.com/mozilla-ai/any-llm-go"
+	"loop/internal/llm"
 	"loop/internal/hitl"
 	"loop/internal/model"
 	"loop/internal/viz"
@@ -17,7 +17,7 @@ import (
 
 const maxAPIToolIterations = 32
 
-// APIHarnessAgent runs an in-process LLM conversation via any-llm-go.
+// APIHarnessAgent runs an in-process LLM conversation via internal/llm HTTP clients.
 type APIHarnessAgent struct {
 	Harness model.ADLHarness
 }
@@ -63,7 +63,7 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 	modelName = modelCandidates[0]
 
 	messages := buildAPIMessages(req)
-	tools := sessionToolsToAnyLLMTools(mcpClient.Tools())
+	tools := sessionToolsToLLMTools(mcpClient.Tools())
 
 	for iteration := 0; iteration < maxAPIToolIterations; iteration++ {
 		if ctx.Err() != nil {
@@ -72,7 +72,7 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 
 		assistant, streamedText, err := a.streamCompletion(ctx, provider, modelName, normalizeAPIMessages(messages), tools, events)
 		if err != nil {
-			if errors.Is(err, anyllm.ErrModelNotFound) && candidateIdx < len(modelCandidates)-1 {
+			if errors.Is(err, llm.ErrModelNotFound) && candidateIdx < len(modelCandidates)-1 {
 				candidateIdx++
 				modelName = modelCandidates[candidateIdx]
 				continue
@@ -111,8 +111,8 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 			if !approved {
 				resultText := "tool call denied by user"
 				events <- Event{Type: EventToolCallResult, ToolCallID: tc.ID, ToolName: toolName, Content: resultText}
-				messages = append(messages, anyllm.Message{
-					Role:       anyllm.RoleTool,
+				messages = append(messages, llm.Message{
+					Role:       llm.RoleTool,
 					ToolCallID: tc.ID,
 					Content:    resultText,
 				})
@@ -127,8 +127,8 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 			if viz.IsVisualizationTool(toolName) && err == nil {
 				executedViz = true
 			}
-			messages = append(messages, anyllm.Message{
-				Role:       anyllm.RoleTool,
+			messages = append(messages, llm.Message{
+				Role:       llm.RoleTool,
 				ToolCallID: tc.ID,
 				Content:    resultText,
 			})
@@ -143,13 +143,13 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 
 func (a *APIHarnessAgent) streamCompletion(
 	ctx context.Context,
-	provider anyllm.Provider,
+	provider llm.Provider,
 	modelName string,
-	messages []anyllm.Message,
-	tools []anyllm.Tool,
+	messages []llm.Message,
+	tools []llm.Tool,
 	events chan<- Event,
-) (anyllm.Message, string, error) {
-	params := anyllm.CompletionParams{
+) (llm.Message, string, error) {
+	params := llm.CompletionParams{
 		Model:    modelName,
 		Messages: messages,
 	}
@@ -219,10 +219,10 @@ func (a *APIHarnessAgent) streamCompletion(
 		}
 	}
 	if err := <-errs; err != nil {
-		return anyllm.Message{}, streamed.String(), err
+		return llm.Message{}, streamed.String(), err
 	}
 
-	var calls []anyllm.ToolCall
+	var calls []llm.ToolCall
 	for _, acc := range toolCalls {
 		if acc.name == "" {
 			continue
@@ -235,10 +235,10 @@ func (a *APIHarnessAgent) streamCompletion(
 			events <- Event{Type: EventToolCallArgs, ToolCallID: acc.id, ToolName: acc.name, ToolArgs: delta}
 		}
 		events <- Event{Type: EventToolCallEnd, ToolCallID: acc.id, ToolName: acc.name, ToolArgs: argsStr}
-		calls = append(calls, anyllm.ToolCall{
+		calls = append(calls, llm.ToolCall{
 			ID:   acc.id,
 			Type: "function",
-			Function: anyllm.FunctionCall{
+			Function: llm.FunctionCall{
 				Name:      acc.name,
 				Arguments: normalizeToolCallArguments(argsStr),
 			},
@@ -252,7 +252,7 @@ func (a *APIHarnessAgent) streamCompletion(
 		streamedContent = streamedContent + buffered
 	}
 	if len(calls) == 0 {
-		available := toolNamesFromAnyLLM(tools)
+		available := toolNamesFromLLM(tools)
 		cleaned, textCalls := extractTextToolCalls(streamedContent, available)
 		if len(textCalls) > 0 {
 			streamedContent = cleaned
@@ -272,8 +272,8 @@ func (a *APIHarnessAgent) streamCompletion(
 		streamedContent = streamed.String()
 	}
 
-	assistant := anyllm.Message{
-		Role:      anyllm.RoleAssistant,
+	assistant := llm.Message{
+		Role:      llm.RoleAssistant,
 		Content:   streamedContent,
 		ToolCalls: calls,
 	}
@@ -289,26 +289,26 @@ type accumulatedToolCall struct {
 	started         bool
 }
 
-func buildAPIMessages(req RunRequest) []anyllm.Message {
-	var messages []anyllm.Message
+func buildAPIMessages(req RunRequest) []llm.Message {
+	var messages []llm.Message
 	if sp := strings.TrimSpace(req.SystemPrompt); sp != "" {
-		messages = append(messages, anyllm.Message{Role: anyllm.RoleSystem, Content: sp})
+		messages = append(messages, llm.Message{Role: llm.RoleSystem, Content: sp})
 	}
 	for _, msg := range req.History {
 		role := strings.TrimSpace(msg.Role)
 		switch role {
 		case "user":
-			messages = append(messages, anyllm.Message{Role: anyllm.RoleUser, Content: msg.Content})
+			messages = append(messages, llm.Message{Role: llm.RoleUser, Content: msg.Content})
 		case "assistant":
 			content := strings.TrimSpace(msg.Content)
 			if content == "" {
 				content = assistantVizHistorySummary(msg)
 			}
-			messages = append(messages, anyllm.Message{Role: anyllm.RoleAssistant, Content: content})
+			messages = append(messages, llm.Message{Role: llm.RoleAssistant, Content: content})
 		}
 	}
 	if msg := strings.TrimSpace(req.Message); msg != "" {
-		messages = append(messages, anyllm.Message{Role: anyllm.RoleUser, Content: msg})
+		messages = append(messages, llm.Message{Role: llm.RoleUser, Content: msg})
 	}
 	return messages
 }
@@ -327,8 +327,8 @@ func assistantVizHistorySummary(msg model.ChatMessage) string {
 	return ""
 }
 
-func sessionToolsToAnyLLMTools(tools []sessionMCPTool) []anyllm.Tool {
-	out := make([]anyllm.Tool, 0, len(tools))
+func sessionToolsToLLMTools(tools []sessionMCPTool) []llm.Tool {
+	out := make([]llm.Tool, 0, len(tools))
 	for _, t := range tools {
 		schema := t.InputSchema
 		if schema == nil {
@@ -337,9 +337,9 @@ func sessionToolsToAnyLLMTools(tools []sessionMCPTool) []anyllm.Tool {
 				"properties": map[string]any{},
 			}
 		}
-		out = append(out, anyllm.Tool{
+		out = append(out, llm.Tool{
 			Type: "function",
-			Function: anyllm.Function{
+			Function: llm.Function{
 				Name:        t.Name,
 				Description: t.Description,
 				Parameters:  schema,

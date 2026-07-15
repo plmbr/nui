@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"strings"
 
-	anyllm "github.com/mozilla-ai/any-llm-go"
+	"loop/internal/llm"
 	"github.com/google/uuid"
 	"loop/internal/viz"
 )
 
-func toolNamesFromAnyLLM(tools []anyllm.Tool) []string {
+func toolNamesFromLLM(tools []llm.Tool) []string {
 	names := make([]string, 0, len(tools))
 	for _, tool := range tools {
 		name := strings.TrimSpace(tool.Function.Name)
@@ -37,7 +37,7 @@ func toolNameAllowed(name string, available []string) bool {
 
 // extractTextToolCalls recovers tool calls that weaker models print as JSON text instead of
 // using native tool/function calling (common with Ollama models).
-func extractTextToolCalls(content string, availableTools []string) (cleaned string, calls []anyllm.ToolCall) {
+func extractTextToolCalls(content string, availableTools []string) (cleaned string, calls []llm.ToolCall) {
 	trimmed := strings.TrimSpace(content)
 	if trimmed == "" || len(availableTools) == 0 {
 		return content, nil
@@ -45,12 +45,12 @@ func extractTextToolCalls(content string, availableTools []string) (cleaned stri
 
 	for _, candidate := range textToolCandidates(trimmed) {
 		if call, ok := parseTextToolCallJSON(candidate, availableTools); ok {
-			return stripToolCallText(content, candidate), []anyllm.ToolCall{call}
+			return stripToolCallText(content, candidate), []llm.ToolCall{call}
 		}
 	}
 
 	if call, ok := extractVisualizationTextToolCall(trimmed, availableTools); ok {
-		return stripToolCallText(content, trimmed), []anyllm.ToolCall{call}
+		return stripToolCallText(content, trimmed), []llm.ToolCall{call}
 	}
 
 	return content, nil
@@ -82,7 +82,7 @@ func stripToolCallText(original, matched string) string {
 	return strings.TrimSpace(cleaned)
 }
 
-func parseTextToolCallJSON(content string, availableTools []string) (anyllm.ToolCall, bool) {
+func parseTextToolCallJSON(content string, availableTools []string) (llm.ToolCall, bool) {
 	var envelope struct {
 		Name       string         `json:"name"`
 		Parameters map[string]any `json:"parameters"`
@@ -90,11 +90,11 @@ func parseTextToolCallJSON(content string, availableTools []string) (anyllm.Tool
 		Input      map[string]any `json:"input"`
 	}
 	if err := json.Unmarshal([]byte(content), &envelope); err != nil {
-		return anyllm.ToolCall{}, false
+		return llm.ToolCall{}, false
 	}
 	name := strings.TrimSpace(envelope.Name)
 	if !toolNameAllowed(name, availableTools) {
-		return anyllm.ToolCall{}, false
+		return llm.ToolCall{}, false
 	}
 	args := envelope.Parameters
 	if len(args) == 0 {
@@ -104,18 +104,18 @@ func parseTextToolCallJSON(content string, availableTools []string) (anyllm.Tool
 		args = envelope.Input
 	}
 	if len(args) == 0 {
-		return anyllm.ToolCall{}, false
+		return llm.ToolCall{}, false
 	}
 	return newTextToolCall(name, args), true
 }
 
-func extractVisualizationTextToolCall(content string, availableTools []string) (anyllm.ToolCall, bool) {
+func extractVisualizationTextToolCall(content string, availableTools []string) (llm.ToolCall, bool) {
 	if !toolNameAllowed(viz.ToolName, availableTools) {
-		return anyllm.ToolCall{}, false
+		return llm.ToolCall{}, false
 	}
 	lower := strings.ToLower(content)
 	if !strings.Contains(lower, viz.ToolName) {
-		return anyllm.ToolCall{}, false
+		return llm.ToolCall{}, false
 	}
 	html := htmlFromToolJSON(content)
 	if html == "" {
@@ -123,7 +123,7 @@ func extractVisualizationTextToolCall(content string, availableTools []string) (
 	}
 	html = strings.TrimSpace(html)
 	if html == "" {
-		return anyllm.ToolCall{}, false
+		return llm.ToolCall{}, false
 	}
 	html = viz.PrepareHTML(html)
 	return newTextToolCall(viz.ToolName, map[string]any{"html": html}), true
@@ -166,12 +166,12 @@ func extractHTMLFragment(content string) string {
 	return ""
 }
 
-func newTextToolCall(name string, args map[string]any) anyllm.ToolCall {
+func newTextToolCall(name string, args map[string]any) llm.ToolCall {
 	payload, _ := json.Marshal(args)
-	return anyllm.ToolCall{
+	return llm.ToolCall{
 		ID:   "text_tool_" + uuid.NewString(),
 		Type: "function",
-		Function: anyllm.FunctionCall{
+		Function: llm.FunctionCall{
 			Name:      name,
 			Arguments: string(payload),
 		},

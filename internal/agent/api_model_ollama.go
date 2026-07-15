@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"strings"
 
-	anyllm "github.com/mozilla-ai/any-llm-go"
+	"loop/internal/llm"
 )
 
 // ensureOllamaModel picks a model that exists on the local Ollama instance.
 // When the requested model is missing, the first installed model is used.
-func ensureOllamaModel(ctx context.Context, provider anyllm.Provider, requested string) (string, error) {
-	lister, ok := provider.(anyllm.ModelLister)
+func ensureOllamaModel(ctx context.Context, provider llm.Provider, requested string) (string, error) {
+	lister, ok := provider.(llm.ModelLister)
 	if !ok {
 		return strings.TrimSpace(requested), nil
 	}

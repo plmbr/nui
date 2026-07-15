@@ -127,7 +127,7 @@ TCP and HTTP extension hosts write `~/.loop/connections/<id>.json`:
 
 ## 4. API harness (in-process)
 
-Builtin and ADL agents with `harness.type: api` run entirely inside the Loop binary via [mozilla-ai/any-llm-go](https://github.com/mozilla-ai/any-llm-go). No CLI subprocess is required.
+Builtin and ADL agents with `harness.type: api` run entirely inside the Loop binary via thin HTTP clients in `internal/llm`. No CLI subprocess is required.
 
 | Builtin ID | Provider | Credentials |
 |---|---|---|

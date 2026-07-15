@@ -9,7 +9,7 @@ import (
 	"os"
 	"testing"
 
-	anyllm "github.com/mozilla-ai/any-llm-go"
+	"loop/internal/llm"
 	"loop/internal/model"
 )
 
@@ -243,14 +243,14 @@ func TestAccumulatedToolCallCumulativeArgs(t *testing.T) {
 }
 
 func TestNormalizeAPIMessagesToolCalls(t *testing.T) {
-	msgs := normalizeAPIMessages([]anyllm.Message{
-		{Role: anyllm.RoleUser, Content: "chart this"},
+	msgs := normalizeAPIMessages([]llm.Message{
+		{Role: llm.RoleUser, Content: "chart this"},
 		{
-			Role: anyllm.RoleAssistant,
-			ToolCalls: []anyllm.ToolCall{{
+			Role: llm.RoleAssistant,
+			ToolCalls: []llm.ToolCall{{
 				ID:   "call_1",
 				Type: "function",
-				Function: anyllm.FunctionCall{
+				Function: llm.FunctionCall{
 					Name:      "show_visualization",
 					Arguments: "",
 				},
@@ -302,12 +302,12 @@ type fakeOllamaLister struct {
 
 func (f fakeOllamaLister) Name() string { return "ollama" }
 
-func (f fakeOllamaLister) Completion(context.Context, anyllm.CompletionParams) (*anyllm.ChatCompletion, error) {
+func (f fakeOllamaLister) Completion(context.Context, llm.CompletionParams) (*llm.ChatCompletion, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (f fakeOllamaLister) CompletionStream(context.Context, anyllm.CompletionParams) (<-chan anyllm.ChatCompletionChunk, <-chan error) {
-	ch := make(chan anyllm.ChatCompletionChunk)
+func (f fakeOllamaLister) CompletionStream(context.Context, llm.CompletionParams) (<-chan llm.ChatCompletionChunk, <-chan error) {
+	ch := make(chan llm.ChatCompletionChunk)
 	errCh := make(chan error, 1)
 	close(ch)
 	errCh <- fmt.Errorf("not implemented")
@@ -315,15 +315,15 @@ func (f fakeOllamaLister) CompletionStream(context.Context, anyllm.CompletionPar
 	return ch, errCh
 }
 
-func (f fakeOllamaLister) ListModels(context.Context) (*anyllm.ModelsResponse, error) {
+func (f fakeOllamaLister) ListModels(context.Context) (*llm.ModelsResponse, error) {
 	if f.err != nil {
 		return nil, f.err
 	}
-	out := make([]anyllm.Model, len(f.models))
+	out := make([]llm.Model, len(f.models))
 	for i, id := range f.models {
-		out[i] = anyllm.Model{ID: id}
+		out[i] = llm.Model{ID: id}
 	}
-	return &anyllm.ModelsResponse{Data: out}, nil
+	return &llm.ModelsResponse{Data: out}, nil
 }
 
 func TestPickOllamaModelAutoPick(t *testing.T) {

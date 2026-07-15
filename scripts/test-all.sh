@@ -7,6 +7,9 @@ echo "==> Go tests"
 # Avoid scanning ui/node_modules (contains nested Go packages) and Playwright artifacts.
 (cd "$ROOT" && go test . ./cmd/... ./internal/...)
 
+echo "==> Binary size check"
+"$ROOT/scripts/check-binary-size.sh"
+
 echo "==> UI lint + build + unit tests"
 (cd "$ROOT/ui" && npm run lint && npm run build && npm run test)
 

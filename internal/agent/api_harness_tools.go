@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	anyllm "github.com/mozilla-ai/any-llm-go"
+	"loop/internal/llm"
 	"loop/internal/viz"
 )
 
@@ -31,11 +31,11 @@ func toolArgsStreamUpdate(previous, next string) (delta string, changed bool) {
 	return next, true
 }
 
-func filterExecutableToolCalls(calls []anyllm.ToolCall) []anyllm.ToolCall {
+func filterExecutableToolCalls(calls []llm.ToolCall) []llm.ToolCall {
 	if len(calls) == 0 {
 		return calls
 	}
-	out := make([]anyllm.ToolCall, 0, len(calls))
+	out := make([]llm.ToolCall, 0, len(calls))
 	for _, tc := range calls {
 		if !viz.IsVisualizationTool(tc.Function.Name) {
 			out = append(out, tc)
@@ -59,7 +59,7 @@ func filterExecutableToolCalls(calls []anyllm.ToolCall) []anyllm.ToolCall {
 	return out
 }
 
-func toolCallVisualizationReady(tc anyllm.ToolCall) bool {
+func toolCallVisualizationReady(tc llm.ToolCall) bool {
 	if !viz.IsVisualizationTool(tc.Function.Name) {
 		return true
 	}

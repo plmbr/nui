@@ -11,7 +11,7 @@ import (
 
 const openRouterDefaultBaseURL = "https://openrouter.ai/api/v1"
 
-// APIProviderProfile describes how to connect an api harness to any-llm-go.
+// APIProviderProfile describes how to connect an api harness to an LLM provider.
 type APIProviderProfile struct {
 	ProviderID string
 	APIKeyEnvs []string

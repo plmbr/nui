@@ -17,7 +17,7 @@ function sortAgentsByIdOrder(agents: AgentType[], order: readonly string[]): Age
   )
 }
 
-/** Built-in agents that use the in-process API harness (any-llm-go). */
+/** Built-in agents that use the in-process API harness (internal/llm HTTP clients). */
 export function isApiBuiltinAgent(agent: AgentType): boolean {
   return agent.isBuiltin && agent.harness === 'api'
 }
