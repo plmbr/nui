@@ -3,12 +3,20 @@
 package server
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"loop/internal/agent"
 )
 
 func TestAssistantPartAccumulator_visualization(t *testing.T) {
+	chartHTML := `<canvas id="c"></canvas><script>new Chart(document.getElementById("c"))</script>`
+	toolArgsBytes, err := json.Marshal(map[string]string{"html": chartHTML, "title": "Chart"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	toolArgs := string(toolArgsBytes)
 	acc := newAssistantPartAccumulator()
 	acc.applyEvent(agent.Event{
 		Type:       agent.EventToolCallStart,
@@ -18,19 +26,20 @@ func TestAssistantPartAccumulator_visualization(t *testing.T) {
 	acc.applyEvent(agent.Event{
 		Type:       agent.EventToolCallArgs,
 		ToolCallID: "tc1",
-		ToolArgs:   `{"html":"<canvas></canvas>","title":"Chart"}`,
+		ToolArgs:   toolArgs,
 	}, nil)
 	acc.applyEvent(agent.Event{
 		Type:       agent.EventToolCallEnd,
 		ToolCallID: "tc1",
 		ToolName:   "mcp__loop-viz__show_visualization",
+		ToolArgs:   toolArgs,
 	}, nil)
 
 	if len(acc.parts) != 1 {
 		t.Fatalf("parts = %d, want 1", len(acc.parts))
 	}
 	part := acc.parts[0]
-	if part.VisualizationHTML != "<canvas></canvas>" {
+	if !strings.Contains(part.VisualizationHTML, chartHTML) {
 		t.Fatalf("VisualizationHTML = %q", part.VisualizationHTML)
 	}
 	if part.VisualizationTitle != "Chart" {

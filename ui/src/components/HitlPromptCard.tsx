@@ -8,6 +8,7 @@ import {
   formatHitlApprovalSummary,
   hitlApprovalCommand,
   isRedundantHitlApprovalMessage,
+  normalizeHitlPayload,
   normalizeHitlQuestionOptions,
 } from '@/lib/hitlPayload'
 import type { HitlQuestion, HitlRequest } from '@/types'
@@ -110,7 +111,7 @@ export function HitlPromptCard({ sessionId, request }: Props) {
   const [selectedOptions, setSelectedOptions] = useState<Record<number, string[]>>({})
   const [freeformText, setFreeformText] = useState('')
 
-  const payload = request.payload ?? {}
+  const payload = normalizeHitlPayload(request.payload)
   const title = payload.title?.trim()
   const message = payload.message?.trim()
   const questions = payload.questions ?? []
@@ -251,6 +252,9 @@ export function HitlPromptCard({ sessionId, request }: Props) {
         </div>
       )}
 
+      {!showApprovalTitle && title && isQuestion && questions.length > 0 && (
+        <h3 className="hitl-prompt__title">{title}</h3>
+      )}
       {showApprovalTitle && <h3 className="hitl-prompt__title">{title}</h3>}
       {showMessage && <p className="hitl-prompt__message">{message}</p>}
 

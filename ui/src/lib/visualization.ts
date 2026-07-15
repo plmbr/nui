@@ -1,6 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import type { AssistantPart, ToolCallPart } from '@/lib/chatMessageUtils'
+import { prepareVisualizationHtml, scriptsBalanced } from '@/lib/prepareVisualizationHtml'
 
 const VIZ_TOOL_NAME = 'show_visualization'
 
@@ -41,6 +42,25 @@ function looksLikeHTML(content: string): boolean {
   )
 }
 
+export function visualizationHTMLReady(html: string): boolean {
+  const trimmed = html.trim()
+  if (trimmed.length < 40) return false
+  const lower = trimmed.toLowerCase()
+  if (lower.includes('<canvas')) {
+    if (!lower.includes('</canvas>')) return false
+    if (!lower.includes('new chart') && !lower.includes('getcontext(')) return false
+    if (lower.includes('<script') && !scriptsBalanced(trimmed)) return false
+    return true
+  }
+  if (lower.includes('<svg')) {
+    return lower.includes('</svg>')
+  }
+  if (lower.includes('<html') || lower.includes('<!doctype')) {
+    return lower.includes('</html>')
+  }
+  return looksLikeHTML(trimmed)
+}
+
 function titleFromWriteArgs(args: Record<string, unknown>): string | undefined {
   for (const key of ['file_path', 'filePath', 'path']) {
     const v = args[key]
@@ -74,8 +94,10 @@ export function visualizationsMatch(a: string, b: string): boolean {
 }
 
 function parseShowVisualizationArgs(args: Record<string, unknown>): VisualizationContent | null {
-  const html = typeof args.html === 'string' ? args.html.trim() : ''
-  if (!html) return null
+  const raw = typeof args.html === 'string' ? args.html.trim() : ''
+  if (!raw) return null
+  const html = prepareVisualizationHtml(raw)
+  if (!visualizationHTMLReady(html)) return null
   const title = typeof args.title === 'string' ? args.title.trim() : undefined
   return { html, title: title || undefined }
 }
@@ -89,14 +111,21 @@ function parseWriteHTMLArgs(args: Record<string, unknown>): VisualizationContent
 export function extractVisualization(part: {
   toolName?: string
   toolArgs?: Record<string, unknown>
+  toolResult?: unknown
   visualizationHtml?: string
   visualizationTitle?: string
 }): VisualizationContent | null {
   if (part.visualizationHtml?.trim()) {
+    const html = prepareVisualizationHtml(part.visualizationHtml)
+    if (!visualizationHTMLReady(html)) return null
     return {
-      html: part.visualizationHtml,
+      html,
       title: part.visualizationTitle,
     }
+  }
+  if (isVisualizationTool(part.toolName)) {
+    const fromResult = visualizationFromToolResult(part.toolResult)
+    if (fromResult) return fromResult
   }
   const args = part.toolArgs
   if (!args) return null
@@ -124,6 +153,36 @@ export function visualizationFromArgs(
     return parseWriteHTMLArgs(args)
   }
   return null
+}
+
+export function visualizationFromToolResult(result: unknown): VisualizationContent | null {
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return null
+  const rec = result as Record<string, unknown>
+  if (typeof rec.html !== 'string') return null
+  const title = typeof rec.title === 'string' ? rec.title : undefined
+  return parseShowVisualizationArgs({ html: rec.html, title })
+}
+
+/** Remove embedded chart images models sometimes paste after show_visualization. */
+export function stripVisualizationTextLeaks(text: string): string {
+  if (!text) return text
+  let out = text
+  // Markdown image syntax with data URIs.
+  out = out.replace(/!\[[^\]]*]\s*\(\s*data:image\/[^)]+\)/gi, '')
+  // Parenthesized or bare data URIs (base64 payloads).
+  out = out.replace(
+    /\(?\s*data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/=\s]{80,}\s*\)?/gi,
+    '',
+  )
+  // Orphan markdown image labels left after stripping the URI.
+  out = out.replace(/!\[[^\]]*]\s*(?=\n|$)/g, '')
+  return out.replace(/\n{3,}/g, '\n\n').trimEnd()
+}
+
+function messageHasVisualization(parts: AssistantPart[]): boolean {
+  return parts.some(
+    (p) => p.type === 'tool' && isVisualizationTool(p.toolName) && !!extractVisualization(p),
+  )
 }
 
 /** Enrich and dedupe visualization parts so reloads render each chart once. */
@@ -158,16 +217,33 @@ export function normalizeVisualizationParts(parts: AssistantPart[]): AssistantPa
     return part
   })
 
-  const seen: string[] = []
-  return withoutWriteDupes.map((part) => {
+  const seenByToolCall = new Map<string, string>()
+  const deduped = withoutWriteDupes.map((part) => {
     if (part.type !== 'tool' || !part.visualizationHtml) return part
-    for (const prev of seen) {
+    if (part.toolCallId) {
+      const prev = seenByToolCall.get(part.toolCallId)
+      if (prev && visualizationsMatch(part.visualizationHtml, prev)) {
+        return { ...part, visualizationHtml: undefined, visualizationTitle: undefined }
+      }
+      seenByToolCall.set(part.toolCallId, part.visualizationHtml)
+      return part
+    }
+    for (const prev of seenByToolCall.values()) {
       if (visualizationsMatch(part.visualizationHtml, prev)) {
         return { ...part, visualizationHtml: undefined, visualizationTitle: undefined }
       }
     }
-    seen.push(part.visualizationHtml)
+    seenByToolCall.set(part.id, part.visualizationHtml)
     return part
+  })
+
+  if (!messageHasVisualization(deduped)) {
+    return deduped
+  }
+  return deduped.map((part) => {
+    if (part.type !== 'text') return part
+    const content = stripVisualizationTextLeaks(part.content)
+    return content === part.content ? part : { ...part, content }
   })
 }
 
@@ -188,11 +264,12 @@ export function shouldRenderVisualization(
     }
   }
 
+  // Suppress duplicate segments from the same tool call id (streaming retries), not
+  // separate charts that happen to reuse similar Ollama template HTML.
   for (let i = 0; i < index; i++) {
     const p = parts[i]
-    if (p.type !== 'tool') continue
-    const other = extractVisualization(p)
-    if (other && visualizationsMatch(viz.html, other.html)) return false
+    if (p.type !== 'tool' || p === part) continue
+    if (part.toolCallId && p.toolCallId === part.toolCallId) return false
   }
   return true
 }

@@ -32,7 +32,8 @@ type AgentTypeInfo struct {
 	ID            string `json:"id"`
 	Label         string `json:"label"`
 	Description   string `json:"description,omitempty"`
-	Harness       string `json:"harness"`           // claude-code | pi | codex | opencode | docker | remote
+	Harness       string `json:"harness"`           // claude-code | pi | codex | opencode | api | docker | remote
+	Provider      string `json:"provider,omitempty"` // harness type=api: anthropic | openai | gemini | ollama | openrouter
 	Sandbox       string `json:"sandbox,omitempty"` // none | bubblewrap | docker
 	PromptMode        string                     `json:"promptMode,omitempty"`        // user | auto
 	HitlMode          string                     `json:"hitlMode,omitempty"`          // interactive | auto | off
@@ -394,6 +395,7 @@ func agentTypeInfoFromDef(def model.ADLDefinition, builtin bool) AgentTypeInfo {
 		Label:             model.ADLAgentLabel(def),
 		Description:       def.Description,
 		Harness:           def.Harness.Type,
+		Provider:          def.Harness.Provider,
 		Sandbox:           def.Harness.Sandbox,
 		DefaultPrompt:     def.DefaultPrompt,
 		PromptSuggestions: def.PromptSuggestions,
@@ -454,6 +456,8 @@ func harnessAvailable(def model.ADLDefinition) bool {
 	switch def.Harness.Type {
 	case "claude-code", "pi", "codex", "opencode":
 		return agent.CLIAvailable(def.Harness.Type)
+	case "api":
+		return agent.APIHarnessAvailable(def.Harness)
 	case "devcontainer":
 		// List in UI when the devcontainer CLI is installed; Docker is checked at runtime.
 		return devcontainer.Available()

@@ -90,6 +90,7 @@ type ADLPromptSuggestion struct {
 //   - "docker"        — connects to an HTTP/SSE agent in a Docker container (requires image + containerPort)
 //   - "devcontainer"  — Loop-managed dev container sandbox (requires innerHarness)
 //   - "remote"        — connects to a pre-running HTTP/SSE agent over the network (requires host + port)
+//   - "api"           — in-process LLM API harness (anthropic, openai, gemini, ollama, openrouter, …)
 //
 // Sandbox options (harness.sandbox) — applies to "claude-code", "pi", "codex", and "opencode" harnesses:
 //   - "none"        — run directly on the host (default)
@@ -97,7 +98,10 @@ type ADLPromptSuggestion struct {
 //   - "docker"      — run the subprocess agent inside a Docker container
 type ADLHarness struct {
 	Type          string `yaml:"type"          json:"type"`
+	Provider      string `yaml:"provider"      json:"provider,omitempty"` // harness type=api: anthropic | openai | gemini | ollama | openrouter
 	Model         string `yaml:"model"         json:"model,omitempty"`
+	BaseURL       string `yaml:"baseUrl"       json:"baseUrl,omitempty"`       // harness type=api: optional API base URL override
+	APIKeyEnv     string `yaml:"apiKeyEnv"     json:"apiKeyEnv,omitempty"`     // harness type=api: env var for API key (default per provider)
 	InnerHarness  string `yaml:"innerHarness"  json:"innerHarness,omitempty"`  // harness type=devcontainer: claude-code | pi | codex | opencode
 	Sandbox       string `yaml:"sandbox"       json:"sandbox,omitempty"`       // "none" | "bubblewrap" | "docker"
 	Image         string `yaml:"image"         json:"image,omitempty"`          // Docker image (sandbox=docker, harness type=docker, or devcontainer override)

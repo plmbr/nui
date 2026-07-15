@@ -22,6 +22,7 @@ func TestIsUIRoute(t *testing.T) {
 		{"/sessions/new", true},
 		{"/api/sessions", false},
 		{"/health", false},
+		{"/vendor/chart.min.js", false},
 	}
 	for _, tc := range tests {
 		if got := isUIRoute(tc.path); got != tc.want {

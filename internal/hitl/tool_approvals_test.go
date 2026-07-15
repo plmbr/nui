@@ -57,6 +57,21 @@ func TestEffectiveToolApprovalsLegacyHitlApprovals(t *testing.T) {
 	}
 }
 
+func TestIsQuestionTool(t *testing.T) {
+	if !IsQuestionTool("ask_user") {
+		t.Fatal("expected ask_user")
+	}
+	if !IsQuestionTool("mcp__loop-hitl__ask_user") {
+		t.Fatal("expected prefixed ask_user")
+	}
+	if !IsQuestionTool("AskUserQuestion") {
+		t.Fatal("expected AskUserQuestion")
+	}
+	if IsQuestionTool("request_approval") {
+		t.Fatal("request_approval is not a question tool")
+	}
+}
+
 func TestShouldAutoApproveToolPolicies(t *testing.T) {
 	tools := []string{"Bash", "Write", "mcp__corp__*"}
 

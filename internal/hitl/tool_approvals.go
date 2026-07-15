@@ -36,6 +36,25 @@ func EffectiveToolApprovals(def model.ADLDefinition, cfg map[string]any) (policy
 	return ToolApprovalDefault, nil
 }
 
+// IsQuestionTool reports whether toolName is a HITL ask_user interaction tool.
+func IsQuestionTool(toolName string) bool {
+	switch bareToolName(toolName) {
+	case "ask_user", "askuserquestion":
+		return true
+	default:
+		return false
+	}
+}
+
+func bareToolName(toolName string) string {
+	name := strings.TrimSpace(toolName)
+	name = strings.TrimPrefix(name, "mcp__")
+	if i := strings.LastIndex(name, "__"); i >= 0 {
+		name = name[i+2:]
+	}
+	return strings.ToLower(name)
+}
+
 // ShouldAutoApproveTool reports whether a harness tool should skip the Loop approval UI.
 func ShouldAutoApproveTool(toolName, policy string, tools []string) bool {
 	policy = normalizeToolApprovalPolicy(policy)

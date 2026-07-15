@@ -147,7 +147,7 @@ func validateHarness(h ADLHarness, path string) error {
 
 func isValidHarnessType(t string) bool {
 	switch t {
-	case "claude-code", "pi", "codex", "opencode", "docker", "devcontainer", "remote":
+	case "claude-code", "pi", "codex", "opencode", "docker", "devcontainer", "remote", "api":
 		return true
 	}
 	if strings.HasPrefix(t, "ext:") {

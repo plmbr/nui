@@ -67,7 +67,8 @@ var builtinAgentDefs = []model.ADLDefinition{
 
 // BuiltinAgentDefs returns compiled-in ADL agent definitions shipped with Loop.
 func BuiltinAgentDefs() []model.ADLDefinition {
-	out := make([]model.ADLDefinition, len(builtinAgentDefs))
-	copy(out, builtinAgentDefs)
+	out := make([]model.ADLDefinition, 0, len(builtinAgentDefs)+len(apiBuiltinAgentDefs))
+	out = append(out, builtinAgentDefs...)
+	out = append(out, apiBuiltinAgentDefs...)
 	return out
 }

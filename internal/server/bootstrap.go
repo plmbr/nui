@@ -301,7 +301,7 @@ func defaultAgentTypeCandidates() []string {
 
 	for _, def := range agents.BuiltinAgentDefs() {
 		id := model.ADLAgentID(def)
-		if seen[id] || !agent.CLIAvailable(def.Harness.Type) {
+		if seen[id] || !harnessAvailable(def) {
 			continue
 		}
 		candidates = append(candidates, id)
@@ -309,6 +309,20 @@ func defaultAgentTypeCandidates() []string {
 	}
 
 	return candidates
+}
+
+func firstAvailableAPIBuiltinID() string {
+	for _, want := range agents.APIBuiltinOrder {
+		for _, def := range agents.BuiltinAgentDefs() {
+			if def.ID != want || def.Harness.Type != "api" {
+				continue
+			}
+			if harnessAvailable(def) {
+				return want
+			}
+		}
+	}
+	return ""
 }
 
 // ensureDefaultAgentType resolves the configured default agent, persisting the
@@ -322,8 +336,19 @@ func ensureDefaultAgentType(settings *store.Settings) string {
 		}
 	}
 
+	if id := firstAvailableAPIBuiltinID(); id != "" {
+		settings.DefaultAgentType = id
+		if err := store.SaveSettings(*settings); err != nil {
+			fmt.Fprintf(os.Stderr, "warn: save default agent type: %v\n", err)
+		}
+		return id
+	}
+
 	for _, def := range agents.BuiltinAgentDefs() {
 		id := model.ADLAgentID(def)
+		if def.Harness.Type == "api" {
+			continue
+		}
 		if !agent.CLIAvailable(def.Harness.Type) {
 			continue
 		}

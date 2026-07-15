@@ -29,6 +29,10 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 	}
 	mux.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(assetsFS))))
 
+	if vendorFS, err := fs.Sub(uiFiles, "vendor"); err == nil {
+		mux.Handle("/vendor/", http.StripPrefix("/vendor/", http.FileServer(http.FS(vendorFS))))
+	}
+
 	if err := initStore(); err != nil {
 		return fmt.Errorf("loading store: %w", err)
 	}

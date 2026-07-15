@@ -5,6 +5,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -191,6 +192,12 @@ func TestHandleSessionAGUI_agentError(t *testing.T) {
 }
 
 func TestHandleSessionAGUI_visualizationCustomEvent(t *testing.T) {
+	chartHTML := `<canvas id="c"></canvas><script>new Chart(document.getElementById("c"))</script>`
+	toolArgsBytes, err := json.Marshal(map[string]string{"html": chartHTML, "title": "Chart"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	toolArgs := string(toolArgsBytes)
 	mgr := setupTestServerEnv(t)
 	mgr.SetTestHarnessRun(func(_ context.Context, _ agent.RunRequest, events chan<- agent.Event) error {
 		events <- agent.Event{
@@ -201,12 +208,13 @@ func TestHandleSessionAGUI_visualizationCustomEvent(t *testing.T) {
 		events <- agent.Event{
 			Type:       agent.EventToolCallArgs,
 			ToolCallID: "tc-viz",
-			ToolArgs:   `{"html":"<canvas></canvas>","title":"Chart"}`,
+			ToolArgs:   toolArgs,
 		}
 		events <- agent.Event{
 			Type:       agent.EventToolCallEnd,
 			ToolCallID: "tc-viz",
 			ToolName:   "mcp__loop-viz__show_visualization",
+			ToolArgs:   toolArgs,
 		}
 		events <- agent.Event{Type: agent.EventDone, SessionID: "s1"}
 		return nil
@@ -219,7 +227,8 @@ func TestHandleSessionAGUI_visualizationCustomEvent(t *testing.T) {
 		if ev.Type == "CUSTOM" && ev.Raw["name"] == "visualization" {
 			sawViz = true
 			val, _ := ev.Raw["value"].(map[string]any)
-			if val["html"] != "<canvas></canvas>" {
+			htmlVal, _ := val["html"].(string)
+			if !strings.Contains(htmlVal, chartHTML) {
 				t.Fatalf("viz html = %v", val["html"])
 			}
 		}

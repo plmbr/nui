@@ -57,6 +57,7 @@ When the user asks for a chart, graph, table, or dashboard:
 2. Build self-contained HTML (Chart.js from a CDN is fine).
 3. Call **show_visualization** on the **loop-viz** MCP server with the HTML in the **html** field — in the **same turn**, before any closing text.
 4. Never end with "building the chart" or similar without calling **show_visualization** first.
+5. After **show_visualization**, do **not** paste markdown images, data:image/... URIs, or base64 in your reply — the chart is already rendered inline in Loop chat.
 
 Do **not** use **Write** to save HTML files or tell the user to open a browser tab.
 `

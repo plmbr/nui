@@ -125,7 +125,30 @@ TCP and HTTP extension hosts write `~/.loop/connections/<id>.json`:
 {"host": "127.0.0.1", "port": 52341, "session_id": "...", "pid": 9876}
 ```
 
-## 4. Standalone reference examples (not wired)
+## 4. API harness (in-process)
+
+Builtin and ADL agents with `harness.type: api` run entirely inside the Loop binary via [mozilla-ai/any-llm-go](https://github.com/mozilla-ai/any-llm-go). No CLI subprocess is required.
+
+| Builtin ID | Provider | Credentials |
+|---|---|---|
+| `anthropic` | Anthropic | `ANTHROPIC_API_KEY` (+ optional `ANTHROPIC_BASE_URL`, `ANTHROPIC_MODEL`) |
+| `openai` | OpenAI | `OPENAI_API_KEY` (+ optional `OPENAI_BASE_URL`, `OPENAI_MODEL`) |
+| `gemini` | Gemini | `GEMINI_API_KEY` or `GOOGLE_API_KEY` |
+| `openrouter` | OpenAI-compatible + OpenRouter base URL | `OPENROUTER_API_KEY` |
+| `ollama` | Ollama (local) | none (`OLLAMA_HOST` optional; model auto-picked from installed models, or set `OLLAMA_MODEL`) |
+
+ADL example:
+
+```yaml
+harness:
+  type: api
+  provider: anthropic
+  model: claude-sonnet-4-20250514
+```
+
+Tool calling uses session-scoped MCP servers from ADL `aiAssets.mcpServers` (including extension custom tools). Loop implements the agentic tool loop and emits the same `agent.Event` tool-call events as CLI harnesses.
+
+## 5. Standalone reference examples (not wired)
 
 The folders [`dev/harness-examples/py/`](harness-examples/py/) and [`dev/harness-examples/ts/`](harness-examples/ts/) demonstrate the TCP JSON-RPC protocol and SDK without an `extension.yaml`. They are **not** registered with Loop's extension system and are not selectable as agent types. Use them to learn the wire protocol; ship production harnesses as installed extensions.
 

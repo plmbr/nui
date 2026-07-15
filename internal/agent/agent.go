@@ -80,6 +80,12 @@ type RunRequest struct {
 	SubAgentHarnessSession func(subAgentID string) string
 	// OnSubAgentHarnessSession persists a sub-agent harness session id after a delegated run.
 	OnSubAgentHarnessSession func(subAgentID, harnessSessionID string)
+	// History is prior chat turns for harnesses that manage context in Loop (api harness).
+	History []model.ChatMessage
+	// MCPServers are session-scoped MCP servers for the api harness tool loop.
+	MCPServers []model.ADLMCPServer
+	// APIProvider is the any-llm-go provider id (from ADL harness.provider).
+	APIProvider string
 }
 
 // ADLResolver resolves an ADL definition by canonical agent id.

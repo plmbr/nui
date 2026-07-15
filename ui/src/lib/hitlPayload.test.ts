@@ -5,6 +5,7 @@ import {
   formatHitlApprovalSummary,
   hitlApprovalCommand,
   isRedundantHitlApprovalMessage,
+  normalizeHitlPayload,
   normalizeHitlQuestionOptions,
 } from '@/lib/hitlPayload'
 
@@ -34,5 +35,17 @@ describe('hitlPayload', () => {
     expect(isRedundantHitlApprovalMessage('', { command: 'ls' })).toBe(true)
     expect(isRedundantHitlApprovalMessage('ls', { command: 'ls' })).toBe(true)
     expect(isRedundantHitlApprovalMessage('Please approve', { command: 'ls' })).toBe(false)
+  })
+
+  it('normalizes prompt-style questions and message-only payloads', () => {
+    expect(
+      normalizeHitlPayload({
+        questions: [{ prompt: 'What kind of chart?' }],
+      }).questions,
+    ).toEqual([{ prompt: 'What kind of chart?', question: 'What kind of chart?' }])
+
+    expect(normalizeHitlPayload({ message: 'Pick a color' }).questions).toEqual([
+      { question: 'Pick a color' },
+    ])
   })
 })

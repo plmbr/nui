@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="Gemini">
+  <path fill="#4285f4" d="M12 2.5 14.2 9.8 21.5 12 14.2 14.2 12 21.5 9.8 14.2 2.5 12 9.8 9.8z"/>
+  <path fill="#34a853" d="M12 2.5 9.8 9.8 2.5 12l7.3 2.2L12 21.5l2.2-7.3 7.3-2.2-7.3-2.3z" opacity=".85"/>
+  <path fill="#fbbc04" d="M12 2.5 14.2 9.8 21.5 12l-7.3 2.2L12 21.5V12z" opacity=".75"/>
+  <path fill="#ea4335" d="M12 21.5 9.8 14.2 2.5 12l7.3-2.2L12 2.5V12z" opacity=".75"/>
+</svg>

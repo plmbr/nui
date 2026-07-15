@@ -149,6 +149,23 @@ func ResolveBuiltin(name string) (string, error) {
 	return dir, nil
 }
 
+// BuiltinBody returns the markdown body of a compiled-in skill without frontmatter.
+func BuiltinBody(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", fmt.Errorf("builtin skill name is required")
+	}
+	if !IsBuiltinSkill(name) {
+		return "", fmt.Errorf("builtin skill %q not found", name)
+	}
+	skillPath := path.Join("builtins", name, skillFileName)
+	data, err := fs.ReadFile(builtinSkillFS, skillPath)
+	if err != nil {
+		return "", fmt.Errorf("builtin skill %q: %w", name, err)
+	}
+	return strings.TrimSpace(stripFrontmatter(string(data))), nil
+}
+
 func builtinCacheName(name string) string {
 	return "__builtin__" + name
 }

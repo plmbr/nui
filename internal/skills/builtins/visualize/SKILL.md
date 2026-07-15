@@ -15,6 +15,8 @@ When the user asks for a chart, graph, table, or dashboard, render it **inline i
 
 Do this **before** sending any closing assistant text. Never stop after "building the chart" without calling the tool.
 
+Do **not** paste markdown images, `data:image/...` URIs, or base64 in your text after calling **show_visualization** — Loop already renders the chart inline.
+
 ## Do not
 
 - **Do not** invoke the **Skill** tool or the **dataviz** bundled skill.

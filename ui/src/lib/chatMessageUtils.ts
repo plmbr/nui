@@ -70,6 +70,20 @@ export function mergeToolCallArgsDelta(
   buffer: string,
   delta: string,
 ): { toolArgs: Record<string, unknown>; buffer: string } {
+  const trimmedDelta = delta.trim()
+  if (trimmedDelta) {
+    try {
+      const parsed: unknown = JSON.parse(trimmedDelta)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return {
+          toolArgs: { ...(existingArgs ?? {}), ...(parsed as Record<string, unknown>) },
+          buffer: trimmedDelta,
+        }
+      }
+    } catch {
+      /* standalone snapshot parse failed — fall through to incremental merge */
+    }
+  }
   const nextBuffer = buffer + delta
   try {
     const parsed: unknown = JSON.parse(nextBuffer)

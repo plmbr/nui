@@ -41,6 +41,36 @@ func BareToolName(toolName string) string {
 	return toolName
 }
 
+// VisualizationHTMLReady reports whether HTML is complete enough to render or execute.
+func VisualizationHTMLReady(html string) bool {
+	html = strings.TrimSpace(html)
+	if len(html) < 40 {
+		return false
+	}
+	lower := strings.ToLower(html)
+	if strings.Contains(lower, "<canvas") {
+		if !strings.Contains(lower, "</canvas>") {
+			return false
+		}
+		if !strings.Contains(lower, "new chart") && !strings.Contains(lower, "getcontext(") {
+			return false
+		}
+		if strings.Contains(lower, "<script") {
+			if !ScriptsBalanced(html) {
+				return false
+			}
+		}
+		return true
+	}
+	if strings.Contains(lower, "<svg") {
+		return strings.Contains(lower, "</svg>")
+	}
+	if strings.Contains(lower, "<html") || strings.Contains(lower, "<!doctype") {
+		return strings.Contains(lower, "</html>")
+	}
+	return looksLikeHTML(html)
+}
+
 // ParseInput extracts visualization HTML and optional title from show_visualization arguments.
 func ParseInput(args map[string]any) (html, title string, ok bool) {
 	if args == nil {

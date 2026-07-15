@@ -47,6 +47,7 @@ func registerVizTools(server *mcp.Server) {
 		if !ok {
 			return toolError(fmt.Errorf("html is required"))
 		}
+		html = viz.PrepareHTML(html)
 		msg := "Visualization rendered in Loop UI"
 		if title != "" {
 			msg = fmt.Sprintf("Visualization rendered: %s", title)

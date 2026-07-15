@@ -14,8 +14,15 @@ import {
   filterCustomAgentsBySources,
   sortCustomAgentsByName,
 } from '@/lib/agentSources'
-import { pickDefaultAgentTypeId, selectableAgentTypes, harnessSupportsUserScope, defaultUserScopeHarnessConfig, showToolApprovalsOption } from '@/lib/agentTypes'
-import { BUILTIN_AGENTS_LABEL, INSTALLED_AGENTS_LABEL } from '@/lib/sessionGroups'
+import {
+  partitionBuiltinAgents,
+  pickDefaultAgentTypeId,
+  selectableAgentTypes,
+  harnessSupportsUserScope,
+  defaultUserScopeHarnessConfig,
+  showToolApprovalsOption,
+} from '@/lib/agentTypes'
+import { BUILTIN_AGENTS_LABEL, API_AGENTS_LABEL, CLI_AGENTS_LABEL, INSTALLED_AGENTS_LABEL } from '@/lib/sessionGroups'
 import type { AgentType, CreateSessionRequest, ExtensionInfo, Session } from '@/types'
 
 interface Props {
@@ -60,6 +67,10 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   const builtins = useMemo(
     () => selectableAgentTypes(agentTypes).filter((a) => a.isBuiltin),
     [agentTypes],
+  )
+  const { api: apiBuiltins, cli: cliBuiltins } = useMemo(
+    () => partitionBuiltinAgents(builtins),
+    [builtins],
   )
   const userDefined = useMemo(
     () => sortCustomAgentsByName(
@@ -337,15 +348,23 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
                   aria-label={BUILTIN_AGENTS_LABEL}
                   className="min-h-0 flex-1 overflow-y-auto"
                 >
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {builtins.map((a) => (
-                      <BuiltinAgentCard
-                        key={a.id}
-                        agent={a}
-                        selected={selectedId === a.id}
-                        onSelect={() => selectAgent(a.id)}
+                  <div className="flex flex-col gap-5">
+                    {apiBuiltins.length > 0 && (
+                      <BuiltinAgentSection
+                        label={API_AGENTS_LABEL}
+                        agents={apiBuiltins}
+                        selectedId={selectedId}
+                        onSelect={selectAgent}
                       />
-                    ))}
+                    )}
+                    {cliBuiltins.length > 0 && (
+                      <BuiltinAgentSection
+                        label={CLI_AGENTS_LABEL}
+                        agents={cliBuiltins}
+                        selectedId={selectedId}
+                        onSelect={selectAgent}
+                      />
+                    )}
                   </div>
                 </div>
               )}
@@ -573,6 +592,33 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   )
 }
 
+interface BuiltinAgentSectionProps {
+  label: string
+  agents: AgentType[]
+  selectedId: string
+  onSelect: (id: string) => void
+}
+
+function BuiltinAgentSection({ label, agents, selectedId, onSelect }: BuiltinAgentSectionProps) {
+  return (
+    <section className="space-y-2" aria-label={label}>
+      <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </h3>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {agents.map((agent) => (
+          <BuiltinAgentCard
+            key={agent.id}
+            agent={agent}
+            selected={selectedId === agent.id}
+            onSelect={() => onSelect(agent.id)}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
 interface BuiltinAgentCardProps {
   agent: AgentType
   selected: boolean
@@ -592,7 +638,7 @@ function BuiltinAgentCard({ agent, selected, onSelect }: BuiltinAgentCardProps) 
           : 'border-border bg-background hover:bg-muted/60',
       )}
     >
-      <HarnessIcon harness={agent.harness} size="xl" />
+      <HarnessIcon harness={agent.harness} provider={agent.provider} agentId={agent.id} size="xl" />
       <span className={cn(
         'text-xs leading-tight',
         selected ? 'font-medium text-foreground' : 'text-muted-foreground',
@@ -620,7 +666,7 @@ function AgentCard({ agent, selected, onSelect }: AgentCardProps) {
           : 'border-border bg-background hover:bg-muted/60',
       ].join(' ')}
     >
-      <HarnessIcon harness={agent.harness} size="lg" className="shrink-0" />
+      <HarnessIcon harness={agent.harness} provider={agent.provider} agentId={agent.id} size="lg" className="shrink-0" />
       <span className="flex-1 min-w-0">
         <span className="block text-sm font-medium leading-tight">{agent.label}</span>
         {agent.description && (

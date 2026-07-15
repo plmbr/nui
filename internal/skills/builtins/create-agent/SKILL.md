@@ -59,6 +59,14 @@ Optional fields when relevant: `defaultPrompt`, `promptMode`, `workingDirInput`,
 - Filename: `<id>.yaml` (must match the `id` field)
 - Create the directory if needed.
 - If a file with the same id already exists, ask before overwriting unless the user explicitly requested an update.
+
+### API harness (no Write tool)
+
+When you do not have filesystem Write/Edit tools, call **`save_agent`** on the **`loop-agent`** MCP server with the full YAML in the **`content`** field. Set **`overwrite`** to true only when updating an existing agent the user asked to replace.
+
+### CLI harness
+
+Write the YAML file directly to `~/.loop/agents/<id>.yaml`.
 - After saving, tell the user the file path and that the agent will appear under **Installed agents** in Loop (they may need to refresh agent types).
 
 ## Quality bar

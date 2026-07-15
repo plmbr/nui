@@ -45,3 +45,18 @@ func TestParseFromTool_writeHTML(t *testing.T) {
 		t.Fatalf("ParseFromTool(Write) = (%q, %q, %v)", got, title, ok)
 	}
 }
+
+func TestVisualizationHTMLReady(t *testing.T) {
+	partial := `<canvas id="chart">`
+	if VisualizationHTMLReady(partial) {
+		t.Fatal("partial canvas should not be ready")
+	}
+	ready := `<canvas id="c"></canvas><script>new Chart(document.getElementById("c"))</script>`
+	if !VisualizationHTMLReady(ready) {
+		t.Fatal("complete canvas chart should be ready")
+	}
+	svg := `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="120" height="120"/></svg>`
+	if !VisualizationHTMLReady(svg) {
+		t.Fatal("closed svg should be ready")
+	}
+}

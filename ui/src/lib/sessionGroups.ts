@@ -3,6 +3,8 @@
 import type { AgentType, Session } from '@/types'
 
 export const BUILTIN_AGENTS_LABEL = 'Built-in agents'
+export const API_AGENTS_LABEL = 'API agents'
+export const CLI_AGENTS_LABEL = 'CLI agents'
 export const INSTALLED_AGENTS_LABEL = 'Installed agents'
 
 /** Session sidebar group id for compiled-in harness agents (Claude Code, Pi, …). */

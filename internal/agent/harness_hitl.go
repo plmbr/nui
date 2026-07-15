@@ -4,7 +4,6 @@ package agent
 
 import (
 	"os"
-	"os/exec"
 	"strings"
 
 	"loop/internal/model"
@@ -25,16 +24,15 @@ func defaultLoopAPIURL() string {
 }
 
 func loopExecutable() (string, error) {
+	if path := strings.TrimSpace(os.Getenv("LOOP_MCP_BINARY")); path != "" {
+		return path, nil
+	}
 	exe, err := os.Executable()
 	if err != nil {
 		return "", err
 	}
-	// go run uses an ephemeral binary; prefer a stable loop on PATH when available.
-	if strings.Contains(exe, string(os.PathSeparator)+"go-build") {
-		if path, lookErr := exec.LookPath("loop"); lookErr == nil {
-			return path, nil
-		}
-	}
+	// Prefer the running binary (including go run's go-build output) so dev builds
+	// always expose the latest MCP subcommands.
 	return exe, nil
 }
 

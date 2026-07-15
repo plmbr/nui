@@ -74,6 +74,21 @@ func TestAgentTypeInfoFromDef_userAgentCLIHarnessUsesAvailability(t *testing.T) 
 	}
 }
 
+func TestAgentTypeInfoFromDef_apiProvider(t *testing.T) {
+	def := model.ADLDefinition{
+		ID:      "anthropic",
+		Name:    "Anthropic",
+		Harness: model.ADLHarness{Type: "api", Provider: "anthropic"},
+	}
+	info := agentTypeInfoFromDef(def, true)
+	if info.Harness != "api" {
+		t.Fatalf("Harness = %q, want api", info.Harness)
+	}
+	if info.Provider != "anthropic" {
+		t.Fatalf("Provider = %q, want anthropic", info.Provider)
+	}
+}
+
 func TestAgentTypeInfoFromDef_promptSuggestions(t *testing.T) {
 	def := model.ADLDefinition{
 		ID:      "suggest-agent",

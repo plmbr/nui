@@ -95,25 +95,34 @@ func NormalizeParts(parts []model.ChatMessagePart) []model.ChatMessagePart {
 		}
 	}
 
-	seen := make([]string, 0, 2)
+	seenByToolCall := make(map[string]string)
 	for i := range out {
 		html := out[i].VisualizationHTML
 		if html == "" {
 			continue
 		}
 		dup := false
-		for _, prev := range seen {
-			if HTMLMatches(html, prev) {
+		if tcID := strings.TrimSpace(out[i].ToolCallID); tcID != "" {
+			if prev, ok := seenByToolCall[tcID]; ok && HTMLMatches(html, prev) {
 				dup = true
-				break
+			} else {
+				seenByToolCall[tcID] = html
+			}
+		} else {
+			for _, prev := range seenByToolCall {
+				if HTMLMatches(html, prev) {
+					dup = true
+					break
+				}
+			}
+			if !dup {
+				seenByToolCall[out[i].ID] = html
 			}
 		}
 		if dup {
 			out[i].VisualizationHTML = ""
 			out[i].VisualizationTitle = ""
-			continue
 		}
-		seen = append(seen, html)
 	}
 	return out
 }

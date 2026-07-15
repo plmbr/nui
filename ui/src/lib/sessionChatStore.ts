@@ -17,7 +17,8 @@ import {
   updateToolPart,
 } from '@/lib/chatMessageUtils'
 import { deriveSessionProgress, encodeSessionProgress, type SessionProgress } from '@/lib/sessionProgress'
-import { visualizationFromArgs } from '@/lib/visualization'
+import { visualizationFromArgs, visualizationFromToolResult, visualizationHTMLReady } from '@/lib/visualization'
+import { prepareVisualizationHtml } from '@/lib/prepareVisualizationHtml'
 
 type StopFn = () => void | Promise<void>
 
@@ -121,6 +122,13 @@ function emitSession(sessionId: string) {
   emitProgress()
 }
 
+function chartScriptSrc(): string {
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}/vendor/chart.min.js`
+  }
+  return '/vendor/chart.min.js'
+}
+
 function applyToolArgsToPart(
   part: ToolCallPart,
   argBuffer: string,
@@ -140,12 +148,11 @@ function applyToolArgsToPart(
 }
 
 function finalizeToolCallArgs(part: ToolCallPart, argBuffer: string): ToolCallPart {
-  if (part.toolArgs && Object.keys(part.toolArgs).length > 0) return part
   if (!argBuffer.trim()) return part
   try {
     const parsed: unknown = JSON.parse(argBuffer)
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      const toolArgs = { ...(part.toolArgs ?? {}), ...(parsed as Record<string, unknown>) }
+      const toolArgs = parsed as Record<string, unknown>
       const viz = visualizationFromArgs(part.toolName, toolArgs)
       return {
         ...part,
@@ -210,6 +217,8 @@ function finishRun(sessionId: string, runId?: string) {
   entry.subscription = null
   entry.assistantMsgId = null
   entry.activeRunId = null
+  entry.pendingTools = {}
+  entry.pendingToolArgBuffers = {}
   entry.isRunning = false
   emitSession(sessionId)
 }
@@ -364,7 +373,19 @@ function applyAgentEvent(
           } catch {
             /* keep string */
           }
-          return { ...m, parts: updateToolPart(m.parts, partId, { toolResult: result }) }
+          const vizFromResult = visualizationFromToolResult(result)
+          return {
+            ...m,
+            parts: updateToolPart(m.parts, partId, {
+              toolResult: result,
+              ...(vizFromResult
+                ? {
+                    visualizationHtml: vizFromResult.html,
+                    visualizationTitle: vizFromResult.title,
+                  }
+                : {}),
+            }),
+          }
         }
         case 'image': {
           if (!ev.imageData) return m
@@ -705,7 +726,8 @@ function startSend(sessionId: string, text: string) {
         setEntry(sessionId, (ent) => {
           const partId = ent.pendingTools[e.toolCallId!]
           const argBuffer = ent.pendingToolArgBuffers[e.toolCallId!] ?? ''
-          if (!partId || !argBuffer) return
+          if (!partId) return ent
+          if (!argBuffer.trim()) return ent
           return {
             messages: ent.messages.map((m) => {
               if (m.id !== assistantMsgId || !m.parts) return m
@@ -729,10 +751,22 @@ function startSend(sessionId: string, text: string) {
         } catch {
           /* keep as string */
         }
+        const vizFromResult = visualizationFromToolResult(result)
         setEntry(sessionId, (ent) => ({
           messages: ent.messages.map((m) => {
             if (m.id !== assistantMsgId || !m.parts) return m
-            return { ...m, parts: updateToolPart(m.parts, partId, { toolResult: result }) }
+            return {
+              ...m,
+              parts: updateToolPart(m.parts, partId, {
+                toolResult: result,
+                ...(vizFromResult
+                  ? {
+                      visualizationHtml: vizFromResult.html,
+                      visualizationTitle: vizFromResult.title,
+                    }
+                  : {}),
+              }),
+            }
           }),
         }))
       } else if (event.type === EventType.CUSTOM) {
@@ -777,6 +811,8 @@ function startSend(sessionId: string, text: string) {
             title?: string
           }
           if (!toolCallId || !html) return
+          const prepared = prepareVisualizationHtml(html, chartScriptSrc())
+          if (!visualizationHTMLReady(prepared)) return
           const partId = current.pendingTools[toolCallId]
           if (!partId) return
           setEntry(sessionId, (ent) => ({
@@ -785,7 +821,7 @@ function startSend(sessionId: string, text: string) {
               return {
                 ...m,
                 parts: updateToolPart(m.parts, partId, {
-                  visualizationHtml: html,
+                  visualizationHtml: prepared,
                   visualizationTitle: typeof title === 'string' ? title : undefined,
                 }),
               }

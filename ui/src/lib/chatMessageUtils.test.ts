@@ -78,4 +78,17 @@ describe('chatMessageUtils', () => {
     )
     expect(finished.toolArgs).toEqual({ command: 'gh issue view 378' })
   })
+
+  it('replaces args when delta is a complete JSON snapshot', () => {
+    const first = mergeToolCallArgsDelta({}, '', '{"html":"<canvas id=","title":""}')
+    expect(first.toolArgs).toEqual({ html: '<canvas id=', title: '' })
+
+    const second = mergeToolCallArgsDelta(
+      first.toolArgs,
+      first.buffer,
+      '{"html":"<canvas id=\\"c\\"></canvas><script>new Chart()</script>","title":"Sales"}',
+    )
+    expect(second.toolArgs.html).toContain('</canvas>')
+    expect(second.buffer).toContain('new Chart')
+  })
 })

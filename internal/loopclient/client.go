@@ -178,6 +178,13 @@ func pickDefaultAgentTypeID(agents []AgentType, preferredID string) (string, err
 			}
 		}
 	}
+	for _, id := range []string{"anthropic", "openai", "gemini", "openrouter", "ollama"} {
+		for _, a := range selectable {
+			if a.ID == id {
+				return a.ID, nil
+			}
+		}
+	}
 	for _, a := range selectable {
 		if a.IsBuiltin {
 			return a.ID, nil

@@ -176,6 +176,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 			runReq.HarnessPermissions = hitl.EffectivePermissions(def, session.AgentConfig)
 			runReq.ToolApprovalPolicy, runReq.ToolApprovalTools = hitl.EffectiveToolApprovals(def, session.AgentConfig)
 			wireOrchestratorRunRequest(&runReq, sessionID, def)
+			wireAPIHarnessRunRequest(&runReq, sessionID, def)
 		}
 		if !skipTopLevelHarnessSession {
 			runReq.SessionID = agentSessionID
@@ -241,7 +242,6 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 				"toolCallId": ev.ToolCallID,
 				"delta":      ev.ToolArgs,
 			})
-			emitVisualizationEvent(reqCtx, w, flusher, acc, ev.ToolCallID, ev.ToolName, ev.ToolArgs)
 		case agent.EventToolCallEnd:
 			writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
 				"type":       "TOOL_CALL_END",
@@ -413,6 +413,10 @@ func emitVisualizationEvent(reqCtx context.Context, w http.ResponseWriter, flush
 	}
 	html, title, ok := viz.ParseFromTool(toolName, toolInput)
 	if !ok {
+		return
+	}
+	html = viz.PrepareHTML(html)
+	if !viz.VisualizationHTMLReady(html) {
 		return
 	}
 	writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{

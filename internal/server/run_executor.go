@@ -166,6 +166,7 @@ func executeRun(ctx context.Context, opts executeRunOptions) executeRunResult {
 			runReq.HarnessPermissions = hitl.EffectivePermissions(def, opts.Session.AgentConfig)
 			runReq.ToolApprovalPolicy, runReq.ToolApprovalTools = hitl.EffectiveToolApprovals(def, opts.Session.AgentConfig)
 			wireOrchestratorRunRequest(&runReq, opts.Session.ID, def)
+			wireAPIHarnessRunRequest(&runReq, opts.Session.ID, def)
 		}
 		if !ra.SkipsTopLevelHarnessSession {
 			runReq.SessionID = opts.AgentSessionID

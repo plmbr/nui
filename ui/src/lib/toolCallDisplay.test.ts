@@ -48,18 +48,23 @@ describe('toolCallDisplay', () => {
   })
 
   it('routes visualization tools to visualization segments', () => {
+    const html =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="120" height="120"/></svg>'
     const segments = segmentAssistantParts([
       { type: 'tool', id: 't1', toolName: 'WebSearch' },
       {
         type: 'tool',
         id: 't2',
         toolName: 'show_visualization',
-        toolArgs: { html: '<svg></svg>' },
+        toolArgs: { html },
       },
     ])
 
     expect(segments).toHaveLength(2)
     expect(segments[0]).toMatchObject({ type: 'tool-group' })
-    expect(segments[1]).toMatchObject({ type: 'visualization', html: '<svg></svg>' })
+    expect(segments[1]).toMatchObject({ type: 'visualization' })
+    if (segments[1].type === 'visualization') {
+      expect(segments[1].html).toContain('<svg')
+    }
   })
 })

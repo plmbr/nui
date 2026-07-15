@@ -8,28 +8,47 @@ import piDarkIcon from '@/assets/harness/pi-dark.svg?url'
 import codexIcon from '@/assets/harness/codex.svg?url'
 import opencodeLightIcon from '@/assets/harness/opencode-light.svg?url'
 import opencodeDarkIcon from '@/assets/harness/opencode-dark.svg?url'
+import openaiIcon from '@/assets/harness/openai.svg?url'
+import geminiIcon from '@/assets/harness/gemini.svg?url'
+import openrouterIcon from '@/assets/harness/openrouter.svg?url'
+import ollamaLightIcon from '@/assets/harness/ollama-light.svg?url'
+import ollamaDarkIcon from '@/assets/harness/ollama-dark.svg?url'
 
 type Harness = AgentType['harness']
+type APIProvider = NonNullable<AgentType['provider']>
+type IconKey = Harness | APIProvider
 
-const HARNESS_ACCENTS: Partial<Record<Harness, string>> = {
+const HARNESS_ACCENTS: Partial<Record<IconKey, string>> = {
   'claude-code': '#d97757',
+  anthropic: '#d97757',
   pi: '#8b5cf6',
   codex: '#10a37f',
+  openai: '#10a37f',
   opencode: '#3b82f6',
+  gemini: '#4285f4',
+  openrouter: '#94A3B8',
+  ollama: '#1f2937',
   docker: '#2496ed',
   devcontainer: '#2496ed',
   remote: '#64748b',
 }
 
-const BRAND_ICON_SRC: Partial<Record<Harness, string | { light: string; dark: string }>> = {
+const BRAND_ICON_SRC: Partial<Record<IconKey, string | { light: string; dark: string }>> = {
   'claude-code': claudeCodeIcon,
+  anthropic: claudeCodeIcon,
   pi: { light: piLightIcon, dark: piDarkIcon },
   codex: codexIcon,
+  openai: openaiIcon,
   opencode: { light: opencodeLightIcon, dark: opencodeDarkIcon },
+  gemini: geminiIcon,
+  openrouter: openrouterIcon,
+  ollama: { light: ollamaLightIcon, dark: ollamaDarkIcon },
 }
 
 interface Props {
   harness: Harness
+  provider?: AgentType['provider']
+  agentId?: string
   className?: string
   size?: 'sm' | 'md' | 'lg' | 'xl'
 }
@@ -47,6 +66,16 @@ const IMG_SIZE = {
   lg: 'size-8',
   xl: 'size-11',
 } as const
+
+function resolveIconKey(harness: Harness, provider?: AgentType['provider'], agentId?: string): IconKey {
+  if (harness === 'api') {
+    const apiProvider = provider?.trim() || agentId?.trim()
+    if (apiProvider && apiProvider in BRAND_ICON_SRC) {
+      return apiProvider as APIProvider
+    }
+  }
+  return harness
+}
 
 function HarnessGlyph({ harness, className }: { harness: Harness; className?: string }) {
   switch (harness) {
@@ -78,6 +107,18 @@ function HarnessGlyph({ harness, className }: { harness: Harness; className?: st
           />
         </svg>
       )
+    case 'api':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+          <path
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            d="M7 8h10M7 12h10M7 16h6"
+          />
+          <rect x="4" y="5" width="16" height="14" rx="2" stroke="currentColor" strokeWidth="1.75" />
+        </svg>
+      )
     default:
       return (
         <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
@@ -106,9 +147,10 @@ function BrandIcon({
   )
 }
 
-export function HarnessIcon({ harness, className, size = 'md' }: Props) {
-  const brandSrc = BRAND_ICON_SRC[harness]
-  const accent = HARNESS_ACCENTS[harness] ?? 'var(--muted-foreground)'
+export function HarnessIcon({ harness, provider, agentId, className, size = 'md' }: Props) {
+  const iconKey = resolveIconKey(harness, provider, agentId)
+  const brandSrc = BRAND_ICON_SRC[iconKey]
+  const accent = HARNESS_ACCENTS[iconKey] ?? 'var(--muted-foreground)'
 
   if (brandSrc) {
     return (

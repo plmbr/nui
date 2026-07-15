@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+import { prepareVisualizationHtml } from '@/lib/prepareVisualizationHtml'
+
 interface VisualizationFrameProps {
   html: string
   title?: string
@@ -42,7 +44,14 @@ function injectAutoResize(html: string): string {
 export function VisualizationFrame({ html, title }: VisualizationFrameProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [height, setHeight] = useState<number>()
-  const srcDoc = useMemo(() => injectAutoResize(html), [html])
+  const chartScriptSrc =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/vendor/chart.min.js`
+      : '/vendor/chart.min.js'
+  const srcDoc = useMemo(
+    () => injectAutoResize(prepareVisualizationHtml(html, chartScriptSrc)),
+    [html, chartScriptSrc],
+  )
 
   useEffect(() => {
     const iframe = iframeRef.current

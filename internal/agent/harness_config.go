@@ -47,6 +47,7 @@ var harnessProvisioners = map[string]harnessProvisioner{
 	"codex":       codexHarnessProvisioner{},
 	"pi":          piHarnessProvisioner{},
 	"opencode":    opencodeHarnessProvisioner{},
+	"api":         apiHarnessProvisioner{},
 }
 
 // harnessConfigEnvVar returns the environment variable that redirects harness config
@@ -231,7 +232,16 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 	if err != nil {
 		return deps, err
 	}
+	if def.Harness.Type == "api" {
+		deps.MCPServers, err = appendLoopAgentMCP(deps.MCPServers)
+		if err != nil {
+			return deps, err
+		}
+	}
 	deps.SystemPrompt = appendVizSystemPrompt(deps.SystemPrompt)
+	if def.Harness.Type == "api" && strings.TrimSpace(def.Harness.Provider) == "ollama" {
+		deps.SystemPrompt = appendOllamaToolsSystemPrompt(deps.SystemPrompt)
+	}
 	if hitl.RuntimeAllowed(def, agentConfig) {
 		deps.SystemPrompt = appendHitlSystemPrompt(deps.SystemPrompt)
 		deps.Skills = appendHitlAskUserSkill(deps.Skills)
@@ -247,6 +257,7 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 		}
 		deps.ResolvedRules = resolved
 		deps.Rules = nil
+		deps.Skills = skills.WithBuiltins(deps.Skills)
 		deps.ToolApprovalPolicy, deps.ToolApprovalTools = hitl.EffectiveToolApprovals(def, agentConfig)
 		return deps, nil
 	}
@@ -271,6 +282,7 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 	}
 	deps.ResolvedRules = resolved
 	deps.Rules = nil
+	deps.Skills = skills.WithBuiltins(deps.Skills)
 	deps.ToolApprovalPolicy, deps.ToolApprovalTools = hitl.EffectiveToolApprovals(def, agentConfig)
 	return deps, nil
 }

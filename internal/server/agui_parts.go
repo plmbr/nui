@@ -73,16 +73,17 @@ func (a *assistantPartAccumulator) applyEvent(ev agent.Event, mcpLookup func(str
 			if a.parts[i].Type != "tool" || a.parts[i].ID != partID {
 				continue
 			}
-			for k, v := range args {
-				a.parts[i].ToolArgs[k] = v
-			}
+			a.parts[i].ToolArgs = args
 			toolName := ev.ToolName
 			if toolName == "" {
 				toolName = a.parts[i].ToolName
 			}
-			if html, title, ok := viz.ParseFromTool(toolName, a.parts[i].ToolArgs); ok {
-				a.parts[i].VisualizationHTML = html
-				a.parts[i].VisualizationTitle = title
+			if html, title, ok := viz.ParseFromTool(toolName, args); ok {
+				html = viz.PrepareHTML(html)
+				if viz.VisualizationHTMLReady(html) {
+					a.parts[i].VisualizationHTML = html
+					a.parts[i].VisualizationTitle = title
+				}
 			}
 			break
 		}
@@ -110,8 +111,11 @@ func (a *assistantPartAccumulator) applyEvent(ev agent.Event, mcpLookup func(str
 				toolName = a.parts[i].ToolName
 			}
 			if html, title, ok := viz.ParseFromTool(toolName, toolInput); ok {
-				a.parts[i].VisualizationHTML = html
-				a.parts[i].VisualizationTitle = title
+				html = viz.PrepareHTML(html)
+				if viz.VisualizationHTMLReady(html) {
+					a.parts[i].VisualizationHTML = html
+					a.parts[i].VisualizationTitle = title
+				}
 			}
 			if mcpLookup == nil {
 				break

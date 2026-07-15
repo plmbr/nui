@@ -22,6 +22,7 @@ var harnessRunners = map[string]harnessRunner{
 	"docker":       runDockerHarness,
 	"devcontainer": runDevcontainerHarness,
 	"remote":       runRemoteHarness,
+	"api":          runAPIHarness,
 }
 
 func (a *ADLAgent) harnessProjectID(req RunRequest, harness model.ADLHarness) string {
@@ -190,5 +191,10 @@ func runRemoteHarness(ctx context.Context, a *ADLAgent, req RunRequest, harness 
 	if err != nil {
 		return fmt.Errorf("remote harness: %w", err)
 	}
+	return ag.Run(ctx, req, events)
+}
+
+func runAPIHarness(ctx context.Context, a *ADLAgent, req RunRequest, harness model.ADLHarness, events chan<- Event) error {
+	ag := &APIHarnessAgent{Harness: harness}
 	return ag.Run(ctx, req, events)
 }
