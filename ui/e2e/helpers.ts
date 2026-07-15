@@ -53,3 +53,13 @@ export function echoAgentAvailable(): boolean {
 export function realAgentAvailable(): boolean {
   return !!process.env.ANTHROPIC_API_KEY
 }
+
+export function ollamaAgentAvailable(): boolean {
+  return process.env.E2E_AGENT === 'ollama'
+}
+
+export async function waitForAssistantReply(page: Page) {
+  await expect(page.locator('.agui-message--assistant .agui-message__bubble').last()).toBeVisible({
+    timeout: 45_000,
+  })
+}

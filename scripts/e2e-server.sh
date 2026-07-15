@@ -29,5 +29,13 @@ harness:
 EOF
 fi
 
+if [[ "${E2E_AGENT:-}" == "ollama" ]]; then
+  OLLAMA_MOCK_PORT="${OLLAMA_MOCK_PORT:-11435}"
+  python3 "$ROOT/dev/harness-examples/mock/ollama_e2e_server.py" --port "$OLLAMA_MOCK_PORT" &
+  OLLAMA_PID=$!
+  trap 'kill $OLLAMA_PID 2>/dev/null || true' EXIT
+  export OLLAMA_HOST="http://127.0.0.1:${OLLAMA_MOCK_PORT}"
+fi
+
 cd "$ROOT"
 exec go run . ui --port "$PORT" --no-browser

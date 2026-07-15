@@ -70,7 +70,7 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 			return ctx.Err()
 		}
 
-		assistant, streamedText, err := a.streamCompletion(ctx, provider, modelName, normalizeAPIMessages(messages), tools, events)
+		assistant, streamedText, err := a.streamCompletion(ctx, provider, modelName, normalizeAPIMessages(messages), tools, req.Message, events)
 		if err != nil {
 			if errors.Is(err, llm.ErrModelNotFound) && candidateIdx < len(modelCandidates)-1 {
 				candidateIdx++
@@ -80,18 +80,39 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 			return err
 		}
 		if len(assistant.ToolCalls) == 0 {
-			if streamedText == "" && assistant.Content != nil {
-				if text, ok := assistant.Content.(string); ok {
-					streamedText = text
+			text := strings.TrimSpace(streamedText)
+			if text == "" {
+				if c, ok := assistant.Content.(string); ok {
+					text = strings.TrimSpace(c)
 				}
 			}
-			_ = streamedText
+			if text == "" && strings.TrimSpace(a.Harness.Provider) == "ollama" && shouldAnswerInPlainText(req.Message) {
+				if _, err := a.streamPlainTextCompletion(ctx, provider, modelName, normalizeAPIMessages(messages), events); err != nil {
+					return err
+				}
+			}
 			events <- Event{Type: EventDone}
 			return nil
 		}
 
-		assistant.ToolCalls = filterExecutableToolCalls(normalizeAPIToolCalls(assistant.ToolCalls))
+		filtered, _ := filterSpuriousAskUser(
+			filterExecutableToolCalls(normalizeAPIToolCalls(assistant.ToolCalls)),
+			req.Message,
+			a.Harness.Provider,
+		)
+		assistant.ToolCalls = filtered
 		if len(assistant.ToolCalls) == 0 {
+			text := strings.TrimSpace(streamedText)
+			if text == "" {
+				if c, ok := assistant.Content.(string); ok {
+					text = strings.TrimSpace(c)
+				}
+			}
+			if text == "" && strings.TrimSpace(a.Harness.Provider) == "ollama" && shouldAnswerInPlainText(req.Message) {
+				if _, err := a.streamPlainTextCompletion(ctx, provider, modelName, normalizeAPIMessages(messages), events); err != nil {
+					return err
+				}
+			}
 			events <- Event{Type: EventDone}
 			return nil
 		}
@@ -114,6 +135,7 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 				messages = append(messages, llm.Message{
 					Role:       llm.RoleTool,
 					ToolCallID: tc.ID,
+					ToolName:   toolName,
 					Content:    resultText,
 				})
 				continue
@@ -130,6 +152,7 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 			messages = append(messages, llm.Message{
 				Role:       llm.RoleTool,
 				ToolCallID: tc.ID,
+				ToolName:   toolName,
 				Content:    resultText,
 			})
 		}
@@ -147,6 +170,7 @@ func (a *APIHarnessAgent) streamCompletion(
 	modelName string,
 	messages []llm.Message,
 	tools []llm.Tool,
+	userMessage string,
 	events chan<- Event,
 ) (llm.Message, string, error) {
 	params := llm.CompletionParams{
@@ -161,7 +185,7 @@ func (a *APIHarnessAgent) streamCompletion(
 	chunks, errs := provider.CompletionStream(ctx, params)
 	var streamed strings.Builder
 	var bufferedText strings.Builder
-	bufferingText := false
+	deferText := len(tools) > 0
 	toolCalls := map[int]*accumulatedToolCall{}
 	finishReason := ""
 
@@ -179,9 +203,7 @@ func (a *APIHarnessAgent) streamCompletion(
 		}
 		choice := chunk.Choices[0]
 		if choice.Delta.Content != "" {
-			probe := streamed.String() + bufferedText.String() + choice.Delta.Content
-			if bufferingText || shouldBufferTextToolStream(probe) {
-				bufferingText = true
+			if deferText {
 				bufferedText.WriteString(choice.Delta.Content)
 			} else {
 				emitText(choice.Delta.Content)
@@ -192,10 +214,6 @@ func (a *APIHarnessAgent) streamCompletion(
 			if !ok {
 				acc = &accumulatedToolCall{id: tc.ID, name: tc.Function.Name}
 				toolCalls[i] = acc
-				if tc.ID != "" || tc.Function.Name != "" {
-					acc.started = true
-					events <- Event{Type: EventToolCallStart, ToolCallID: tc.ID, ToolName: tc.Function.Name}
-				}
 			}
 			if tc.ID != "" {
 				acc.id = tc.ID
@@ -204,14 +222,8 @@ func (a *APIHarnessAgent) streamCompletion(
 				acc.name = tc.Function.Name
 			}
 			if tc.Function.Arguments != "" {
-				newArgs := tc.Function.Arguments
-				prevArgs := acc.args.String()
 				acc.args.Reset()
-				acc.args.WriteString(newArgs)
-				if delta, changed := toolArgsStreamUpdate(prevArgs, newArgs); changed {
-					acc.lastEmittedArgs = newArgs
-					events <- Event{Type: EventToolCallArgs, ToolCallID: acc.id, ToolName: acc.name, ToolArgs: delta}
-				}
+				acc.args.WriteString(tc.Function.Arguments)
 			}
 		}
 		if choice.FinishReason != "" {
@@ -228,13 +240,6 @@ func (a *APIHarnessAgent) streamCompletion(
 			continue
 		}
 		argsStr := acc.args.String()
-		if !acc.started {
-			events <- Event{Type: EventToolCallStart, ToolCallID: acc.id, ToolName: acc.name}
-		}
-		if delta, changed := toolArgsStreamUpdate(acc.lastEmittedArgs, argsStr); changed {
-			events <- Event{Type: EventToolCallArgs, ToolCallID: acc.id, ToolName: acc.name, ToolArgs: delta}
-		}
-		events <- Event{Type: EventToolCallEnd, ToolCallID: acc.id, ToolName: acc.name, ToolArgs: argsStr}
 		calls = append(calls, llm.ToolCall{
 			ID:   acc.id,
 			Type: "function",
@@ -244,12 +249,16 @@ func (a *APIHarnessAgent) streamCompletion(
 			},
 		})
 	}
-	calls = filterExecutableToolCalls(calls)
+
+	emitToolCallEvents := func(tc llm.ToolCall) {
+		events <- Event{Type: EventToolCallStart, ToolCallID: tc.ID, ToolName: tc.Function.Name}
+		events <- Event{Type: EventToolCallArgs, ToolCallID: tc.ID, ToolName: tc.Function.Name, ToolArgs: tc.Function.Arguments}
+		events <- Event{Type: EventToolCallEnd, ToolCallID: tc.ID, ToolName: tc.Function.Name, ToolArgs: tc.Function.Arguments}
+	}
 
 	streamedContent := streamed.String()
-	if bufferingText {
-		buffered := bufferedText.String()
-		streamedContent = streamedContent + buffered
+	if bufferedText.Len() > 0 {
+		streamedContent += bufferedText.String()
 	}
 	if len(calls) == 0 {
 		available := toolNamesFromLLM(tools)
@@ -257,19 +266,40 @@ func (a *APIHarnessAgent) streamCompletion(
 		if len(textCalls) > 0 {
 			streamedContent = cleaned
 			textCalls = filterExecutableToolCalls(textCalls)
-			for _, tc := range textCalls {
-				events <- Event{Type: EventToolCallStart, ToolCallID: tc.ID, ToolName: tc.Function.Name}
-				events <- Event{Type: EventToolCallArgs, ToolCallID: tc.ID, ToolName: tc.Function.Name, ToolArgs: tc.Function.Arguments}
-				events <- Event{Type: EventToolCallEnd, ToolCallID: tc.ID, ToolName: tc.Function.Name, ToolArgs: tc.Function.Arguments}
-				calls = append(calls, tc)
-			}
-		} else if bufferingText {
-			emitText(bufferedText.String())
-			streamedContent = streamed.String()
+			calls = append(calls, textCalls...)
+		} else if looksLikeTextToolJSON(streamedContent) {
+			streamedContent = ""
 		}
-	} else if bufferingText && bufferedText.Len() > 0 {
-		emitText(bufferedText.String())
-		streamedContent = streamed.String()
+	}
+
+	var removedAskUser []llm.ToolCall
+	var removedViz []llm.ToolCall
+	calls, removedViz = filterSpuriousVisualization(calls, userMessage, a.Harness.Provider)
+	calls = filterExecutableToolCalls(calls)
+	calls, removedAskUser = filterSpuriousAskUser(calls, userMessage, a.Harness.Provider)
+	if strings.TrimSpace(streamedContent) == "" {
+		if strings.TrimSpace(a.Harness.Provider) != "ollama" && len(removedAskUser) > 0 {
+			streamedContent = salvageAskUserText(removedAskUser)
+		}
+		if strings.TrimSpace(streamedContent) == "" && len(removedViz) > 0 {
+			streamedContent = salvageVisualizationText(removedViz)
+		}
+	}
+
+	if len(calls) > 0 || looksLikeTextToolJSON(streamedContent) {
+		if obj := findEmbeddedJSONObjectOrEmpty(streamedContent); obj != "" {
+			streamedContent = strings.TrimSpace(strings.Replace(streamedContent, obj, "", 1))
+		} else if looksLikeTextToolJSON(streamedContent) {
+			streamedContent = ""
+		}
+	}
+
+	for _, tc := range calls {
+		emitToolCallEvents(tc)
+	}
+
+	if deferText && strings.TrimSpace(streamedContent) != "" {
+		emitText(streamedContent)
 	}
 
 	assistant := llm.Message{
@@ -281,12 +311,39 @@ func (a *APIHarnessAgent) streamCompletion(
 	return assistant, streamedContent, nil
 }
 
+func (a *APIHarnessAgent) streamPlainTextCompletion(
+	ctx context.Context,
+	provider llm.Provider,
+	modelName string,
+	messages []llm.Message,
+	events chan<- Event,
+) (string, error) {
+	chunks, errs := provider.CompletionStream(ctx, llm.CompletionParams{
+		Model:    modelName,
+		Messages: messages,
+	})
+	var b strings.Builder
+	for chunk := range chunks {
+		if len(chunk.Choices) == 0 {
+			continue
+		}
+		delta := chunk.Choices[0].Delta.Content
+		if delta == "" {
+			continue
+		}
+		b.WriteString(delta)
+		events <- Event{Type: EventText, Content: delta}
+	}
+	if err := <-errs; err != nil {
+		return b.String(), err
+	}
+	return b.String(), nil
+}
+
 type accumulatedToolCall struct {
-	id              string
-	name            string
-	args            strings.Builder
-	lastEmittedArgs string
-	started         bool
+	id   string
+	name string
+	args strings.Builder
 }
 
 func buildAPIMessages(req RunRequest) []llm.Message {
@@ -300,9 +357,9 @@ func buildAPIMessages(req RunRequest) []llm.Message {
 		case "user":
 			messages = append(messages, llm.Message{Role: llm.RoleUser, Content: msg.Content})
 		case "assistant":
-			content := strings.TrimSpace(msg.Content)
+			content := assistantHistoryContent(msg)
 			if content == "" {
-				content = assistantVizHistorySummary(msg)
+				continue
 			}
 			messages = append(messages, llm.Message{Role: llm.RoleAssistant, Content: content})
 		}
@@ -313,18 +370,37 @@ func buildAPIMessages(req RunRequest) []llm.Message {
 	return messages
 }
 
-func assistantVizHistorySummary(msg model.ChatMessage) string {
-	for _, part := range msg.Parts {
-		if part.Type != "tool" || !viz.IsVisualizationTool(part.ToolName) {
-			continue
+func assistantHistoryContent(msg model.ChatMessage) string {
+	if content := strings.TrimSpace(msg.Content); content != "" {
+		if looksLikeTextToolJSON(content) {
+			return ""
 		}
-		title := strings.TrimSpace(part.VisualizationTitle)
-		if title == "" {
-			title = "chart"
-		}
-		return fmt.Sprintf("[Rendered visualization: %s]", title)
+		return content
 	}
-	return ""
+	var b strings.Builder
+	for _, part := range msg.Parts {
+		switch part.Type {
+		case "text":
+			if t := strings.TrimSpace(part.Content); t != "" {
+				if b.Len() > 0 {
+					b.WriteString("\n\n")
+				}
+				b.WriteString(t)
+			}
+		case "tool":
+			if viz.IsVisualizationTool(part.ToolName) {
+				title := strings.TrimSpace(part.VisualizationTitle)
+				if title == "" {
+					title = "chart"
+				}
+				if b.Len() > 0 {
+					b.WriteString("\n\n")
+				}
+				fmt.Fprintf(&b, "[Rendered visualization: %s]", title)
+			}
+		}
+	}
+	return strings.TrimSpace(b.String())
 }
 
 func sessionToolsToLLMTools(tools []sessionMCPTool) []llm.Tool {

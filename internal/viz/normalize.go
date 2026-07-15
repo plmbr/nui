@@ -71,8 +71,19 @@ func NormalizeParts(parts []model.ChatMessagePart) []model.ChatMessagePart {
 		}
 		if out[i].VisualizationHTML == "" {
 			if html, title, ok := ParseFromTool(out[i].ToolName, out[i].ToolArgs); ok {
+				html = PrepareHTML(html)
+				if VisualizationHTMLReady(html) {
+					out[i].VisualizationHTML = html
+					out[i].VisualizationTitle = title
+				}
+			}
+		} else {
+			html := PrepareHTML(out[i].VisualizationHTML)
+			if VisualizationHTMLReady(html) {
 				out[i].VisualizationHTML = html
-				out[i].VisualizationTitle = title
+			} else {
+				out[i].VisualizationHTML = ""
+				out[i].VisualizationTitle = ""
 			}
 		}
 		if IsVisualizationTool(out[i].ToolName) && out[i].VisualizationHTML != "" {

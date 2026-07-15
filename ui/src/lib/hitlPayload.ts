@@ -19,8 +19,33 @@ function normalizeHitlQuestion(question: HitlQuestion): HitlQuestion {
   const header = pickString(record, 'header', 'id', 'name')
   return {
     ...question,
-    ...(text ? { question: text } : {}),
+    ...(text ? { question: text } : header ? { question: header } : {}),
     ...(header ? { header } : {}),
+  }
+}
+
+function extractQuestionsFromMessage(message: string): {
+  cleanMessage: string
+  questions: HitlQuestion[]
+} | null {
+  const idx = message.indexOf('[{')
+  if (idx < 0) return null
+  const candidate = message.slice(idx).trim()
+  try {
+    const parsed = JSON.parse(candidate) as unknown
+    if (!Array.isArray(parsed) || parsed.length === 0) return null
+    const first = parsed[0]
+    if (!first || typeof first !== 'object') return null
+    const record = first as Record<string, unknown>
+    const hasQuestion = pickString(record, 'question', 'prompt', 'text', 'header')
+    const hasOptions = Array.isArray(record.options) && record.options.length > 0
+    if (!hasQuestion && !hasOptions) return null
+    return {
+      cleanMessage: message.slice(0, idx).trim(),
+      questions: parsed as HitlQuestion[],
+    }
+  } catch {
+    return null
   }
 }
 
@@ -30,13 +55,23 @@ export function normalizeHitlPayload(payload?: HitlPayload): HitlPayload {
     ? base.questions.map((question) => normalizeHitlQuestion(question))
     : []
 
+  let message = pickString(base as Record<string, unknown>, 'message')
+  if (message) {
+    const extracted = extractQuestionsFromMessage(message)
+    if (extracted) {
+      message = extracted.cleanMessage || undefined
+      if (questions.length === 0) {
+        questions = extracted.questions.map((question) => normalizeHitlQuestion(question))
+      }
+    }
+  }
+
   questions = questions.filter((question) => {
     const text = question.question?.trim()
     const options = normalizeHitlQuestionOptions(question.options)
     return Boolean(text) || options.length > 0
   })
 
-  const message = pickString(base as Record<string, unknown>, 'message')
   const title = pickString(base as Record<string, unknown>, 'title')
   const topLevelQuestion = pickString(
     base as Record<string, unknown>,

@@ -28,6 +28,23 @@ func TestAssembleAPISystemPromptIncludesBuiltinSkills(t *testing.T) {
 	}
 }
 
+func TestExpandHarnessDeps_ollamaOmitsVisualizeSkill(t *testing.T) {
+	expanded, err := ExpandHarnessDeps(HarnessDeps{}, nil, "ollama-session", model.ADLDefinition{
+		Harness: model.ADLHarness{Type: "api", Provider: "ollama"},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, skill := range expanded.Skills {
+		if skill.Name == "visualize" {
+			t.Fatal("ollama api harness should not include visualize skill")
+		}
+	}
+	if strings.Contains(expanded.SystemPrompt, "Never end with \"building the chart\"") {
+		t.Fatal("ollama should not get generic viz system prompt appendix")
+	}
+}
+
 func TestExpandHarnessDeps_apiIncludesLoopAgentMCP(t *testing.T) {
 	deps := HarnessDeps{}
 	expanded, err := ExpandHarnessDeps(deps, nil, "api-session", model.ADLDefinition{

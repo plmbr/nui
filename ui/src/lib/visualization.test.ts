@@ -52,6 +52,26 @@ describe('visualization', () => {
     ).toBeNull()
   })
 
+  it('rejects empty HTML shell documents', () => {
+    const emptyShell =
+      '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body></body></html>'
+    expect(visualizationHTMLReady(emptyShell)).toBe(false)
+  })
+
+  it('drops invalid visualization tool parts on normalize', () => {
+    const parts = normalizeVisualizationParts([
+      { type: 'text', content: 'Hello' },
+      {
+        type: 'tool',
+        id: 't1',
+        toolName: 'show_visualization',
+        toolArgs: { html: '<!DOCTYPE html><html><body></body></html>' },
+      },
+    ])
+    expect(parts.filter((p) => p.type === 'tool')).toHaveLength(0)
+    expect(parts).toHaveLength(1)
+  })
+
   it('extracts visualization html from structured tool results', () => {
     const viz = visualizationFromToolResult({
       html: '<canvas id="c" width="120" height="120"></canvas><script>new Chart(document.getElementById("c"))</script>',
@@ -72,7 +92,8 @@ describe('visualization', () => {
   })
 
   it('dedupes visualization parts on normalize', () => {
-    const html = '<canvas>'.repeat(50)
+    const html =
+      '<canvas id="c" width="120" height="120"></canvas><script>new Chart(document.getElementById("c"))</script>'
     const parts: ToolCallPart[] = [
       {
         type: 'tool',

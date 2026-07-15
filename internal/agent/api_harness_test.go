@@ -71,10 +71,10 @@ func TestBuildAPIMessages_vizOnlyAssistantHistory(t *testing.T) {
 				Role: "assistant",
 				Parts: []model.ChatMessagePart{
 					{
-						Type:                "tool",
-						ToolName:            "show_visualization",
-						VisualizationTitle:  "Sales",
-						VisualizationHTML:   "<canvas></canvas>",
+						Type:               "tool",
+						ToolName:           "show_visualization",
+						VisualizationTitle: "Sales",
+						VisualizationHTML:  "<canvas></canvas>",
 					},
 				},
 			},
@@ -86,6 +86,65 @@ func TestBuildAPIMessages_vizOnlyAssistantHistory(t *testing.T) {
 	}
 	if msgs[1].Content != "[Rendered visualization: Sales]" {
 		t.Fatalf("assistant history = %q", msgs[1].Content)
+	}
+}
+
+func TestBuildAPIMessages_assistantTextFromParts(t *testing.T) {
+	msgs := buildAPIMessages(RunRequest{
+		History: []model.ChatMessage{
+			{Role: "user", Content: "what is 2+2"},
+			{
+				Role: "assistant",
+				Parts: []model.ChatMessagePart{
+					{Type: "text", Content: "The answer is 4."},
+					{Type: "tool", ToolName: "ask_user"},
+				},
+			},
+		},
+		Message: "what can you do",
+	})
+	if len(msgs) != 3 {
+		t.Fatalf("len = %d, msgs = %+v", len(msgs), msgs)
+	}
+	if msgs[1].Content != "The answer is 4." {
+		t.Fatalf("assistant history = %q", msgs[1].Content)
+	}
+	if msgs[2].Content != "what can you do" {
+		t.Fatalf("current user = %q", msgs[2].Content)
+	}
+}
+
+func TestBuildAPIMessages_skipsEmptyAssistantHistory(t *testing.T) {
+	msgs := buildAPIMessages(RunRequest{
+		History: []model.ChatMessage{
+			{Role: "user", Content: "hi"},
+			{
+				Role: "assistant",
+				Parts: []model.ChatMessagePart{
+					{Type: "tool", ToolName: "ask_user"},
+				},
+			},
+		},
+		Message: "hello again",
+	})
+	if len(msgs) != 2 {
+		t.Fatalf("len = %d, msgs = %+v", len(msgs), msgs)
+	}
+}
+
+func TestBuildAPIMessages_skipsToolJSONAssistantHistory(t *testing.T) {
+	msgs := buildAPIMessages(RunRequest{
+		History: []model.ChatMessage{
+			{Role: "user", Content: "what is 2+2"},
+			{Role: "assistant", Content: `{"name":"ask_user","parameters":{"message":"What is 2+2?"}}`},
+		},
+		Message: "hi",
+	})
+	if len(msgs) != 2 {
+		t.Fatalf("len = %d, msgs = %+v", len(msgs), msgs)
+	}
+	if msgs[0].Content != "what is 2+2" || msgs[1].Content != "hi" {
+		t.Fatalf("messages = %+v", msgs)
 	}
 }
 
@@ -207,7 +266,7 @@ func TestNormalizeToolCallArguments(t *testing.T) {
 }
 
 func TestAccumulatedToolCallCumulativeArgs(t *testing.T) {
-	acc := &accumulatedToolCall{id: "call-1", name: "ask_user", started: true}
+	acc := &accumulatedToolCall{id: "call-1", name: "ask_user"}
 	chunks := []string{
 		`{"title": "C`,
 		`{"title": "Chart`,

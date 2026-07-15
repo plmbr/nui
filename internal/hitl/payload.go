@@ -17,6 +17,14 @@ func NormalizePayload(payload map[string]any) map[string]any {
 	for k, v := range payload {
 		out[k] = v
 	}
+	if msg := stringField(out, "message"); msg != "" {
+		if clean, qs := extractQuestionsFromMessage(msg); len(qs) > 0 {
+			out["message"] = clean
+			if _, ok := out["questions"]; !ok {
+				out["questions"] = qs
+			}
+		}
+	}
 	if questions := coerceQuestionsArray(out["questions"]); len(questions) > 0 {
 		normalized := make([]any, 0, len(questions))
 		for _, q := range questions {
@@ -28,6 +36,20 @@ func NormalizePayload(payload map[string]any) map[string]any {
 	}
 	synthesizeQuestionsIfEmpty(out)
 	return out
+}
+
+// SalvageAskUserMessage extracts displayable prose from a blocked ask_user payload.
+func SalvageAskUserMessage(args map[string]any) string {
+	if args == nil {
+		return ""
+	}
+	if msg := strings.TrimSpace(stringField(args, "message")); msg != "" {
+		if clean, qs := extractQuestionsFromMessage(msg); len(qs) > 0 {
+			return clean
+		}
+		return msg
+	}
+	return ""
 }
 
 func unwrapToolInputPayload(payload map[string]any) map[string]any {
@@ -104,6 +126,8 @@ func normalizeQuestion(q any) any {
 		}
 		if text := questionText(out); text != "" {
 			out["question"] = text
+		} else if header := strings.TrimSpace(stringField(out, "header")); header != "" {
+			out["question"] = header
 		}
 		if header := strings.TrimSpace(stringField(out, "header")); header == "" {
 			if id := strings.TrimSpace(stringField(out, "id")); id != "" {
@@ -144,6 +168,30 @@ func filterRenderableQuestions(questions []any) []any {
 		}
 	}
 	return out
+}
+
+func extractQuestionsFromMessage(message string) (cleanMessage string, questions []any) {
+	s := strings.TrimSpace(message)
+	idx := strings.Index(s, "[{")
+	if idx < 0 {
+		return message, nil
+	}
+	candidate := strings.TrimSpace(s[idx:])
+	var parsed []any
+	if json.Unmarshal([]byte(candidate), &parsed) != nil || len(parsed) == 0 {
+		return message, nil
+	}
+	first, ok := parsed[0].(map[string]any)
+	if !ok {
+		return message, nil
+	}
+	if questionText(first) == "" && stringField(first, "header") == "" {
+		if _, hasOptions := first["options"]; !hasOptions {
+			return message, nil
+		}
+	}
+	clean := strings.TrimSpace(s[:idx])
+	return clean, parsed
 }
 
 func synthesizeQuestionsIfEmpty(out map[string]any) {

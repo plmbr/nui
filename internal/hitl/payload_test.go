@@ -104,3 +104,46 @@ func TestNormalizePayloadTopLevelQuestion(t *testing.T) {
 		t.Fatalf("questions = %#v", payload["questions"])
 	}
 }
+
+func TestNormalizePayloadHeaderOnlyQuestion(t *testing.T) {
+	payload := NormalizePayload(map[string]any{
+		"questions": []any{
+			map[string]any{
+				"header": "Choose an action",
+				"options": []any{
+					map[string]any{"label": "Answer a question"},
+				},
+			},
+		},
+	})
+	questions, ok := payload["questions"].([]any)
+	if !ok || len(questions) != 1 {
+		t.Fatalf("questions = %#v", payload["questions"])
+	}
+	q, ok := questions[0].(map[string]any)
+	if !ok || q["question"] != "Choose an action" {
+		t.Fatalf("question = %#v", questions[0])
+	}
+}
+
+func TestNormalizePayloadQuestionsJSONInMessage(t *testing.T) {
+	payload := NormalizePayload(map[string]any{
+		"message": `I can help. Which would you like? [{"header":"Choose an action","options":[{"label":"A"}]}]`,
+	})
+	if payload["message"] != "I can help. Which would you like?" {
+		t.Fatalf("message = %#v", payload["message"])
+	}
+	questions, ok := payload["questions"].([]any)
+	if !ok || len(questions) != 1 {
+		t.Fatalf("questions = %#v", payload["questions"])
+	}
+}
+
+func TestSalvageAskUserMessage(t *testing.T) {
+	got := SalvageAskUserMessage(map[string]any{
+		"message": "I can help with tasks.",
+	})
+	if got != "I can help with tasks." {
+		t.Fatalf("salvage = %q", got)
+	}
+}

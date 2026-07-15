@@ -238,13 +238,19 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 			return deps, err
 		}
 	}
-	deps.SystemPrompt = appendVizSystemPrompt(deps.SystemPrompt)
+	if !(def.Harness.Type == "api" && strings.TrimSpace(def.Harness.Provider) == "ollama") {
+		deps.SystemPrompt = appendVizSystemPrompt(deps.SystemPrompt)
+	}
 	if def.Harness.Type == "api" && strings.TrimSpace(def.Harness.Provider) == "ollama" {
 		deps.SystemPrompt = appendOllamaToolsSystemPrompt(deps.SystemPrompt)
 	}
 	if hitl.RuntimeAllowed(def, agentConfig) {
-		deps.SystemPrompt = appendHitlSystemPrompt(deps.SystemPrompt)
-		deps.Skills = appendHitlAskUserSkill(deps.Skills)
+		if def.Harness.Type == "api" && strings.TrimSpace(def.Harness.Provider) == "ollama" {
+			deps.SystemPrompt = appendOllamaHitlSystemPrompt(deps.SystemPrompt)
+		} else {
+			deps.SystemPrompt = appendHitlSystemPrompt(deps.SystemPrompt)
+			deps.Skills = appendHitlAskUserSkill(deps.Skills)
+		}
 		deps.MCPServers, err = appendLoopHitlMCP(deps.MCPServers, sessionID, defaultLoopAPIURL())
 		if err != nil {
 			return deps, err
@@ -258,6 +264,9 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 		deps.ResolvedRules = resolved
 		deps.Rules = nil
 		deps.Skills = skills.WithBuiltins(deps.Skills)
+		if def.Harness.Type == "api" && strings.TrimSpace(def.Harness.Provider) == "ollama" {
+			deps.Skills = omitSkillsByName(deps.Skills, "visualize")
+		}
 		deps.ToolApprovalPolicy, deps.ToolApprovalTools = hitl.EffectiveToolApprovals(def, agentConfig)
 		return deps, nil
 	}
@@ -283,6 +292,9 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 	deps.ResolvedRules = resolved
 	deps.Rules = nil
 	deps.Skills = skills.WithBuiltins(deps.Skills)
+	if def.Harness.Type == "api" && strings.TrimSpace(def.Harness.Provider) == "ollama" {
+		deps.Skills = omitSkillsByName(deps.Skills, "visualize")
+	}
 	deps.ToolApprovalPolicy, deps.ToolApprovalTools = hitl.EffectiveToolApprovals(def, agentConfig)
 	return deps, nil
 }
@@ -355,6 +367,24 @@ func appendHitlAskUserSkill(skillList []model.ADLSkill) []model.ADLSkill {
 		}
 	}
 	return append(skillList, skills.HitlAskUserSkill())
+}
+
+func omitSkillsByName(skillList []model.ADLSkill, names ...string) []model.ADLSkill {
+	if len(names) == 0 {
+		return skillList
+	}
+	omit := make(map[string]bool, len(names))
+	for _, name := range names {
+		omit[strings.TrimSpace(name)] = true
+	}
+	out := make([]model.ADLSkill, 0, len(skillList))
+	for _, skill := range skillList {
+		if omit[strings.TrimSpace(skill.Name)] {
+			continue
+		}
+		out = append(out, skill)
+	}
+	return out
 }
 
 func writeHarnessManifest(configDir, harness string, deps HarnessDeps, extra map[string]any) error {

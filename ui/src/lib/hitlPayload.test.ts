@@ -48,4 +48,39 @@ describe('hitlPayload', () => {
       { question: 'Pick a color' },
     ])
   })
+
+  it('uses header as question text and extracts JSON questions from message', () => {
+    expect(
+      normalizeHitlPayload({
+        questions: [
+          {
+            header: 'Choose an action',
+            options: [{ label: 'Answer a question' }],
+          },
+        ],
+      }).questions,
+    ).toEqual([
+      {
+        header: 'Choose an action',
+        question: 'Choose an action',
+        options: [{ label: 'Answer a question' }],
+      },
+    ])
+
+    expect(
+      normalizeHitlPayload({
+        message:
+          'I can help. Which would you like? [{"header":"Choose an action","options":[{"label":"A"}]}]',
+      }),
+    ).toEqual({
+      message: 'I can help. Which would you like?',
+      questions: [
+        {
+          header: 'Choose an action',
+          question: 'Choose an action',
+          options: [{ label: 'A' }],
+        },
+      ],
+    })
+  })
 })

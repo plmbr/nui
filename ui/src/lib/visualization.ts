@@ -56,9 +56,44 @@ export function visualizationHTMLReady(html: string): boolean {
     return lower.includes('</svg>')
   }
   if (lower.includes('<html') || lower.includes('<!doctype')) {
-    return lower.includes('</html>')
+    if (!lower.includes('</html>')) return false
+    return documentHasRenderableContent(trimmed)
   }
   return looksLikeHTML(trimmed)
+}
+
+function stripHtmlTags(s: string): string {
+  return s.replace(/<[^>]+>/g, '')
+}
+
+function extractBodyInnerHTML(html: string): string {
+  const lower = html.toLowerCase()
+  const bodyStart = lower.indexOf('<body')
+  if (bodyStart < 0) return html
+  const tagEnd = html.indexOf('>', bodyStart)
+  if (tagEnd < 0) return html
+  const contentStart = tagEnd + 1
+  const bodyEnd = lower.lastIndexOf('</body>')
+  if (bodyEnd < 0 || bodyEnd <= contentStart) return html.slice(contentStart)
+  return html.slice(contentStart, bodyEnd)
+}
+
+function documentHasRenderableContent(html: string): boolean {
+  const lower = html.toLowerCase()
+  return lower.includes('<canvas') || lower.includes('<svg') || lower.includes('<table')
+}
+
+function stripScriptBlocks(s: string): string {
+  let out = s
+  for (;;) {
+    const lower = out.toLowerCase()
+    const start = lower.indexOf('<script')
+    if (start < 0) break
+    const end = lower.indexOf('</script>', start)
+    if (end < 0) break
+    out = out.slice(0, start) + out.slice(end + '</script>'.length)
+  }
+  return out
 }
 
 function titleFromWriteArgs(args: Record<string, unknown>): string | undefined {
@@ -187,7 +222,12 @@ function messageHasVisualization(parts: AssistantPart[]): boolean {
 
 /** Enrich and dedupe visualization parts so reloads render each chart once. */
 export function normalizeVisualizationParts(parts: AssistantPart[]): AssistantPart[] {
-  const enriched = parts.map((part) => {
+  const withoutInvalidViz = parts.filter((part) => {
+    if (part.type !== 'tool' || !isVisualizationTool(part.toolName)) return true
+    return !!extractVisualization(part)
+  })
+
+  const enriched = withoutInvalidViz.map((part) => {
     if (part.type !== 'tool') return part
     const viz = extractVisualization(part)
     if (!viz) return part

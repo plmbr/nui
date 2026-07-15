@@ -59,4 +59,19 @@ func TestVisualizationHTMLReady(t *testing.T) {
 	if !VisualizationHTMLReady(svg) {
 		t.Fatal("closed svg should be ready")
 	}
+	emptyShell := `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body></body></html>`
+	if VisualizationHTMLReady(emptyShell) {
+		t.Fatal("empty html shell should not be ready")
+	}
+	proseOnly := `<!DOCTYPE html><html><body><p>France's capital is Paris.</p></body></html>`
+	if VisualizationHTMLReady(proseOnly) {
+		t.Fatal("prose-only html should not be ready")
+	}
+}
+
+func TestPlainTextFromHTML(t *testing.T) {
+	html := `<!DOCTYPE html><html><body><p>France's capital is Paris.</p></body></html>`
+	if got := PlainTextFromHTML(html); got != "France's capital is Paris." {
+		t.Fatalf("PlainTextFromHTML() = %q", got)
+	}
 }

@@ -3,6 +3,7 @@
 package viz
 
 import (
+	"strings"
 	"testing"
 
 	"loop/internal/model"
@@ -20,7 +21,7 @@ func TestHTMLMatches(t *testing.T) {
 }
 
 func TestNormalizeParts_dedupesWriteWhenShowVisualizationPresent(t *testing.T) {
-	html := "<!DOCTYPE html><html><body><canvas></canvas></body></html>"
+	html := `<canvas id="c"></canvas><script>new Chart(document.getElementById("c"))</script>`
 	parts := []model.ChatMessagePart{
 		{
 			Type:     "tool",
@@ -45,13 +46,16 @@ func TestNormalizeParts_dedupesWriteWhenShowVisualizationPresent(t *testing.T) {
 }
 
 func TestNormalizeParts_enrichesFromToolArgs(t *testing.T) {
-	html := "<!DOCTYPE html><html><body><svg></svg></body></html>"
+	html := `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="120" height="120"/></svg>`
 	out := NormalizeParts([]model.ChatMessagePart{{
 		Type:     "tool",
 		ToolName: "Write",
 		ToolArgs: map[string]any{"content": html},
 	}})
-	if out[0].VisualizationHTML != html {
+	if out[0].VisualizationHTML == "" {
+		t.Fatal("expected VisualizationHTML to be set")
+	}
+	if !strings.Contains(out[0].VisualizationHTML, "<svg") {
 		t.Fatalf("VisualizationHTML = %q", out[0].VisualizationHTML)
 	}
 }

@@ -66,9 +66,71 @@ func VisualizationHTMLReady(html string) bool {
 		return strings.Contains(lower, "</svg>")
 	}
 	if strings.Contains(lower, "<html") || strings.Contains(lower, "<!doctype") {
-		return strings.Contains(lower, "</html>")
+		if !strings.Contains(lower, "</html>") {
+			return false
+		}
+		return documentHasRenderableContent(html)
 	}
 	return looksLikeHTML(html)
+}
+
+func documentHasRenderableContent(html string) bool {
+	lower := strings.ToLower(html)
+	return strings.Contains(lower, "<canvas") ||
+		strings.Contains(lower, "<svg") ||
+		strings.Contains(lower, "<table")
+}
+
+func stripScriptBlocks(s string) string {
+	lower := strings.ToLower(s)
+	for {
+		start := strings.Index(lower, "<script")
+		if start < 0 {
+			break
+		}
+		end := strings.Index(lower[start:], "</script>")
+		if end < 0 {
+			break
+		}
+		end = start + end + len("</script>")
+		s = s[:start] + s[end:]
+		lower = strings.ToLower(s)
+	}
+	return s
+}
+
+func extractBodyInnerHTML(html string) string {
+	lower := strings.ToLower(html)
+	bodyStart := strings.Index(lower, "<body")
+	if bodyStart < 0 {
+		return html
+	}
+	tagEnd := strings.Index(html[bodyStart:], ">")
+	if tagEnd < 0 {
+		return html
+	}
+	contentStart := bodyStart + tagEnd + 1
+	bodyEnd := strings.LastIndex(lower, "</body>")
+	if bodyEnd < 0 || bodyEnd <= contentStart {
+		return html[contentStart:]
+	}
+	return html[contentStart:bodyEnd]
+}
+
+func stripHTMLTags(s string) string {
+	var b strings.Builder
+	inTag := false
+	for _, r := range s {
+		switch {
+		case r == '<':
+			inTag = true
+		case r == '>':
+			inTag = false
+		case !inTag:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 // ParseInput extracts visualization HTML and optional title from show_visualization arguments.

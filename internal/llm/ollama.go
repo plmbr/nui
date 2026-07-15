@@ -232,6 +232,17 @@ func ollamaMessages(messages []Message) []map[string]any {
 			out = append(out, map[string]any{"role": "system", "content": msg.ContentString()})
 			continue
 		}
+		if msg.Role == RoleTool {
+			m := map[string]any{
+				"role":    "tool",
+				"content": msg.ContentString(),
+			}
+			if name := strings.TrimSpace(msg.ToolName); name != "" {
+				m["tool_name"] = name
+			}
+			out = append(out, m)
+			continue
+		}
 		m := map[string]any{
 			"role":    msg.Role,
 			"content": msg.ContentString(),
@@ -241,7 +252,15 @@ func ollamaMessages(messages []Message) []map[string]any {
 			for _, tc := range msg.ToolCalls {
 				var args map[string]any
 				_ = json.Unmarshal([]byte(tc.Function.Arguments), &args)
+				if args == nil {
+					args = map[string]any{}
+				}
+				callType := strings.TrimSpace(tc.Type)
+				if callType == "" {
+					callType = "function"
+				}
 				calls = append(calls, map[string]any{
+					"type": callType,
 					"function": map[string]any{
 						"name":      tc.Function.Name,
 						"arguments": args,
