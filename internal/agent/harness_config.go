@@ -11,6 +11,7 @@ import (
 
 	"loop/internal/extensions"
 	"loop/internal/hitl"
+	"loop/internal/mcpoauth"
 	"loop/internal/model"
 	"loop/internal/skills"
 	"loop/internal/store"
@@ -35,6 +36,7 @@ type HarnessDeps struct {
 	ToolApprovalPolicy      string
 	ToolApprovalTools       []string
 	PendingCustomMCPServers []extensions.PendingCustomMCPServer
+	MCPAuthWarnings         []string
 }
 
 type harnessProvisioner interface {
@@ -184,18 +186,18 @@ func adlMCPServersFromStep(step model.ADLStep) []model.ADLMCPServer {
 }
 
 // PrepareSessionHarnessConfig provisions harness config when a session is created so
-// MCP/skills are available before the first message.
-func PrepareSessionHarnessConfig(sessionID string, def model.ADLDefinition, reg *extensions.Registry, agentConfig map[string]any) error {
+// MCP/skills are available before the first message. Returns MCP auth warnings, if any.
+func PrepareSessionHarnessConfig(sessionID string, def model.ADLDefinition, reg *extensions.Registry, agentConfig map[string]any) ([]string, error) {
 	deps, err := buildHarnessDeps(sessionID, def, nil, "", reg, agentConfig)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	harnessType := def.Harness.Type
 	if harnessType == "" {
 		harnessType = "claude-code"
 	}
 	_, err = ProvisionHarnessConfig(sessionID, harnessType, deps)
-	return err
+	return deps.MCPAuthWarnings, err
 }
 
 func buildHarnessDeps(sessionID string, def model.ADLDefinition, step *model.ADLStep, workingDir string, reg *extensions.Registry, agentConfig map[string]any) (HarnessDeps, error) {
@@ -268,6 +270,9 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 			deps.Skills = omitSkillsByName(deps.Skills, "visualize")
 		}
 		deps.ToolApprovalPolicy, deps.ToolApprovalTools = hitl.EffectiveToolApprovals(def, agentConfig)
+		mcpResolved := mcpoauth.ResolveServers(deps.MCPServers)
+		deps.MCPServers = mcpResolved.Servers
+		deps.MCPAuthWarnings = mcpResolved.Warnings
 		return deps, nil
 	}
 	expandedSkills := make([]model.ADLSkill, 0, len(deps.Skills))
@@ -296,6 +301,9 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 		deps.Skills = omitSkillsByName(deps.Skills, "visualize")
 	}
 	deps.ToolApprovalPolicy, deps.ToolApprovalTools = hitl.EffectiveToolApprovals(def, agentConfig)
+	mcpResolved := mcpoauth.ResolveServers(deps.MCPServers)
+	deps.MCPServers = mcpResolved.Servers
+	deps.MCPAuthWarnings = mcpResolved.Warnings
 	return deps, nil
 }
 

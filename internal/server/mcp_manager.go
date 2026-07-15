@@ -14,11 +14,18 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"loop/internal/mcpoauth"
+	"loop/internal/model"
+	"loop/internal/store"
 )
 
 type mcpServerConfig struct {
-	Command string   `json:"command"`
-	Args    []string `json:"args"`
+	Command string            `json:"command"`
+	Args    []string          `json:"args"`
+	URL     string            `json:"url,omitempty"`
+	Type    string            `json:"type,omitempty"`
+	Headers map[string]string `json:"headers,omitempty"`
+	Auth    *model.ADLMCPServerAuth `json:"auth,omitempty"`
 }
 
 type mcpConfigFile struct {
@@ -44,6 +51,9 @@ var mcpManager MCPManager
 const mcpConnectTimeout = 15 * time.Second
 
 func isValidMCPServerCfg(cfg mcpServerConfig) bool {
+	if u := strings.TrimSpace(cfg.URL); u != "" {
+		return true
+	}
 	cmd := strings.TrimSpace(cfg.Command)
 	if cmd == "" {
 		return false
@@ -55,6 +65,18 @@ func isValidMCPServerCfg(cfg mcpServerConfig) bool {
 	return true
 }
 
+func (cfg mcpServerConfig) toADL(name string) model.ADLMCPServer {
+	return model.ADLMCPServer{
+		Name:    name,
+		URL:     strings.TrimSpace(cfg.URL),
+		Command: strings.TrimSpace(cfg.Command),
+		Args:    cfg.Args,
+		Type:    strings.TrimSpace(cfg.Type),
+		Headers: cfg.Headers,
+		Auth:    cfg.Auth,
+	}
+}
+
 func (m *MCPManager) ensureLoaded() error {
 	m.loadOnce.Do(func() {
 		m.loadErr = bootstrapMCPLoad(m)
@@ -63,13 +85,12 @@ func (m *MCPManager) ensureLoaded() error {
 }
 
 func (m *MCPManager) load(path string) error {
-	data, err := os.ReadFile(path)
+	cfg, err := readMCPManagerConfig(path)
 	if err != nil {
 		return err
 	}
-	var cfg mcpConfigFile
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return err
+	if len(cfg.MCPServers) == 0 {
+		return nil
 	}
 
 	m.mu.Lock()
@@ -85,21 +106,27 @@ func (m *MCPManager) load(path string) error {
 		m.toolServer = map[string]string{}
 	}
 
-	client := mcp.NewClient(&mcp.Implementation{Name: "loop", Version: "1.0.0"}, nil)
-
 	var skippedInvalid int
 	for name, serverCfg := range cfg.MCPServers {
 		if !isValidMCPServerCfg(serverCfg) {
 			skippedInvalid++
 			continue
 		}
+		srv := serverCfg.toADL(name)
 		ctx, cancel := context.WithTimeout(context.Background(), mcpConnectTimeout)
-		cmd := exec.CommandContext(ctx, serverCfg.Command, serverCfg.Args...)
-		transport := &mcp.CommandTransport{Command: cmd}
-		session, err := client.Connect(ctx, transport, nil)
+		var session *mcp.ClientSession
+		var connectErr error
+		if strings.TrimSpace(srv.URL) != "" {
+			session, connectErr = mcpoauth.ConnectRemote(ctx, srv)
+		} else {
+			cmd := exec.CommandContext(ctx, serverCfg.Command, serverCfg.Args...)
+			transport := &mcp.CommandTransport{Command: cmd}
+			client := mcp.NewClient(&mcp.Implementation{Name: "loop", Version: "1.0.0"}, nil)
+			session, connectErr = client.Connect(ctx, transport, nil)
+		}
 		cancel()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "[MCP] failed to connect to %q: %v\n", name, err)
+		if connectErr != nil {
+			fmt.Fprintf(os.Stderr, "[MCP] failed to connect to %q: %v\n", name, connectErr)
 			continue
 		}
 
@@ -108,12 +135,13 @@ func (m *MCPManager) load(path string) error {
 		listCancel()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[MCP] list tools for %q: %v\n", name, err)
-		} else {
-			for _, tool := range tools.Tools {
-				if uri := toolUIResourceURI(tool); uri != "" {
-					m.toolUI[tool.Name] = uri
-					m.toolServer[tool.Name] = name
-				}
+			_ = session.Close()
+			continue
+		}
+		for _, tool := range tools.Tools {
+			if uri := toolUIResourceURI(tool); uri != "" {
+				m.toolUI[tool.Name] = uri
+				m.toolServer[tool.Name] = name
 			}
 		}
 
@@ -126,6 +154,42 @@ func (m *MCPManager) load(path string) error {
 	}
 
 	return nil
+}
+
+func readMCPManagerConfig(path string) (mcpConfigFile, error) {
+	var cfg mcpConfigFile
+	if path != "" {
+		data, err := os.ReadFile(path)
+		if err == nil {
+			_ = json.Unmarshal(data, &cfg)
+		}
+	}
+	if cfg.MCPServers == nil {
+		cfg.MCPServers = map[string]mcpServerConfig{}
+	}
+	userServers, err := store.LoadMCPServers()
+	if err != nil {
+		return cfg, err
+	}
+	for _, srv := range userServers {
+		name := strings.TrimSpace(srv.Name)
+		if name == "" {
+			continue
+		}
+		if _, exists := cfg.MCPServers[name]; exists {
+			continue
+		}
+		if strings.TrimSpace(srv.URL) == "" {
+			continue
+		}
+		cfg.MCPServers[name] = mcpServerConfig{
+			URL:     srv.URL,
+			Type:    srv.Type,
+			Headers: srv.Headers,
+			Auth:    srv.Auth,
+		}
+	}
+	return cfg, nil
 }
 
 func toolUIResourceURI(tool *mcp.Tool) string {

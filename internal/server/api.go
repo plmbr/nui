@@ -119,6 +119,7 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/schedules", handleSchedules)
 	mux.HandleFunc("/api/schedules/", handleSchedule)
 	registerHITLRoutes(mux)
+	registerMCPOAuthRoutes(mux)
 }
 
 var errDirectoryOutsideHome = errors.New("directory is outside the home directory")

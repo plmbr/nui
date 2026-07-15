@@ -97,9 +97,6 @@ func bootstrapMCPLoad(m *MCPManager) error {
 	if err := mergeExtensionMCPConfig(cfgPath); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: extension MCP merge: %v\n", err)
 	}
-	if _, err := os.Stat(cfgPath); err != nil {
-		return nil
-	}
 	return m.load(cfgPath)
 }
 

@@ -512,6 +512,19 @@ export function ChatPanel({
   return (
     <div className="agui-chat flex flex-col flex-1 min-h-0">
       <div ref={messagesContainerRef} className="agui-chat__messages">
+        {session.mcpAuthWarnings && session.mcpAuthWarnings.length > 0 && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
+            <p className="font-medium">MCP authentication required</p>
+            <ul className="mt-1 list-disc pl-4 space-y-0.5">
+              {session.mcpAuthWarnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs opacity-80">
+              Connect remote MCP servers in Customize → MCP Servers.
+            </p>
+          </div>
+        )}
         {messages.length === 0 && (
           <div className="agui-chat__empty">
             <div className="agui-chat__empty-icon">✦</div>

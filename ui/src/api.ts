@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, AgentFileContent, AgentFileInfo, AgentDeployerInfo, AgentDeployResult, AgentEvalSummary, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, HitlRequest, HitlResponse, MCPServer, MentionListResponse, Schedule, Session, Settings, SkillEntry, UploadedImage } from './types'
+import type { AgentType, AgentFileContent, AgentFileInfo, AgentDeployerInfo, AgentDeployResult, AgentEvalSummary, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, HitlRequest, HitlResponse, MCPOAuthStatus, MCPServer, MentionListResponse, Schedule, Session, Settings, SkillEntry, UploadedImage } from './types'
 
 export interface RunRecord {
   runId: string
@@ -301,6 +301,26 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify({ mcpServers }),
       }),
+  },
+
+  mcpOAuth: {
+    redirectUri: (): Promise<{ redirectUri: string }> =>
+      request('/mcp-oauth/redirect-uri'),
+
+    status: (): Promise<{ servers: { serverKey: string; name: string; status: MCPOAuthStatus }[] }> =>
+      request('/mcp-oauth/status'),
+
+    start: (body: { serverKey: string; server?: MCPServer }): Promise<{ flowId: string; authUrl: string; redirectUri: string; serverKey: string }> =>
+      request('/mcp-oauth/start', { method: 'POST', body: JSON.stringify(body) }),
+
+    flow: (flowId: string): Promise<{ flowId: string; serverKey: string; status: 'pending' | 'completed' | 'failed'; error?: string }> =>
+      request(`/mcp-oauth/flow?flowId=${encodeURIComponent(flowId)}`),
+
+    complete: (body: { flowId: string; callbackUrl: string }): Promise<{ ok: boolean }> =>
+      request('/mcp-oauth/complete', { method: 'POST', body: JSON.stringify(body) }),
+
+    disconnect: (serverKey: string): Promise<void> =>
+      request(`/mcp-oauth/disconnect?serverKey=${encodeURIComponent(serverKey)}`, { method: 'DELETE' }),
   },
 
   skills: {

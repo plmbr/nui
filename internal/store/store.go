@@ -21,6 +21,7 @@ type Settings struct {
 	SidebarOpen          *bool    `json:"sidebarOpen,omitempty"`            // desktop sidebar expanded state
 	SidebarWidth         *int     `json:"sidebarWidth,omitempty"`           // desktop sidebar width in px
 	DisabledExtensions   []string `json:"disabledExtensions,omitempty"`     // extension names excluded from runtime
+	MCPOAuthCallbackURL  string   `json:"mcpOAuthCallbackUrl,omitempty"`    // optional OAuth callback base URL override
 }
 
 type Data struct {

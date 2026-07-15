@@ -16,6 +16,7 @@ import (
 	"loop/internal/agent"
 	"loop/internal/extensions"
 	"loop/internal/mentions"
+	"loop/internal/mcpoauth"
 )
 
 var extensionManager *agent.Manager
@@ -49,6 +50,8 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 	if err := applyStartSettings(opts); err != nil {
 		return fmt.Errorf("apply settings: %w", err)
 	}
+
+	mcpoauth.SetListenPort(port)
 
 	registerAPIRoutes(mux)
 	registerMCPRoutes(mux)

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"loop/internal/mcpoauth"
 	"loop/internal/model"
 )
 
@@ -121,8 +122,8 @@ func (s *SessionMCP) connectWithTimeout(ctx context.Context, srv model.ADLMCPSer
 }
 
 func (s *SessionMCP) connectOne(ctx context.Context, srv model.ADLMCPServer) (*mcp.ClientSession, error) {
-	client := mcp.NewClient(&mcp.Implementation{Name: "loop", Version: "1.0.0"}, nil)
 	if cmd := strings.TrimSpace(srv.Command); cmd != "" {
+		client := mcp.NewClient(&mcp.Implementation{Name: "loop", Version: "1.0.0"}, nil)
 		command := exec.CommandContext(ctx, cmd, srv.Args...)
 		if len(srv.Env) > 0 {
 			command.Env = envWithOverrides(srv.Env)
@@ -130,12 +131,7 @@ func (s *SessionMCP) connectOne(ctx context.Context, srv model.ADLMCPServer) (*m
 		transport := &mcp.CommandTransport{Command: command}
 		return client.Connect(ctx, transport, nil)
 	}
-	url := strings.TrimSpace(srv.URL)
-	if url == "" {
-		return nil, fmt.Errorf("mcp server %q: requires command or url", srv.Name)
-	}
-	transport := &mcp.StreamableClientTransport{Endpoint: url}
-	return client.Connect(ctx, transport, nil)
+	return mcpoauth.ConnectRemote(ctx, srv)
 }
 
 func (s *SessionMCP) Tools() []sessionMCPTool {

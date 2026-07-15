@@ -10,6 +10,7 @@ export interface Session {
   scheduleId?: string
   scheduleName?: string
   lastRunAt?: string
+  mcpAuthWarnings?: string[]
 }
 
 export interface CreateSessionRequest {
@@ -167,6 +168,7 @@ export interface Settings {
   sidebarOpen?: boolean
   sidebarWidth?: number
   disabledExtensions?: string[]
+  mcpOAuthCallbackUrl?: string
 }
 
 export interface ExtensionInfo {
@@ -184,6 +186,12 @@ export interface ExtensionInfo {
   agents?: string[]
 }
 
+export interface MCPServerAuth {
+  clientId?: string
+  clientSecret?: string
+  scopes?: string[]
+}
+
 export interface MCPServer {
   name: string
   ref?: string
@@ -193,7 +201,10 @@ export interface MCPServer {
   type?: string
   env?: Record<string, string>
   headers?: Record<string, string>
+  auth?: MCPServerAuth
 }
+
+export type MCPOAuthStatus = 'connected' | 'needs_auth' | 'expired' | 'not_applicable'
 
 export interface SkillEntry {
   name: string

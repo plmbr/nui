@@ -11,7 +11,8 @@ type Session struct {
 	CreatedAt    string         `json:"createdAt"`
 	ScheduleID   string         `json:"scheduleId,omitempty"`
 	ScheduleName string         `json:"scheduleName,omitempty"`
-	LastRunAt    string         `json:"lastRunAt,omitempty"`
+	LastRunAt        string         `json:"lastRunAt,omitempty"`
+	MCPAuthWarnings  []string       `json:"mcpAuthWarnings,omitempty"`
 }
 
 type ChatImage struct {
@@ -144,6 +145,13 @@ type ADLSkill struct {
 	Content string `yaml:"content,omitempty" json:"content,omitempty"` // inline SKILL.md
 }
 
+// ADLMCPServerAuth holds optional OAuth client credentials for remote MCP servers.
+type ADLMCPServerAuth struct {
+	ClientID     string   `yaml:"clientId"     json:"clientId,omitempty"`
+	ClientSecret string   `yaml:"clientSecret" json:"clientSecret,omitempty"`
+	Scopes       []string `yaml:"scopes"       json:"scopes,omitempty"`
+}
+
 // ADLMCPServer configures one MCP server entry in aiAssets.mcpServers.
 type ADLMCPServer struct {
 	Name    string            `yaml:"name"              json:"name"`
@@ -154,6 +162,7 @@ type ADLMCPServer struct {
 	Type    string            `yaml:"type"              json:"type,omitempty"` // http | sse | stdio
 	Env     map[string]string `yaml:"env,omitempty"     json:"env,omitempty"`     // stdio only
 	Headers map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"` // http | sse only
+	Auth    *ADLMCPServerAuth `yaml:"auth,omitempty"    json:"auth,omitempty"`
 }
 
 type ADLOutput struct {
