@@ -31,7 +31,9 @@ type Extension struct {
 	mentionRuntime   *RuntimeConfig
 	hitlRuntime      *RuntimeConfig
 
-	defaultRuntime *RuntimeConfig
+	defaultRuntime   *RuntimeConfig
+	programmaticHost *programmaticHost
+	resolvedEntry    string
 }
 
 // HarnessRef resolves a harness entry and its runtime for an extension harness agent id.
@@ -44,11 +46,12 @@ type HarnessRef struct {
 
 // Registry indexes all installed extensions.
 type Registry struct {
-	mu           sync.RWMutex
-	extensions   map[string]*Extension // name → extension
-	catalogs     []*catalogProvider
-	mentionCache *mentionClientCache
-	loadErrors   []string
+	mu                sync.RWMutex
+	extensions        map[string]*Extension // name → extension
+	catalogs          []*catalogProvider
+	programmaticHosts []*programmaticHost
+	mentionCache      *mentionClientCache
+	loadErrors        []string
 }
 
 // Default is the process-wide extension registry, set at server startup.
@@ -139,12 +142,38 @@ func loadExtension(extDir string, reg *Registry) (*Extension, error) {
 		return nil, err
 	}
 	ext := &Extension{
-		Dir:      extDir,
-		Manifest: manifest,
+		Dir:           extDir,
+		Manifest:      manifest,
+		resolvedEntry: resolveInstallEntry(extDir, manifest.Install),
 	}
+	if manifest.IsProgrammatic() {
+		return loadProgrammaticExtension(ext, reg)
+	}
+	return loadDeclarativeExtension(ext, reg)
+}
+
+func loadProgrammaticExtension(ext *Extension, reg *Registry) (*Extension, error) {
+	rt := *ext.Manifest.Runtime
+	if rt.Transport == "" {
+		rt.Transport = "stdio"
+	}
+	ext.defaultRuntime = &rt
+	host, err := startProgrammaticHost(ext.Dir, ext.Manifest)
+	if err != nil {
+		return nil, err
+	}
+	ext.programmaticHost = host
+	reg.programmaticHosts = append(reg.programmaticHosts, host)
+	applyContributionManifest(ext, host.manifest)
+	return ext, nil
+}
+
+func loadDeclarativeExtension(ext *Extension, reg *Registry) (*Extension, error) {
+	manifest := ext.Manifest
 	if len(manifest.MCPServers) > 0 {
 		fmt.Fprintf(os.Stderr, "[extensions] %s: root mcpServers is deprecated; use contributions.aiAssets.mcpServers\n", manifest.Name)
 	}
+	extDir := ext.Dir
 	ext.CustomMCPServers = expandCustomMCPServers(extDir, manifest.aiAssetsMCPServers())
 	ext.CustomSkills = expandCustomSkills(extDir, manifest.aiAssetsSkills())
 	ext.CustomRules = expandCustomRules(extDir, manifest.aiAssetsRules())
@@ -277,6 +306,9 @@ func loadContributionList[T any](
 		return fromFile(file)
 	}
 	if len(listCmd) > 0 {
+		if fromCatalog == nil {
+			return nil, fmt.Errorf("extension %s: dynamic list source.command is not supported for this contribution type", extName)
+		}
 		p, err := newCatalogProvider(extDir, extName, listCmd)
 		if err != nil {
 			return nil, err
@@ -321,14 +353,18 @@ func (r *Registry) Reload() error {
 	return nil
 }
 
-// Shutdown stops catalog provider processes.
+// Shutdown stops catalog provider processes and programmatic extension hosts.
 func (r *Registry) Shutdown() {
 	r.mu.Lock()
 	catalogs := r.catalogs
+	hosts := r.programmaticHosts
 	cache := r.mentionCache
 	r.mu.Unlock()
 	for _, c := range catalogs {
 		_ = c.Close()
+	}
+	for _, h := range hosts {
+		_ = h.Close()
 	}
 	if cache != nil {
 		cache.closeAll()
@@ -420,6 +456,9 @@ func (r *Registry) ResolveHarness(agentID string) (HarnessRef, bool) {
 }
 
 func (ext *Extension) resolveHarnessRuntime(h HarnessEntry) (RuntimeConfig, bool) {
+	if ext.programmaticHost != nil && ext.defaultRuntime != nil {
+		return *ext.defaultRuntime, true
+	}
 	if h.Runtime != nil {
 		return *h.Runtime, true
 	}
@@ -427,6 +466,19 @@ func (ext *Extension) resolveHarnessRuntime(h HarnessEntry) (RuntimeConfig, bool
 		return *ext.defaultRuntime, true
 	}
 	return RuntimeConfig{}, false
+}
+
+// ProgrammaticHost returns the shared host process for programmatic extensions.
+func (ext *Extension) NewProgrammaticHarnessAgent(agentName, harnessID, projectID string) *ProgrammaticHarnessAgent {
+	if ext.programmaticHost == nil {
+		return nil
+	}
+	return NewProgrammaticHarnessAgent(ext.programmaticHost, agentName, harnessID, projectID)
+}
+
+// IsProgrammatic reports whether the extension runs as a programmatic package.
+func (ext *Extension) IsProgrammatic() bool {
+	return ext.programmaticHost != nil
 }
 
 // IsExtensionHarnessAgent reports whether agentType is ext:<ext>/<harness-id> for a known harness.

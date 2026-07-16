@@ -16,6 +16,31 @@ from typing import Any
 DEFAULT_API_URL = "http://127.0.0.1:8080"
 
 
+def resolve_loop_session_id(session_id: str = "", ctx: dict[str, Any] | None = None) -> str:
+    """Resolve the Loop session id from explicit value, RPC ctx, or env."""
+    if str(session_id or "").strip():
+        return str(session_id).strip()
+    ctx = ctx or {}
+    loop_sid = str(ctx.get("loopSessionId") or "").strip()
+    if loop_sid:
+        return loop_sid
+    env_sid = os.environ.get("LOOP_SESSION_ID", "").strip()
+    if env_sid:
+        return env_sid
+    # mention.list/resolve pass sessionId as the Loop session id.
+    return str(ctx.get("sessionId") or "").strip()
+
+
+def resolve_loop_run_id(run_id: str = "", ctx: dict[str, Any] | None = None) -> str:
+    if str(run_id or "").strip():
+        return str(run_id).strip()
+    ctx = ctx or {}
+    ctx_run = str(ctx.get("runId") or "").strip()
+    if ctx_run:
+        return ctx_run
+    return os.environ.get("LOOP_RUN_ID", "").strip()
+
+
 def api_url() -> str:
     for key in ("LOOP_API_URL", "LOOP_URL"):
         value = os.environ.get(key, "").strip()
@@ -54,9 +79,10 @@ def create_request(
     request_id: str = "",
     correlation_id: str = "",
     step_name: str = "",
+    ctx: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    session_id = session_id or os.environ.get("LOOP_SESSION_ID", "")
-    run_id = run_id or os.environ.get("LOOP_RUN_ID", "")
+    session_id = resolve_loop_session_id(session_id, ctx)
+    run_id = resolve_loop_run_id(run_id, ctx)
     body: dict[str, Any] = {
         "kind": kind,
         "payload": payload or {},
@@ -109,6 +135,7 @@ def ask_user(
     run_id: str = "",
     routing: dict[str, Any] | None = None,
     emit_event=None,
+    ctx: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload = {
         "questions": questions or [],
@@ -121,6 +148,7 @@ def ask_user(
         session_id=session_id,
         run_id=run_id,
         routing=routing,
+        ctx=ctx,
     )
     if emit_event:
         emit_event(req)
@@ -138,6 +166,7 @@ def request_approval(
     run_id: str = "",
     routing: dict[str, Any] | None = None,
     emit_event=None,
+    ctx: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload = {
         "title": title,
@@ -152,6 +181,7 @@ def request_approval(
         session_id=session_id,
         run_id=run_id,
         routing=routing,
+        ctx=ctx,
     )
     if emit_event:
         emit_event(req)

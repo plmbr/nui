@@ -1,0 +1,14 @@
+{
+  "name": "@loop/extension-sdk",
+  "version": "0.1.0",
+  "description": "Loop programmatic extension SDK",
+  "type": "module",
+  "main": "LoopExtension.ts",
+  "bin": {
+    "loop-ext": "bin/loop-ext.js"
+  },
+  "loop": {
+    "id": "example-ext",
+    "displayName": "Example Extension"
+  }
+}

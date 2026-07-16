@@ -18,12 +18,28 @@ import (
 // Install copies an extension from a git URL, local directory, or zip file into
 // ~/.loop/extensions/<name>/.
 func Install(source string) (string, error) {
+	source = normalizeSource(source)
+	if installType, _ := parsePackageSource(source); installType != "" {
+		return installProgrammaticPackage(source)
+	}
+	if info, err := os.Stat(source); err == nil && info.IsDir() {
+		if _, err := os.Stat(filepath.Join(source, manifestName)); os.IsNotExist(err) {
+			if detectPackageType(source) != "" {
+				return installProgrammaticFromDir(source)
+			}
+		}
+	}
 	root, cleanup, err := resolveInstallSource(source)
 	if err != nil {
 		return "", err
 	}
 	if cleanup != nil {
 		defer cleanup()
+	}
+	if _, err := os.Stat(filepath.Join(root, manifestName)); err != nil {
+		if detectPackageType(root) != "" {
+			return installProgrammaticFromDir(root)
+		}
 	}
 	return installFromDir(root)
 }

@@ -1,0 +1,10 @@
+[project]
+name = "loop-programmatic-echo"
+version = "0.1.0"
+
+[project.scripts]
+loop-ext = "host:main"
+
+[tool.loop]
+id = "programmatic-echo"
+displayName = "Programmatic Echo"

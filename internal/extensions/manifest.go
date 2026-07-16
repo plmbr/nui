@@ -20,8 +20,23 @@ type Manifest struct {
 	Version       string         `yaml:"version"`
 	DisplayName   string         `yaml:"displayName"`
 	Description   string         `yaml:"description"`
+	Kind          string         `yaml:"kind,omitempty"` // declarative | programmatic
+	Runtime       *RuntimeConfig `yaml:"runtime,omitempty"`
+	Install       *InstallConfig `yaml:"install,omitempty"`
 	MCPServers    []ExtensionCustomMCPServer `yaml:"mcpServers,omitempty"` // deprecated: use contributions.aiAssets.mcpServers
 	Contributions Contributions    `yaml:"contributions"`
+}
+
+// InstallConfig records how a programmatic extension package was installed (CLI provenance).
+type InstallConfig struct {
+	Source string `yaml:"source"`
+	Type   string `yaml:"type"` // npm | pip | go | git | dir | zip
+	Entry  string `yaml:"entry"`
+	Root   string `yaml:"root,omitempty"`
+}
+
+func (m Manifest) IsProgrammatic() bool {
+	return strings.EqualFold(strings.TrimSpace(m.Kind), "programmatic")
 }
 
 // Contributions groups list sources for each contribution type.
@@ -125,6 +140,15 @@ func validateManifest(dir string, m Manifest, matchDirName bool) error {
 	if m.APIVersion != "" && m.APIVersion != "loop.dev/extension/v1" {
 		return fmt.Errorf("extension %s: unsupported apiVersion %q", m.Name, m.APIVersion)
 	}
+	if m.IsProgrammatic() {
+		if m.Runtime == nil || len(m.Runtime.Command) == 0 {
+			return fmt.Errorf("extension %s: programmatic extensions require runtime.command", m.Name)
+		}
+		if transport := strings.TrimSpace(m.Runtime.Transport); transport != "" && transport != "stdio" {
+			return fmt.Errorf("extension %s: programmatic extensions only support runtime.transport stdio", m.Name)
+		}
+		return nil
+	}
 	if err := validateCustomMCPServers(m.aiAssetsMCPServers(), m.Name); err != nil {
 		return err
 	}
@@ -206,12 +230,35 @@ func (s Source) resolved(extDir string, catalogCmd []string) (file string, comma
 }
 
 func expandCommand(cmd []string, extDir string) []string {
+	return expandRuntimeCommand(cmd, extDir, "")
+}
+
+func expandRuntimeCommand(cmd []string, extDir, entry string) []string {
 	out := make([]string, len(cmd))
 	copy(out, cmd)
 	for i, part := range out {
-		out[i] = strings.ReplaceAll(part, "${LOOP_EXTENSION_DIR}", extDir)
+		part = strings.ReplaceAll(part, "${LOOP_EXTENSION_DIR}", extDir)
+		if entry != "" {
+			part = strings.ReplaceAll(part, "${LOOP_EXTENSION_ENTRY}", entry)
+		}
+		out[i] = part
 	}
 	return out
+}
+
+func resolveInstallEntry(extDir string, install *InstallConfig) string {
+	if install == nil {
+		return ""
+	}
+	entry := strings.TrimSpace(install.Entry)
+	if entry == "" {
+		return ""
+	}
+	entry = strings.ReplaceAll(entry, "${LOOP_EXTENSION_DIR}", extDir)
+	if filepath.IsAbs(entry) {
+		return entry
+	}
+	return filepath.Clean(filepath.Join(extDir, entry))
 }
 
 func runtimeCwd(extDir string, rt *RuntimeConfig) string {

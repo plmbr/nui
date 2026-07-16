@@ -2,13 +2,14 @@
 
 Python helpers for **extension authors**. Loop copies selected modules to `~/.loop/harness-sdk/` on first use; the repo copy is the source of truth during development.
 
-See also: [`dev/extension-api.md`](../dev/extension-api.md), [`dev/harness-design.md`](../dev/harness-design.md).
+See also: [`dev/extension-api.md`](../dev/extension-api.md), [`dev/extension-sdk.md`](../dev/extension-sdk.md), [`dev/harness-design.md`](../dev/harness-design.md).
 
 ## Author-facing modules
 
 | Module | Purpose |
 |---|---|
-| [`loop_agent_stdio.py`](loop_agent_stdio.py) | **Primary harness framework** — stdio JSON-RPC host for extension harnesses. Subclass `LoopAgent`, implement `run()`, call `serve_stdio()`. |
+| [`loop_extension.py`](loop_extension.py) | **Programmatic extension SDK** — subclass `LoopExtension`, override `get_harnesses()` / `run_harness()`, call `serve()` |
+| [`loop_agent_stdio.py`](loop_agent_stdio.py) | **Declarative harness framework** — subclass `LoopAgent`, implement `run()`, call `serve_stdio()` |
 | [`loop_agent.py`](loop_agent.py) | TCP JSON-RPC harness framework (reference / advanced). Used by standalone examples in `dev/harness-examples/py/`. |
 | [`loop_catalog.py`](loop_catalog.py) | Multiplexed catalog RPC — list harnesses, MCP servers, skills, and agents from one stdio process. |
 | [`loop_hitl.py`](loop_hitl.py) | REST client for HITL — `ask_user()`, `request_approval()`, `create_request()`, `wait_response()`, `respond()`, `list_pending()`, `api_url()`. |

@@ -154,6 +154,9 @@ func (r *Registry) AllDeployers() []DeployerInfo {
 
 // InvokeDeployer runs the deployer command with a JSON request on stdin.
 func InvokeDeployer(ref ResolvedDeployer, req DeployRequest) (DeployResponse, error) {
+	if ref.Extension.programmaticHost != nil && len(ref.Deployer.Command) == 0 {
+		return ref.Extension.programmaticHost.InvokeDeploy(req)
+	}
 	if len(ref.Deployer.Command) == 0 {
 		return DeployResponse{}, fmt.Errorf("deployer %q has no command", ref.ID)
 	}

@@ -197,6 +197,11 @@ func (r *Registry) mentionClient(extName, providerID string) (*MentionRPCClient,
 		r.mu.RUnlock()
 		return nil, fmt.Errorf("extension %q not found", extName)
 	}
+	if ext.programmaticHost != nil {
+		host := ext.programmaticHost
+		r.mu.RUnlock()
+		return &MentionRPCClient{programmatic: host, providerID: providerID}, nil
+	}
 	if ext.mentionRuntime == nil {
 		r.mu.RUnlock()
 		return nil, fmt.Errorf("extension %q has no mention runtime", extName)

@@ -13,8 +13,9 @@ import (
 
 // MentionRPCClient talks to an extension mention provider over stdio JSON-RPC.
 type MentionRPCClient struct {
-	rpc        *StdioRPC
-	providerID string
+	rpc          *StdioRPC
+	programmatic *programmaticHost
+	providerID   string
 }
 
 func NewMentionRPCClient(extDir, extName, providerID string, rt RuntimeConfig) (*MentionRPCClient, error) {
@@ -48,6 +49,9 @@ func NewMentionRPCClient(extDir, extName, providerID string, rt RuntimeConfig) (
 }
 
 func (c *MentionRPCClient) Close() error {
+	if c.programmatic != nil {
+		return nil
+	}
 	if c.rpc == nil {
 		return nil
 	}
@@ -56,6 +60,9 @@ func (c *MentionRPCClient) Close() error {
 }
 
 func (c *MentionRPCClient) List(ctx context.Context, req mentions.ListRequest, providerID string) (mentions.ListResponse, error) {
+	if c.programmatic != nil {
+		return c.programmatic.ListMentions(ctx, providerID, req)
+	}
 	_ = ctx
 	var result struct {
 		Items      []mentions.Item      `json:"items"`
@@ -79,6 +86,9 @@ func (c *MentionRPCClient) List(ctx context.Context, req mentions.ListRequest, p
 }
 
 func (c *MentionRPCClient) Resolve(ctx context.Context, req mentions.ResolveRequest, providerID string) (string, error) {
+	if c.programmatic != nil {
+		return c.programmatic.ResolveMention(ctx, providerID, req)
+	}
 	_ = ctx
 	var result struct {
 		Text string `json:"text"`

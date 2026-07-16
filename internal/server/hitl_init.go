@@ -3,9 +3,11 @@
 package server
 
 import (
+	"encoding/json"
 	"sync"
 
 	"loop/internal/agent"
+	"loop/internal/extensions"
 	"loop/internal/hitl"
 	"loop/internal/model"
 )
@@ -26,11 +28,30 @@ func initHITL() {
 		hitlCoord = hitl.NewCoordinator(func(event string, req hitl.Request, resp *hitl.Response) {
 			if event == "created" && req.SessionID != "" {
 				broadcastHITLRequest(req.SessionID, req)
+				deliverExtensionHITLChannels(req)
 			}
 		})
 		hitlCoord.SetPolicyFn(resolveSessionHITLMode)
 		agent.SetOrchestrationGate(hitlCoord)
 	})
+}
+
+func deliverExtensionHITLChannels(req hitl.Request) {
+	if extensions.Default == nil {
+		return
+	}
+	var payload map[string]any
+	data, err := json.Marshal(req)
+	if err != nil {
+		return
+	}
+	_ = json.Unmarshal(data, &payload)
+	for _, ch := range req.Routing.Channels {
+		if !extensions.IsExtRef(ch) {
+			continue
+		}
+		_ = extensions.Default.DeliverExtensionHITL(ch, payload, "", req.SessionID)
+	}
 }
 
 func coordinator() *hitl.Coordinator {

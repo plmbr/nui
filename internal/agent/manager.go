@@ -240,23 +240,27 @@ func (m *Manager) getExtensionHarnessAgent(projectID string, ref extensions.Harn
 
 	var ag Agent
 	var err error
-	switch transport {
-	case "stdio":
-		ag, err = newStdioHarnessAgent(ref.AgentID, ref.Entry.ID, projectID, ref.Extension.Dir, ref.Runtime)
-	case "tcp":
-		conn, connErr := m.startTCPHarness(ref)
-		if connErr != nil {
-			return nil, connErr
+	if ref.Extension.IsProgrammatic() {
+		ag = newProgrammaticHarnessAgent(ref, projectID)
+	} else {
+		switch transport {
+		case "stdio":
+			ag, err = newStdioHarnessAgent(ref.AgentID, ref.Entry.ID, projectID, ref.Extension.Dir, ref.Runtime)
+		case "tcp":
+			conn, connErr := m.startTCPHarness(ref)
+			if connErr != nil {
+				return nil, connErr
+			}
+			ag = NewExtensionAgent(ref.AgentID, conn)
+		case "http":
+			baseURL, urlErr := m.startHTTPHarness(ref)
+			if urlErr != nil {
+				return nil, urlErr
+			}
+			ag = NewHTTPExtensionAgent(ref.AgentID, baseURL)
+		default:
+			return nil, fmt.Errorf("harness %s: unsupported transport %q", ref.AgentID, transport)
 		}
-		ag = NewExtensionAgent(ref.AgentID, conn)
-	case "http":
-		baseURL, urlErr := m.startHTTPHarness(ref)
-		if urlErr != nil {
-			return nil, urlErr
-		}
-		ag = NewHTTPExtensionAgent(ref.AgentID, baseURL)
-	default:
-		return nil, fmt.Errorf("harness %s: unsupported transport %q", ref.AgentID, transport)
 	}
 	if err != nil {
 		return nil, err

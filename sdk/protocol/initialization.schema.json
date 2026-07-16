@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loop.dev/schemas/initialization.json",
+  "title": "ContributionManifest",
+  "type": "object",
+  "properties": {
+    "apiVersion": { "type": "string" },
+    "name": { "type": "string" },
+    "version": { "type": "string" },
+    "displayName": { "type": "string" },
+    "description": { "type": "string" },
+    "harnesses": { "type": "array" },
+    "agents": { "type": "array" },
+    "mcpServers": { "type": "array" },
+    "customMCPServers": { "type": "array" },
+    "skills": { "type": "array" },
+    "customSkills": { "type": "array" },
+    "rules": { "type": "array" },
+    "mentionProviders": { "type": "array" },
+    "hitlChannels": { "type": "array" },
+    "agentDeployers": { "type": "array" }
+  }
+}

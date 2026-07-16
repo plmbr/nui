@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://loop.dev/schemas/extension-v1.json",
+  "title": "LoopExtensionManifest",
+  "type": "object",
+  "required": ["name"],
+  "properties": {
+    "apiVersion": { "type": "string", "const": "loop.dev/extension/v1" },
+    "name": { "type": "string" },
+    "version": { "type": "string" },
+    "displayName": { "type": "string" },
+    "description": { "type": "string" },
+    "kind": { "enum": ["declarative", "programmatic"] },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "transport": { "enum": ["stdio", "tcp", "http"] },
+        "command": { "type": "array", "items": { "type": "string" } },
+        "cwd": { "type": "string" }
+      }
+    },
+    "install": {
+      "type": "object",
+      "properties": {
+        "source": { "type": "string" },
+        "type": { "enum": ["npm", "pip", "go", "git", "dir", "zip"] },
+        "entry": { "type": "string" },
+        "root": { "type": "string" }
+      }
+    },
+    "contributions": { "type": "object" }
+  }
+}
