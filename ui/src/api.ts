@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, AgentFileContent, AgentFileInfo, AgentDeployerInfo, AgentDeployResult, AgentEvalSummary, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, HitlRequest, HitlResponse, MCPOAuthStatus, MCPServer, MentionListResponse, Schedule, Session, Settings, SkillEntry, UploadedImage } from './types'
+import type { AgentType, AgentFileContent, AgentFileInfo, AgentDeployerInfo, AgentDeployResult, AgentEvalSummary, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, DirectorySuggestions, ExtensionInfo, HitlRequest, HitlResponse, MCPOAuthStatus, MCPServer, MentionListResponse, MemorySummary, Schedule, Session, Settings, SkillEntry, UploadedImage } from './types'
 
 export interface RunRecord {
   runId: string
@@ -329,6 +329,35 @@ export const api = {
 
     remove: (name: string): Promise<void> =>
       request(`/skills/${encodeURIComponent(name)}`, { method: 'DELETE' }),
+  },
+
+  memory: {
+    list: (): Promise<MemorySummary> =>
+      request('/memory'),
+
+    getUser: (): Promise<{ content: string }> =>
+      request('/memory/user'),
+
+    saveUser: (content: string): Promise<void> =>
+      request('/memory/user', {
+        method: 'PUT',
+        body: JSON.stringify({ content }),
+      }),
+
+    deleteUser: (): Promise<void> =>
+      request('/memory/user', { method: 'DELETE' }),
+
+    getAgent: (agentId: string): Promise<{ agentId: string; content: string }> =>
+      request(`/memory/agents/${encodeURIComponent(agentId)}`),
+
+    saveAgent: (agentId: string, content: string): Promise<void> =>
+      request(`/memory/agents/${encodeURIComponent(agentId)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ content }),
+      }),
+
+    deleteAgent: (agentId: string): Promise<void> =>
+      request(`/memory/agents/${encodeURIComponent(agentId)}`, { method: 'DELETE' }),
   },
 
   agents: {

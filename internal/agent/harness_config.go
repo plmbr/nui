@@ -12,6 +12,7 @@ import (
 	"loop/internal/extensions"
 	"loop/internal/hitl"
 	"loop/internal/mcpoauth"
+	"loop/internal/memory"
 	"loop/internal/model"
 	"loop/internal/skills"
 	"loop/internal/store"
@@ -233,11 +234,9 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 	if err != nil {
 		return deps, err
 	}
-	if def.Harness.Type == "api" {
-		deps.MCPServers, err = appendLoopAgentMCP(deps.MCPServers)
-		if err != nil {
-			return deps, err
-		}
+	deps.MCPServers, err = appendLoopAgentMCP(deps.MCPServers, model.ADLAgentID(def))
+	if err != nil {
+		return deps, err
 	}
 	if !(def.Harness.Type == "api" && strings.TrimSpace(def.Harness.Provider) == "ollama") {
 		deps.SystemPrompt = appendVizSystemPrompt(deps.SystemPrompt)
@@ -270,6 +269,7 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 		}
 		deps.ToolApprovalPolicy, deps.ToolApprovalTools = hitl.EffectiveToolApprovals(def, agentConfig)
 		deps.MCPServers = mcpoauth.ResolveServers(deps.MCPServers)
+		appendMemoryPrompt(&deps, def)
 		return deps, nil
 	}
 	expandedSkills := make([]model.ADLSkill, 0, len(deps.Skills))
@@ -299,7 +299,44 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 	}
 	deps.ToolApprovalPolicy, deps.ToolApprovalTools = hitl.EffectiveToolApprovals(def, agentConfig)
 	deps.MCPServers = mcpoauth.ResolveServers(deps.MCPServers)
+	appendMemoryPrompt(&deps, def)
 	return deps, nil
+}
+
+func appendMemoryPrompt(deps *HarnessDeps, def model.ADLDefinition) {
+	settings, err := store.LoadSettings()
+	if err != nil {
+		return
+	}
+	agentID := model.ADLAgentID(def)
+	var blocks []string
+	if appendix := memory.PromptAppendix(settings, agentID); appendix != "" {
+		blocks = append(blocks, appendix)
+	}
+	if autoAppendix := memory.AutoSaveAppendix(settings, agentID); autoAppendix != "" {
+		blocks = append(blocks, autoAppendix)
+	}
+	if memory.RememberSkillNeeded(settings, agentID) {
+		deps.Skills = appendRememberSkill(deps.Skills)
+	}
+	if len(blocks) == 0 {
+		return
+	}
+	combined := strings.Join(blocks, "\n\n")
+	if sp := strings.TrimSpace(deps.SystemPrompt); sp != "" {
+		deps.SystemPrompt = sp + "\n\n" + combined
+	} else {
+		deps.SystemPrompt = combined
+	}
+}
+
+func appendRememberSkill(skillList []model.ADLSkill) []model.ADLSkill {
+	for _, skill := range skillList {
+		if skill.Name == skills.RememberSkillName {
+			return skillList
+		}
+	}
+	return append(skillList, skills.RememberSkill())
 }
 
 // ProvisionHarnessConfig creates ~/.loop/sessions/<sessionID> and writes harness-specific

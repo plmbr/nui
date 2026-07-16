@@ -71,17 +71,25 @@ func TestExpandHarnessDeps_apiIncludesLoopAgentMCP(t *testing.T) {
 	}
 }
 
-func TestExpandHarnessDeps_cliOmitsLoopAgentMCP(t *testing.T) {
+func TestExpandHarnessDeps_cliIncludesLoopAgentMCP(t *testing.T) {
 	deps := HarnessDeps{}
 	expanded, err := ExpandHarnessDeps(deps, nil, "cli-session", model.ADLDefinition{
+		ID:      "cli-agent",
 		Harness: model.ADLHarness{Type: "claude-code"},
 	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+	found := false
 	for _, srv := range expanded.MCPServers {
 		if srv.Name == loopAgentMCPName {
-			t.Fatal("cli harness should not include loop-agent MCP")
+			found = true
+			if srv.Env["LOOP_MEMORY_AGENT_ID"] != "cli-agent" {
+				t.Fatalf("LOOP_MEMORY_AGENT_ID = %q", srv.Env["LOOP_MEMORY_AGENT_ID"])
+			}
 		}
+	}
+	if !found {
+		t.Fatal("cli harness should include loop-agent MCP for memory updates")
 	}
 }

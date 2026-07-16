@@ -81,6 +81,15 @@ func TestWithBuiltinsAppendsMissing(t *testing.T) {
 	}
 }
 
+func TestWithBuiltinsOmitsRemember(t *testing.T) {
+	merged := WithBuiltins(nil)
+	for _, skill := range merged {
+		if skill.Name == RememberSkillName {
+			t.Fatal("remember should not be attached unconditionally")
+		}
+	}
+}
+
 func TestWithBuiltinsDoesNotDuplicate(t *testing.T) {
 	merged := WithBuiltins([]model.ADLSkill{{Name: "create-agent", Path: "/tmp/create-agent"}})
 	count := 0

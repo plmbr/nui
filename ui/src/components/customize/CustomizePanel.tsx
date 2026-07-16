@@ -7,6 +7,7 @@ import { GeneralTab } from '@/components/customize/GeneralTab'
 import { ExtensionsTab } from '@/components/customize/ExtensionsTab'
 import { MCPServersTab } from '@/components/customize/MCPServersTab'
 import { SkillsTab } from '@/components/customize/SkillsTab'
+import { MemoryTab } from '@/components/customize/MemoryTab'
 import { AgentsTab } from '@/components/customize/AgentsTab'
 
 const TABS = [
@@ -14,6 +15,7 @@ const TABS = [
   { id: 'extensions', label: 'Extensions' },
   { id: 'mcp', label: 'MCP servers' },
   { id: 'skills', label: 'Skills' },
+  { id: 'memory', label: 'Memory' },
   { id: 'agents', label: 'Agents' },
 ] as const
 
@@ -60,6 +62,7 @@ export function CustomizePanel({ onClose, onAgentTypesChanged, tab, onTabChange 
           {tab === 'extensions' && <ExtensionsTab onChanged={onAgentTypesChanged} />}
           {tab === 'mcp' && <MCPServersTab />}
           {tab === 'skills' && <SkillsTab />}
+          {tab === 'memory' && <MemoryTab />}
           {tab === 'agents' && <AgentsTab onChanged={onAgentTypesChanged} />}
         </div>
       </div>

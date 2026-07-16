@@ -19,6 +19,7 @@ import (
 	"loop/internal/devcontainer"
 	"loop/internal/extensions"
 	"loop/internal/hitl"
+	"loop/internal/memory"
 	"loop/internal/model"
 	"loop/internal/skills"
 	"loop/internal/store"
@@ -113,6 +114,8 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/mcp-servers", handleMCPServers)
 	mux.HandleFunc("/api/skills", handleSkills)
 	mux.HandleFunc("/api/skills/", handleSkill)
+	mux.HandleFunc("/api/memory", handleMemory)
+	mux.HandleFunc("/api/memory/", handleMemoryPath)
 	mux.HandleFunc("/api/agents", handleAgents)
 	mux.HandleFunc("/api/agents/", handleAgentFile)
 	mux.HandleFunc("/api/agent-deployers", handleAgentDeployers)
@@ -444,7 +447,7 @@ func skillNamesFromADL(def model.ADLDefinition) []string {
 		add(step.AIAssets.Skills)
 	}
 	for _, name := range skills.BuiltinSkillNames() {
-		if name == skills.HitlAskUserSkillName || seen[name] {
+		if name == skills.HitlAskUserSkillName || name == skills.RememberSkillName || seen[name] {
 			continue
 		}
 		names = append(names, name)
@@ -846,6 +849,40 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		if patch.DisabledExtensions != nil {
 			current.DisabledExtensions = patch.DisabledExtensions
+		}
+		if patch.MemoryUserMode != "" {
+			current.MemoryUserMode = patch.MemoryUserMode
+		}
+		if patch.MemoryAgentsMode != nil {
+			if current.MemoryAgentsMode == nil {
+				current.MemoryAgentsMode = map[string]string{}
+			}
+			for id, mode := range patch.MemoryAgentsMode {
+				current.MemoryAgentsMode[id] = mode
+			}
+		}
+		if patch.MemoryUserEnabled != nil {
+			current.MemoryUserEnabled = patch.MemoryUserEnabled
+			if patch.MemoryUserMode == "" {
+				if *patch.MemoryUserEnabled {
+					current.MemoryUserMode = memory.ModeManual
+				} else {
+					current.MemoryUserMode = memory.ModeDisabled
+				}
+			}
+		}
+		if patch.MemoryAgentsEnabled != nil {
+			current.MemoryAgentsEnabled = patch.MemoryAgentsEnabled
+			if current.MemoryAgentsMode == nil {
+				current.MemoryAgentsMode = map[string]string{}
+			}
+			for id, enabled := range patch.MemoryAgentsEnabled {
+				if enabled {
+					current.MemoryAgentsMode[id] = memory.ModeManual
+				} else {
+					current.MemoryAgentsMode[id] = memory.ModeDisabled
+				}
+			}
 		}
 		if current.Theme == "" {
 			current.Theme = "light"

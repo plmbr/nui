@@ -85,7 +85,7 @@ func BuiltinADLSkills() []model.ADLSkill {
 }
 
 // WithBuiltins appends compiled-in skills not already present by name.
-// The ask-user skill is HITL-specific and attached separately when hitl.mode is interactive.
+// The ask-user and remember skills are attached separately when needed.
 func WithBuiltins(skills []model.ADLSkill) []model.ADLSkill {
 	if len(builtinSkillNames) == 0 {
 		return skills
@@ -99,7 +99,7 @@ func WithBuiltins(skills []model.ADLSkill) []model.ADLSkill {
 	}
 	out := append([]model.ADLSkill{}, skills...)
 	for _, builtin := range BuiltinADLSkills() {
-		if builtin.Name == HitlAskUserSkillName {
+		if builtin.Name == HitlAskUserSkillName || builtin.Name == RememberSkillName {
 			continue
 		}
 		if seen[builtin.Name] {
@@ -111,12 +111,21 @@ func WithBuiltins(skills []model.ADLSkill) []model.ADLSkill {
 }
 
 const HitlAskUserSkillName = "ask-user"
+const RememberSkillName = "remember"
 
 // HitlAskUserSkill returns the compiled-in HITL ask-user skill reference.
 func HitlAskUserSkill() model.ADLSkill {
 	return model.ADLSkill{
 		Name: HitlAskUserSkillName,
 		Ref:  BuiltinRefPrefix + HitlAskUserSkillName,
+	}
+}
+
+// RememberSkill returns the compiled-in memory remember skill reference.
+func RememberSkill() model.ADLSkill {
+	return model.ADLSkill{
+		Name: RememberSkillName,
+		Ref:  BuiltinRefPrefix + RememberSkillName,
 	}
 }
 

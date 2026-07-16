@@ -301,6 +301,29 @@ Extension harnesses are contributed by installed extensions. See [extension-api.
 
 Loop also auto-injects the `loop-viz` MCP server and `builtin:visualize` skill for inline chart rendering in chat (`internal/agent/harness_viz.go`).
 
+### Persistent memory
+
+Markdown memory files under `~/.loop/memory/`:
+
+| File | Scope |
+|---|---|
+| `user.md` | Cross-agent user preferences and durable facts |
+| `agents/<adl-agent-id>.md` | Per-agent learned context |
+
+Memory is **not** ADL rules — it is mutable, agent-editable state re-read on every harness run. Configure modes in **Customize → Memory** (user + per-agent).
+
+Each layer supports **auto**, **manual**, or **disabled**:
+
+| Mode | Read (inject) | Write (save) |
+|------|---------------|--------------|
+| disabled | No | No |
+| manual | Yes | On user request (`/remember`, "remember this") |
+| auto | Yes | Agent proactively saves durable decisions |
+
+Default is **manual**. The `remember` skill is attached when any layer is not disabled. In **auto** mode, a system-prompt appendix encourages proactive `update_memory` calls.
+
+Agents update memory via the builtin `remember` skill, direct file writes (CLI harnesses), or the `update_memory` tool on the `loop-agent` MCP server. Writes to a **disabled** scope are rejected by the MCP tool.
+
 Sandbox config flows: ADL `harness.sandbox` → `harnessBuiltinConfig()` → `Manager.getBuiltinAgent()` → agent struct `Sandbox` field.
 
 ### ADL executor
@@ -319,6 +342,7 @@ Sandbox config flows: ADL `harness.sandbox` → `harnessBuiltinConfig()` → `Ma
 | `promptMode` / `defaultPrompt` → UI auto-run | Done |
 | `promptSuggestions` → chat UI pills | Done |
 | `aiAssets.rules` → harness rule files | Done |
+| Persistent memory (`~/.loop/memory/`) → system prompt | Done |
 | `aiAssets.mentionProviders` → @-mention menu | Done |
 | `steps[].type: hitl` orchestration gates | Done |
 | `subAgents` orchestrator routing | Done |
@@ -439,7 +463,7 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 | `GET` | `/api/sessions/:id/history` | Agent-side history |
 | `GET` | `/api/agent-types` | Builtin + ADL + extension agent types |
 | `GET` | `/api/directories` | Working-dir suggestions |
-| `GET/PUT` | `/api/settings` | User preferences (partial PUT) |
+| `GET/PUT` | `/api/settings` | User preferences (partial PUT; includes memory toggles) |
 | `GET` | `/api/bootstrap` | One-shot CLI bootstrap (`sessionId`, `initialPrompt`) |
 | `POST` | `/api/launch` | Create session + optional initial prompt |
 | `GET` | `/api/capabilities` | Bwrap availability |
@@ -447,6 +471,9 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 | `POST` | `/api/extensions/reload` | Rescan extensions |
 | `GET/PUT` | `/api/mcp-servers` | User MCP server config |
 | `GET/DELETE` | `/api/skills[/:name]` | Skill catalog |
+| `GET` | `/api/memory` | Memory summary (user + agent files) |
+| `GET/PUT` | `/api/memory/user` | User memory markdown |
+| `GET/PUT/DELETE` | `/api/memory/agents/:id` | Per-agent memory markdown |
 | `GET/POST/PUT/DELETE` | `/api/agents[/:file]` | User ADL agent CRUD |
 | `POST` | `/api/agents/:id/deploy` | Deploy agent via extension deployer |
 | `GET` | `/api/agent-deployers` | List deployers |
@@ -489,6 +516,8 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 - [x] ADL `skill` references (SKILL.md) → session harness config
 - [x] ADL `aiAssets.skills` (path, ref, content, git+path) → catalog + session harness config
 - [x] `loop skills add|list|remove` CLI
+- [x] `loop memory list|show|edit` CLI
+- [x] Persistent memory (`~/.loop/memory/`) with UI toggles and agent write path
 - [x] `loop extension add|remove` CLI
 - [x] ADL `aiAssets.mcpServers` → session harness config
 

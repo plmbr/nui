@@ -20,8 +20,12 @@ type Settings struct {
 	LastSessionID        string   `json:"lastSessionId,omitempty"`          // last selected session in UI
 	SidebarOpen          *bool    `json:"sidebarOpen,omitempty"`            // desktop sidebar expanded state
 	SidebarWidth         *int     `json:"sidebarWidth,omitempty"`           // desktop sidebar width in px
-	DisabledExtensions   []string `json:"disabledExtensions,omitempty"`     // extension names excluded from runtime
-	MCPOAuthCallbackURL  string   `json:"mcpOAuthCallbackUrl,omitempty"`    // optional OAuth callback base URL override
+	DisabledExtensions   []string          `json:"disabledExtensions,omitempty"`     // extension names excluded from runtime
+	MCPOAuthCallbackURL  string            `json:"mcpOAuthCallbackUrl,omitempty"`    // optional OAuth callback base URL override
+	MemoryUserMode       string            `json:"memoryUserMode,omitempty"`         // auto | manual | disabled; default manual
+	MemoryAgentsMode     map[string]string `json:"memoryAgentsMode,omitempty"`       // per ADL agent id; missing = manual
+	MemoryUserEnabled    *bool             `json:"memoryUserEnabled,omitempty"`      // deprecated; migrated to memoryUserMode
+	MemoryAgentsEnabled  map[string]bool   `json:"memoryAgentsEnabled,omitempty"`    // deprecated; migrated to memoryAgentsMode
 }
 
 type Data struct {

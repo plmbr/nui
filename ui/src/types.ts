@@ -168,7 +168,15 @@ export interface Settings {
   sidebarWidth?: number
   disabledExtensions?: string[]
   mcpOAuthCallbackUrl?: string
+  memoryUserMode?: MemoryMode
+  memoryAgentsMode?: Record<string, MemoryMode>
+  /** @deprecated use memoryUserMode */
+  memoryUserEnabled?: boolean
+  /** @deprecated use memoryAgentsMode */
+  memoryAgentsEnabled?: Record<string, boolean>
 }
+
+export type MemoryMode = 'auto' | 'manual' | 'disabled'
 
 export interface ExtensionInfo {
   name: string
@@ -212,6 +220,24 @@ export interface SkillEntry {
   git?: string
   version?: string
   installedAt: string
+}
+
+export interface MemoryUserInfo {
+  size: number
+  updatedAt?: string
+  mode: MemoryMode
+}
+
+export interface MemoryAgentEntry {
+  agentId: string
+  size: number
+  updatedAt?: string
+  mode: MemoryMode
+}
+
+export interface MemorySummary {
+  user: MemoryUserInfo
+  agents: MemoryAgentEntry[]
 }
 
 export interface AgentFileInfo {
