@@ -166,6 +166,7 @@ export function SessionsListPanel({
                     <th>Name</th>
                     <th>Working directory</th>
                     <th>Created</th>
+                    <th>Last run</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -206,6 +207,11 @@ export function SessionsListPanel({
                         </td>
                         <td className="text-muted-foreground whitespace-nowrap tabular-nums">
                           {new Date(session.createdAt).toLocaleString()}
+                        </td>
+                        <td className="text-muted-foreground whitespace-nowrap tabular-nums">
+                          {session.lastRunAt
+                            ? new Date(session.lastRunAt).toLocaleString()
+                            : '—'}
                         </td>
                       </tr>
                     )

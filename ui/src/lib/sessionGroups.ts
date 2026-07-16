@@ -32,6 +32,10 @@ export interface SessionGroup {
   sessions: Session[]
 }
 
+function sessionLastActivityAt(session: Session): string {
+  return session.lastRunAt ?? session.createdAt
+}
+
 function resolveAgentTypeId(agentType: string): string {
   return LEGACY_AGENT_TYPE_IDS[agentType] ?? agentType.replace(/^adl:/, '')
 }
@@ -90,7 +94,8 @@ export function groupSessionsByAgentType(
 
   for (const group of result) {
     group.sessions.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      (a, b) =>
+        new Date(sessionLastActivityAt(b)).getTime() - new Date(sessionLastActivityAt(a)).getTime(),
     )
   }
 

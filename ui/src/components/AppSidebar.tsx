@@ -122,10 +122,11 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
   const sessionRunning = runningSessions.has(session.id)
   const progress = progressMap.get(session.id) ?? getSessionProgress(session.id)
   const displayName = sessionDisplayName(session)
-  const timeLabel = session.createdAt
-    ? (sessionRunning ? 'now' : formatRelativeTime(session.createdAt, Date.now(), false))
+  const lastActivityAt = session.lastRunAt ?? session.createdAt
+  const timeLabel = lastActivityAt
+    ? (sessionRunning ? 'now' : formatRelativeTime(lastActivityAt, Date.now(), false))
     : ''
-  const timeTitle = session.createdAt ? formatExactTime(session.createdAt) : ''
+  const timeTitle = lastActivityAt ? formatExactTime(lastActivityAt) : ''
   const scheduledTitle = session.scheduleId
     ? `Scheduled · ${session.scheduleName || session.scheduleId}`
     : undefined
@@ -209,6 +210,16 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
               <div>
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5">Created</p>
                 <p className="text-xs">{new Date(session.createdAt).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-0.5">Last run</p>
+                <p className="text-xs">
+                  {sessionRunning
+                    ? 'Running now'
+                    : session.lastRunAt
+                      ? new Date(session.lastRunAt).toLocaleString()
+                      : 'Never'}
+                </p>
               </div>
               {session.scheduleId && (
                 <div>
