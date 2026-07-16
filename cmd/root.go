@@ -15,6 +15,15 @@ var rootCmd = &cobra.Command{
 	Long:  "Loop is a CLI application with an optional web UI.",
 }
 
+// Version is the CLI release version (set from main via SetVersion).
+var Version = "dev"
+
+// SetVersion wires the release version into the root command for --version.
+func SetVersion(v string) {
+	Version = v
+	rootCmd.Version = v
+}
+
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
