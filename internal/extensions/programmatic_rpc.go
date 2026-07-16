@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 
 	"loop/internal/mentions"
+	"loop/internal/model"
 )
 
 // ProgrammaticRPC is a long-lived stdio JSON-RPC connection to a programmatic extension process.
@@ -258,6 +259,124 @@ func (h *programmaticHost) InvokeDeploy(req DeployRequest) (DeployResponse, erro
 		return resp, fmt.Errorf("%s", msg)
 	}
 	return resp, nil
+}
+
+func (h *programmaticHost) ReadSession(ctx context.Context, handlerID, sessionID, agentType, workingDir string) ([]model.ChatMessage, string, error) {
+	_ = ctx
+	var result struct {
+		Messages       []model.ChatMessage `json:"messages"`
+		AgentSessionID string              `json:"agentSessionId"`
+	}
+	params := map[string]any{
+		"handlerId": handlerID, "sessionId": sessionID, "agentType": agentType, "workingDir": workingDir,
+	}
+	if err := h.rpc.Call("storage.session.read", params, &result); err != nil {
+		return nil, "", err
+	}
+	if result.Messages == nil {
+		result.Messages = []model.ChatMessage{}
+	}
+	return result.Messages, result.AgentSessionID, nil
+}
+
+func (h *programmaticHost) WriteSession(ctx context.Context, handlerID, sessionID, agentType, agentSessionID, workingDir string, messages []model.ChatMessage) error {
+	_ = ctx
+	var result struct{ OK bool `json:"ok"` }
+	params := map[string]any{
+		"handlerId": handlerID, "sessionId": sessionID, "agentType": agentType,
+		"agentSessionId": agentSessionID, "workingDir": workingDir, "messages": messages,
+	}
+	if err := h.rpc.Call("storage.session.write", params, &result); err != nil {
+		return err
+	}
+	if !result.OK {
+		return fmt.Errorf("storage.session.write: not ok")
+	}
+	return nil
+}
+
+func (h *programmaticHost) DeleteSession(ctx context.Context, handlerID, sessionID, agentType, agentSessionID, workingDir string) error {
+	_ = ctx
+	var result struct{ OK bool `json:"ok"` }
+	params := map[string]any{
+		"handlerId": handlerID, "sessionId": sessionID, "agentType": agentType,
+		"agentSessionId": agentSessionID, "workingDir": workingDir,
+	}
+	if err := h.rpc.Call("storage.session.delete", params, &result); err != nil {
+		return err
+	}
+	if !result.OK {
+		return fmt.Errorf("storage.session.delete: not ok")
+	}
+	return nil
+}
+
+func (h *programmaticHost) ReadAgentMemory(ctx context.Context, handlerID, agentID string) (string, error) {
+	_ = ctx
+	var result struct{ Content string `json:"content"` }
+	if err := h.rpc.Call("storage.agentMemory.read", map[string]any{"handlerId": handlerID, "agentId": agentID}, &result); err != nil {
+		return "", err
+	}
+	return result.Content, nil
+}
+
+func (h *programmaticHost) WriteAgentMemory(ctx context.Context, handlerID, agentID, content, writeMode string) error {
+	_ = ctx
+	var result struct{ OK bool `json:"ok"` }
+	params := map[string]any{"handlerId": handlerID, "agentId": agentID, "content": content, "writeMode": writeMode}
+	if err := h.rpc.Call("storage.agentMemory.write", params, &result); err != nil {
+		return err
+	}
+	if !result.OK {
+		return fmt.Errorf("storage.agentMemory.write: not ok")
+	}
+	return nil
+}
+
+func (h *programmaticHost) DeleteAgentMemory(ctx context.Context, handlerID, agentID string) error {
+	_ = ctx
+	var result struct{ OK bool `json:"ok"` }
+	if err := h.rpc.Call("storage.agentMemory.delete", map[string]any{"handlerId": handlerID, "agentId": agentID}, &result); err != nil {
+		return err
+	}
+	if !result.OK {
+		return fmt.Errorf("storage.agentMemory.delete: not ok")
+	}
+	return nil
+}
+
+func (h *programmaticHost) ReadUserMemory(ctx context.Context, handlerID string) (string, error) {
+	_ = ctx
+	var result struct{ Content string `json:"content"` }
+	if err := h.rpc.Call("storage.userMemory.read", map[string]any{"handlerId": handlerID}, &result); err != nil {
+		return "", err
+	}
+	return result.Content, nil
+}
+
+func (h *programmaticHost) WriteUserMemory(ctx context.Context, handlerID, content, writeMode string) error {
+	_ = ctx
+	var result struct{ OK bool `json:"ok"` }
+	params := map[string]any{"handlerId": handlerID, "content": content, "writeMode": writeMode}
+	if err := h.rpc.Call("storage.userMemory.write", params, &result); err != nil {
+		return err
+	}
+	if !result.OK {
+		return fmt.Errorf("storage.userMemory.write: not ok")
+	}
+	return nil
+}
+
+func (h *programmaticHost) DeleteUserMemory(ctx context.Context, handlerID string) error {
+	_ = ctx
+	var result struct{ OK bool `json:"ok"` }
+	if err := h.rpc.Call("storage.userMemory.delete", map[string]any{"handlerId": handlerID}, &result); err != nil {
+		return err
+	}
+	if !result.OK {
+		return fmt.Errorf("storage.userMemory.delete: not ok")
+	}
+	return nil
 }
 
 // ProgrammaticHarnessAgent runs harnesses via a shared programmatic host connection.

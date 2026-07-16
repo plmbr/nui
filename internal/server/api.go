@@ -85,19 +85,7 @@ func initStore() error {
 
 // snapshotData must be called with mu held.
 func snapshotData() store.Data {
-	ss := make([]model.Session, len(sessions))
-	copy(ss, sessions)
-	as := make(map[string]string, len(agentSessions))
-	for k, v := range agentSessions {
-		as[k] = v
-	}
-	sm := make(map[string][]model.ChatMessage, len(sessionMessages))
-	for k, v := range sessionMessages {
-		copied := make([]model.ChatMessage, len(v))
-		copy(copied, v)
-		sm[k] = copied
-	}
-	return store.Data{Sessions: ss, AgentSessions: as, SessionMessages: sm}
+	return snapshotDataFiltered()
 }
 
 func registerAPIRoutes(mux *http.ServeMux) {
@@ -600,6 +588,11 @@ func cleanupDeletedSession(id string, info sessionDeleteInfo) {
 	if err := store.RemoveSessionUploads(id); err != nil {
 		fmt.Fprintf(os.Stderr, "warn: remove session uploads: %v\n", err)
 	}
+	session := model.Session{AgentType: info.agentType, WorkingDir: info.workingDir}
+	if sessionUsesExtensionStorage(session) {
+		deleteExtensionSession(id, session, info.workingDir, info.agentSessionID)
+		return
+	}
 	if info.agentSessionID == "" {
 		return
 	}
@@ -766,6 +759,16 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleSessionMessages(w http.ResponseWriter, r *http.Request, sessionID string) {
+	mu.RLock()
+	session, ok := findSession(sessionID)
+	mu.RUnlock()
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	workingDir, _ := effectiveWorkingDir(session.WorkingDir)
+	loadExtensionSessionMessages(sessionID, session, workingDir)
+
 	switch r.Method {
 	case http.MethodGet:
 		mu.RLock()
@@ -786,6 +789,7 @@ func handleSessionMessages(w http.ResponseWriter, r *http.Request, sessionID str
 		sessionMessages[sessionID] = msgs
 		snapshot := snapshotData()
 		mu.Unlock()
+		persistSessionState(sessionID, session, workingDir)
 		if err := store.SaveData(snapshot); err != nil {
 			http.Error(w, "failed to save messages", http.StatusInternalServerError)
 			return

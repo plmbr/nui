@@ -15,8 +15,10 @@ import (
 
 	"loop/internal/agent"
 	"loop/internal/extensions"
+	"loop/internal/memory"
 	"loop/internal/mentions"
 	"loop/internal/mcpoauth"
+	"loop/internal/storageext"
 )
 
 var extensionManager *agent.Manager
@@ -42,9 +44,11 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 
 	if reg, err := extensions.LoadRegistry(); err != nil {
 		fmt.Fprintf(os.Stderr, "[extensions] failed to load: %v\n", err)
+		memory.SetStore(storageext.NewCoordinator(nil))
 	} else {
 		extensionManager.SetExtensionRegistry(reg)
 		mentions.DefaultRegistry.SetExtensionSource(reg.MentionSource())
+		memory.SetStore(storageext.NewCoordinator(reg))
 	}
 
 	if err := applyStartSettings(opts); err != nil {

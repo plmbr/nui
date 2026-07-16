@@ -1,0 +1,17 @@
+apiVersion: loop.dev/extension/v1
+name: storage-demo
+version: 1.0.0
+displayName: Storage Demo
+description: In-memory extension persistence for session history, agent memory, and user memory
+
+contributions:
+  storage:
+    source:
+      file: storage-handlers.yaml
+    runtime:
+      transport: stdio
+      command: ["python3", "storage_host.py"]
+
+  agents:
+    source:
+      file: agents.yaml

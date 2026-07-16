@@ -324,6 +324,8 @@ Default is **manual**. The `remember` skill is attached when any layer is not di
 
 Agents update memory via the builtin `remember` skill, direct file writes (CLI harnesses), or the `update_memory` tool on the `loop-agent` MCP server. Writes to a **disabled** scope are rejected by the MCP tool.
 
+Extensions may register **storage handlers** to replace built-in persistence for session history, agent memory, or user memory per agent type. See [extension-api.md](extension-api.md#storage-handlers). Memory **modes** (`auto` / `manual` / `disabled`) remain Loop-owned; handlers control **where** data is stored.
+
 Sandbox config flows: ADL `harness.sandbox` → `harnessBuiltinConfig()` → `Manager.getBuiltinAgent()` → agent struct `Sandbox` field.
 
 ### ADL executor

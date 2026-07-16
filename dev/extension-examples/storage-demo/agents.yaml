@@ -1,0 +1,5 @@
+agents:
+  - id: demo-agent
+    displayName: Storage Demo Agent
+    harness:
+      type: claude-code

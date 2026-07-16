@@ -60,6 +60,9 @@ class LoopExtension:
     def get_hitl_channels(self) -> list[dict[str, Any]]:
         return []
 
+    def get_storage_handlers(self) -> list[dict[str, Any]]:
+        return []
+
     def get_deployers(self) -> list[dict[str, Any]]:
         return []
 
@@ -96,6 +99,83 @@ class LoopExtension:
         self, channel_id: str, request: dict[str, Any], ctx: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         _ = channel_id, request, ctx
+        return {"ok": True}
+
+    def read_session(
+        self,
+        handler_id: str,
+        session_id: str = "",
+        agent_type: str = "",
+        working_dir: str = "",
+        ctx: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        _ = handler_id, session_id, agent_type, working_dir, ctx
+        return {"messages": [], "agentSessionId": ""}
+
+    def write_session(
+        self,
+        handler_id: str,
+        session_id: str = "",
+        agent_type: str = "",
+        agent_session_id: str = "",
+        working_dir: str = "",
+        messages: list[dict[str, Any]] | None = None,
+        ctx: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        _ = handler_id, session_id, agent_type, agent_session_id, working_dir, messages, ctx
+        return {"ok": True}
+
+    def delete_session(
+        self,
+        handler_id: str,
+        session_id: str = "",
+        agent_type: str = "",
+        agent_session_id: str = "",
+        working_dir: str = "",
+        ctx: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        _ = handler_id, session_id, agent_type, agent_session_id, working_dir, ctx
+        return {"ok": True}
+
+    def read_agent_memory(
+        self, handler_id: str, agent_id: str = "", ctx: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        _ = handler_id, agent_id, ctx
+        return {"content": ""}
+
+    def write_agent_memory(
+        self,
+        handler_id: str,
+        agent_id: str = "",
+        content: str = "",
+        write_mode: str = "replace",
+        ctx: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        _ = handler_id, agent_id, content, write_mode, ctx
+        return {"ok": True}
+
+    def delete_agent_memory(
+        self, handler_id: str, agent_id: str = "", ctx: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        _ = handler_id, agent_id, ctx
+        return {"ok": True}
+
+    def read_user_memory(self, handler_id: str, ctx: dict[str, Any] | None = None) -> dict[str, Any]:
+        _ = handler_id, ctx
+        return {"content": ""}
+
+    def write_user_memory(
+        self,
+        handler_id: str,
+        content: str = "",
+        write_mode: str = "replace",
+        ctx: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        _ = handler_id, content, write_mode, ctx
+        return {"ok": True}
+
+    def delete_user_memory(self, handler_id: str, ctx: dict[str, Any] | None = None) -> dict[str, Any]:
+        _ = handler_id, ctx
         return {"ok": True}
 
     def deploy(
@@ -141,6 +221,7 @@ class LoopExtension:
             "rules": self.get_rules(),
             "mentionProviders": self.get_mention_providers(),
             "hitlChannels": self.get_hitl_channels(),
+            "storageHandlers": self.get_storage_handlers(),
             "agentDeployers": self.get_deployers(),
         }
 
@@ -204,6 +285,91 @@ class LoopExtension:
 
         if method == "extension.deploy":
             result = self.deploy(params.get("deployerId", ""), params, ctx=params)
+            self._write({"jsonrpc": "2.0", "id": rid, "result": result})
+            return
+
+        if method == "storage.session.read":
+            result = self.read_session(
+                params.get("handlerId", ""),
+                session_id=params.get("sessionId", ""),
+                agent_type=params.get("agentType", ""),
+                working_dir=params.get("workingDir", ""),
+                ctx=params,
+            )
+            self._write({"jsonrpc": "2.0", "id": rid, "result": result})
+            return
+
+        if method == "storage.session.write":
+            result = self.write_session(
+                params.get("handlerId", ""),
+                session_id=params.get("sessionId", ""),
+                agent_type=params.get("agentType", ""),
+                agent_session_id=params.get("agentSessionId", ""),
+                working_dir=params.get("workingDir", ""),
+                messages=params.get("messages") or [],
+                ctx=params,
+            )
+            self._write({"jsonrpc": "2.0", "id": rid, "result": result})
+            return
+
+        if method == "storage.session.delete":
+            result = self.delete_session(
+                params.get("handlerId", ""),
+                session_id=params.get("sessionId", ""),
+                agent_type=params.get("agentType", ""),
+                agent_session_id=params.get("agentSessionId", ""),
+                working_dir=params.get("workingDir", ""),
+                ctx=params,
+            )
+            self._write({"jsonrpc": "2.0", "id": rid, "result": result})
+            return
+
+        if method == "storage.agentMemory.read":
+            result = self.read_agent_memory(
+                params.get("handlerId", ""),
+                agent_id=params.get("agentId", ""),
+                ctx=params,
+            )
+            self._write({"jsonrpc": "2.0", "id": rid, "result": result})
+            return
+
+        if method == "storage.agentMemory.write":
+            result = self.write_agent_memory(
+                params.get("handlerId", ""),
+                agent_id=params.get("agentId", ""),
+                content=params.get("content", ""),
+                write_mode=params.get("writeMode", "replace"),
+                ctx=params,
+            )
+            self._write({"jsonrpc": "2.0", "id": rid, "result": result})
+            return
+
+        if method == "storage.agentMemory.delete":
+            result = self.delete_agent_memory(
+                params.get("handlerId", ""),
+                agent_id=params.get("agentId", ""),
+                ctx=params,
+            )
+            self._write({"jsonrpc": "2.0", "id": rid, "result": result})
+            return
+
+        if method == "storage.userMemory.read":
+            result = self.read_user_memory(params.get("handlerId", ""), ctx=params)
+            self._write({"jsonrpc": "2.0", "id": rid, "result": result})
+            return
+
+        if method == "storage.userMemory.write":
+            result = self.write_user_memory(
+                params.get("handlerId", ""),
+                content=params.get("content", ""),
+                write_mode=params.get("writeMode", "replace"),
+                ctx=params,
+            )
+            self._write({"jsonrpc": "2.0", "id": rid, "result": result})
+            return
+
+        if method == "storage.userMemory.delete":
+            result = self.delete_user_memory(params.get("handlerId", ""), ctx=params)
             self._write({"jsonrpc": "2.0", "id": rid, "result": result})
             return
 

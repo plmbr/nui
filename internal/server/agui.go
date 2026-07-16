@@ -99,7 +99,12 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 	}
 	mu.Lock()
 	sessionMessages[sessionID] = append(sessionMessages[sessionID], userMsg)
+	session, sessionOK := findSession(sessionID)
 	mu.Unlock()
+	if sessionOK {
+		workingDir, _ := effectiveWorkingDir(session.WorkingDir)
+		persistSessionState(sessionID, session, workingDir)
+	}
 
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")

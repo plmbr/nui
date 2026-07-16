@@ -49,6 +49,7 @@ type Contributions struct {
 	Agents     *AgentsContribution     `yaml:"agents,omitempty"`
 	Mentions      *MentionProvidersContribution `yaml:"mentionProviders,omitempty"`
 	HITLChannels  *HITLChannelsContribution     `yaml:"hitlChannels,omitempty"`
+	Storage       *StorageContribution          `yaml:"storage,omitempty"`
 }
 
 // AIAssetsContribution declares custom MCP servers, skills, rules, and agent deployers.

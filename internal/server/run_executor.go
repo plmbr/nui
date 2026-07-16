@@ -93,7 +93,12 @@ func appendUserMessage(sessionID, content string) {
 	}
 	mu.Lock()
 	sessionMessages[sessionID] = append(sessionMessages[sessionID], userMsg)
+	session, sessionOK := findSession(sessionID)
 	mu.Unlock()
+	if sessionOK {
+		workingDir, _ := effectiveWorkingDir(session.WorkingDir)
+		persistSessionState(sessionID, session, workingDir)
+	}
 }
 
 func persistAssistantTurn(sessionID, content, newAgentSessionID string, skipTopLevelHarnessSession bool) {
@@ -128,8 +133,16 @@ func persistRichAssistantTurn(sessionID string, assistantMsg model.ChatMessage, 
 	if newAgentSessionID != "" && !skipTopLevelHarnessSession {
 		agentSessions[sessionID] = newAgentSessionID
 	}
+	session, sessionOK := findSession(sessionID)
 	snapshot := snapshotData()
 	mu.Unlock()
+	if sessionOK {
+		workingDir, _ := effectiveWorkingDir(session.WorkingDir)
+		persistSessionState(sessionID, session, workingDir)
+		if sessionUsesExtensionStorage(session) {
+			return
+		}
+	}
 	if err := store.SaveData(snapshot); err != nil {
 		fmt.Fprintf(os.Stderr, "warn: save session: %v\n", err)
 	}

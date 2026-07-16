@@ -21,11 +21,21 @@ type Extension interface {
 	GetMentionProviders() []map[string]any
 	GetRules() []map[string]any
 	GetHITLChannels() []map[string]any
+	GetStorageHandlers() []map[string]any
 	GetDeployers() []map[string]any
 	RunHarness(ctx context.Context, harnessID, message string, params map[string]any, emit func(map[string]any)) error
 	ListMentions(providerID, parent, query string, limit int, params map[string]any) (map[string]any, error)
 	ResolveMention(providerID, value string, params map[string]any) (map[string]any, error)
 	DeliverHITL(channelID string, request map[string]any, params map[string]any) (map[string]any, error)
+	ReadSession(handlerID, sessionID, agentType, workingDir string, params map[string]any) (map[string]any, error)
+	WriteSession(handlerID, sessionID, agentType, agentSessionID, workingDir string, messages []any, params map[string]any) (map[string]any, error)
+	DeleteSession(handlerID, sessionID, agentType, agentSessionID, workingDir string, params map[string]any) (map[string]any, error)
+	ReadAgentMemory(handlerID, agentID string, params map[string]any) (map[string]any, error)
+	WriteAgentMemory(handlerID, agentID, content, writeMode string, params map[string]any) (map[string]any, error)
+	DeleteAgentMemory(handlerID, agentID string, params map[string]any) (map[string]any, error)
+	ReadUserMemory(handlerID string, params map[string]any) (map[string]any, error)
+	WriteUserMemory(handlerID, content, writeMode string, params map[string]any) (map[string]any, error)
+	DeleteUserMemory(handlerID string, params map[string]any) (map[string]any, error)
 	Deploy(deployerID string, params map[string]any) (map[string]any, error)
 }
 
@@ -43,6 +53,7 @@ func (b *Base) GetAgents() []map[string]any             { return nil }
 func (b *Base) GetMentionProviders() []map[string]any   { return nil }
 func (b *Base) GetRules() []map[string]any              { return nil }
 func (b *Base) GetHITLChannels() []map[string]any       { return nil }
+func (b *Base) GetStorageHandlers() []map[string]any    { return nil }
 func (b *Base) GetDeployers() []map[string]any          { return nil }
 func (b *Base) RunHarness(ctx context.Context, harnessID, message string, params map[string]any, emit func(map[string]any)) error {
 	return nil
@@ -54,6 +65,42 @@ func (b *Base) ResolveMention(providerID, value string, params map[string]any) (
 	return map[string]any{"text": value}, nil
 }
 func (b *Base) DeliverHITL(channelID string, request map[string]any, params map[string]any) (map[string]any, error) {
+	return map[string]any{"ok": true}, nil
+}
+func (b *Base) ReadSession(handlerID, sessionID, agentType, workingDir string, params map[string]any) (map[string]any, error) {
+	_ = handlerID, sessionID, agentType, workingDir, params
+	return map[string]any{"messages": []any{}, "agentSessionId": ""}, nil
+}
+func (b *Base) WriteSession(handlerID, sessionID, agentType, agentSessionID, workingDir string, messages []any, params map[string]any) (map[string]any, error) {
+	_ = handlerID, sessionID, agentType, agentSessionID, workingDir, messages, params
+	return map[string]any{"ok": true}, nil
+}
+func (b *Base) DeleteSession(handlerID, sessionID, agentType, agentSessionID, workingDir string, params map[string]any) (map[string]any, error) {
+	_ = handlerID, sessionID, agentType, agentSessionID, workingDir, params
+	return map[string]any{"ok": true}, nil
+}
+func (b *Base) ReadAgentMemory(handlerID, agentID string, params map[string]any) (map[string]any, error) {
+	_ = handlerID, agentID, params
+	return map[string]any{"content": ""}, nil
+}
+func (b *Base) WriteAgentMemory(handlerID, agentID, content, writeMode string, params map[string]any) (map[string]any, error) {
+	_ = handlerID, agentID, content, writeMode, params
+	return map[string]any{"ok": true}, nil
+}
+func (b *Base) DeleteAgentMemory(handlerID, agentID string, params map[string]any) (map[string]any, error) {
+	_ = handlerID, agentID, params
+	return map[string]any{"ok": true}, nil
+}
+func (b *Base) ReadUserMemory(handlerID string, params map[string]any) (map[string]any, error) {
+	_ = handlerID, params
+	return map[string]any{"content": ""}, nil
+}
+func (b *Base) WriteUserMemory(handlerID, content, writeMode string, params map[string]any) (map[string]any, error) {
+	_ = handlerID, content, writeMode, params
+	return map[string]any{"ok": true}, nil
+}
+func (b *Base) DeleteUserMemory(handlerID string, params map[string]any) (map[string]any, error) {
+	_ = handlerID, params
 	return map[string]any{"ok": true}, nil
 }
 func (b *Base) Deploy(deployerID string, params map[string]any) (map[string]any, error) {
@@ -101,6 +148,7 @@ func ServeStdio(ext Extension) error {
 					"mentionProviders": extImpl.GetMentionProviders(),
 					"rules":      extImpl.GetRules(),
 					"hitlChannels": extImpl.GetHITLChannels(),
+					"storageHandlers": extImpl.GetStorageHandlers(),
 					"agentDeployers": extImpl.GetDeployers(),
 				},
 			})
@@ -141,6 +189,64 @@ func ServeStdio(ext Extension) error {
 			channelID, _ := params["channelId"].(string)
 			request, _ := params["request"].(map[string]any)
 			result, _ := extImpl.DeliverHITL(channelID, request, params)
+			write(map[string]any{"jsonrpc": "2.0", "id": rid, "result": result})
+		case "storage.session.read":
+			handlerID, _ := params["handlerId"].(string)
+			sessionID, _ := params["sessionId"].(string)
+			agentType, _ := params["agentType"].(string)
+			workingDir, _ := params["workingDir"].(string)
+			result, _ := extImpl.ReadSession(handlerID, sessionID, agentType, workingDir, params)
+			write(map[string]any{"jsonrpc": "2.0", "id": rid, "result": result})
+		case "storage.session.write":
+			handlerID, _ := params["handlerId"].(string)
+			sessionID, _ := params["sessionId"].(string)
+			agentType, _ := params["agentType"].(string)
+			agentSessionID, _ := params["agentSessionId"].(string)
+			workingDir, _ := params["workingDir"].(string)
+			var messages []any
+			if raw, ok := params["messages"].([]any); ok {
+				messages = raw
+			}
+			result, _ := extImpl.WriteSession(handlerID, sessionID, agentType, agentSessionID, workingDir, messages, params)
+			write(map[string]any{"jsonrpc": "2.0", "id": rid, "result": result})
+		case "storage.session.delete":
+			handlerID, _ := params["handlerId"].(string)
+			sessionID, _ := params["sessionId"].(string)
+			agentType, _ := params["agentType"].(string)
+			agentSessionID, _ := params["agentSessionId"].(string)
+			workingDir, _ := params["workingDir"].(string)
+			result, _ := extImpl.DeleteSession(handlerID, sessionID, agentType, agentSessionID, workingDir, params)
+			write(map[string]any{"jsonrpc": "2.0", "id": rid, "result": result})
+		case "storage.agentMemory.read":
+			handlerID, _ := params["handlerId"].(string)
+			agentID, _ := params["agentId"].(string)
+			result, _ := extImpl.ReadAgentMemory(handlerID, agentID, params)
+			write(map[string]any{"jsonrpc": "2.0", "id": rid, "result": result})
+		case "storage.agentMemory.write":
+			handlerID, _ := params["handlerId"].(string)
+			agentID, _ := params["agentId"].(string)
+			content, _ := params["content"].(string)
+			writeMode, _ := params["writeMode"].(string)
+			result, _ := extImpl.WriteAgentMemory(handlerID, agentID, content, writeMode, params)
+			write(map[string]any{"jsonrpc": "2.0", "id": rid, "result": result})
+		case "storage.agentMemory.delete":
+			handlerID, _ := params["handlerId"].(string)
+			agentID, _ := params["agentId"].(string)
+			result, _ := extImpl.DeleteAgentMemory(handlerID, agentID, params)
+			write(map[string]any{"jsonrpc": "2.0", "id": rid, "result": result})
+		case "storage.userMemory.read":
+			handlerID, _ := params["handlerId"].(string)
+			result, _ := extImpl.ReadUserMemory(handlerID, params)
+			write(map[string]any{"jsonrpc": "2.0", "id": rid, "result": result})
+		case "storage.userMemory.write":
+			handlerID, _ := params["handlerId"].(string)
+			content, _ := params["content"].(string)
+			writeMode, _ := params["writeMode"].(string)
+			result, _ := extImpl.WriteUserMemory(handlerID, content, writeMode, params)
+			write(map[string]any{"jsonrpc": "2.0", "id": rid, "result": result})
+		case "storage.userMemory.delete":
+			handlerID, _ := params["handlerId"].(string)
+			result, _ := extImpl.DeleteUserMemory(handlerID, params)
 			write(map[string]any{"jsonrpc": "2.0", "id": rid, "result": result})
 		case "extension.deploy":
 			deployerID, _ := params["deployerId"].(string)

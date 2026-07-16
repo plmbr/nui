@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"loop/internal/memory"
+	"loop/internal/storageext"
 	"loop/internal/store"
 )
 
@@ -21,7 +22,7 @@ func handleMemory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	summary, err := memory.ListSummary(settings)
+	summary, err := memoryListSummary(settings)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -119,14 +120,14 @@ func handleAgentMemory(w http.ResponseWriter, r *http.Request, agentID string) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 
-	case http.MethodDelete:
-		if err := memory.DeleteAgent(agentID); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func memoryListSummary(settings store.Settings) (memory.Summary, error) {
+	if storageext.Default != nil {
+		return storageext.Default.ListSummary(settings)
+	}
+	return memory.ListSummary(settings)
 }

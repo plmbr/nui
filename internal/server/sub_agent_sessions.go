@@ -29,8 +29,15 @@ func setSubAgentSessionID(sessionID, subAgentID, harnessSessionID string) {
 	key := subAgentSessionKey(sessionID, subAgentID)
 	mu.Lock()
 	agentSessions[key] = harnessSessionID
+	var skipSave bool
+	if s, ok := findSession(sessionID); ok {
+		skipSave = sessionUsesExtensionStorage(s)
+	}
 	snapshot := snapshotData()
 	mu.Unlock()
+	if skipSave {
+		return
+	}
 	if err := store.SaveData(snapshot); err != nil {
 		fmt.Fprintf(os.Stderr, "warn: save sub-agent session: %v\n", err)
 	}

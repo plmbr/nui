@@ -28,8 +28,10 @@ type Extension struct {
 	AgentDeployers     []ExtensionAgentDeployer
 	MentionProviders   []MentionProviderEntry
 	HITLChannels       []HITLChannelEntry
+	StorageHandlers    []StorageHandlerEntry
 	mentionRuntime   *RuntimeConfig
 	hitlRuntime      *RuntimeConfig
+	storageRuntime   *RuntimeConfig
 
 	defaultRuntime   *RuntimeConfig
 	programmaticHost *programmaticHost
@@ -51,6 +53,7 @@ type Registry struct {
 	catalogs          []*catalogProvider
 	programmaticHosts []*programmaticHost
 	mentionCache      *mentionClientCache
+	storageCache      *storageClientCache
 	loadErrors        []string
 }
 
@@ -77,7 +80,7 @@ func scanExtensions(dir string) (*Registry, error) {
 	if err != nil {
 		return nil, err
 	}
-	reg := &Registry{extensions: map[string]*Extension{}, mentionCache: newMentionClientCache()}
+	reg := &Registry{extensions: map[string]*Extension{}, mentionCache: newMentionClientCache(), storageCache: newStorageClientCache()}
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
@@ -111,6 +114,7 @@ func logExtensionLoaded(ext *Extension) {
 	addCount(len(ext.AgentDeployers), "agent deployers")
 	addCount(len(ext.Agents), "agents")
 	addCount(len(ext.MentionProviders), "mention providers")
+	addCount(len(ext.StorageHandlers), "storage handlers")
 
 	summary := "no contributions"
 	if len(parts) > 0 {
@@ -286,6 +290,21 @@ func loadDeclarativeExtension(ext *Extension, reg *Registry) (*Extension, error)
 		}
 	}
 
+	if c := manifest.Contributions.Storage; c != nil {
+		list, err := loadContributionList(extDir, manifest.Name, c.Source, catalogCmd, resolveCatalog,
+			func(file string) ([]StorageHandlerEntry, error) { return loadStorageHandlersFromFile(file) },
+			nil,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("storage: %w", err)
+		}
+		ext.StorageHandlers = list
+		if c.Runtime != nil {
+			rt := *c.Runtime
+			ext.storageRuntime = &rt
+		}
+	}
+
 	return ext, nil
 }
 
@@ -348,6 +367,7 @@ func (r *Registry) Reload() error {
 	r.catalogs = next.catalogs
 	r.loadErrors = next.loadErrors
 	r.mentionCache = next.mentionCache
+	r.storageCache = next.storageCache
 	r.mu.Unlock()
 	Default = r
 	return nil
@@ -359,6 +379,7 @@ func (r *Registry) Shutdown() {
 	catalogs := r.catalogs
 	hosts := r.programmaticHosts
 	cache := r.mentionCache
+	storageCache := r.storageCache
 	r.mu.Unlock()
 	for _, c := range catalogs {
 		_ = c.Close()
@@ -368,6 +389,9 @@ func (r *Registry) Shutdown() {
 	}
 	if cache != nil {
 		cache.closeAll()
+	}
+	if storageCache != nil {
+		storageCache.closeAll()
 	}
 }
 
@@ -537,6 +561,7 @@ type ExtensionInfo struct {
 	AgentDeployers   []string `json:"agentDeployers,omitempty"`
 	MentionProviders []string `json:"mentionProviders,omitempty"`
 	HITLChannels     []string `json:"hitlChannels,omitempty"`
+	StorageHandlers  []string `json:"storageHandlers,omitempty"`
 	Agents        []string `json:"agents,omitempty"`
 }
 
@@ -581,6 +606,9 @@ func (r *Registry) Info() []ExtensionInfo {
 		}
 		for _, ch := range ext.HITLChannels {
 			info.HITLChannels = append(info.HITLChannels, ch.ID)
+		}
+		for _, sh := range ext.StorageHandlers {
+			info.StorageHandlers = append(info.StorageHandlers, sh.ID)
 		}
 		for _, a := range ext.Agents {
 			id := a.ID

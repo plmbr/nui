@@ -13,6 +13,13 @@ func wireAPIHarnessRunRequest(runReq *agent.RunRequest, sessionID string, def mo
 		return
 	}
 	mu.RLock()
+	session, ok := findSession(sessionID)
+	mu.RUnlock()
+	if ok {
+		workingDir, _ := effectiveWorkingDir(session.WorkingDir)
+		loadExtensionSessionMessages(sessionID, session, workingDir)
+	}
+	mu.RLock()
 	msgs := append([]model.ChatMessage(nil), sessionMessages[sessionID]...)
 	mu.RUnlock()
 	if len(msgs) > 0 && msgs[len(msgs)-1].Role == "user" {

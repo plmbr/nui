@@ -1,0 +1,9 @@
+storageHandlers:
+  - id: demo-sessions
+    kind: sessionHistory
+    agentTypes: ["ext:storage-demo/demo-agent"]
+  - id: demo-agent-memory
+    kind: agentMemory
+    agentTypes: ["ext:storage-demo/demo-agent"]
+  - id: demo-user-memory
+    kind: userMemory

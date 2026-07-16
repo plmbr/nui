@@ -23,6 +23,7 @@ Copy the example from [`dev/extension-examples/corp-pack/`](extension-examples/c
 ```sh
 loop extension add dev/extension-examples/corp-pack
 loop extension add dev/extension-examples/hitl-demo   # HITL demo
+loop extension add dev/extension-examples/storage-demo  # persistence demo
 ```
 
 ## Install
@@ -353,6 +354,77 @@ HITL API:
 | `GET /api/hitl/requests/:id/wait` | Block until answered |
 | `POST /api/hitl/requests/:id/respond` | Submit an answer |
 | `GET /api/hitl/requests?pending=true` | List pending requests |
+
+## Storage handlers
+
+Extensions can own persistence for three data domains: **session history** (chat messages + harness resume ids), **agent memory**, and **user memory**. Declared under `contributions.storage` with a handler list file and stdio runtime (same pattern as mention providers and HITL channels).
+
+When a matching handler is installed for an agent type or memory scope, Loop **skips built-in storage** for that scope (`data.json` session rows or `~/.loop/memory/` files). With no handler, behavior is unchanged.
+
+| Kind | Built-in fallback | Match rule |
+|------|-------------------|------------|
+| `sessionHistory` | `data.json` (`sessionMessages`, `agentSessions`) | `agentTypes` on handler |
+| `agentMemory` | `~/.loop/memory/agents/<id>.md` | `agentTypes` on handler |
+| `userMemory` | `~/.loop/memory/user.md` | global (no `agentTypes`) |
+
+**Read semantics:** session history uses the **first successful handler**; agent/user memory **merges** non-empty content from all handlers (`\n\n` between blocks).
+
+**Write/delete semantics:** Loop updates in-memory session state immediately, then **async fan-outs** to all matching handlers. Extension errors are logged to stderr only — API callers still succeed.
+
+`extension.yaml`:
+
+```yaml
+contributions:
+  storage:
+    source:
+      file: storage-handlers.yaml
+    runtime:
+      command: ["python3", "storage_host.py"]
+```
+
+`storage-handlers.yaml`:
+
+```yaml
+storageHandlers:
+  - id: postgres-sessions
+    kind: sessionHistory
+    agentTypes: ["ext:corp/reviewer", "claude-code"]
+  - id: agent-notes
+    kind: agentMemory
+    agentTypes: ["ext:corp/reviewer"]
+  - id: user-cloud
+    kind: userMemory
+```
+
+Wire protocol (`storage.*` namespace):
+
+| Method | Params | Result |
+|--------|--------|--------|
+| `storage.info` | `{}` | `{id}` |
+| `storage.session.read` | `{handlerId, sessionId, agentType, workingDir}` | `{messages, agentSessionId}` |
+| `storage.session.write` | `{handlerId, sessionId, agentType, messages, agentSessionId, workingDir}` | `{ok}` |
+| `storage.session.delete` | `{handlerId, sessionId, agentType, agentSessionId, workingDir}` | `{ok}` |
+| `storage.agentMemory.read` | `{handlerId, agentId}` | `{content}` |
+| `storage.agentMemory.write` | `{handlerId, agentId, content, writeMode}` | `{ok}` |
+| `storage.agentMemory.delete` | `{handlerId, agentId}` | `{ok}` |
+| `storage.userMemory.read` | `{handlerId}` | `{content}` |
+| `storage.userMemory.write` | `{handlerId, content, writeMode}` | `{ok}` |
+| `storage.userMemory.delete` | `{handlerId}` | `{ok}` |
+| `storage.shutdown` | `{}` | `{ok: true}` |
+
+`messages` use the same shape as Loop chat messages. `writeMode` is `replace` or `append` (distinct from Loop memory mode settings — modes remain Loop-owned and gate **when** reads/writes happen).
+
+Programmatic extensions: override `get_storage_handlers()` and `read_session` / `write_session` / memory methods on [`sdk/python/loop_extension/extension.py`](../sdk/python/loop_extension/extension.py) or [`sdk/go/loopextension/extension.go`](../sdk/go/loopextension/extension.go).
+
+Declarative stdio host SDK: [`harness-sdk/loop_storage.py`](../harness-sdk/loop_storage.py) (auto-installed to `~/.loop/harness-sdk/` on first use).
+
+Example extension: [`dev/extension-examples/storage-demo/`](extension-examples/storage-demo/).
+
+Install:
+
+```sh
+loop extension add dev/extension-examples/storage-demo
+```
 
 ## Agent deployers
 

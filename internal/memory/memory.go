@@ -154,16 +154,12 @@ func CanWriteScope(scope string, s store.Settings, agentID string) bool {
 
 // ReadUser returns user memory content, or empty string when the file does not exist.
 func ReadUser() (string, error) {
-	return readFile(UserPath)
+	return currentStore.ReadUser()
 }
 
 // ReadAgent returns agent memory content, or empty string when the file does not exist.
 func ReadAgent(agentID string) (string, error) {
-	path, err := AgentPath(agentID)
-	if err != nil {
-		return "", err
-	}
-	return readFile(func() (string, error) { return path, nil })
+	return currentStore.ReadAgent(agentID)
 }
 
 func readFile(pathFn func() (string, error)) (string, error) {
@@ -183,20 +179,12 @@ func readFile(pathFn func() (string, error)) (string, error) {
 
 // WriteUser writes user memory atomically.
 func WriteUser(content string) error {
-	path, err := UserPath()
-	if err != nil {
-		return err
-	}
-	return writeFile(path, content)
+	return currentStore.WriteUser(content)
 }
 
 // WriteAgent writes agent memory atomically.
 func WriteAgent(agentID, content string) error {
-	path, err := AgentPath(agentID)
-	if err != nil {
-		return err
-	}
-	return writeFile(path, content)
+	return currentStore.WriteAgent(agentID, content)
 }
 
 func writeFile(path, content string) error {
@@ -227,54 +215,7 @@ func writeFile(path, content string) error {
 
 // Update applies replace or append mode to user or agent memory.
 func Update(scope, agentID, content, writeMode string) (string, error) {
-	scope = strings.TrimSpace(strings.ToLower(scope))
-	writeMode = strings.TrimSpace(strings.ToLower(writeMode))
-	if writeMode == "" {
-		writeMode = "replace"
-	}
-	if writeMode != "replace" && writeMode != "append" {
-		return "", fmt.Errorf("mode must be replace or append")
-	}
-	content = strings.TrimSpace(content)
-	if content == "" {
-		return "", fmt.Errorf("content is required")
-	}
-
-	var path string
-	var existing string
-	var err error
-	switch scope {
-	case "user":
-		path, err = UserPath()
-		if err != nil {
-			return "", err
-		}
-		existing, err = ReadUser()
-	case "agent":
-		if strings.TrimSpace(agentID) == "" {
-			return "", fmt.Errorf("agent scope requires agent id")
-		}
-		path, err = AgentPath(agentID)
-		if err != nil {
-			return "", err
-		}
-		existing, err = ReadAgent(agentID)
-	default:
-		return "", fmt.Errorf("scope must be user or agent")
-	}
-	if err != nil {
-		return "", err
-	}
-	next := content
-	if writeMode == "append" {
-		if existing != "" {
-			next = existing + "\n\n" + content
-		}
-	}
-	if err := writeFile(path, next); err != nil {
-		return "", err
-	}
-	return path, nil
+	return currentStore.Update(scope, agentID, content, writeMode)
 }
 
 // PromptAppendix returns memory file sections to append to the system prompt.
@@ -401,28 +342,12 @@ func fileInfo(path string) (*fileMeta, error) {
 
 // DeleteAgent removes an agent memory file.
 func DeleteAgent(agentID string) error {
-	path, err := AgentPath(agentID)
-	if err != nil {
-		return err
-	}
-	err = os.Remove(path)
-	if os.IsNotExist(err) {
-		return nil
-	}
-	return err
+	return currentStore.DeleteAgent(agentID)
 }
 
 // DeleteUser removes user memory file.
 func DeleteUser() error {
-	path, err := UserPath()
-	if err != nil {
-		return err
-	}
-	err = os.Remove(path)
-	if os.IsNotExist(err) {
-		return nil
-	}
-	return err
+	return currentStore.DeleteUser()
 }
 
 // AgentIDFromEnv returns LOOP_MEMORY_AGENT_ID when set.

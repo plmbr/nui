@@ -26,6 +26,7 @@ type ContributionManifest struct {
 	CustomRules        []ExtensionCustomRule      `json:"rules,omitempty"`
 	MentionProviders   []MentionProviderEntry     `json:"mentionProviders,omitempty"`
 	HITLChannels       []HITLChannelEntry         `json:"hitlChannels,omitempty"`
+	StorageHandlers    []StorageHandlerEntry      `json:"storageHandlers,omitempty"`
 	AgentDeployers     []ExtensionAgentDeployer   `json:"agentDeployers,omitempty"`
 }
 
@@ -71,6 +72,10 @@ func startProgrammaticHost(extDir string, manifest Manifest) (*programmaticHost,
 		return nil, fmt.Errorf("extension %s initialize: %w", manifest.Name, err)
 	}
 	host.manifest = initResult
+	if err := validateProgrammaticStorageHandlers(initResult.StorageHandlers, manifest.Name); err != nil {
+		_ = rpc.Close()
+		return nil, err
+	}
 	fmt.Fprintf(os.Stderr, "[extensions] programmatic %q initialized\n", manifest.Name)
 	return host, nil
 }
@@ -119,6 +124,9 @@ func applyContributionManifest(ext *Extension, manifest ContributionManifest) {
 	}
 	if len(manifest.HITLChannels) > 0 {
 		ext.HITLChannels = manifest.HITLChannels
+	}
+	if len(manifest.StorageHandlers) > 0 {
+		ext.StorageHandlers = manifest.StorageHandlers
 	}
 	if len(manifest.AgentDeployers) > 0 {
 		ext.AgentDeployers = expandAgentDeployers(ext.Dir, manifest.AgentDeployers)
