@@ -33,8 +33,8 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 	mcpClient := NewSessionMCP()
 	defer mcpClient.Close()
 	if len(req.MCPServers) > 0 {
-		if err := mcpClient.ConnectServers(ctx, req.MCPServers); err != nil {
-			return fmt.Errorf("connect mcp servers: %w", err)
+		for _, msg := range mcpClient.ConnectServers(ctx, req.MCPServers) {
+			events <- Event{Type: EventText, Content: msg + "\n"}
 		}
 	}
 

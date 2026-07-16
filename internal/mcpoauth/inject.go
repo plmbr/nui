@@ -3,7 +3,6 @@
 package mcpoauth
 
 import (
-	"fmt"
 	"strings"
 
 	"loop/internal/model"
@@ -19,32 +18,21 @@ const (
 	AuthStatusNotApplicable AuthStatus = "not_applicable"
 )
 
-// ResolveResult holds resolved MCP servers and auth warnings.
-type ResolveResult struct {
-	Servers  []model.ADLMCPServer
-	Warnings []string
-}
-
 // ResolveServers injects bearer tokens from the OAuth store into remote MCP server headers.
-func ResolveServers(servers []model.ADLMCPServer) ResolveResult {
+func ResolveServers(servers []model.ADLMCPServer) []model.ADLMCPServer {
 	out := make([]model.ADLMCPServer, 0, len(servers))
-	var warnings []string
 	for _, srv := range servers {
-		resolved, warn := resolveOne(srv)
-		out = append(out, resolved)
-		if warn != "" {
-			warnings = append(warnings, warn)
-		}
+		out = append(out, resolveOne(srv))
 	}
-	return ResolveResult{Servers: out, Warnings: warnings}
+	return out
 }
 
-func resolveOne(srv model.ADLMCPServer) (model.ADLMCPServer, string) {
+func resolveOne(srv model.ADLMCPServer) model.ADLMCPServer {
 	if IsBuiltin(srv) || !IsRemote(srv) {
-		return srv, ""
+		return srv
 	}
 	if hasStaticAuthHeader(srv) {
-		return srv, ""
+		return srv
 	}
 	key := ServerKey(srv)
 	if HasValidToken(key) {
@@ -55,16 +43,8 @@ func resolveOne(srv model.ADLMCPServer) (model.ADLMCPServer, string) {
 		}
 		headers["Authorization"] = "Bearer " + strings.TrimSpace(cred.Token.AccessToken)
 		srv.Headers = headers
-		return srv, ""
 	}
-	if srv.Auth != nil || NeedsOAuthConfig(srv) {
-		name := strings.TrimSpace(srv.Name)
-		if name == "" {
-			name = key
-		}
-		return srv, fmt.Sprintf("MCP server %q needs authentication — connect in Customize → MCP Servers", name)
-	}
-	return srv, ""
+	return srv
 }
 
 // TokenAuthStatus returns OAuth status for a server key using stored tokens only.
@@ -99,7 +79,7 @@ func StatusForServer(srv model.ADLMCPServer) AuthStatus {
 	if ok && cred.Token != nil && strings.TrimSpace(cred.Token.AccessToken) != "" {
 		return AuthStatusExpired
 	}
-	if srv.Auth != nil || NeedsOAuthConfig(srv) {
+	if srv.Auth != nil {
 		return AuthStatusNeedsAuth
 	}
 	return AuthStatusNotApplicable

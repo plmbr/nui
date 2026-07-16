@@ -61,7 +61,7 @@ func NeedsOAuthConfig(srv model.ADLMCPServer) bool {
 	if hasStaticAuthHeader(srv) {
 		return false
 	}
-	return srv.Auth != nil || true // remote servers without static auth may use OAuth
+	return srv.Auth != nil
 }
 
 func hasStaticAuthHeader(srv model.ADLMCPServer) bool {

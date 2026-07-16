@@ -42,11 +42,8 @@ func TestResolveServersSkipsBuiltins(t *testing.T) {
 		{Name: "remote", URL: "https://example.com/mcp", Auth: &model.ADLMCPServerAuth{ClientID: "id"}},
 	}
 	res := ResolveServers(servers)
-	if len(res.Servers) != 2 {
-		t.Fatalf("servers len = %d", len(res.Servers))
-	}
-	if len(res.Warnings) != 1 {
-		t.Fatalf("warnings = %v", res.Warnings)
+	if len(res) != 2 {
+		t.Fatalf("servers len = %d", len(res))
 	}
 }
 
@@ -68,11 +65,8 @@ func TestResolveServersInjectsBearerToken(t *testing.T) {
 
 	servers := []model.ADLMCPServer{{Name: "svc", URL: key}}
 	res := ResolveServers(servers)
-	if got := res.Servers[0].Headers["Authorization"]; got != "Bearer secret-token" {
+	if got := res[0].Headers["Authorization"]; got != "Bearer secret-token" {
 		t.Fatalf("Authorization = %q", got)
-	}
-	if len(res.Warnings) != 0 {
-		t.Fatalf("warnings = %v", res.Warnings)
 	}
 }
 
@@ -82,8 +76,35 @@ func TestNeedsAuthStatusCodes(t *testing.T) {
 	}
 }
 
+func TestNeedsOAuthConfig(t *testing.T) {
+	remote := model.ADLMCPServer{Name: "analytics", URL: "https://example.com/mcp"}
+	if NeedsOAuthConfig(remote) {
+		t.Fatal("remote server without auth config should not need OAuth config")
+	}
+	withAuth := model.ADLMCPServer{
+		Name: "github",
+		URL:  "https://example.com/mcp",
+		Auth: &model.ADLMCPServerAuth{ClientID: "id"},
+	}
+	if !NeedsOAuthConfig(withAuth) {
+		t.Fatal("server with auth config should need OAuth config")
+	}
+}
+
 func TestStatusForServer(t *testing.T) {
 	if got := StatusForServer(model.ADLMCPServer{Name: loopHitlMCPName, Command: "loop"}); got != AuthStatusNotApplicable {
 		t.Fatalf("builtin status = %q", got)
+	}
+	remote := model.ADLMCPServer{Name: "analytics", URL: "https://example.com/mcp"}
+	if got := StatusForServer(remote); got != AuthStatusNotApplicable {
+		t.Fatalf("remote without auth status = %q, want not_applicable", got)
+	}
+	withAuth := model.ADLMCPServer{
+		Name: "github",
+		URL:  "https://example.com/mcp",
+		Auth: &model.ADLMCPServerAuth{ClientID: "id"},
+	}
+	if got := StatusForServer(withAuth); got != AuthStatusNeedsAuth {
+		t.Fatalf("remote with auth config status = %q, want needs_auth", got)
 	}
 }

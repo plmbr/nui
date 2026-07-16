@@ -42,8 +42,10 @@ func NewSessionMCP() *SessionMCP {
 	}
 }
 
-// ConnectServers connects to the given MCP server list.
-func (s *SessionMCP) ConnectServers(ctx context.Context, servers []model.ADLMCPServer) error {
+// ConnectServers connects to the given MCP server list and returns user-facing
+// messages for servers that failed to connect.
+func (s *SessionMCP) ConnectServers(ctx context.Context, servers []model.ADLMCPServer) []string {
+	var failures []string
 	for _, srv := range servers {
 		name := strings.TrimSpace(srv.Name)
 		if name == "" {
@@ -54,6 +56,7 @@ func (s *SessionMCP) ConnectServers(ctx context.Context, servers []model.ADLMCPS
 		session, err := s.connectWithTimeout(ctx, srv, sessionMCPConnectTimeout)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[api-harness] mcp connect %q: %v\n", name, err)
+			failures = append(failures, mcpoauth.FormatConnectFailure(name, err))
 			continue
 		}
 		s.mu.Lock()
@@ -69,6 +72,7 @@ func (s *SessionMCP) ConnectServers(ctx context.Context, servers []model.ADLMCPS
 			s.mu.Lock()
 			delete(s.sessions, name)
 			s.mu.Unlock()
+			failures = append(failures, mcpoauth.FormatConnectFailure(name, err))
 			continue
 		}
 		for _, tool := range tools.Tools {
@@ -93,7 +97,7 @@ func (s *SessionMCP) ConnectServers(ctx context.Context, servers []model.ADLMCPS
 			s.mu.Unlock()
 		}
 	}
-	return nil
+	return failures
 }
 
 func (s *SessionMCP) connectWithTimeout(ctx context.Context, srv model.ADLMCPServer, timeout time.Duration) (*mcp.ClientSession, error) {

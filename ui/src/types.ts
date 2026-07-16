@@ -10,7 +10,6 @@ export interface Session {
   scheduleId?: string
   scheduleName?: string
   lastRunAt?: string
-  mcpAuthWarnings?: string[]
 }
 
 export interface CreateSessionRequest {

@@ -11,6 +11,7 @@ import (
 
 	"loop/internal/extensions"
 	"loop/internal/hitl"
+	"loop/internal/mcpoauth"
 	"loop/internal/model"
 )
 
@@ -153,6 +154,10 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 		req.MCPServers = deps.MCPServers
 		req.APIProvider = harness.Provider
 		req.Model = resolveAPIModel(req, harness)
+	} else if !req.Ephemeral && len(deps.MCPServers) > 0 {
+		for _, msg := range mcpoauth.ProbeConnectFailures(ctx, deps.MCPServers) {
+			events <- Event{Type: EventText, Content: msg + "\n"}
+		}
 	}
 
 	return a.dispatchHarness(ctx, req, harness, events)

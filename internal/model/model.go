@@ -12,7 +12,6 @@ type Session struct {
 	ScheduleID   string         `json:"scheduleId,omitempty"`
 	ScheduleName string         `json:"scheduleName,omitempty"`
 	LastRunAt        string         `json:"lastRunAt,omitempty"`
-	MCPAuthWarnings  []string       `json:"mcpAuthWarnings,omitempty"`
 }
 
 type ChatImage struct {

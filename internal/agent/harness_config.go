@@ -36,7 +36,6 @@ type HarnessDeps struct {
 	ToolApprovalPolicy      string
 	ToolApprovalTools       []string
 	PendingCustomMCPServers []extensions.PendingCustomMCPServer
-	MCPAuthWarnings         []string
 }
 
 type harnessProvisioner interface {
@@ -186,18 +185,18 @@ func adlMCPServersFromStep(step model.ADLStep) []model.ADLMCPServer {
 }
 
 // PrepareSessionHarnessConfig provisions harness config when a session is created so
-// MCP/skills are available before the first message. Returns MCP auth warnings, if any.
-func PrepareSessionHarnessConfig(sessionID string, def model.ADLDefinition, reg *extensions.Registry, agentConfig map[string]any) ([]string, error) {
+// MCP/skills are available before the first message.
+func PrepareSessionHarnessConfig(sessionID string, def model.ADLDefinition, reg *extensions.Registry, agentConfig map[string]any) error {
 	deps, err := buildHarnessDeps(sessionID, def, nil, "", reg, agentConfig)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	harnessType := def.Harness.Type
 	if harnessType == "" {
 		harnessType = "claude-code"
 	}
 	_, err = ProvisionHarnessConfig(sessionID, harnessType, deps)
-	return deps.MCPAuthWarnings, err
+	return err
 }
 
 func buildHarnessDeps(sessionID string, def model.ADLDefinition, step *model.ADLStep, workingDir string, reg *extensions.Registry, agentConfig map[string]any) (HarnessDeps, error) {
@@ -270,9 +269,7 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 			deps.Skills = omitSkillsByName(deps.Skills, "visualize")
 		}
 		deps.ToolApprovalPolicy, deps.ToolApprovalTools = hitl.EffectiveToolApprovals(def, agentConfig)
-		mcpResolved := mcpoauth.ResolveServers(deps.MCPServers)
-		deps.MCPServers = mcpResolved.Servers
-		deps.MCPAuthWarnings = mcpResolved.Warnings
+		deps.MCPServers = mcpoauth.ResolveServers(deps.MCPServers)
 		return deps, nil
 	}
 	expandedSkills := make([]model.ADLSkill, 0, len(deps.Skills))
@@ -301,9 +298,7 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 		deps.Skills = omitSkillsByName(deps.Skills, "visualize")
 	}
 	deps.ToolApprovalPolicy, deps.ToolApprovalTools = hitl.EffectiveToolApprovals(def, agentConfig)
-	mcpResolved := mcpoauth.ResolveServers(deps.MCPServers)
-	deps.MCPServers = mcpResolved.Servers
-	deps.MCPAuthWarnings = mcpResolved.Warnings
+	deps.MCPServers = mcpoauth.ResolveServers(deps.MCPServers)
 	return deps, nil
 }
 

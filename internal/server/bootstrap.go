@@ -426,12 +426,8 @@ func createSessionEx(opts sessionCreateOpts) (model.Session, error) {
 		return model.Session{}, err
 	}
 
-	mcpWarnings, err := agent.PrepareSessionHarnessConfig(sessionID, def, extensions.Default, agentConfig)
-	if err != nil {
+	if err := agent.PrepareSessionHarnessConfig(sessionID, def, extensions.Default, agentConfig); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: provision session harness config: %v\n", err)
-	}
-	if len(mcpWarnings) > 0 {
-		s.MCPAuthWarnings = mcpWarnings
 	}
 
 	mu.Lock()

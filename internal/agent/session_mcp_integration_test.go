@@ -31,12 +31,12 @@ func TestSessionMCPConnectLoopViz(t *testing.T) {
 
 	client := NewSessionMCP()
 	defer client.Close()
-	if err := client.ConnectServers(ctx, []model.ADLMCPServer{{
+	if failures := client.ConnectServers(ctx, []model.ADLMCPServer{{
 		Name:    "loop-viz",
 		Command: exe,
 		Args:    []string{"viz-mcp"},
-	}}); err != nil {
-		t.Fatalf("ConnectServers: %v", err)
+	}}); len(failures) != 0 {
+		t.Fatalf("ConnectServers: %v", failures)
 	}
 	tools := client.Tools()
 	if len(tools) == 0 {
