@@ -14,10 +14,11 @@ import { NewSessionPanel } from '@/components/NewSessionPanel'
 import { SessionsListPanel } from '@/components/SessionsListPanel'
 import { ThemeProvider } from '@/contexts/theme'
 import { api } from '@/api'
-import { groupSessionsByAgentType, defaultAgentTypeForGroup } from '@/lib/sessionGroups'
+import { groupSessionsByAgentType, defaultAgentTypeForGroup, findOrCreateSessionGroup } from '@/lib/sessionGroups'
 import { clearSessionChat, probeActiveRuns } from '@/lib/sessionChatStore'
 import {
   agentFromNewSessionSearch,
+  agentGroupIdFromPath,
   cwdFromNewSessionSearch,
   isCreateSessionPath,
   isCustomizePath,
@@ -30,6 +31,7 @@ import {
   navigateToNewSession,
   navigateToSchedules,
   navigateToSession,
+  navigateToSessionList,
   sessionIdFromPath,
 } from '@/lib/appUrl'
 import type { Session, AgentType } from '@/types'
@@ -141,6 +143,7 @@ export default function App() {
       const openNewSession = isNewSessionPath()
       const openCreateSession = isCreateSessionPath()
       const openLaunch = isLaunchPath()
+      const openSessionList = agentGroupIdFromPath()
       if (openCustomize) {
         setCustomizeOpen(true)
       }
@@ -152,6 +155,9 @@ export default function App() {
       }
       if (openLaunch) {
         setLandingOpen(true)
+      }
+      if (openSessionList) {
+        setSessionListGroupId(openSessionList)
       }
 
       let nextId: string | null = null
@@ -165,9 +171,9 @@ export default function App() {
           nextId = null
         }
 
-        if (nextId && !openCustomize && !openSchedules && !openNewSession && !openLaunch) {
+        if (nextId && !openCustomize && !openSchedules && !openNewSession && !openLaunch && !openSessionList) {
           navigateToSession(nextId, true)
-        } else if (!nextId && !openCustomize && !openSchedules && !openNewSession && !openCreateSession && !openLaunch) {
+        } else if (!nextId && !openCustomize && !openSchedules && !openNewSession && !openCreateSession && !openLaunch && !openSessionList) {
           navigateToLaunch(true)
           setLandingOpen(true)
         }
@@ -239,12 +245,22 @@ export default function App() {
         return
       }
 
+      const groupId = agentGroupIdFromPath()
+      if (groupId) {
+        setCustomizeOpen(false)
+        setSchedulesOpen(false)
+        setNewSessionOpen(false)
+        setLandingOpen(false)
+        setSessionListGroupId(groupId)
+        return
+      }
+
       setNewSessionOpen(false)
+      setSessionListGroupId(null)
 
       const id = sessionIdFromPath()
       if (!id || !sessionsRef.current.some((s) => s.id === id)) return
       setSelectedId(id)
-      setSessionListGroupId(null)
       setInitialPrompt(undefined)
       setHideInput(false)
       api.settings.update({ lastSessionId: id }).catch(() => {})
@@ -278,7 +294,7 @@ export default function App() {
   const effectiveHideInput = hideInput || promptMode === 'auto'
   const sessionListGroup =
     sessionListGroupId != null
-      ? groupSessionsByAgentType(sessions, agentTypes).find((group) => group.id === sessionListGroupId) ?? null
+      ? findOrCreateSessionGroup(sessionListGroupId, sessions, agentTypes)
       : null
 
   const handleOpenCustomize = useCallback(() => {
@@ -363,11 +379,14 @@ export default function App() {
     setNewSessionOpen(false)
     setLandingOpen(false)
     setSessionListGroupId(groupId)
+    navigateToSessionList(groupId)
   }, [])
 
   const handleCloseSessionList = useCallback(() => {
     setSessionListGroupId(null)
-    if (!selectedId) {
+    if (selectedId) {
+      navigateToSession(selectedId, true)
+    } else {
       setLandingOpen(true)
       navigateToHome(true)
     }
@@ -418,6 +437,12 @@ export default function App() {
       const groups = groupSessionsByAgentType(list, agentTypes)
       if (!groups.some((group) => group.id === sessionListGroupId && group.sessions.length > 0)) {
         setSessionListGroupId(null)
+        if (selectedId && !ids.includes(selectedId)) {
+          navigateToSession(selectedId, true)
+        } else {
+          navigateToHome(true)
+          setLandingOpen(true)
+        }
       }
     }
   }, [selectedId, loadSessions, sessionListGroupId, agentTypes])

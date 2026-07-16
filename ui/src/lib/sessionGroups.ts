@@ -107,3 +107,19 @@ export function groupSessionsByAgentType(
 
   return result
 }
+
+export function findOrCreateSessionGroup(
+  groupId: string,
+  sessions: Session[],
+  agentTypes: AgentType[],
+): SessionGroup {
+  const found = groupSessionsByAgentType(sessions, agentTypes).find((group) => group.id === groupId)
+  if (found) return found
+
+  if (groupId === BUILTIN_GROUP_ID) {
+    return { id: groupId, label: BUILTIN_AGENTS_LABEL, sessions: [] }
+  }
+
+  const agent = agentTypes.find((type) => type.id === groupId)
+  return { id: groupId, label: agent?.label ?? groupId, sessions: [] }
+}

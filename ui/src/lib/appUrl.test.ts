@@ -5,10 +5,12 @@ import {
   CUSTOMIZE_PATH,
   LAUNCH_PATH,
   SCHEDULES_PATH,
+  agentGroupIdFromPath,
   isCustomizePath,
   isLaunchPath,
   isSchedulesPath,
   sessionIdFromPath,
+  sessionListPath,
   sessionPath,
 } from '@/lib/appUrl'
 
@@ -18,9 +20,25 @@ describe('appUrl', () => {
   })
 
   it('parses session id from path', () => {
-    expect(sessionIdFromPath('/sessions/abc')).toBe('abc')
+    expect(sessionIdFromPath('/sessions/550e8400-e29b-41d4-a716-446655440000')).toBe(
+      '550e8400-e29b-41d4-a716-446655440000',
+    )
     expect(sessionIdFromPath('/sessions/new')).toBeNull()
     expect(sessionIdFromPath('/sessions/create')).toBeNull()
+    expect(sessionIdFromPath('/sessions/claude-code')).toBeNull()
+  })
+
+  it('parses agent group id from path', () => {
+    expect(agentGroupIdFromPath('/sessions/claude-code')).toBe('claude-code')
+    expect(agentGroupIdFromPath('/sessions/__builtin__')).toBe('__builtin__')
+    expect(agentGroupIdFromPath('/sessions/new')).toBeNull()
+    expect(agentGroupIdFromPath('/sessions/550e8400-e29b-41d4-a716-446655440000')).toBeNull()
+  })
+
+  it('builds session list path', () => {
+    expect(sessionListPath('claude-code')).toBe('/sessions/claude-code')
+    expect(sessionListPath('adl:my-agent')).toBe('/sessions/adl%3Amy-agent')
+    expect(agentGroupIdFromPath('/sessions/adl%3Amy-agent')).toBe('adl:my-agent')
   })
 
   it('detects launch, customize, and schedules routes', () => {
