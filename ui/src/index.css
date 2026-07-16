@@ -1064,7 +1064,7 @@
   }
 
   .tool-call__label {
-    @apply m-0 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70;
+    @apply m-0 text-xs font-medium text-muted-foreground/80;
   }
 
   .tool-call__identifier {
@@ -1347,18 +1347,22 @@
   :root:not(.dark) .hljs { color: oklch(0.30 0.03 285); background: transparent; }
   :root:not(.dark) .hljs-comment, :root:not(.dark) .hljs-quote { color: oklch(0.52 0.02 285); font-style: italic; }
   :root:not(.dark) .hljs-keyword, :root:not(.dark) .hljs-selector-tag, :root:not(.dark) .hljs-built_in { color: oklch(0.48 0.20 275); }
-  :root:not(.dark) .hljs-string, :root:not(.dark) .hljs-attr, :root:not(.dark) .hljs-symbol { color: oklch(0.45 0.14 160); }
+  :root:not(.dark) .hljs-string, :root:not(.dark) .hljs-symbol { color: oklch(0.45 0.14 160); }
+  :root:not(.dark) .hljs-attr { color: oklch(0.42 0.18 295); }
   :root:not(.dark) .hljs-number, :root:not(.dark) .hljs-literal { color: oklch(0.50 0.16 50); }
   :root:not(.dark) .hljs-title, :root:not(.dark) .hljs-section, :root:not(.dark) .hljs-name { color: oklch(0.42 0.18 295); }
+  :root:not(.dark) .hljs-punctuation { color: oklch(0.55 0.02 285); }
   :root:not(.dark) .hljs-variable, :root:not(.dark) .hljs-template-variable { color: oklch(0.42 0.12 25); }
   :root:not(.dark) .hljs-type, :root:not(.dark) .hljs-class { color: oklch(0.48 0.14 200); }
 
   .dark .hljs { color: oklch(0.88 0.01 285); background: transparent; }
   .dark .hljs-comment, .dark .hljs-quote { color: oklch(0.58 0.02 285); font-style: italic; }
   .dark .hljs-keyword, .dark .hljs-selector-tag, .dark .hljs-built_in { color: oklch(0.78 0.14 275); }
-  .dark .hljs-string, .dark .hljs-attr, .dark .hljs-symbol { color: oklch(0.78 0.12 155); }
+  .dark .hljs-string, .dark .hljs-symbol { color: oklch(0.78 0.12 155); }
+  .dark .hljs-attr { color: oklch(0.82 0.12 295); }
   .dark .hljs-number, .dark .hljs-literal { color: oklch(0.80 0.12 75); }
   .dark .hljs-title, .dark .hljs-section, .dark .hljs-name { color: oklch(0.82 0.12 295); }
+  .dark .hljs-punctuation { color: oklch(0.62 0.02 285); }
   .dark .hljs-variable, .dark .hljs-template-variable { color: oklch(0.78 0.10 25); }
   .dark .hljs-type, .dark .hljs-class { color: oklch(0.78 0.10 200); }
 
