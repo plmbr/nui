@@ -434,7 +434,7 @@ export function AgentsTab({ onChanged }: Props) {
             </>
           ) : (
             !isMobile && (
-            <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+            <div className="flex flex-1 items-start text-sm text-muted-foreground">
               Select an agent to edit, or create a new one.
             </div>
             )
