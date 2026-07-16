@@ -15,6 +15,7 @@ type assistantPartAccumulator struct {
 	parts        []model.ChatMessagePart
 	images       []model.ChatImage
 	pendingTools map[string]string
+	subagents    map[string]*assistantPartAccumulator
 	content      string
 	errored      bool
 }
@@ -22,6 +23,7 @@ type assistantPartAccumulator struct {
 func newAssistantPartAccumulator() *assistantPartAccumulator {
 	return &assistantPartAccumulator{
 		pendingTools: map[string]string{},
+		subagents:    map[string]*assistantPartAccumulator{},
 	}
 }
 
@@ -42,6 +44,28 @@ func (a *assistantPartAccumulator) appendText(delta string) {
 }
 
 func (a *assistantPartAccumulator) applyEvent(ev agent.Event, mcpLookup func(string) (uri, server string, ok bool)) {
+	if ev.ParentToolCallID != "" {
+		part := a.toolPartForCall(ev.ParentToolCallID)
+		if part == nil {
+			return
+		}
+		sub := a.subagents[ev.ParentToolCallID]
+		if sub == nil {
+			sub = newAssistantPartAccumulator()
+			a.subagents[ev.ParentToolCallID] = sub
+		}
+		sub.applyEvent(agent.Event{
+			Type:       ev.Type,
+			Content:    ev.Content,
+			ToolCallID: ev.ToolCallID,
+			ToolName:   ev.ToolName,
+			ToolArgs:   ev.ToolArgs,
+			ImageData:  ev.ImageData,
+			ImageMediaType: ev.ImageMediaType,
+		}, mcpLookup)
+		part.SubagentTrace = sub.parts
+		return
+	}
 	switch ev.Type {
 	case agent.EventText:
 		a.appendText(ev.Content)

@@ -10,6 +10,7 @@ export interface ToolCallPart {
   toolName?: string
   toolArgs?: Record<string, unknown>
   toolResult?: unknown
+  subagentTrace?: AssistantPart[]
   mcpAppResourceUri?: string
   mcpAppServerName?: string
   mcpAppToolInput?: Record<string, unknown>
@@ -122,6 +123,7 @@ function mapPart(part: ChatMessagePart): AssistantPart {
     toolName: part.toolName,
     toolArgs: part.toolArgs,
     toolResult: part.toolResult,
+    subagentTrace: part.subagentTrace?.map(mapPart),
     mcpAppResourceUri: part.mcpAppResourceUri,
     mcpAppServerName: part.mcpAppServerName,
     mcpAppToolInput: part.mcpAppToolInput,

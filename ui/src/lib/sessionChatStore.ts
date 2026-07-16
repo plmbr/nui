@@ -17,6 +17,14 @@ import {
   updateToolPart,
 } from '@/lib/chatMessageUtils'
 import { deriveSessionProgress, encodeSessionProgress, type SessionProgress } from '@/lib/sessionProgress'
+import {
+  applySubagentTextChunk,
+  applySubagentToolArgs,
+  applySubagentToolEnd,
+  applySubagentToolResult,
+  applySubagentToolStart,
+  parentToolCallIdFromEvent,
+} from '@/lib/subagentTrace'
 import { visualizationFromArgs, visualizationFromToolResult, visualizationHTMLReady } from '@/lib/visualization'
 import { prepareVisualizationHtml } from '@/lib/prepareVisualizationHtml'
 
@@ -31,11 +39,20 @@ interface SessionEntry {
   activeRunId: string | null
   pendingTools: Record<string, string>
   pendingToolArgBuffers: Record<string, string>
+  pendingSubagentTools: Record<string, Record<string, string>>
+  pendingSubagentArgBuffers: Record<string, Record<string, string>>
   pendingHitl: Record<string, HitlRequest>
   agent: HttpAgent
   subscription: { unsubscribe: () => void } | null
   listeners: Set<() => void>
   snapshot: SessionChatSnapshot
+}
+
+function clearPendingToolState(entry: SessionEntry) {
+  entry.pendingTools = {}
+  entry.pendingToolArgBuffers = {}
+  entry.pendingSubagentTools = {}
+  entry.pendingSubagentArgBuffers = {}
 }
 
 function syncSnapshot(entry: SessionEntry) {
@@ -73,6 +90,8 @@ function getOrCreateEntry(sessionId: string): SessionEntry {
       activeRunId: null,
       pendingTools: {},
       pendingToolArgBuffers: {},
+      pendingSubagentTools: {},
+      pendingSubagentArgBuffers: {},
       pendingHitl: {},
       agent: createSessionAgent(sessionId),
       subscription: null,
@@ -217,8 +236,7 @@ function finishRun(sessionId: string, runId?: string) {
   entry.subscription = null
   entry.assistantMsgId = null
   entry.activeRunId = null
-  entry.pendingTools = {}
-  entry.pendingToolArgBuffers = {}
+  clearPendingToolState(entry)
   entry.isRunning = false
   emitSession(sessionId)
 }
@@ -480,8 +498,7 @@ async function reconnectActiveRun(sessionId: string) {
   entry.assistantMsgId = assistantMsgId
   entry.activeRunId = active.runId
   entry.isRunning = true
-  entry.pendingTools = {}
-  entry.pendingToolArgBuffers = {}
+  clearPendingToolState(entry)
   entry.messages = entry.messages.map((m) =>
     m.id === assistantMsgId &&
     m.role === 'assistant' &&
@@ -641,8 +658,7 @@ function startSend(sessionId: string, text: string) {
   entry.messages = [...entry.messages, userMsg, assistantMsg]
   entry.assistantMsgId = assistantMsgId
   entry.activeRunId = runId
-  entry.pendingTools = {}
-  entry.pendingToolArgBuffers = {}
+  clearPendingToolState(entry)
   entry.subscription?.unsubscribe()
   entry.subscription = null
   entry.agent = createSessionAgent(sessionId)
@@ -672,18 +688,46 @@ function startSend(sessionId: string, text: string) {
       if (!current || current.activeRunId !== runId) return
 
       if (event.type === EventType.TEXT_MESSAGE_CHUNK) {
-        const chunk = event as { delta?: string }
+        const chunk = event as { delta?: string; parentToolCallId?: string }
+        const parentToolCallId = parentToolCallIdFromEvent(chunk)
         if (chunk.delta) {
           setEntry(sessionId, (e) => ({
             messages: e.messages.map((m) => {
               if (m.id !== assistantMsgId) return m
+              if (parentToolCallId) {
+                return applySubagentTextChunk(m, parentToolCallId, chunk.delta!)
+              }
               const parts = appendTextPart(m.parts ?? [], chunk.delta!)
               return { ...m, parts, content: assistantTextContent({ ...m, parts }) }
             }),
           }))
         }
       } else if (event.type === EventType.TOOL_CALL_START) {
-        const e = event as { toolCallId?: string; toolCallName?: string }
+        const e = event as { toolCallId?: string; toolCallName?: string; parentToolCallId?: string }
+        const parentToolCallId = parentToolCallIdFromEvent(e)
+        if (parentToolCallId) {
+          setEntry(sessionId, (ent) => {
+            const pendingSubagentTools = {
+              ...ent.pendingSubagentTools,
+              [parentToolCallId]: { ...(ent.pendingSubagentTools[parentToolCallId] ?? {}) },
+            }
+            const subPending = pendingSubagentTools[parentToolCallId]
+            return {
+              pendingSubagentTools,
+              messages: ent.messages.map((m) => {
+                if (m.id !== assistantMsgId) return m
+                return applySubagentToolStart(
+                  m,
+                  parentToolCallId,
+                  e.toolCallId,
+                  e.toolCallName,
+                  subPending,
+                )
+              }),
+            }
+          })
+          return
+        }
         const partId = uuidv4()
         const pendingTools = { ...current.pendingTools }
         if (e.toolCallId) pendingTools[e.toolCallId] = partId
@@ -705,11 +749,42 @@ function startSend(sessionId: string, text: string) {
           scheduleHitlReload(sessionId)
         }
       } else if (event.type === EventType.TOOL_CALL_ARGS) {
-        const e = event as { toolCallId?: string; delta?: string }
+        const e = event as { toolCallId?: string; delta?: string; parentToolCallId?: string }
+        const parentToolCallId = parentToolCallIdFromEvent(e)
         if (!e.toolCallId || !e.delta) return
+        if (parentToolCallId) {
+          setEntry(sessionId, (ent) => {
+            const pendingSubagentTools = {
+              ...ent.pendingSubagentTools,
+              [parentToolCallId]: { ...(ent.pendingSubagentTools[parentToolCallId] ?? {}) },
+            }
+            const pendingSubagentArgBuffers = {
+              ...ent.pendingSubagentArgBuffers,
+              [parentToolCallId]: { ...(ent.pendingSubagentArgBuffers[parentToolCallId] ?? {}) },
+            }
+            const subPending = pendingSubagentTools[parentToolCallId]
+            const subBuffers = pendingSubagentArgBuffers[parentToolCallId]
+            return {
+              pendingSubagentTools,
+              pendingSubagentArgBuffers,
+              messages: ent.messages.map((m) => {
+                if (m.id !== assistantMsgId) return m
+                return applySubagentToolArgs(
+                  m,
+                  parentToolCallId,
+                  e.toolCallId!,
+                  e.delta!,
+                  subPending,
+                  subBuffers,
+                )
+              }),
+            }
+          })
+          return
+        }
         setEntry(sessionId, (ent) => {
           const partId = ent.pendingTools[e.toolCallId!]
-          if (!partId) return
+          if (!partId) return ent
           const pendingToolArgBuffers = { ...ent.pendingToolArgBuffers }
           return {
             pendingToolArgBuffers,
@@ -721,8 +796,32 @@ function startSend(sessionId: string, text: string) {
           }
         })
       } else if (event.type === EventType.TOOL_CALL_END) {
-        const e = event as { toolCallId?: string }
+        const e = event as { toolCallId?: string; parentToolCallId?: string }
+        const parentToolCallId = parentToolCallIdFromEvent(e)
         if (!e.toolCallId) return
+        if (parentToolCallId) {
+          setEntry(sessionId, (ent) => {
+            const pendingSubagentArgBuffers = {
+              ...ent.pendingSubagentArgBuffers,
+              [parentToolCallId]: { ...(ent.pendingSubagentArgBuffers[parentToolCallId] ?? {}) },
+            }
+            const subBuffers = pendingSubagentArgBuffers[parentToolCallId]
+            return {
+              pendingSubagentArgBuffers,
+              messages: ent.messages.map((m) => {
+                if (m.id !== assistantMsgId) return m
+                return applySubagentToolEnd(
+                  m,
+                  parentToolCallId,
+                  e.toolCallId!,
+                  ent.pendingSubagentTools[parentToolCallId] ?? {},
+                  subBuffers,
+                )
+              }),
+            }
+          })
+          return
+        }
         setEntry(sessionId, (ent) => {
           const partId = ent.pendingTools[e.toolCallId!]
           const argBuffer = ent.pendingToolArgBuffers[e.toolCallId!] ?? ''
@@ -741,16 +840,32 @@ function startSend(sessionId: string, text: string) {
           }
         })
       } else if (event.type === EventType.TOOL_CALL_RESULT) {
-        const e = event as { toolCallId?: string; content?: string }
+        const e = event as { toolCallId?: string; content?: string; parentToolCallId?: string }
+        const parentToolCallId = parentToolCallIdFromEvent(e)
         if (!e.toolCallId) return
-        const partId = current.pendingTools[e.toolCallId]
-        if (!partId) return
         let result: unknown = e.content
         try {
           result = JSON.parse(e.content ?? '')
         } catch {
           /* keep as string */
         }
+        if (parentToolCallId) {
+          setEntry(sessionId, (ent) => ({
+            messages: ent.messages.map((m) => {
+              if (m.id !== assistantMsgId) return m
+              return applySubagentToolResult(
+                m,
+                parentToolCallId,
+                e.toolCallId!,
+                result,
+                ent.pendingSubagentTools[parentToolCallId] ?? {},
+              )
+            }),
+          }))
+          return
+        }
+        const partId = current.pendingTools[e.toolCallId]
+        if (!partId) return
         const vizFromResult = visualizationFromToolResult(result)
         setEntry(sessionId, (ent) => ({
           messages: ent.messages.map((m) => {

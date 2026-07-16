@@ -155,6 +155,9 @@ func (s *persistentClaudeSession) runTurn(ctx context.Context, agent *ClaudeCode
 			if !envelope.IsError && envelope.SessionID != "" {
 				s.claudeSessionID = envelope.SessionID
 			}
+			if parser.hasPendingToolWork() {
+				continue
+			}
 			return nil
 		case "error":
 			msg := formatClaudeError(envelope.Error)

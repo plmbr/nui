@@ -31,6 +31,8 @@ type Event struct {
 	ToolCallID     string    `json:"toolCallId,omitempty"`
 	ToolName       string    `json:"toolName,omitempty"`
 	ToolArgs       string    `json:"toolArgs,omitempty"`
+	// ParentToolCallID scopes harness subagent output to a parent Task/Agent tool call.
+	ParentToolCallID string `json:"parentToolCallId,omitempty"`
 	ImageData      string    `json:"imageData,omitempty"`
 	ImageMediaType string    `json:"imageMediaType,omitempty"`
 	RoutedAgentID    string `json:"routedAgentId,omitempty"`

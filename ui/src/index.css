@@ -1107,6 +1107,14 @@
     @apply text-primary/80;
   }
 
+  .tool-call__subagent-trace {
+    @apply mt-2 ml-2 pl-3 border-l border-border space-y-2;
+  }
+
+  .tool-call__subagent-text {
+    @apply text-sm text-muted-foreground whitespace-pre-wrap;
+  }
+
   .tool-group__timeline {
     @apply ml-[7px] flex flex-col gap-1 border-l border-border/60 py-1 pl-3;
   }

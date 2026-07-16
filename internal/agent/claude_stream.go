@@ -36,7 +36,10 @@ func newClaudeStreamParser() *claudeStreamParser {
 	}
 }
 
-func (p *claudeStreamParser) emitDone(sessionID string, events chan<- Event) {
+func (p *claudeStreamParser) emitDone(sessionID, parentToolUseID string, events chan<- Event) {
+	if parentToolUseID != "" {
+		return
+	}
 	if p.emittedDone || p.hasPendingToolWork() {
 		return
 	}
@@ -68,7 +71,14 @@ func (p *claudeStreamParser) markTextSepNeeded() {
 	}
 }
 
-func (p *claudeStreamParser) emitText(text string, events chan<- Event) {
+func (p *claudeStreamParser) emit(parentToolUseID string, ev Event, events chan<- Event) {
+	if parentToolUseID != "" {
+		ev.ParentToolCallID = parentToolUseID
+	}
+	events <- ev
+}
+
+func (p *claudeStreamParser) emitText(text, parentToolUseID string, events chan<- Event) {
 	if text == "" {
 		return
 	}
@@ -77,7 +87,7 @@ func (p *claudeStreamParser) emitText(text string, events chan<- Event) {
 	}
 	p.needsTextSep = false
 	p.emittedText = true
-	events <- Event{Type: EventText, Content: text}
+	p.emit(parentToolUseID, Event{Type: EventText, Content: text}, events)
 }
 
 func (p *claudeStreamParser) handleLine(line []byte, events chan<- Event) {
@@ -104,27 +114,29 @@ func (p *claudeStreamParser) handleLine(line []byte, events chan<- Event) {
 		p.sessionID = envelope.SessionID
 	}
 
+	parentToolUseID := envelope.ParentToolUseID
+
 	switch envelope.Type {
 	case "stream_event":
-		p.handleStreamEvent(envelope.Event, events)
+		p.handleStreamEvent(envelope.Event, parentToolUseID, events)
 	case "assistant":
-		p.handleAssistant(envelope.Message, events)
+		p.handleAssistant(envelope.Message, parentToolUseID, events)
 	case "user":
-		p.handleUser(envelope.ParentToolUseID, envelope.ToolUseResult, envelope.Message, events)
+		p.handleUser(parentToolUseID, envelope.ToolUseResult, envelope.Message, events)
 	case "result":
 		if envelope.IsError {
 			msg := envelope.ErrMsg
 			if msg == "" {
 				msg = envelope.Result
 			}
-			events <- Event{Type: EventError, Error: msg}
+			p.emit(parentToolUseID, Event{Type: EventError, Error: msg}, events)
 		} else {
-			p.emitDone(envelope.SessionID, events)
+			p.emitDone(envelope.SessionID, parentToolUseID, events)
 		}
 	}
 }
 
-func (p *claudeStreamParser) handleStreamEvent(raw json.RawMessage, events chan<- Event) {
+func (p *claudeStreamParser) handleStreamEvent(raw json.RawMessage, parentToolUseID string, events chan<- Event) {
 	var ev struct {
 		Type  string `json:"type"`
 		Index int    `json:"index"`
@@ -154,12 +166,12 @@ func (p *claudeStreamParser) handleStreamEvent(raw json.RawMessage, events chan<
 			p.lastStopReason = ev.Delta.StopReason
 		}
 		if p.lastStopReason == "end_turn" {
-			p.emitDone("", events)
+			p.emitDone("", parentToolUseID, events)
 		}
 		p.lastStopReason = ""
 	case "content_block_delta":
 		if ev.Delta.Type == "text_delta" && ev.Delta.Text != "" {
-			p.emitText(ev.Delta.Text, events)
+			p.emitText(ev.Delta.Text, parentToolUseID, events)
 		}
 	case "content_block_start":
 		block := ev.ContentBlock
@@ -176,15 +188,17 @@ func (p *claudeStreamParser) handleStreamEvent(raw json.RawMessage, events chan<
 			toolID:   block.ID,
 			toolName: block.Name,
 		}
-		if p.seenToolStarts[block.ID] {
-			return
+		if parentToolUseID == "" {
+			if p.seenToolStarts[block.ID] {
+				return
+			}
+			p.seenToolStarts[block.ID] = true
 		}
-		p.seenToolStarts[block.ID] = true
-		events <- Event{
+		p.emit(parentToolUseID, Event{
 			Type:       EventToolCallStart,
 			ToolCallID: block.ID,
 			ToolName:   block.Name,
-		}
+		}, events)
 	case "content_block_stop":
 		state, ok := p.blocks[ev.Index]
 		if !ok || state.kind != "tool_use" {
@@ -193,19 +207,32 @@ func (p *claudeStreamParser) handleStreamEvent(raw json.RawMessage, events chan<
 		}
 		args := state.args.String()
 		if args != "" {
-			events <- Event{
+			p.emit(parentToolUseID, Event{
 				Type:       EventToolCallArgs,
 				ToolCallID: state.toolID,
 				ToolArgs:   args,
-			}
+			}, events)
 		}
-		if !p.seenToolEnds[state.toolID] {
-			p.seenToolEnds[state.toolID] = true
-			events <- Event{
-				Type:       EventToolCallEnd,
-				ToolCallID: state.toolID,
-				ToolName:   state.toolName,
-				ToolArgs:   args,
+		if parentToolUseID == "" {
+			if !p.seenToolEnds[state.toolID] {
+				p.seenToolEnds[state.toolID] = true
+				p.emit(parentToolUseID, Event{
+					Type:       EventToolCallEnd,
+					ToolCallID: state.toolID,
+					ToolName:   state.toolName,
+					ToolArgs:   args,
+				}, events)
+			}
+		} else {
+			scopeKey := parentToolUseID + "::" + state.toolID
+			if !p.seenToolEnds[scopeKey] {
+				p.seenToolEnds[scopeKey] = true
+				p.emit(parentToolUseID, Event{
+					Type:       EventToolCallEnd,
+					ToolCallID: state.toolID,
+					ToolName:   state.toolName,
+					ToolArgs:   args,
+				}, events)
 			}
 		}
 		p.markTextSepNeeded()
@@ -219,7 +246,7 @@ func (p *claudeStreamParser) handleStreamEvent(raw json.RawMessage, events chan<
 	}
 }
 
-func (p *claudeStreamParser) handleAssistant(raw json.RawMessage, events chan<- Event) {
+func (p *claudeStreamParser) handleAssistant(raw json.RawMessage, parentToolUseID string, events chan<- Event) {
 	var msg struct {
 		Content []json.RawMessage `json:"content"`
 	}
@@ -245,10 +272,10 @@ func (p *claudeStreamParser) handleAssistant(raw json.RawMessage, events chan<- 
 			}
 			// Partial stream_event deltas are authoritative with --include-partial-messages.
 			// Full assistant snapshots after tool/HITL pauses can replay prior turns.
-			if len(p.seenToolStarts) > 0 || p.emittedText {
+			if parentToolUseID == "" && (len(p.seenToolStarts) > 0 || p.emittedText) {
 				continue
 			}
-			p.emitText(block.Text, events)
+			p.emitText(block.Text, parentToolUseID, events)
 		case "tool_use":
 			p.markTextSepNeeded()
 			var block struct {
@@ -261,30 +288,49 @@ func (p *claudeStreamParser) handleAssistant(raw json.RawMessage, events chan<- 
 			}
 			argsJSON, _ := json.Marshal(block.Input)
 			argsStr := string(argsJSON)
-			if !p.seenToolStarts[block.ID] {
-				p.seenToolStarts[block.ID] = true
-				events <- Event{
+			if parentToolUseID == "" {
+				if !p.seenToolStarts[block.ID] {
+					p.seenToolStarts[block.ID] = true
+					p.emit(parentToolUseID, Event{
+						Type:       EventToolCallStart,
+						ToolCallID: block.ID,
+						ToolName:   block.Name,
+					}, events)
+					p.emit(parentToolUseID, Event{
+						Type:       EventToolCallArgs,
+						ToolCallID: block.ID,
+						ToolArgs:   argsStr,
+					}, events)
+				}
+				if !p.seenToolEnds[block.ID] {
+					p.seenToolEnds[block.ID] = true
+					p.emit(parentToolUseID, Event{
+						Type:       EventToolCallEnd,
+						ToolCallID: block.ID,
+						ToolName:   block.Name,
+						ToolArgs:   argsStr,
+					}, events)
+				}
+			} else {
+				p.emit(parentToolUseID, Event{
 					Type:       EventToolCallStart,
 					ToolCallID: block.ID,
 					ToolName:   block.Name,
-				}
-				events <- Event{
+				}, events)
+				p.emit(parentToolUseID, Event{
 					Type:       EventToolCallArgs,
 					ToolCallID: block.ID,
 					ToolArgs:   argsStr,
-				}
-			}
-			if !p.seenToolEnds[block.ID] {
-				p.seenToolEnds[block.ID] = true
-				events <- Event{
+				}, events)
+				p.emit(parentToolUseID, Event{
 					Type:       EventToolCallEnd,
 					ToolCallID: block.ID,
 					ToolName:   block.Name,
 					ToolArgs:   argsStr,
-				}
+				}, events)
 			}
 		case "image":
-			emitImageEvents(blockRaw, events)
+			emitImageEvents(blockRaw, parentToolUseID, events)
 		}
 	}
 }
@@ -295,8 +341,8 @@ func (p *claudeStreamParser) handleUser(parentToolUseID string, toolUseResult js
 		toolUseID = toolUseIDFromMessage(messageRaw)
 	}
 	if toolUseID != "" && len(toolUseResult) > 0 && toolUseResult[0] != 'n' {
-		p.emitToolResult(toolUseID, toolUseResult, events)
-		emitImageEvents(toolUseResult, events)
+		p.emitToolResult(toolUseID, "", toolUseResult, events)
+		emitImageEvents(toolUseResult, "", events)
 	}
 
 	var msg struct {
@@ -321,21 +367,27 @@ func (p *claudeStreamParser) handleUser(parentToolUseID string, toolUseResult js
 		if block.Type != "tool_result" || block.ToolUseID == "" {
 			continue
 		}
-		p.emitToolResult(block.ToolUseID, block.Content, events)
-		emitImageEvents(block.Content, events)
+		p.emitToolResult(block.ToolUseID, parentToolUseID, block.Content, events)
+		emitImageEvents(block.Content, parentToolUseID, events)
 	}
 }
 
-func (p *claudeStreamParser) emitToolResult(toolUseID string, result json.RawMessage, events chan<- Event) {
-	if p.seenToolResults[toolUseID] {
+func (p *claudeStreamParser) emitToolResult(toolUseID, parentToolUseID string, result json.RawMessage, events chan<- Event) {
+	if parentToolUseID == "" {
+		if p.seenToolResults[toolUseID] {
+			return
+		}
+		p.seenToolResults[toolUseID] = true
+	} else if p.seenToolResults[parentToolUseID+"::"+toolUseID] {
 		return
+	} else {
+		p.seenToolResults[parentToolUseID+"::"+toolUseID] = true
 	}
-	p.seenToolResults[toolUseID] = true
-	events <- Event{
+	p.emit(parentToolUseID, Event{
 		Type:       EventToolCallResult,
 		ToolCallID: toolUseID,
 		Content:    string(result),
-	}
+	}, events)
 }
 
 func toolUseIDFromMessage(messageRaw json.RawMessage) string {

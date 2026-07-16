@@ -28,6 +28,7 @@ type ChatMessagePart struct {
 	ToolName          string         `json:"toolName,omitempty"`
 	ToolArgs          map[string]any `json:"toolArgs,omitempty"`
 	ToolResult        any            `json:"toolResult,omitempty"`
+	SubagentTrace     []ChatMessagePart `json:"subagentTrace,omitempty"`
 	MCPAppResourceURI string         `json:"mcpAppResourceUri,omitempty"`
 	MCPAppServerName  string         `json:"mcpAppServerName,omitempty"`
 	MCPAppToolInput   map[string]any `json:"mcpAppToolInput,omitempty"`

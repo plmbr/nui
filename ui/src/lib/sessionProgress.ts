@@ -2,6 +2,7 @@
 
 import type { SessionChatMessage, ToolCallPart } from '@/lib/chatMessageUtils'
 import { formatToolCallSummary } from '@/lib/toolCallSummary'
+import { isHarnessSubagentTool, latestSubagentProgressLabel } from '@/lib/subagentTrace'
 
 export type SessionProgressKind = 'thinking' | 'generating' | 'tool'
 
@@ -57,6 +58,10 @@ export function deriveSessionProgress(
       if (tool.toolResult === undefined) {
         const name = normalizeToolName(tool.toolName)
         const summary = formatToolCallSummary(tool.toolName, tool.toolArgs)
+        if (isHarnessSubagentTool(tool.toolName)) {
+          const subLabel = latestSubagentProgressLabel(tool)
+          if (subLabel) return { kind: 'tool', label: `Subagent — ${subLabel}` }
+        }
         if (summary) return { kind: 'tool', label: `${name} — ${summary}` }
         return { kind: 'tool', label: name }
       }

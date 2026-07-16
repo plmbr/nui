@@ -190,6 +190,6 @@ func (p *codexStreamParser) handleMCPToolCall(eventType string, item struct {
 			ToolCallID: toolID,
 			Content:    string(item.Result),
 		}
-		emitImageEvents(item.Result, events)
+		emitImageEvents(item.Result, "", events)
 	}
 }

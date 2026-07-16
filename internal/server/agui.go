@@ -226,61 +226,67 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 			if ev.Content == "" {
 				continue
 			}
-			assistantContent.WriteString(ev.Content)
-			writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
+			if ev.ParentToolCallID == "" {
+				assistantContent.WriteString(ev.Content)
+			}
+			writeAGUIEventIfConnected(reqCtx, w, flusher, withParentToolCallID(map[string]any{
 				"type":      "TEXT_MESSAGE_CHUNK",
 				"messageId": messageID,
 				"delta":     ev.Content,
-			})
+			}, ev.ParentToolCallID))
 		case agent.EventToolCallStart:
-			writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
+			writeAGUIEventIfConnected(reqCtx, w, flusher, withParentToolCallID(map[string]any{
 				"type":         "TOOL_CALL_START",
 				"toolCallId":   ev.ToolCallID,
 				"toolCallName": ev.ToolName,
-			})
+			}, ev.ParentToolCallID))
 		case agent.EventToolCallArgs:
 			if ev.ToolArgs == "" {
 				continue
 			}
-			writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
+			writeAGUIEventIfConnected(reqCtx, w, flusher, withParentToolCallID(map[string]any{
 				"type":       "TOOL_CALL_ARGS",
 				"toolCallId": ev.ToolCallID,
 				"delta":      ev.ToolArgs,
-			})
+			}, ev.ParentToolCallID))
 		case agent.EventToolCallEnd:
-			writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
+			writeAGUIEventIfConnected(reqCtx, w, flusher, withParentToolCallID(map[string]any{
 				"type":       "TOOL_CALL_END",
 				"toolCallId": ev.ToolCallID,
-			})
-			emitVisualizationEvent(reqCtx, w, flusher, acc, ev.ToolCallID, ev.ToolName, ev.ToolArgs)
-			if uri, server, ok := mcpManager.LookupToolUI(ev.ToolName); ok {
-				var toolInput map[string]any
-				if ev.ToolArgs != "" {
-					json.Unmarshal([]byte(ev.ToolArgs), &toolInput)
+			}, ev.ParentToolCallID))
+			if ev.ParentToolCallID == "" {
+				emitVisualizationEvent(reqCtx, w, flusher, acc, ev.ToolCallID, ev.ToolName, ev.ToolArgs)
+			}
+			if ev.ParentToolCallID == "" {
+				if uri, server, ok := mcpManager.LookupToolUI(ev.ToolName); ok {
+					var toolInput map[string]any
+					if ev.ToolArgs != "" {
+						json.Unmarshal([]byte(ev.ToolArgs), &toolInput)
+					}
+					if toolInput == nil {
+						toolInput = map[string]any{}
+					}
+					writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
+						"type": "CUSTOM",
+						"name": "mcp_app",
+						"value": map[string]any{
+							"toolCallId":  ev.ToolCallID,
+							"toolName":    ev.ToolName,
+							"serverName":  server,
+							"resourceUri": uri,
+							"toolInput":   toolInput,
+						},
+					})
 				}
-				if toolInput == nil {
-					toolInput = map[string]any{}
-				}
-				writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
-					"type": "CUSTOM",
-					"name": "mcp_app",
-					"value": map[string]any{
-						"toolCallId":  ev.ToolCallID,
-						"toolName":    ev.ToolName,
-						"serverName":  server,
-						"resourceUri": uri,
-						"toolInput":   toolInput,
-					},
-				})
 			}
 		case agent.EventToolCallResult:
-			writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
+			writeAGUIEventIfConnected(reqCtx, w, flusher, withParentToolCallID(map[string]any{
 				"type":       "TOOL_CALL_RESULT",
 				"messageId":  uuid.NewString(),
 				"toolCallId": ev.ToolCallID,
 				"content":    ev.Content,
 				"role":       "tool",
-			})
+			}, ev.ParentToolCallID))
 		case agent.EventImage:
 			if ev.ImageData == "" {
 				continue
@@ -396,6 +402,13 @@ func writeAGUIEvent(w http.ResponseWriter, flusher http.Flusher, event any) {
 	}
 	fmt.Fprintf(w, "data: %s\n\n", data)
 	flusher.Flush()
+}
+
+func withParentToolCallID(payload map[string]any, parentToolCallID string) map[string]any {
+	if parentToolCallID != "" {
+		payload["parentToolCallId"] = parentToolCallID
+	}
+	return payload
 }
 
 func emitVisualizationEvent(reqCtx context.Context, w http.ResponseWriter, flusher http.Flusher, acc *assistantPartAccumulator, toolCallID, toolName, toolArgsJSON string) {

@@ -193,6 +193,6 @@ func (p *piStreamParser) emitTool(toolID, toolName string, args, result json.Raw
 			ToolCallID: toolID,
 			Content:    string(result),
 		}
-		emitImageEvents(result, events)
+		emitImageEvents(result, "", events)
 	}
 }

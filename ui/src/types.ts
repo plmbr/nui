@@ -135,6 +135,7 @@ export interface ChatMessagePart {
   toolName?: string
   toolArgs?: Record<string, unknown>
   toolResult?: unknown
+  subagentTrace?: ChatMessagePart[]
   mcpAppResourceUri?: string
   mcpAppServerName?: string
   mcpAppToolInput?: Record<string, unknown>

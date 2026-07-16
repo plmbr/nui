@@ -116,10 +116,10 @@ func (p *openCodeStreamParser) handleLine(line []byte, events chan<- Event) {
 		ToolCallID: toolID,
 		Content:    string(resultPayload),
 	}
-	emitImageEvents(resultPayload, events)
-	emitImageEvents(obj.Part.State.Metadata, events)
+	emitImageEvents(resultPayload, "", events)
+	emitImageEvents(obj.Part.State.Metadata, "", events)
 	if stateRaw, err := json.Marshal(obj.Part.State); err == nil {
-		emitImageEvents(stateRaw, events)
+		emitImageEvents(stateRaw, "", events)
 	}
 }
 

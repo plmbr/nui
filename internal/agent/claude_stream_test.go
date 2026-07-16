@@ -179,6 +179,71 @@ func TestClaudeStreamParserDoesNotCompleteBeforeFollowUpToolUse(t *testing.T) {
 	}
 }
 
+func TestClaudeStreamParserSubagentMessageStopDoesNotCompleteParentTurn(t *testing.T) {
+	parser := newClaudeStreamParser()
+	events := make(chan Event, 16)
+
+	lines := [][]byte{
+		[]byte(`{"type":"stream_event","event":{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"task-1","name":"Agent"}}}`),
+		[]byte(`{"type":"stream_event","event":{"type":"content_block_stop","index":0}}`),
+		[]byte(`{"type":"stream_event","parent_tool_use_id":"task-1","event":{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Searching files"}}}`),
+		[]byte(`{"type":"stream_event","parent_tool_use_id":"task-1","event":{"type":"message_delta","delta":{"stop_reason":"end_turn"}}}`),
+		[]byte(`{"type":"stream_event","parent_tool_use_id":"task-1","event":{"type":"message_stop"}}`),
+	}
+	for _, line := range lines {
+		parser.handleLine(line, events)
+	}
+	close(events)
+
+	var text string
+	var done bool
+	for ev := range events {
+		if ev.Type == EventText && ev.ParentToolCallID == "task-1" {
+			text += ev.Content
+		}
+		if ev.Type == EventDone {
+			done = true
+		}
+	}
+	if text != "Searching files" {
+		t.Fatalf("subagent text = %q", text)
+	}
+	if done {
+		t.Fatal("subagent message_stop should not complete parent turn")
+	}
+	if parser.completedTurn() {
+		t.Fatal("parent turn should not be marked complete")
+	}
+}
+
+func TestClaudeStreamParserSubagentToolEventsScopedToParent(t *testing.T) {
+	parser := newClaudeStreamParser()
+	events := make(chan Event, 16)
+
+	lines := [][]byte{
+		[]byte(`{"type":"stream_event","event":{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"task-1","name":"Agent"}}}`),
+		[]byte(`{"type":"stream_event","parent_tool_use_id":"task-1","event":{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"inner-1","name":"Read"}}}`),
+		[]byte(`{"type":"stream_event","parent_tool_use_id":"task-1","event":{"type":"content_block_stop","index":0}}`),
+	}
+	for _, line := range lines {
+		parser.handleLine(line, events)
+	}
+	close(events)
+
+	var innerStart bool
+	for ev := range events {
+		if ev.Type == EventToolCallStart && ev.ToolCallID == "inner-1" && ev.ParentToolCallID == "task-1" {
+			innerStart = true
+		}
+	}
+	if !innerStart {
+		t.Fatal("expected scoped subagent tool start event")
+	}
+	if parser.hasPendingToolWork() != true {
+		t.Fatal("parent task should still be pending")
+	}
+}
+
 func TestClaudeStreamParserTextSepAfterToolCall(t *testing.T) {
 	parser := newClaudeStreamParser()
 	events := make(chan Event, 16)

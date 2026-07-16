@@ -37,6 +37,7 @@ const FRIENDLY_TOOL_NAMES: Record<string, string> = {
   shell: 'Run command',
   run_terminal_cmd: 'Run command',
   task: 'Run task',
+  agent: 'Run subagent',
 }
 
 function humanizeIdentifier(value: string): string {

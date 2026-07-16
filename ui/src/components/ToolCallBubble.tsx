@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 import { McpAppFrame } from '@/components/McpAppFrame'
+import { ToolCallGroup } from '@/components/ToolCallGroup'
 import { imageSrc, type ToolCallPart } from '@/hooks/useSessionChat'
 import { ToolCallCode } from '@/components/ToolCallCode'
 import { formatMcpServerLabel, formatToolDisplayName, isMcpToolName } from '@/lib/toolCallDisplay'
 import { formatToolCallSummary } from '@/lib/toolCallSummary'
 import { extractImagesFromValue } from '@/lib/images'
+import { isHarnessSubagentTool } from '@/lib/subagentTrace'
 
 interface Props {
   part: ToolCallPart
@@ -19,6 +21,8 @@ export function ToolCallBubble({ part: msg, nested = false }: Props) {
   const mcpServer = formatMcpServerLabel(msg.toolName)
   const detail = formatToolCallSummary(msg.toolName, msg.toolArgs)
   const isDone = msg.toolResult !== undefined
+  const hasSubagentTrace = isHarnessSubagentTool(msg.toolName) && (msg.subagentTrace?.length ?? 0) > 0
+  const showSubagentTrace = hasSubagentTrace && (!isDone || expanded)
   const hasDetails =
     (msg.toolArgs && Object.keys(msg.toolArgs).length > 0) || msg.toolResult !== undefined
   const toolImages =
@@ -71,6 +75,19 @@ export function ToolCallBubble({ part: msg, nested = false }: Props) {
 
         {expanded && <div className="tool-call-item__body not-prose">{expandedBody}</div>}
 
+        {showSubagentTrace && msg.subagentTrace && (
+          <div className="tool-call__subagent-trace">
+            <ToolCallGroup parts={msg.subagentTrace.filter((part) => part.type === 'tool')} />
+            {msg.subagentTrace
+              .filter((part) => part.type === 'text')
+              .map((part, index) => (
+                <div key={`subagent-text-${index}`} className="tool-call__subagent-text">
+                  {part.content}
+                </div>
+              ))}
+          </div>
+        )}
+
         {toolImages.map((img) => (
           <img
             key={img.id}
@@ -114,6 +131,19 @@ export function ToolCallBubble({ part: msg, nested = false }: Props) {
       </button>
 
       {expanded && <div className="tool-call__body not-prose">{expandedBody}</div>}
+
+      {showSubagentTrace && msg.subagentTrace && (
+        <div className="tool-call__subagent-trace">
+          <ToolCallGroup parts={msg.subagentTrace.filter((part) => part.type === 'tool')} />
+          {msg.subagentTrace
+            .filter((part) => part.type === 'text')
+            .map((part, index) => (
+              <div key={`subagent-text-${index}`} className="tool-call__subagent-text">
+                {part.content}
+              </div>
+            ))}
+        </div>
+      )}
 
       {toolImages.map((img) => (
         <img

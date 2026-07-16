@@ -1,18 +1,34 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { ToolCallBubble } from '@/components/ToolCallBubble'
 import type { ToolCallPart } from '@/hooks/useSessionChat'
 import { buildToolGroupSummary, isToolGroupRunning } from '@/lib/toolCallDisplay'
+import { isHarnessSubagentTool } from '@/lib/subagentTrace'
 
 interface Props {
   parts: ToolCallPart[]
 }
 
+function hasActiveSubagentTrace(parts: ToolCallPart[]): boolean {
+  return parts.some(
+    (part) =>
+      isHarnessSubagentTool(part.toolName) &&
+      part.toolResult === undefined &&
+      (part.subagentTrace?.length ?? 0) > 0,
+  )
+}
+
 export function ToolCallGroup({ parts }: Props) {
   const running = isToolGroupRunning(parts)
   const [expanded, setExpanded] = useState(false)
+
+  useEffect(() => {
+    if (running && hasActiveSubagentTrace(parts)) {
+      setExpanded(true)
+    }
+  }, [running, parts])
 
   if (parts.length === 0) return null
 

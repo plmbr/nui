@@ -376,7 +376,23 @@ func applyCmdEnv(cmd *exec.Cmd, harnessType, sessionConfigDir string, adlEnv map
 			}
 		}
 	}
+	if normalizeHarnessType(harnessType) == "claude-code" {
+		setDefaultEnvOverride(overrides, "CLAUDE_CODE_FORWARD_SUBAGENT_TEXT", "true")
+	}
 	cmd.Env = envWithOverrides(overrides)
+}
+
+func setDefaultEnvOverride(overrides map[string]string, key, value string) {
+	if _, ok := overrides[key]; ok {
+		return
+	}
+	for _, kv := range os.Environ() {
+		k, _, ok := strings.Cut(kv, "=")
+		if ok && k == key {
+			return
+		}
+	}
+	overrides[key] = value
 }
 
 func envWithOverrides(overrides map[string]string) []string {

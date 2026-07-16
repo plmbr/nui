@@ -89,12 +89,16 @@ func extractImageBlock(block map[string]any) (extractedImage, bool) {
 	return extractedImage{}, false
 }
 
-func emitImageEvents(raw json.RawMessage, events chan<- Event) {
+func emitImageEvents(raw json.RawMessage, parentToolUseID string, events chan<- Event) {
 	for _, img := range extractImagesFromJSON(raw) {
-		events <- Event{
+		ev := Event{
 			Type:           EventImage,
 			ImageMediaType: img.MediaType,
 			ImageData:      img.Data,
 		}
+		if parentToolUseID != "" {
+			ev.ParentToolCallID = parentToolUseID
+		}
+		events <- ev
 	}
 }
