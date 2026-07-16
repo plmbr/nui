@@ -45,6 +45,25 @@ func TestPrepareHTML_rebuildsBrokenOllamaChart(t *testing.T) {
 	if !contains(prepared, "January") || !contains(prepared, "[12,19,3]") {
 		t.Fatalf("expected extracted labels/data in rebuilt chart, got %q", prepared)
 	}
+	if !contains(prepared, "plugins:{legend:{display:false}}") {
+		t.Fatalf("expected v4 plugins legend options in rebuilt chart, got %q", prepared)
+	}
+}
+
+func TestPrepareHTML_injectsChartErrorHandlerOnceBeforeInlineChart(t *testing.T) {
+	raw := `<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>` +
+		`<canvas id="c"></canvas>` +
+		`<script>new Chart(document.getElementById('c'),{type:'bar'});</script>`
+	once := PrepareHTML(raw)
+	twice := PrepareHTML(once)
+	if strings.Count(twice, chartErrorHandlerMarker) != 1 {
+		t.Fatalf("expected one chart error handler, got %q", twice)
+	}
+	chartIdx := strings.Index(strings.ToLower(twice), "new chart")
+	handlerIdx := strings.Index(twice, chartErrorHandlerMarker)
+	if handlerIdx < 0 || chartIdx < 0 || handlerIdx > chartIdx {
+		t.Fatalf("expected error handler before inline chart script, got %q", twice)
+	}
 }
 
 func containsAll(s string, parts ...string) bool {

@@ -127,7 +127,7 @@ function rebuildChartHTML(html: string, chartScriptSrc: string): string {
   if (!data.length) return ''
   const chartLabels =
     labels.length > 0 ? labels : data.map((_, i) => `Item ${i + 1}`)
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><canvas id="loop-chart" width="400" height="200"></canvas><script src="${chartScriptSrc}"></script><script>new Chart(document.getElementById('loop-chart').getContext('2d'),{type:'bar',data:{labels:${JSON.stringify(chartLabels)},datasets:[{label:'Series 1',data:${JSON.stringify(data)},backgroundColor:'rgba(54,162,235,0.5)'}]},options:{responsive:false,legend:{display:false}}});</script></body></html>`
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><canvas id="loop-chart" width="400" height="200"></canvas><script src="${chartScriptSrc}"></script><script>new Chart(document.getElementById('loop-chart').getContext('2d'),{type:'bar',data:{labels:${JSON.stringify(chartLabels)},datasets:[{label:'Series 1',data:${JSON.stringify(data)},backgroundColor:'rgba(54,162,235,0.5)'}]},options:{responsive:false,plugins:{legend:{display:false}}}});</script></body></html>`
 }
 
 function ensureChartJSLibrary(html: string, chartScriptSrc: string): string {
@@ -150,10 +150,18 @@ function ensureChartJSLibrary(html: string, chartScriptSrc: string): string {
   return tag + html
 }
 
+const CHART_ERROR_HANDLER_MARKER = "Chart failed: '"
+
 function injectChartErrorHandler(html: string): string {
+  if (html.includes(CHART_ERROR_HANDLER_MARKER)) return html
   const handler =
     "<script>window.addEventListener('error',function(e){var p=document.createElement('pre');p.style.cssText='color:#b91c1c;padding:12px;font:13px/1.4 monospace';p.textContent='Chart failed: '+e.message;document.body.appendChild(p);});</script>"
   const lower = html.toLowerCase()
+  const chartScriptRe = /<script\b[^>]*>[\s\S]*?new\s+chart[\s\S]*?<\/script>/gi
+  const match = chartScriptRe.exec(html)
+  if (match?.index != null) {
+    return html.slice(0, match.index) + handler + html.slice(match.index)
+  }
   const idx = lower.lastIndexOf('</body>')
   if (idx >= 0) return html.slice(0, idx) + handler + html.slice(idx)
   return html + handler

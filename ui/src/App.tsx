@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AgentHeader } from '@/components/AgentHeader'
@@ -290,6 +290,12 @@ export default function App() {
 
   const selected = sessions.find((s) => s.id === selectedId) ?? null
   const selectedAgent = agentTypes.find((a) => a.id === selected?.agentType)
+  const selectedGroupId = useMemo(() => {
+    if (!selected) return null
+    return groupSessionsByAgentType(sessions, agentTypes).find((group) =>
+      group.sessions.some((session) => session.id === selected.id),
+    )?.id ?? null
+  }, [selected, sessions, agentTypes])
   const promptMode = selectedAgent?.promptMode ?? 'user'
   const effectiveHideInput = hideInput || promptMode === 'auto'
   const sessionListGroup =
@@ -472,7 +478,14 @@ export default function App() {
           {selected && selectedAgent && !customizeOpen && !schedulesOpen && !newSessionOpen && !sessionListGroup && !landingOpen && (
             <div className="flex min-w-0 items-center gap-2">
               <span className="text-muted-foreground/35 hidden shrink-0 select-none md:inline" aria-hidden="true">/</span>
-              <AgentHeader name={sessionDisplayName(selected)} agent={selectedAgent} />
+              <AgentHeader
+                name={sessionDisplayName(selected)}
+                agent={selectedAgent}
+                sessionId={selected.id}
+                onNewSession={() => {
+                  if (selectedGroupId) handleOpenNewSessionForGroup(selectedGroupId)
+                }}
+              />
             </div>
           )}
           <div className="app-header__actions">

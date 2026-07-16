@@ -400,6 +400,10 @@
     @apply w-12 opacity-100;
   }
 
+  .app-agent-header-actions {
+    @apply flex shrink-0 items-center gap-0 opacity-100 transition-[width,opacity] duration-150 md:w-0 md:overflow-hidden md:opacity-0;
+  }
+
   .sidebar-header__btn-primary {
     background: color-mix(in oklch, var(--primary) 16%, var(--sidebar));
     color: color-mix(in oklch, var(--primary) 55%, var(--sidebar-foreground));

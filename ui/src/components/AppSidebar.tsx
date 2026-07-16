@@ -145,7 +145,7 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
 
   return (
     <>
-      <SidebarMenuItem>
+      <SidebarMenuItem data-sidebar-session-id={session.id}>
         <SidebarMenuButton
           isActive={isActive}
           onClick={onSelect}

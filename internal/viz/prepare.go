@@ -166,7 +166,7 @@ func rebuildChartHTML(html, chartSrc string) string {
 	if err != nil {
 		return ""
 	}
-	return fmt.Sprintf(`<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><canvas id="loop-chart" width="400" height="200"></canvas><script src="%s"></script><script>new Chart(document.getElementById('loop-chart').getContext('2d'),{type:'bar',data:{labels:%s,datasets:[{label:'Series 1',data:%s,backgroundColor:'rgba(54,162,235,0.5)'}]},options:{responsive:false,legend:{display:false}}});</script></body></html>`, chartSrc, labelsJSON, dataJSON)
+	return fmt.Sprintf(`<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><canvas id="loop-chart" width="400" height="200"></canvas><script src="%s"></script><script>new Chart(document.getElementById('loop-chart').getContext('2d'),{type:'bar',data:{labels:%s,datasets:[{label:'Series 1',data:%s,backgroundColor:'rgba(54,162,235,0.5)'}]},options:{responsive:false,plugins:{legend:{display:false}}}});</script></body></html>`, chartSrc, labelsJSON, dataJSON)
 }
 
 func extractChartStringList(re *regexp.Regexp, html string) []string {
@@ -238,8 +238,18 @@ func ensureChartJSLibrary(html, chartSrc string) string {
 	return tag + html
 }
 
+const chartErrorHandlerMarker = "Chart failed: '"
+
+var chartInlineScriptRE = regexp.MustCompile(`(?is)<script\b[^>]*>[\s\S]*?new\s+chart[\s\S]*?</script>`)
+
 func injectChartErrorHandler(html string) string {
+	if strings.Contains(html, chartErrorHandlerMarker) {
+		return html
+	}
 	handler := `<script>window.addEventListener('error',function(e){var p=document.createElement('pre');p.style.cssText='color:#b91c1c;padding:12px;font:13px/1.4 monospace';p.textContent='Chart failed: '+e.message;document.body.appendChild(p);});</script>`
+	if loc := chartInlineScriptRE.FindStringIndex(html); len(loc) == 2 {
+		return html[:loc[0]] + handler + html[loc[0]:]
+	}
 	lower := strings.ToLower(html)
 	if idx := strings.LastIndex(lower, "</body>"); idx >= 0 {
 		return html[:idx] + handler + html[idx:]

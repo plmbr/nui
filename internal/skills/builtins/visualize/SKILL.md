@@ -9,7 +9,7 @@ When the user asks for a chart, graph, table, or dashboard, render it **inline i
 
 ## Required workflow (same turn)
 
-1. Build self-contained HTML (Chart.js, D3, etc. from CDNs are fine).
+1. Build self-contained HTML (Chart.js v3/v4 API from CDNs is fine — Loop rewrites CDN chart.js tags to its bundled v4 copy at `/vendor/chart.min.js`).
 2. Call **`show_visualization`** with the HTML in the **`html`** field.
 3. Optionally set **`title`**.
 
