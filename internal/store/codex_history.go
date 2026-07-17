@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 // codexEntry is a single line from a Codex session JSONL file.

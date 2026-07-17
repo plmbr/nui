@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/store"
+	"nui/internal/store"
 )
 
 func ensureGitSkill(name, gitURL, repoPath, version string) (string, error) {

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"loop/internal/hitl"
+	"nui/internal/hitl"
 )
 
 func registerHITLRoutes(mux *http.ServeMux) {
@@ -150,7 +150,7 @@ func handleHITLRespond(w http.ResponseWriter, r *http.Request, requestID string)
 		return
 	}
 	if body.RespondedBy.Channel == "" {
-		body.RespondedBy.Channel = hitl.ChannelLoopUI
+		body.RespondedBy.Channel = hitl.ChannelnuiUI
 	}
 	resp, err := coordinator().Respond(r.Context(), requestID, body)
 	if err != nil {

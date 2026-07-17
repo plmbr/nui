@@ -7,16 +7,16 @@ import (
 	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"loop/internal/agents"
-	"loop/internal/memory"
+	"nui/internal/agents"
+	"nui/internal/memory"
 )
 
-const loopAgentMCPName = "loop-agent"
+const nuiAgentMCPName = "nui-agent"
 
-// RunAgent starts the loop-agent MCP server on stdio.
+// RunAgent starts the nui-agent MCP server on stdio.
 func RunAgent(ctx context.Context) error {
 	server := mcp.NewServer(&mcp.Implementation{
-		Name:    loopAgentMCPName,
+		Name:    nuiAgentMCPName,
 		Version: "1.0.0",
 	}, nil)
 
@@ -29,7 +29,7 @@ func RunAgent(ctx context.Context) error {
 func registerAgentTools(server *mcp.Server) {
 	server.AddTool(&mcp.Tool{
 		Name:        "save_agent",
-		Description: "Save a Loop ADL agent definition YAML to ~/.loop/agents/ so it appears under Installed agents",
+		Description: "Save a nui ADL agent definition YAML to ~/.nui/agents/ so it appears under Installed agents",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -67,7 +67,7 @@ func registerAgentTools(server *mcp.Server) {
 
 	server.AddTool(&mcp.Tool{
 		Name:        "update_memory",
-		Description: "Update Loop persistent memory in ~/.loop/memory/ (user-wide or per-agent)",
+		Description: "Update nui persistent memory in ~/.nui/memory/ (user-wide or per-agent)",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{

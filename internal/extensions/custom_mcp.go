@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 // ExtensionCustomMCPServer is a command-tool MCP server declared under contributions.aiAssets.mcpServers.
@@ -27,7 +27,7 @@ type ExtensionMCPTool struct {
 	InputSchema map[string]any `yaml:"inputSchema,omitempty"`
 }
 
-// customMCPToolsConfig is written to the session config dir for loop_mcp_tools.py.
+// customMCPToolsConfig is written to the session config dir for nui_mcp_tools.py.
 type customMCPToolsConfig struct {
 	ServerName   string             `json:"serverName"`
 	ExtensionDir string             `json:"extensionDir"`
@@ -211,7 +211,7 @@ func customMCPServerName(extName, serverName string) string {
 	return fmt.Sprintf("ext-%s-%s", extName, serverName)
 }
 
-// MaterializeCustomMCPServer writes tools JSON and returns a stdio ADLMCPServer using loop_mcp_tools.py.
+// MaterializeCustomMCPServer writes tools JSON and returns a stdio ADLMCPServer using nui_mcp_tools.py.
 func MaterializeCustomMCPServer(configDir string, pending PendingCustomMCPServer) (model.ADLMCPServer, error) {
 	proxyPath, err := MCPToolsProxyPath()
 	if err != nil {
@@ -259,11 +259,11 @@ type PendingCustomMCPServer struct {
 
 type pendingCustomMCPServer = PendingCustomMCPServer
 
-// MCPToolsProxyPath locates harness-sdk/loop_mcp_tools.py, installing a copy under ~/.loop when needed.
+// MCPToolsProxyPath locates harness-sdk/nui_mcp_tools.py, installing a copy under ~/.nui when needed.
 func MCPToolsProxyPath() (string, error) {
-	if p := strings.TrimSpace(os.Getenv("LOOP_MCP_TOOLS_PATH")); p != "" {
+	if p := strings.TrimSpace(os.Getenv("NUI_MCP_TOOLS_PATH")); p != "" {
 		if _, err := os.Stat(p); err != nil {
-			return "", fmt.Errorf("LOOP_MCP_TOOLS_PATH %q: %w", p, err)
+			return "", fmt.Errorf("NUI_MCP_TOOLS_PATH %q: %w", p, err)
 		}
 		return p, nil
 	}
@@ -278,7 +278,7 @@ func installedMCPToolsProxyPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	path := filepath.Join(home, ".loop", "harness-sdk", "loop_mcp_tools.py")
+	path := filepath.Join(home, ".nui", "harness-sdk", "nui_mcp_tools.py")
 	if _, err := os.Stat(path); err != nil {
 		return "", err
 	}
@@ -289,7 +289,7 @@ func findMCPToolsProxySource() (string, error) {
 	if exe, err := os.Executable(); err == nil {
 		dir := filepath.Dir(exe)
 		for i := 0; i < 6; i++ {
-			candidate := filepath.Join(dir, "harness-sdk", "loop_mcp_tools.py")
+			candidate := filepath.Join(dir, "harness-sdk", "nui_mcp_tools.py")
 			if _, err := os.Stat(candidate); err == nil {
 				return filepath.Abs(candidate)
 			}
@@ -301,12 +301,12 @@ func findMCPToolsProxySource() (string, error) {
 		}
 	}
 	if wd, err := os.Getwd(); err == nil {
-		candidate := filepath.Join(wd, "harness-sdk", "loop_mcp_tools.py")
+		candidate := filepath.Join(wd, "harness-sdk", "nui_mcp_tools.py")
 		if _, err := os.Stat(candidate); err == nil {
 			return filepath.Abs(candidate)
 		}
 	}
-	return "", fmt.Errorf("loop_mcp_tools.py not found (set LOOP_MCP_TOOLS_PATH)")
+	return "", fmt.Errorf("nui_mcp_tools.py not found (set NUI_MCP_TOOLS_PATH)")
 }
 
 func installMCPToolsProxy(source string) (string, error) {
@@ -314,11 +314,11 @@ func installMCPToolsProxy(source string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	destDir := filepath.Join(home, ".loop", "harness-sdk")
+	destDir := filepath.Join(home, ".nui", "harness-sdk")
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return "", err
 	}
-	dest := filepath.Join(destDir, "loop_mcp_tools.py")
+	dest := filepath.Join(destDir, "nui_mcp_tools.py")
 	data, err := os.ReadFile(source)
 	if err != nil {
 		return "", err
@@ -330,7 +330,7 @@ func installMCPToolsProxy(source string) (string, error) {
 }
 
 func python3Path() string {
-	if p := strings.TrimSpace(os.Getenv("LOOP_PYTHON3_PATH")); p != "" {
+	if p := strings.TrimSpace(os.Getenv("NUI_PYTHON3_PATH")); p != "" {
 		return p
 	}
 	if p, err := exec.LookPath("python3"); err == nil {

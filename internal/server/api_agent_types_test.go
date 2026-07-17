@@ -5,9 +5,9 @@ package server
 import (
 	"testing"
 
-	"loop/internal/agents"
-	"loop/internal/devcontainer"
-	"loop/internal/model"
+	"nui/internal/agents"
+	"nui/internal/devcontainer"
+	"nui/internal/model"
 )
 
 func TestHarnessAvailable_builtinCLIHarnesses(t *testing.T) {

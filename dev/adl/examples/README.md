@@ -1,6 +1,6 @@
 # ADL Examples
 
-ADL (Agent Definition Language) is a YAML format for declaring agent types and multi-step workflows. Place files in `~/.loop/agents/` to make them selectable in the Loop UI under **Installed agents**.
+ADL (Agent Definition Language) is a YAML format for declaring agent types and multi-step workflows. Place files in `~/.nui/agents/` to make them selectable in the nui UI under **Installed agents**.
 
 Echo-specific docker/remote walkthroughs (with runnable harness servers) live under [`dev/harness-examples/`](../harness-examples/).
 
@@ -28,7 +28,7 @@ The executor in `internal/agent/adl.go` runs multi-step pipelines in **sequentia
 | `17-auto-scheduled-agent.yaml` | Basic | `promptMode: auto` agent for Customize → Schedules |
 | `18-tool-approvals.yaml` | Basic | Top-level `toolApprovals` with `harness.permissions: interactive` |
 | `19-hitl-workflow-gate.yaml` | Intermediate | Workflow step `type: hitl` orchestration gate |
-| `20-evals.yaml` | Basic | `evals` test cases for `loop agent eval run` |
+| `20-evals.yaml` | Basic | `evals` test cases for `nui agent eval run` |
 | `21-orchestrator-sub-agents.yaml` | Intermediate | `subAgents` orchestrator routing to registry agents |
 
 ## Harness types
@@ -42,7 +42,7 @@ Builtin and connector types supported by the executor:
 | `codex` | `codex exec` subprocess |
 | `opencode` | `opencode serve` + `opencode run` |
 | `docker` | HTTP/SSE in user-managed Docker container |
-| `devcontainer` | Loop-managed devcontainer sandbox (`innerHarness` CLI via devcontainer exec) |
+| `devcontainer` | nui-managed devcontainer sandbox (`innerHarness` CLI via devcontainer exec) |
 | `remote` | HTTP/SSE at configured `host:port` |
 | `ext:<extension>/<harness-id>` | Installed extension harness (stdio/tcp/http) |
 
@@ -78,7 +78,7 @@ aiAssets:
       type: stdio
 ```
 
-Loop provisions these into `~/.loop/sessions/<session-id>/` and sets the harness config-dir env var (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `PI_CODING_AGENT_DIR`, or `OPENCODE_CONFIG_DIR`) before each run.
+nui provisions these into `~/.nui/sessions/<session-id>/` and sets the harness config-dir env var (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, `PI_CODING_AGENT_DIR`, or `OPENCODE_CONFIG_DIR`) before each run.
 
 Per-step overrides merge with top-level `aiAssets` by name (step entries override same name):
 
@@ -118,10 +118,10 @@ Legacy top-level `skill:` still works (mapped to a single `aiAssets.skills` entr
 Install catalog skills ahead of time:
 
 ```sh
-loop skills add ./skills/code-review
-loop skills add https://github.com/example/agent-skills/tree/main/skills/shared-style
-loop skills add --git https://github.com/example/agent-skills.git --path skills/shared-style
-loop skills list
+nui skills add ./skills/code-review
+nui skills add https://github.com/example/agent-skills/tree/main/skills/shared-style
+nui skills add --git https://github.com/example/agent-skills.git --path skills/shared-style
+nui skills list
 ```
 
 `systemPrompt` is written as harness-native markdown (`CLAUDE.md`, `AGENTS.md`, etc.). Skills are copied into the session harness skills directory (full directory tree, not just `SKILL.md`).
@@ -174,7 +174,7 @@ steps:
           label: Reject
       display:
         - from: draft.summary
-      channels: [loop-ui]
+      channels: [nui-ui]
 ```
 
 See `19-hitl-workflow-gate.yaml` for a full example.
@@ -200,7 +200,7 @@ harness:
 
 ### Tool approvals
 
-When `harness.permissions: interactive` (Claude Code or Codex), Loop routes native tool permission requests through the UI. Top-level `toolApprovals` controls which tools auto-approve vs prompt:
+When `harness.permissions: interactive` (Claude Code or Codex), nui routes native tool permission requests through the UI. Top-level `toolApprovals` controls which tools auto-approve vs prompt:
 
 | Policy | Behavior |
 |---|---|
@@ -228,7 +228,7 @@ defaultPrompt: Follow your system instructions and run.
 
 ### Evals
 
-Define test cases on an agent to verify behavior with `loop agent eval run -a <agent-id>`:
+Define test cases on an agent to verify behavior with `nui agent eval run -a <agent-id>`:
 
 ```yaml
 evals:
@@ -285,7 +285,7 @@ harness:
 harness:
   type: codex
   sandbox: docker
-  image: loop-codex:latest   # builtin image, port 8090
+  image: nui-codex:latest   # builtin image, port 8090
 ```
 
 ## Executor status
@@ -310,6 +310,6 @@ harness:
 | `toolApprovals` selective auto-approve | Done (Claude; requires `harness.permissions: interactive`) |
 | `steps[].type: hitl` orchestration gates | Done |
 | `promptMode: auto` → schedules | Done |
-| `evals` → `loop agent eval run` | Done |
+| `evals` → `nui agent eval run` | Done |
 
 See [dev/dev.md](../../dev.md) for the full architecture and [orchestration-research.md](../orchestration-research.md) for design research.

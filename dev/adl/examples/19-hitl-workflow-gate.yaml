@@ -2,7 +2,7 @@ adl: "1.0"
 
 # Two-step workflow with a human approval gate between draft and publish.
 # Demonstrates: steps[].type: hitl, hitl.actions, display from prior step output.
-# Requires hitl.mode: interactive (default) and loop-ui channel.
+# Requires hitl.mode: interactive (default) and nui-ui channel.
 
 id: hitl-workflow-gate
 name: HITL Workflow Gate
@@ -17,7 +17,7 @@ harness:
 hitl:
   mode: interactive
   channels:
-    - loop-ui
+    - nui-ui
 
 steps:
   - name: draft
@@ -43,7 +43,7 @@ steps:
       display:
         - from: draft.summary
       channels:
-        - loop-ui
+        - nui-ui
 
   - name: finalize
     dependsOn: [review-gate]

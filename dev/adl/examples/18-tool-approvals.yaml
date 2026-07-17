@@ -25,14 +25,14 @@ systemPrompt: |
 
 # Other policy examples (use one at a time):
 #
-# Auto-approve every harness tool (no Loop approval cards):
+# Auto-approve every harness tool (no nui approval cards):
 # toolApprovals:
 #   policy: all
 #
 # Auto-approve only safe read-only tools:
 # toolApprovals:
 #   policy: allowlist
-#   tools: [Read, Grep, Glob, mcp__loop-hitl__*]
+#   tools: [Read, Grep, Glob, mcp__nui-hitl__*]
 #
 # Prompt for every tool (default when toolApprovals is omitted):
 # toolApprovals:

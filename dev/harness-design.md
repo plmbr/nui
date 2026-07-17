@@ -1,8 +1,8 @@
-# Harness Protocols for Loop
+# Harness Protocols for nui
 
 > **Source of truth:** the Go code in `internal/agent/` and the runnable examples in `dev/harness-examples/`.
 
-Loop uses **three production harness paths** plus standalone reference examples:
+nui uses **three production harness paths** plus standalone reference examples:
 
 ```mermaid
 flowchart LR
@@ -16,10 +16,10 @@ flowchart LR
     PyTS["dev/harness-examples/py|ts/\n(no extension.yaml)"]
   end
 
-  Loop[Loop Manager] --> GoHarnesses
-  Loop --> HTTPExt
-  Loop --> ExtHarness
-  PyTS -.->|not registered| Loop
+  nui[nui Manager] --> GoHarnesses
+  nui --> HTTPExt
+  nui --> ExtHarness
+  PyTS -.->|not registered| nui
 ```
 
 ## 1. Builtin harnesses (Go subprocess) — primary path
@@ -35,13 +35,13 @@ The four built-in CLI agents are **not** Python/TypeScript harnesses. Go structs
 
 Sandbox (`harness.sandbox` in ADL) is propagated via `builtin_config.go` → `Manager.getBuiltinAgent()`.
 
-For `sandbox: docker`, builtin harnesses use HTTP/SSE inside Loop-managed containers (`docker/` images, port **8090**).
+For `sandbox: docker`, builtin harnesses use HTTP/SSE inside nui-managed containers (`docker/` images, port **8090**).
 
 ## 2. HTTP/SSE — docker and remote harnesses
 
 Used by:
 - ADL agents with `harness.type: docker`, `devcontainer`, or `remote`
-- Builtin `sandbox: docker` (via `HTTPExtensionAgent` talking to `loop-*` images)
+- Builtin `sandbox: docker` (via `HTTPExtensionAgent` talking to `nui-*` images)
 
 ### Endpoints
 
@@ -50,7 +50,7 @@ Used by:
 | `GET /info` | Health check; returns `{name, version, capabilities}` |
 | `POST /run` | Body: `{message, sessionId?, workingDir?, systemPrompt?, model?}` → `text/event-stream` |
 | `POST /cancel` | Body: `{runId}` — cancel current run |
-| `POST /shutdown` | Release subprocess resources; Loop calls before `docker stop` |
+| `POST /shutdown` | Release subprocess resources; nui calls before `docker stop` |
 
 ### SSE events
 
@@ -66,7 +66,7 @@ Extended types (tool calls, images) are supported by the Go client in `extension
 
 | Location | Port | Notes |
 |---|---|---|
-| `docker/http_loop_agent.py` | 8090 | Builtin sandbox images (`loop-claude-code`, etc.) |
+| `docker/http_nui_agent.py` | 8090 | Builtin sandbox images (`nui-claude-code`, etc.) |
 | `dev/harness-examples/docker/` | 9090 | User custom harnesses; ADL `containerPort` |
 | `dev/harness-examples/remote/` | user-defined | Standalone server, no lifecycle management |
 
@@ -81,15 +81,15 @@ Extended types (tool calls, images) are supported by the Go client in `extension
 
 See [docker/instructions.md](harness-examples/docker/instructions.md), [devcontainer/instructions.md](harness-examples/devcontainer/instructions.md), and [remote/instructions.md](harness-examples/remote/instructions.md).
 
-## 2b. Devcontainer harness (Loop-managed sandbox)
+## 2b. Devcontainer harness (nui-managed sandbox)
 
-`harness.type: devcontainer` runs a builtin CLI (`innerHarness`) inside a **Loop-provisioned** dev container. Users do not author `devcontainer.json` — Loop writes it to `~/.loop/sessions/<session-id>/.devcontainer/` and runs `devcontainer up` + `devcontainer exec`.
+`harness.type: devcontainer` runs a builtin CLI (`innerHarness`) inside a **nui-provisioned** dev container. Users do not author `devcontainer.json` — nui writes it to `~/.nui/sessions/<session-id>/.devcontainer/` and runs `devcontainer up` + `devcontainer exec`.
 
 | Concern | Behavior |
 |---------|----------|
-| Config | Loop-generated per session (not user project) |
+| Config | nui-generated per session (not user project) |
 | Inner CLI | ADL `innerHarness`: `claude-code` \| `pi` \| `codex` \| `opencode` |
-| Image | Default `loop-devcontainer-<harness>:latest` (auto-built on first use) or ADL `image` override |
+| Image | Default `nui-devcontainer-<harness>:latest` (auto-built on first use) or ADL `image` override |
 | API keys | `${localEnv:...}` in generated `remoteEnv` |
 | Lifecycle | `devcontainer up` → `devcontainer exec` → `docker stop` on delete |
 | Prerequisite | `devcontainer` CLI on PATH + Docker |
@@ -102,8 +102,8 @@ Installed extensions contribute harnesses under `contributions.harnesses`. ADL a
 
 | Transport | Go client | Runtime |
 |---|---|---|
-| `stdio` (default) | `stdioHarnessAgent` | Loop spawns the extension host process |
-| `tcp` | `ExtensionAgent` | Host writes `~/.loop/connections/<id>.json`; Loop dials JSON-RPC 2.0 |
+| `stdio` (default) | `stdioHarnessAgent` | nui spawns the extension host process |
+| `tcp` | `ExtensionAgent` | Host writes `~/.nui/connections/<id>.json`; nui dials JSON-RPC 2.0 |
 | `http` | `HTTPExtensionAgent` | Same HTTP/SSE protocol as docker/remote |
 
 Wire protocol methods (stdio and TCP):
@@ -115,11 +115,11 @@ Wire protocol methods (stdio and TCP):
 | `harness.cancel` | Params: `{runId}` |
 | `harness.shutdown` | Release resources |
 
-Framework: [`harness-sdk/loop_agent_stdio.py`](../harness-sdk/loop_agent_stdio.py). Example extension: [`dev/extension-examples/corp-pack/`](../dev/extension-examples/corp-pack/).
+Framework: [`harness-sdk/nui_agent_stdio.py`](../harness-sdk/nui_agent_stdio.py). Example extension: [`dev/extension-examples/corp-pack/`](../dev/extension-examples/corp-pack/).
 
 ### TCP connection file
 
-TCP and HTTP extension hosts write `~/.loop/connections/<id>.json`:
+TCP and HTTP extension hosts write `~/.nui/connections/<id>.json`:
 
 ```json
 {"host": "127.0.0.1", "port": 52341, "session_id": "...", "pid": 9876}
@@ -127,7 +127,7 @@ TCP and HTTP extension hosts write `~/.loop/connections/<id>.json`:
 
 ## 4. API harness (in-process)
 
-Builtin and ADL agents with `harness.type: api` run entirely inside the Loop binary via thin HTTP clients in `internal/llm`. No CLI subprocess is required.
+Builtin and ADL agents with `harness.type: api` run entirely inside the nui binary via thin HTTP clients in `internal/llm`. No CLI subprocess is required.
 
 | Builtin ID | Provider | Credentials |
 |---|---|---|
@@ -146,16 +146,16 @@ harness:
   model: claude-sonnet-4-20250514
 ```
 
-Tool calling uses session-scoped MCP servers from ADL `aiAssets.mcpServers` (including extension custom tools). Loop implements the agentic tool loop and emits the same `agent.Event` tool-call events as CLI harnesses.
+Tool calling uses session-scoped MCP servers from ADL `aiAssets.mcpServers` (including extension custom tools). nui implements the agentic tool loop and emits the same `agent.Event` tool-call events as CLI harnesses.
 
 ## 5. Standalone reference examples (not wired)
 
-The folders [`dev/harness-examples/py/`](harness-examples/py/) and [`dev/harness-examples/ts/`](harness-examples/ts/) demonstrate the TCP JSON-RPC protocol and SDK without an `extension.yaml`. They are **not** registered with Loop's extension system and are not selectable as agent types. Use them to learn the wire protocol; ship production harnesses as installed extensions.
+The folders [`dev/harness-examples/py/`](harness-examples/py/) and [`dev/harness-examples/ts/`](harness-examples/ts/) demonstrate the TCP JSON-RPC protocol and SDK without an `extension.yaml`. They are **not** registered with nui's extension system and are not selectable as agent types. Use them to learn the wire protocol; ship production harnesses as installed extensions.
 
 | Language | Framework | Example |
 |---|---|---|
-| Python | `harness-sdk/loop_agent.py` | `dev/harness-examples/py/echo_agent.py` |
-| TypeScript | `dev/harness-examples/ts/loop_agent.ts` | `dev/harness-examples/ts/echo_agent.ts` |
+| Python | `harness-sdk/nui_agent.py` | `dev/harness-examples/py/echo_agent.py` |
+| TypeScript | `dev/harness-examples/ts/nui_agent.ts` | `dev/harness-examples/ts/echo_agent.ts` |
 
 Test with `dev/harness-examples/py/client.py` or `ts/client.ts`.
 
@@ -185,7 +185,7 @@ ZeroMQ requires native bindings (`pyzmq`, `zeromq.js`) — significant install f
 go-plugin is Go-centric; cross-language gRPC boilerplate is non-trivial for harness authors.
 
 ### The MCP question
-MCP uses JSON-RPC 2.0 over stdio or SSE with official SDKs. Loop already surfaces MCP tool UI for Claude tool events via AG-UI. Full MCP-as-harness-protocol remains an open question.
+MCP uses JSON-RPC 2.0 over stdio or SSE with official SDKs. nui already surfaces MCP tool UI for Claude tool events via AG-UI. Full MCP-as-harness-protocol remains an open question.
 
 ---
 

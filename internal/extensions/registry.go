@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/model"
+	"nui/internal/store"
 )
 
 // Extension holds a loaded extension and its resolved contribution lists.
@@ -60,7 +60,7 @@ type Registry struct {
 // Default is the process-wide extension registry, set at server startup.
 var Default *Registry
 
-// LoadRegistry scans ~/.loop/extensions/*/extension.yaml and resolves contribution lists.
+// LoadRegistry scans ~/.nui/extensions/*/extension.yaml and resolves contribution lists.
 func LoadRegistry() (*Registry, error) {
 	dir, err := store.ExtensionsDir()
 	if err != nil {

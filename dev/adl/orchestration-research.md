@@ -1,6 +1,6 @@
 # ADL Multi-Step Orchestration — Research Findings [AI generated]
 
-> **Status:** Historical research (non-normative, partially outdated). Loop runs steps **sequentially** only (no parallel ready-steps). Parallel policies and go-workflow adoption described below were not implemented. See [`dev/dev.md`](../dev.md) for the current schema and API.
+> **Status:** Historical research (non-normative, partially outdated). nui runs steps **sequentially** only (no parallel ready-steps). Parallel policies and go-workflow adoption described below were not implemented. See [`dev/dev.md`](../dev.md) for the current schema and API.
 
 > **Note:** Some harness wiring below is outdated. Builtin CLI harnesses are Go-managed subprocesses, not TCP `ExtensionAgent` processes. API paths use `/api/sessions/`, not `/api/projects/`. ADL no longer includes step `policy`, `approval`, `constraints`, or `schedule` — see [dev.md](../dev.md) for the current schema.
 
@@ -106,7 +106,7 @@ Sources: [OpenAI Agents SDK handoffs](https://openai.github.io/openai-agents-pyt
 | Dapr | `WaitForExternalEvent` | `POST raise-event` API; optional `when_any([approval, timeout])` race |
 | Microsoft Agent Framework | `RequestPort/RequestInfoEvent` checkpoint | Re-emits pending requests on restore |
 
-**Key finding for Loop:** pending approval state must be **persisted** (in `~/.loop/data.json`)
+**Key finding for nui:** pending approval state must be **persisted** (in `~/.nui/data.json`)
 so a server restart can re-emit the pending gate. The Microsoft Agent Framework pattern is most
 directly applicable:
 1. Persist gate state at checkpoint
@@ -114,7 +114,7 @@ directly applicable:
 3. Route human response back via the same channel as normal step outputs
 
 **Refuted (0-3):** Temporal's pause is "effectively free." It occupies a slot but doesn't burn
-CPU. Matters for Loop's resource model if many projects have pending approvals simultaneously.
+CPU. Matters for nui's resource model if many projects have pending approvals simultaneously.
 
 Sources: [LangGraph](https://docs.langchain.com/oss/python/langgraph/graph-api) · [Temporal HITL tutorial](https://learn.temporal.io/tutorials/ai/building-durable-ai-applications/human-in-the-loop/) · [Dapr workflow patterns](https://docs.dapr.io/developing-applications/building-blocks/workflow/workflow-patterns/) · [Microsoft Agent Framework HITL](https://learn.microsoft.com/en-us/agent-framework/workflows/human-in-the-loop) (3-0 on all four)
 
@@ -131,14 +131,14 @@ Agent Spec v1 defines three harnesses:
 
 Zero mentions of Docker or containers. Container isolation is infrastructure below the spec.
 
-**Implication:** Loop's Docker harness is correctly modeled as RemoteTools (container exposes
+**Implication:** nui's Docker harness is correctly modeled as RemoteTools (container exposes
 HTTP/SSE) — no spec alignment work needed. The existing `HTTPExtensionAgent` already fits.
 
 Source: [Agent Spec v1](https://arxiv.org/html/2510.04173v1) (3-0 verified)
 
 ---
 
-## Recommended ADL Execution Design for Loop
+## Recommended ADL Execution Design for nui
 
 ```
 ADL YAML parse → StepGraph (nodes + dependsOn edges)

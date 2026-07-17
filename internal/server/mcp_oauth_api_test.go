@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"loop/internal/mcpoauth"
+	"nui/internal/mcpoauth"
 )
 
 func TestHandleMCPOAuthRedirectURI(t *testing.T) {

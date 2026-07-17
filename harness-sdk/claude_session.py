@@ -154,7 +154,7 @@ class PersistentClaudeSession:
             claude_args += ["--resume", resume]
 
         args = self._wrap_args(claude_args, wd)
-        cwd = None if os.environ.get("LOOP_BWRAP_PATH") else wd
+        cwd = None if os.environ.get("NUI_BWRAP_PATH") else wd
 
         proc = subprocess.Popen(
             args,

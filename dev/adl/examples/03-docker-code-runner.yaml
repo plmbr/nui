@@ -1,12 +1,12 @@
 adl: "1.0"
 
 # Single-step agent running inside a Docker container.
-# The container image implements the Loop HTTP/SSE harness protocol:
+# The container image implements the nui HTTP/SSE harness protocol:
 #   GET  /info  → {"name","version","capabilities"}
 #   POST /run   → text/event-stream
 #   POST /cancel
 #
-# Loop launches the container automatically on first use and stops it on delete.
+# nui launches the container automatically on first use and stops it on delete.
 
 id: code-runner
 name: Code Runner
@@ -15,7 +15,7 @@ version: 0.1.0
 
 harness:
   type: docker
-  image: loop-code-runner:latest    # must be built locally: docker build -t loop-code-runner .
+  image: nui-code-runner:latest    # must be built locally: docker build -t nui-code-runner .
   containerPort: 9090
 
 steps:

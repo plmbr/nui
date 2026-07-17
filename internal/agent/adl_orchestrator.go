@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"loop/internal/hitl"
-	"loop/internal/model"
+	"nui/internal/hitl"
+	"nui/internal/model"
 )
 
 type resolvedSubAgent struct {

@@ -3,8 +3,8 @@
 package server
 
 import (
-	"loop/internal/agent"
-	"loop/internal/model"
+	"nui/internal/agent"
+	"nui/internal/model"
 )
 
 // wireAPIHarnessRunRequest fills api-harness fields on RunRequest from session state.

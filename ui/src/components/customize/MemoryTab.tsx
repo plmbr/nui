@@ -17,8 +17,8 @@ const MEMORY_MODE_OPTIONS: { value: MemoryMode; label: string }[] = [
 ]
 
 function memoryPath(scope: 'user' | 'agent', agentId?: string): string {
-  if (scope === 'user') return '~/.loop/memory/user.md'
-  return `~/.loop/memory/agents/${agentId}.md`
+  if (scope === 'user') return '~/.nui/memory/user.md'
+  return `~/.nui/memory/agents/${agentId}.md`
 }
 
 function resolveUserMode(summary: MemorySummary | null, fallback?: MemoryMode): MemoryMode {
@@ -207,7 +207,7 @@ export function MemoryTab() {
   return (
     <div className="customize-tab-content space-y-6">
       <p className="text-sm text-muted-foreground">
-        Persistent markdown memory in <code className="text-xs">~/.loop/memory/</code>.
+        Persistent markdown memory in <code className="text-xs">~/.nui/memory/</code>.
         <strong className="font-medium"> Disabled</strong> turns off read and write.
         <strong className="font-medium"> Manual</strong> injects memory; saves on request.
         <strong className="font-medium"> Auto</strong> injects memory and lets the agent save proactively.

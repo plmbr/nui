@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strings"
 
-	"loop/internal/devcontainer"
-	"loop/internal/extensions"
-	"loop/internal/model"
+	"nui/internal/devcontainer"
+	"nui/internal/extensions"
+	"nui/internal/model"
 )
 
 type harnessRunner func(ctx context.Context, a *ADLAgent, req RunRequest, harness model.ADLHarness, events chan<- Event) error
@@ -29,7 +29,7 @@ func (a *ADLAgent) harnessProjectID(req RunRequest, harness model.ADLHarness) st
 	if !req.Ephemeral {
 		return a.projectID
 	}
-	// Docker and devcontainer share one container per Loop session; ephemeral turns use flags instead.
+	// Docker and devcontainer share one container per nui session; ephemeral turns use flags instead.
 	if harness.Sandbox == "docker" || harness.Type == "devcontainer" {
 		return a.projectID
 	}

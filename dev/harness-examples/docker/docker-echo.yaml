@@ -4,5 +4,5 @@ name: Docker Echo
 description: Echo agent in a Docker container (build dev/harness-examples/docker first)
 harness:
   type: docker
-  image: loop-echo-agent
+  image: nui-echo-agent
   containerPort: 9090

@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"loop/internal/mentions"
+	"nui/internal/mentions"
 )
 
 // MentionRPCClient talks to an extension mention provider over stdio JSON-RPC.
@@ -28,10 +28,10 @@ func NewMentionRPCClient(extDir, extName, providerID string, rt RuntimeConfig) (
 	}
 	cmd := expandCommand(rt.Command, extDir)
 	env := append(os.Environ(),
-		"LOOP_EXTENSION_DIR="+extDir,
-		"LOOP_EXTENSION_NAME="+extName,
-		"LOOP_MENTION_PROVIDER_ID="+providerID,
-		"LOOP_MENTION_SDK_DIR="+sdkDir,
+		"NUI_EXTENSION_DIR="+extDir,
+		"NUI_EXTENSION_NAME="+extName,
+		"NUI_MENTION_PROVIDER_ID="+providerID,
+		"NUI_MENTION_SDK_DIR="+sdkDir,
 	)
 	rpc, err := StartStdioRPC(cmd, env, runtimeCwd(extDir, &rt))
 	if err != nil {

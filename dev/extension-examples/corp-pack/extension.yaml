@@ -1,4 +1,4 @@
-apiVersion: loop.dev/extension/v1
+apiVersion: nui.dev/extension/v1
 name: corp-pack
 version: 1.0.0
 displayName: Corp Pack
@@ -11,7 +11,7 @@ contributions:
         tools:
           - name: echo
             description: Echo a message back
-            command: ["python3", "${LOOP_EXTENSION_DIR}/tools/echo.py"]
+            command: ["python3", "${NUI_EXTENSION_DIR}/tools/echo.py"]
             inputSchema:
               type: object
               properties:
@@ -21,7 +21,7 @@ contributions:
               required: [message]
           - name: reverse
             description: Reverse a message
-            command: ["python3", "${LOOP_EXTENSION_DIR}/tools/reverse.py"]
+            command: ["python3", "${NUI_EXTENSION_DIR}/tools/reverse.py"]
             inputSchema:
               type: object
               properties:

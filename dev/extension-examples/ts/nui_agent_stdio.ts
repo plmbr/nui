@@ -1,9 +1,9 @@
 /**
- * Loop harness framework — stdio JSON-RPC for ~/.loop/extensions/.
+ * nui harness framework — stdio JSON-RPC for ~/.nui/extensions/.
  *
  * Usage:
- *   import { LoopAgent } from "./loop_agent_stdio.js";
- *   class Echo extends LoopAgent {
+ *   import { NuiAgent } from "./nui_agent_stdio.js";
+ *   class Echo extends NuiAgent {
  *     name = "echo";
  *     run(message) { return [message]; }
  *   }
@@ -12,8 +12,8 @@
 
 import * as readline from "node:readline";
 
-export class LoopAgent {
-  name = "loop-agent";
+export class NuiAgent {
+  name = "nui-agent";
   version = "0.1.0";
 
   run(_message: string, _runId: string, _kwargs: Record<string, string> = {}): string[] {
@@ -21,7 +21,7 @@ export class LoopAgent {
   }
 
   serveStdio(): void {
-    const harnessId = process.env.LOOP_HARNESS_ID ?? this.name;
+    const harnessId = process.env.NUI_HARNESS_ID ?? this.name;
     const rl = readline.createInterface({ input: process.stdin });
     rl.on("line", (line) => {
       if (!line.trim()) return;

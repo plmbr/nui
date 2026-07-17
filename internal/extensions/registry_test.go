@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"loop/internal/extensions"
+	"nui/internal/extensions"
 )
 
 func TestLoadRegistryFromFiles(t *testing.T) {
 	home := t.TempDir()
-	extRoot := filepath.Join(home, ".loop", "extensions")
+	extRoot := filepath.Join(home, ".nui", "extensions")
 	extDir := filepath.Join(extRoot, "corp-pack")
 	if err := os.MkdirAll(filepath.Join(extDir, "skills", "code-review"), 0755); err != nil {
 		t.Fatal(err)
@@ -21,7 +21,7 @@ func TestLoadRegistryFromFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	manifest := `apiVersion: loop.dev/extension/v1
+	manifest := `apiVersion: nui.dev/extension/v1
 name: corp-pack
 version: 1.0.0
 displayName: Corp Pack
@@ -144,11 +144,11 @@ func TestParseExtRef(t *testing.T) {
 
 func TestLoadRegistryLegacyCatalogKeys(t *testing.T) {
 	home := t.TempDir()
-	extDir := filepath.Join(home, ".loop", "extensions", "legacy-pack")
+	extDir := filepath.Join(home, ".nui", "extensions", "legacy-pack")
 	if err := os.MkdirAll(extDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: loop.dev/extension/v1
+	manifest := `apiVersion: nui.dev/extension/v1
 name: legacy-pack
 version: 1.0.0
 contributions:

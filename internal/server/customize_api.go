@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/agents"
-	"loop/internal/model"
-	"loop/internal/skills"
-	"loop/internal/store"
+	"nui/internal/agents"
+	"nui/internal/model"
+	"nui/internal/skills"
+	"nui/internal/store"
 
 	"gopkg.in/yaml.v3"
 )

@@ -13,7 +13,7 @@ import (
 
 const manifestName = "extension.yaml"
 
-// Manifest is the extension entry point at ~/.loop/extensions/<name>/extension.yaml.
+// Manifest is the extension entry point at ~/.nui/extensions/<name>/extension.yaml.
 type Manifest struct {
 	APIVersion    string         `yaml:"apiVersion"`
 	Name          string         `yaml:"name"`
@@ -138,7 +138,7 @@ func validateManifest(dir string, m Manifest, matchDirName bool) error {
 	if matchDirName && m.Name != dirName {
 		return fmt.Errorf("extension %s: name %q must match directory name", dirName, m.Name)
 	}
-	if m.APIVersion != "" && m.APIVersion != "loop.dev/extension/v1" {
+	if m.APIVersion != "" && m.APIVersion != "nui.dev/extension/v1" {
 		return fmt.Errorf("extension %s: unsupported apiVersion %q", m.Name, m.APIVersion)
 	}
 	if m.IsProgrammatic() {
@@ -238,9 +238,9 @@ func expandRuntimeCommand(cmd []string, extDir, entry string) []string {
 	out := make([]string, len(cmd))
 	copy(out, cmd)
 	for i, part := range out {
-		part = strings.ReplaceAll(part, "${LOOP_EXTENSION_DIR}", extDir)
+		part = strings.ReplaceAll(part, "${NUI_EXTENSION_DIR}", extDir)
 		if entry != "" {
-			part = strings.ReplaceAll(part, "${LOOP_EXTENSION_ENTRY}", entry)
+			part = strings.ReplaceAll(part, "${NUI_EXTENSION_ENTRY}", entry)
 		}
 		out[i] = part
 	}
@@ -255,7 +255,7 @@ func resolveInstallEntry(extDir string, install *InstallConfig) string {
 	if entry == "" {
 		return ""
 	}
-	entry = strings.ReplaceAll(entry, "${LOOP_EXTENSION_DIR}", extDir)
+	entry = strings.ReplaceAll(entry, "${NUI_EXTENSION_DIR}", extDir)
 	if filepath.IsAbs(entry) {
 		return entry
 	}

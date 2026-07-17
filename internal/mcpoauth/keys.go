@@ -6,13 +6,13 @@ import (
 	"net/url"
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 const (
-	loopHitlMCPName  = "loop-hitl"
-	loopVizMCPName   = "loop-viz"
-	loopAgentMCPName = "loop-agent"
+	nuiHitlMCPName  = "nui-hitl"
+	loopVizMCPName   = "nui-viz"
+	nuiAgentMCPName = "nui-agent"
 )
 
 // ServerKey returns the canonical key for token storage.
@@ -34,11 +34,11 @@ func canonicalURL(raw string) string {
 	return strings.TrimRight(u.String(), "/")
 }
 
-// IsBuiltin reports whether the server is a Loop-injected stdio MCP server.
+// IsBuiltin reports whether the server is a nui-injected stdio MCP server.
 func IsBuiltin(srv model.ADLMCPServer) bool {
 	name := strings.TrimSpace(srv.Name)
 	switch name {
-	case loopHitlMCPName, loopVizMCPName, loopAgentMCPName:
+	case nuiHitlMCPName, loopVizMCPName, nuiAgentMCPName:
 		return true
 	default:
 		return strings.HasPrefix(name, "ext-")

@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 const openRouterDefaultBaseURL = "https://openrouter.ai/api/v1"

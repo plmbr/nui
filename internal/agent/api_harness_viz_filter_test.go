@@ -5,7 +5,7 @@ package agent
 import (
 	"testing"
 
-	"loop/internal/llm"
+	"nui/internal/llm"
 )
 
 func TestShouldAnswerInPlainText(t *testing.T) {

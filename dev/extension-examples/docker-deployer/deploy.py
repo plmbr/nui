@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Docker agent deployer for Loop extensions.
+Docker agent deployer for nui extensions.
 
 Reads one JSON deploy request from stdin, writes one JSON response to stdout.
 Registry, push, and run behavior come from deploy-config.yaml or env vars.
@@ -93,12 +93,12 @@ def deploy(req: dict[str, Any], ext_dir: Path) -> dict[str, Any]:
     definition = req.get("definition") or {}
     agent_id = sanitize_tag(req.get("agentId") or definition.get("id") or "agent")
     version = sanitize_tag(definition.get("version") or "latest")
-    local_tag = f"loop-{agent_id}:{version}"
+    local_tag = f"nui-{agent_id}:{version}"
     port = cfg_port(cfg, definition)
 
-    build_dir = Path(tempfile.mkdtemp(prefix="loop-deploy-"))
+    build_dir = Path(tempfile.mkdtemp(prefix="nui-deploy-"))
     try:
-        shutil.copy(ext_dir / "loop_agent.py", build_dir / "loop_agent.py")
+        shutil.copy(ext_dir / "nui_agent.py", build_dir / "nui_agent.py")
         (build_dir / "agent.yaml").write_text(json.dumps(definition, indent=2), encoding="utf-8")
 
         assets = req.get("assets") or {}
@@ -124,9 +124,9 @@ def deploy(req: dict[str, Any], ext_dir: Path) -> dict[str, Any]:
         runner = f'''#!/usr/bin/env python3
 import json
 from pathlib import Path
-from loop_agent import LoopAgent
+from nui_agent import NuiAgent
 
-class DeployedAgent(LoopAgent):
+class DeployedAgent(NuiAgent):
     def __init__(self):
         data = json.loads(Path("/app/agent.yaml").read_text())
         self.name = data.get("id") or data.get("name") or "deployed-agent"
@@ -146,7 +146,7 @@ if __name__ == "__main__":
 
         dockerfile = f"""FROM {cfg['baseImage']}
 WORKDIR /app
-COPY loop_agent.py agent_runner.py agent.yaml ./
+COPY nui_agent.py agent_runner.py agent.yaml ./
 COPY skills/ ./skills/
 COPY rules/ ./rules/
 EXPOSE {port}
@@ -154,11 +154,11 @@ CMD ["python3", "agent_runner.py", "--port", "{port}"]
 """
         (build_dir / "Dockerfile").write_text(dockerfile, encoding="utf-8")
 
-        dry_run = os.environ.get("LOOP_DEPLOY_DRY_RUN", "").lower() in ("1", "true", "yes")
+        dry_run = os.environ.get("NUI_DEPLOY_DRY_RUN", "").lower() in ("1", "true", "yes")
         image_ref = local_tag
         registry = str(cfg.get("registry") or "").strip().rstrip("/")
         if registry:
-            image_ref = f"{registry}/loop-{agent_id}:{version}"
+            image_ref = f"{registry}/nui-{agent_id}:{version}"
 
         if not dry_run:
             if not docker_available():
@@ -182,7 +182,7 @@ CMD ["python3", "agent_runner.py", "--port", "{port}"]
 
         return {
             "ok": True,
-            "deploymentId": f"loop-{agent_id}-{version}",
+            "deploymentId": f"nui-{agent_id}-{version}",
             "status": "ready",
             "message": message,
             "endpoint": endpoint,
@@ -192,7 +192,7 @@ CMD ["python3", "agent_runner.py", "--port", "{port}"]
 
 
 def main() -> None:
-    ext_dir = Path(os.environ.get("LOOP_EXTENSION_DIR", Path(__file__).resolve().parent))
+    ext_dir = Path(os.environ.get("NUI_EXTENSION_DIR", Path(__file__).resolve().parent))
     line = sys.stdin.readline()
     if not line.strip():
         fail("empty request")

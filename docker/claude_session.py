@@ -46,12 +46,12 @@ def run_ephemeral_claude_turn(
         claude_args += ["--system-prompt", system_prompt]
     if kwargs.get("userScopeHarness"):
         claude_args += ["--setting-sources", "user,project,local"]
-        mcp_path = os.path.join("/home/loop/.loop/session-config", ".claude.json")
+        mcp_path = os.path.join("/home/nui/.nui/session-config", ".claude.json")
         if os.path.isfile(mcp_path):
             claude_args += ["--mcp-config", mcp_path]
 
     args = wrap(claude_args, wd)
-    cwd = None if os.environ.get("LOOP_BWRAP_PATH") else wd
+    cwd = None if os.environ.get("NUI_BWRAP_PATH") else wd
 
     proc = subprocess.Popen(
         args,
@@ -267,12 +267,12 @@ class PersistentClaudeSession:
             claude_args += ["--resume", resume]
         if kwargs.get("userScopeHarness"):
             claude_args += ["--setting-sources", "user,project,local"]
-            mcp_path = os.path.join("/home/loop/.loop/session-config", ".claude.json")
+            mcp_path = os.path.join("/home/nui/.nui/session-config", ".claude.json")
             if os.path.isfile(mcp_path):
                 claude_args += ["--mcp-config", mcp_path]
 
         args = self._wrap_args(claude_args, wd)
-        cwd = None if os.environ.get("LOOP_BWRAP_PATH") else wd
+        cwd = None if os.environ.get("NUI_BWRAP_PATH") else wd
 
         proc = subprocess.Popen(
             args,

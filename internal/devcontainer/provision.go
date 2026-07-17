@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	containerWorkspace = "/workspaces/loop"
-	containerUser      = "loop"
+	containerWorkspace = "/workspaces/nui"
+	containerUser      = "nui"
 )
 
 // ContainerWorkspace is the path inside the devcontainer where the session workspace is mounted.
@@ -20,20 +20,20 @@ func ContainerWorkspace() string {
 	return containerWorkspace
 }
 
-// SessionConfigMountPath is where Loop mounts provisioned harness config inside the container.
+// SessionConfigMountPath is where nui mounts provisioned harness config inside the container.
 func SessionConfigMountPath() string {
-	return fmt.Sprintf("/home/%s/.loop/session-config", containerUser)
+	return fmt.Sprintf("/home/%s/.nui/session-config", containerUser)
 }
 
-// DefaultImages maps inner harness types to Loop-managed devcontainer images.
+// DefaultImages maps inner harness types to nui-managed devcontainer images.
 var DefaultImages = map[string]string{
-	"claude-code": "loop-devcontainer-claude-code:latest",
-	"pi":          "loop-devcontainer-pi:latest",
-	"codex":       "loop-devcontainer-codex:latest",
-	"opencode":    "loop-devcontainer-opencode:latest",
+	"claude-code": "nui-devcontainer-claude-code:latest",
+	"pi":          "nui-devcontainer-pi:latest",
+	"codex":       "nui-devcontainer-codex:latest",
+	"opencode":    "nui-devcontainer-opencode:latest",
 }
 
-// ProvisionOpts configures Loop-managed devcontainer.json generation.
+// ProvisionOpts configures nui-managed devcontainer.json generation.
 type ProvisionOpts struct {
 	SessionID        string
 	InnerHarness     string
@@ -62,10 +62,10 @@ func ManagedWorkspaceFolder(sessionID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".loop", "sessions", sessionID), nil
+	return filepath.Join(home, ".nui", "sessions", sessionID), nil
 }
 
-// ProvisionSession writes ~/.loop/sessions/<sessionId>/.devcontainer/devcontainer.json.
+// ProvisionSession writes ~/.nui/sessions/<sessionId>/.devcontainer/devcontainer.json.
 func ProvisionSession(opts ProvisionOpts) (string, error) {
 	sessionID := strings.TrimSpace(opts.SessionID)
 	if sessionID == "" {
@@ -102,7 +102,7 @@ func ProvisionSession(opts ProvisionOpts) (string, error) {
 	runArgs := loopbackRunArgs()
 
 	spec := devcontainerSpec{
-		Name:            "loop-session-" + sessionID,
+		Name:            "nui-session-" + sessionID,
 		Image:           image,
 		RemoteUser:      containerUser,
 		WorkspaceFolder: containerWorkspace,
@@ -136,7 +136,7 @@ func buildMounts(workingDir, sessionConfigDir string) []string {
 	sessionConfigDir = strings.TrimSpace(sessionConfigDir)
 	if sessionConfigDir != "" {
 		mounts = append(mounts, fmt.Sprintf(
-			"source=%s,target=/home/%s/.loop/session-config,type=bind",
+			"source=%s,target=/home/%s/.nui/session-config,type=bind",
 			sessionConfigDir, containerUser,
 		))
 	}

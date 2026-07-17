@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"loop/internal/loopclient"
+	"nui/internal/nuiclient"
 
 	"github.com/spf13/cobra"
 )
@@ -24,11 +24,11 @@ var (
 	runSessionID  string
 )
 
-// NewRunCmd returns the loop run command.
+// NewRunCmd returns the nui run command.
 func NewRunCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run",
-		Short: "Run an agent headlessly against a Loop server",
+		Short: "Run an agent headlessly against a nui server",
 		RunE:  runCommand,
 	}
 	registerRunFlags(cmd)
@@ -47,8 +47,8 @@ func runCommand(cmd *cobra.Command, args []string) error {
 			ctx = context.Background()
 		}
 
-		client := loopclient.New(runURL)
-		if err := ensureLoopServer(ctx, client, runSpawn); err != nil {
+		client := nuiclient.New(runURL)
+		if err := ensureNuiServer(ctx, client, runSpawn); err != nil {
 			return err
 		}
 
@@ -71,7 +71,7 @@ func runCommand(cmd *cobra.Command, args []string) error {
 				}
 				wd = cwd
 			}
-			sess, err := client.CreateSession(ctx, loopclient.CreateSessionRequest{
+			sess, err := client.CreateSession(ctx, nuiclient.CreateSessionRequest{
 				AgentType:  agentType,
 				WorkingDir: wd,
 			})
@@ -83,7 +83,7 @@ func runCommand(cmd *cobra.Command, args []string) error {
 		}
 
 		msg := strings.TrimSpace(runMessage)
-		started, err := client.StartRun(ctx, sessionID, loopclient.StartRunRequest{Message: msg})
+		started, err := client.StartRun(ctx, sessionID, nuiclient.StartRunRequest{Message: msg})
 		if err != nil {
 			return err
 		}
@@ -129,11 +129,11 @@ func registerRunFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&runAgentType, "agent-type", "a", "", "ADL agent id for a new session (default: settings defaultAgentType)")
 	cmd.Flags().StringVarP(&runMessage, "message", "m", "", "Prompt message (optional for promptMode:auto agents)")
 	cmd.Flags().StringVarP(&runWorkingDir, "working-dir", "w", "", "Working directory for a new session")
-	cmd.Flags().StringVar(&runURL, "url", "", "Loop server base URL (default LOOP_URL or http://127.0.0.1:8080)")
+	cmd.Flags().StringVar(&runURL, "url", "", "nui server base URL (default NUI_URL or http://127.0.0.1:8080)")
 	cmd.Flags().StringVar(&runSessionID, "session-id", "", "Existing session id (skips session create)")
 	cmd.Flags().BoolVar(&runWait, "wait", true, "Wait for the run to finish and stream text to stdout")
 	cmd.Flags().Bool("no-wait", false, "Return immediately after starting the run (same as --wait=false)")
-	cmd.Flags().BoolVar(&runSpawn, "spawn", false, "Start loop ui in the background if the server is unreachable")
+	cmd.Flags().BoolVar(&runSpawn, "spawn", false, "Start nui ui in the background if the server is unreachable")
 }
 
 func init() {

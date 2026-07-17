@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
-	"loop/internal/agent"
-	"loop/internal/model"
-	"loop/internal/viz"
+	"nui/internal/agent"
+	"nui/internal/model"
+	"nui/internal/viz"
 )
 
 type assistantPartAccumulator struct {

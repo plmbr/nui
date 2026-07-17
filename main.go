@@ -2,7 +2,7 @@
 
 package main
 
-import "loop/cmd"
+import "nui/cmd"
 
 func main() {
 	cmd.SetVersion(version())

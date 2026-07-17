@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Minimal Ollama API mock for Loop Playwright E2E tests.
+Minimal Ollama API mock for nui Playwright E2E tests.
 
 Simulates weak local models that print tool JSON as assistant text instead of
-using native tool_calls. Loop should recover tool calls and never show raw JSON.
+using native tool_calls. nui should recover tool calls and never show raw JSON.
 
 Run:
     python3 ollama_e2e_server.py --port 11435

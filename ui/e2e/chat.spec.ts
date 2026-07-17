@@ -14,11 +14,11 @@ test('echo agent chat returns streamed reply', async ({ page }) => {
 
   await waitForAppReady(page)
   await createSessionWithAgent(page, /E2E Echo/i)
-  await sendChatMessage(page, 'hello loop')
-  await expect(page.getByText(/Echo: hello loop/i)).toBeVisible({ timeout: 30_000 })
+  await sendChatMessage(page, 'hello nui')
+  await expect(page.getByText(/Echo: hello nui/i)).toBeVisible({ timeout: 30_000 })
 
   await page.reload()
-  await expect(page.getByText(/Echo: hello loop/i)).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText(/Echo: hello nui/i)).toBeVisible({ timeout: 15_000 })
 })
 
 test('claude-code chat returns deterministic reply', async ({ page }) => {
@@ -27,6 +27,6 @@ test('claude-code chat returns deterministic reply', async ({ page }) => {
   test.setTimeout(120_000)
   await waitForAppReady(page)
   await createSessionWithAgent(page, /Claude Code/i)
-  await sendChatMessage(page, 'Reply with exactly: LOOP_E2E_OK')
-  await expect(page.getByText(/LOOP_E2E_OK/)).toBeVisible({ timeout: 90_000 })
+  await sendChatMessage(page, 'Reply with exactly: NUI_E2E_OK')
+  await expect(page.getByText(/NUI_E2E_OK/)).toBeVisible({ timeout: 90_000 })
 })

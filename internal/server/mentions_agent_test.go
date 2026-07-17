@@ -7,16 +7,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	"loop/internal/extensions"
+	"nui/internal/extensions"
 )
 
 func TestAllowedMentionRootsForAgent(t *testing.T) {
 	home := t.TempDir()
-	extDir := filepath.Join(home, ".loop", "extensions", "nbi")
+	extDir := filepath.Join(home, ".nui", "extensions", "nbi")
 	if err := os.MkdirAll(extDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: loop.dev/extension/v1
+	manifest := `apiVersion: nui.dev/extension/v1
 name: nbi
 version: 1.0.0
 contributions:

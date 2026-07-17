@@ -7,11 +7,11 @@ import (
 	"os"
 	"strings"
 
-	"loop/internal/pathutil"
+	"nui/internal/pathutil"
 )
 
 // effectiveWorkingDir returns the session working directory when set, otherwise
-// the Loop process current working directory.
+// the nui process current working directory.
 func effectiveWorkingDir(requested string) (string, error) {
 	if wd := strings.TrimSpace(requested); wd != "" {
 		return pathutil.ExpandHome(wd)

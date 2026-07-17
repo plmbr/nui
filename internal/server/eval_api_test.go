@@ -13,7 +13,7 @@ import (
 
 func TestHandleAgentEvalRunValidation(t *testing.T) {
 	home := withTempHome(t)
-	agentsDir := filepath.Join(home, ".loop", "agents")
+	agentsDir := filepath.Join(home, ".nui", "agents")
 	if err := os.MkdirAll(agentsDir, 0o700); err != nil {
 		t.Fatal(err)
 	}

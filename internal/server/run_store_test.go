@@ -5,8 +5,8 @@ package server
 import (
 	"testing"
 
-	"loop/internal/agent"
-	"loop/internal/store"
+	"nui/internal/agent"
+	"nui/internal/store"
 )
 
 func TestAppendAndReadRunEvents(t *testing.T) {

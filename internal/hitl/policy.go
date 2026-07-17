@@ -3,7 +3,7 @@
 package hitl
 
 import (
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 const (

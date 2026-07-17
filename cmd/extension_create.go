@@ -54,17 +54,17 @@ name = "%s"
 version = "0.1.0"
 
 [project.scripts]
-loop-ext = "host:main"
+nui-ext = "host:main"
 
-[tool.loop]
+[tool.nui]
 id = "%s"
 displayName = "%s"
 `, id, id, id)
 	host := `import sys
 sys.path.insert(0, "../../harness-sdk")
-from loop_extension import LoopExtension
+from nui_extension import NuiExtension
 
-class MyExtension(LoopExtension):
+class MyExtension(NuiExtension):
     def get_harnesses(self):
         return [{"id": "echo", "displayName": "Echo"}]
 
@@ -86,13 +86,13 @@ func scaffoldNPMExtension(id, dir string) error {
   "name": "@local/%s",
   "version": "0.1.0",
   "type": "module",
-  "bin": { "loop-ext": "host.js" },
-  "loop": { "id": "%s", "displayName": "%s" }
+  "bin": { "nui-ext": "host.js" },
+  "nui": { "id": "%s", "displayName": "%s" }
 }
 `, id, id, id)
-	host := `import { LoopExtension } from "../../sdk/typescript/LoopExtension.ts";
+	host := `import { NuiExtension } from "../../sdk/typescript/NuiExtension.ts";
 
-class MyExtension extends LoopExtension {
+class MyExtension extends NuiExtension {
   getHarnesses() {
     return [{ id: "echo", displayName: "Echo" }];
   }
@@ -110,15 +110,15 @@ new MyExtension().serve();
 }
 
 func scaffoldGoExtension(id, dir string) error {
-	mod := "module " + id + "\n\ngo 1.22\n\nrequire loop/sdk/go/loopextension v0.0.0\n\nreplace loop/sdk/go/loopextension => ../../sdk/go/loopextension\n"
+	mod := "module " + id + "\n\ngo 1.22\n\nrequire nui/sdk/go/nuiextension v0.0.0\n\nreplace nui/sdk/go/nuiextension => ../../sdk/go/nuiextension\n"
 	main := `package main
 
 import (
 	"context"
-	"loop/sdk/go/loopextension"
+	"nui/sdk/go/nuiextension"
 )
 
-type ext struct{ loopextension.Base }
+type ext struct{ nuiextension.Base }
 
 func (e *ext) GetHarnesses() []map[string]any {
 	return []map[string]any{{"id": "echo", "displayName": "Echo"}}
@@ -132,7 +132,7 @@ func (e *ext) RunHarness(ctx context.Context, harnessID, message string, params 
 }
 
 func main() {
-	loopextension.ServeStdio(&ext{})
+	nuiextension.ServeStdio(&ext{})
 }
 `
 	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte(mod), 0644); err != nil {

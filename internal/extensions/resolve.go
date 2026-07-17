@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/model"
+	"nui/internal/store"
 )
 
 // ResolveMCPRef resolves ext:<extension>/<server-name> to an ADLMCPServer.
@@ -211,8 +211,8 @@ func (r *Registry) ExpandMCPServers(servers []model.ADLMCPServer) ([]model.ADLMC
 	return out, pending, nil
 }
 
-// LoopMCPServerConfigs returns MCP server configs from all extensions for Loop-side MCP manager.
-func (r *Registry) LoopMCPServerConfigs() map[string]map[string]any {
+// NuiMCPServerConfigs returns MCP server configs from all extensions for nui-side MCP manager.
+func (r *Registry) NuiMCPServerConfigs() map[string]map[string]any {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := map[string]map[string]any{}

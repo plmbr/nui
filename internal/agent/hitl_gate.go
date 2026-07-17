@@ -5,7 +5,7 @@ package agent
 import (
 	"context"
 
-	"loop/internal/hitl"
+	"nui/internal/hitl"
 )
 
 // OrchestrationGate executes ADL type: hitl workflow steps.

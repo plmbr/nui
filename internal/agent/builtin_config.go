@@ -5,7 +5,7 @@ package agent
 import (
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 func normalizeSandbox(s string) string {

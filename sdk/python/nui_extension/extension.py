@@ -1,4 +1,4 @@
-"""Loop programmatic extension base class."""
+"""nui programmatic extension base class."""
 
 from __future__ import annotations
 
@@ -9,24 +9,24 @@ import uuid
 from typing import Any, Generator, Iterable
 
 
-class LoopExtension:
-    """Base class for programmatic Loop extensions.
+class NuiExtension:
+    """Base class for programmatic nui extensions.
 
     Subclass and override discovery (get_*) and runtime (run_harness, list_mentions, ...) methods.
     """
 
-    api_version = "loop.dev/extension/v1"
+    api_version = "nui.dev/extension/v1"
 
     def __init__(self) -> None:
-        self.extension_dir = os.environ.get("LOOP_EXTENSION_DIR", "")
-        self.extension_name = os.environ.get("LOOP_EXTENSION_NAME", "")
-        self.api_url = os.environ.get("LOOP_API_URL", "http://127.0.0.1:8080")
+        self.extension_dir = os.environ.get("NUI_EXTENSION_DIR", "")
+        self.extension_name = os.environ.get("NUI_EXTENSION_NAME", "")
+        self.api_url = os.environ.get("NUI_API_URL", "http://127.0.0.1:8080")
         self._emit_event = None
 
     # --- lifecycle ---
 
     def initialize(self) -> None:
-        """Called once when Loop sends extension.initialize."""
+        """Called once when nui sends extension.initialize."""
 
     def shutdown(self) -> None:
         """Called on extension.shutdown before process exit."""
@@ -406,7 +406,7 @@ class LoopExtension:
         self._write({"jsonrpc": "2.0", "id": rid, "result": {"runId": run_id}})
 
     def ask_user(self, **kwargs: Any) -> dict[str, Any]:
-        from loop_hitl import ask_user as hitl_ask_user
+        from nui_hitl import ask_user as hitl_ask_user
 
         return hitl_ask_user(
             emit_event=self._emit_event,
@@ -414,7 +414,7 @@ class LoopExtension:
         )
 
     def request_approval(self, **kwargs: Any) -> dict[str, Any]:
-        from loop_hitl import request_approval as hitl_request_approval
+        from nui_hitl import request_approval as hitl_request_approval
 
         return hitl_request_approval(
             emit_event=self._emit_event,

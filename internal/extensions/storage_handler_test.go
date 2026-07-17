@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/extensions"
+	"nui/internal/extensions"
 )
 
 func TestStorageHandlerValidation(t *testing.T) {
@@ -83,11 +83,11 @@ func TestStorageHandlerValidation(t *testing.T) {
 
 func TestStorageHandlerRouting(t *testing.T) {
 	home := t.TempDir()
-	extDir := filepath.Join(home, ".loop", "extensions", "storage-pack")
+	extDir := filepath.Join(home, ".nui", "extensions", "storage-pack")
 	if err := os.MkdirAll(extDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: loop.dev/extension/v1
+	manifest := `apiVersion: nui.dev/extension/v1
 name: storage-pack
 version: 1.0.0
 contributions:

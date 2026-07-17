@@ -1,13 +1,13 @@
 """
-Loop extension mention provider — stdio JSON-RPC.
+nui extension mention provider — stdio JSON-RPC.
 
-Subclass LoopMentionProvider and override list_items / resolve_value, then call serve().
+Subclass NuiMentionProvider and override list_items / resolve_value, then call serve().
 
 Example:
 
-    from loop_mention import LoopMentionProvider
+    from nui_mention import NuiMentionProvider
 
-    class MyMentions(LoopMentionProvider):
+    class MyMentions(NuiMentionProvider):
         def list_items(self, parent="", query="", limit=20, **kwargs):
             if not parent:
                 return {"items": [{"label": "Runbooks", "value": "runbooks", "hasChildren": True}]}
@@ -26,8 +26,8 @@ import sys
 from typing import Any
 
 
-class LoopMentionProvider:
-    api_version = "loop.dev/extension/v1"
+class NuiMentionProvider:
+    api_version = "nui.dev/extension/v1"
     name = "mention-provider"
     version = "1.0.0"
 
@@ -68,7 +68,7 @@ class LoopMentionProvider:
                 "jsonrpc": "2.0",
                 "id": rid,
                 "result": {
-                    "id": os.environ.get("LOOP_MENTION_PROVIDER_ID", self.name),
+                    "id": os.environ.get("NUI_MENTION_PROVIDER_ID", self.name),
                     "name": self.name,
                     "version": self.version,
                     "capabilities": ["list", "resolve"],

@@ -5,7 +5,7 @@ package hitl
 import (
 	"testing"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 func TestEffectiveToolApprovalsFromADL(t *testing.T) {
@@ -61,7 +61,7 @@ func TestIsQuestionTool(t *testing.T) {
 	if !IsQuestionTool("ask_user") {
 		t.Fatal("expected ask_user")
 	}
-	if !IsQuestionTool("mcp__loop-hitl__ask_user") {
+	if !IsQuestionTool("mcp__nui-hitl__ask_user") {
 		t.Fatal("expected prefixed ask_user")
 	}
 	if !IsQuestionTool("AskUserQuestion") {
@@ -102,7 +102,7 @@ func TestShouldAutoApproveToolPolicies(t *testing.T) {
 }
 
 func TestToolsForPermissionsAllow(t *testing.T) {
-	base := []string{"mcp__loop-hitl__*"}
+	base := []string{"mcp__nui-hitl__*"}
 	got := ToolsForPermissionsAllow(ToolApprovalAll, nil, base)
 	if len(got) != 2 || got[1] != "*" {
 		t.Fatalf("all policy = %v", got)

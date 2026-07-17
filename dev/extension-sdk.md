@@ -1,8 +1,8 @@
-# Loop Extension SDK
+# nui Extension SDK
 
-Programmatic extensions run as **external processes** and implement a `LoopExtension` base class by overriding methods. Loop generates a minimal `extension.yaml` at install time (`runtime` + `install` only) and discovers capabilities via `extension.initialize` IPC.
+Programmatic extensions run as **external processes** and implement a `NuiExtension` base class by overriding methods. nui generates a minimal `extension.yaml` at install time (`runtime` + `install` only) and discovers capabilities via `extension.initialize` IPC.
 
-Declarative packs (`extension.yaml` + static files + bash scripts) remain supported via `loop extension add ./pack`.
+Declarative packs (`extension.yaml` + static files + bash scripts) remain supported via `nui extension add ./pack`.
 
 ## Extension shapes
 
@@ -13,12 +13,12 @@ Declarative packs (`extension.yaml` + static files + bash scripts) remain suppor
 
 ## `runtime` vs `install`
 
-- **`runtime`** — how Loop spawns the extension subprocess (`transport`, `command`). Used at registry load and for harness/mention/HITL RPC.
-- **`install`** — package provenance for `loop extension upgrade/remove` only. Not sent to the extension process.
+- **`runtime`** — how nui spawns the extension subprocess (`transport`, `command`). Used at registry load and for harness/mention/HITL RPC.
+- **`install`** — package provenance for `nui extension upgrade/remove` only. Not sent to the extension process.
 
 ## SDK API (override-based)
 
-Subclass `LoopExtension` and override:
+Subclass `NuiExtension` and override:
 
 **Lifecycle:** `initialize()`, `shutdown()`
 
@@ -26,14 +26,14 @@ Subclass `LoopExtension` and override:
 
 **Runtime:** `runHarness()`, `listMentions()`, `resolveMention()`, `deliverHITL()`, `deploy()`
 
-**Helpers:** `readBundled(path)` — load embedded static files inside `initialize()` (opaque to Loop)
+**Helpers:** `readBundled(path)` — load embedded static files inside `initialize()` (opaque to nui)
 
 ### Python
 
 ```python
-from loop_extension import LoopExtension
+from nui_extension import NuiExtension
 
-class CorpExtension(LoopExtension):
+class CorpExtension(NuiExtension):
     def get_harnesses(self):
         return [{"id": "echo", "displayName": "Echo"}]
 
@@ -45,14 +45,14 @@ if __name__ == "__main__":
     CorpExtension().serve()
 ```
 
-Package: [`sdk/python/`](../sdk/python/) · auto-copied module: [`harness-sdk/loop_extension.py`](../harness-sdk/loop_extension.py)
+Package: [`sdk/python/`](../sdk/python/) · auto-copied module: [`harness-sdk/nui_extension.py`](../harness-sdk/nui_extension.py)
 
 ### TypeScript
 
 ```typescript
-import { LoopExtension } from "@loop/extension-sdk";
+import { NuiExtension } from "@nui/extension-sdk";
 
-class CorpExtension extends LoopExtension {
+class CorpExtension extends NuiExtension {
   getHarnesses() { return [{ id: "echo", displayName: "Echo" }]; }
   async *runHarness(id, message) { if (id === "echo") yield message; }
 }
@@ -65,32 +65,32 @@ Package: [`sdk/typescript/`](../sdk/typescript/)
 ### Go
 
 ```go
-type ext struct{ loopextension.Base }
+type ext struct{ nuiextension.Base }
 
 func (e *ext) GetHarnesses() []map[string]any {
     return []map[string]any{{"id": "echo", "displayName": "Echo"}}
 }
 
-func main() { loopextension.ServeStdio(&ext{}) }
+func main() { nuiextension.ServeStdio(&ext{}) }
 ```
 
-Package: [`sdk/go/loopextension/`](../sdk/go/loopextension/)
+Package: [`sdk/go/nuiextension/`](../sdk/go/nuiextension/)
 
 ## Install
 
 ```sh
-loop extension add npm:@corp/loop-ext@1.0.0
-loop extension add pip:corp-loop-ext==1.0.0
-loop extension add ./my-python-ext          # detects pyproject.toml / package.json
-loop extension add ./corp-pack              # declarative pack (unchanged)
+nui extension add npm:@corp/nui-ext@1.0.0
+nui extension add pip:corp-nui-ext==1.0.0
+nui extension add ./my-python-ext          # detects pyproject.toml / package.json
+nui extension add ./corp-pack              # declarative pack (unchanged)
 ```
 
 ## Scaffold
 
 ```sh
-loop extension create my-ext --lang python
-loop extension create my-ext --lang npm
-loop extension create my-ext --lang go
+nui extension create my-ext --lang python
+nui extension create my-ext --lang npm
+nui extension create my-ext --lang go
 ```
 
 ## Protocol
@@ -105,7 +105,7 @@ loop extension create my-ext --lang go
 [`dev/extension-examples/programmatic-echo/`](../dev/extension-examples/programmatic-echo/)
 
 ```sh
-loop extension add dev/extension-examples/programmatic-echo
+nui extension add dev/extension-examples/programmatic-echo
 ```
 
 See also: [`dev/extension-api.md`](extension-api.md) for declarative contributions and wire protocol details.

@@ -9,7 +9,7 @@ interface VisualizationFrameProps {
   title?: string
 }
 
-const RESIZE_MESSAGE = 'loop-viz-resize'
+const RESIZE_MESSAGE = 'nui-viz-resize'
 
 function injectAutoResize(html: string): string {
   const script = `<script>

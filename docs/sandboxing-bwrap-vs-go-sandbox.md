@@ -72,10 +72,10 @@ Ubuntu 24.04+ restricts unprivileged user namespaces by default via AppArmor. Re
 # option 1: complain mode (permissive, logs violations)
 sudo aa-complain /usr/bin/bwrap
 
-# option 2: write a specific AppArmor profile for the loop binary
+# option 2: write a specific AppArmor profile for the nui binary
 ```
 
-This is a known, documented issue with a standard fix. Must be documented in Loop's install instructions for Ubuntu deployments.
+This is a known, documented issue with a standard fix. Must be documented in nui's install instructions for Ubuntu deployments.
 
 ---
 
@@ -96,7 +96,7 @@ This is a known, documented issue with a standard fix. Must be documented in Loo
 
 ---
 
-## Recommended integration for Loop
+## Recommended integration for nui
 
 Follow the Anthropic sandbox-runtime pattern in `internal/agent/claude_code.go`:
 

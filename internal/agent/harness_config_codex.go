@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 const codexSystemPromptFile = "AGENTS.md"

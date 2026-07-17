@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 // piEntry is a single line from a Pi session JSONL file.

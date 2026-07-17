@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/store"
+	"nui/internal/store"
 
 	"github.com/google/uuid"
 )

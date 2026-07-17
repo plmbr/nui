@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""opencode agent for Loop Docker container."""
+"""opencode agent for nui Docker container."""
 
 import os
 import sys
 import threading
 
 sys.path.insert(0, "/app")
-from http_loop_agent import HttpLoopAgent
+from http_nui_agent import HttpNuiAgent
 from opencode_session import PersistentOpenCodeSession
 
 
-class OpenCodeAgent(HttpLoopAgent):
+class OpenCodeAgent(HttpNuiAgent):
     name = "opencode"
     version = "0.1.0"
 

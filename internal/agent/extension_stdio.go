@@ -14,7 +14,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"loop/internal/extensions"
+	"nui/internal/extensions"
 )
 
 // StdioHarnessAgent implements Agent via JSON-RPC 2.0 on a harness subprocess stdin/stdout.
@@ -45,7 +45,7 @@ func newStdioHarnessAgent(name, harnessID, projectID, extDir string, rt extensio
 		runtime:   rt,
 		projectID: projectID,
 	}
-	if err := a.ensureRPC(RunRequest{LoopSessionID: projectID}); err != nil {
+	if err := a.ensureRPC(RunRequest{NuiSessionID: projectID}); err != nil {
 		return nil, err
 	}
 	return a, nil
@@ -63,26 +63,26 @@ func (a *StdioHarnessAgent) Stop() {
 
 func (a *StdioHarnessAgent) buildHarnessEnv(req RunRequest) []string {
 	sessionID := a.projectID
-	if req.LoopSessionID != "" {
-		sessionID = req.LoopSessionID
+	if req.NuiSessionID != "" {
+		sessionID = req.NuiSessionID
 	}
-	apiURL := defaultLoopAPIURL()
+	apiURL := defaultnuiAPIURL()
 	if req.Env != nil {
-		if v := strings.TrimSpace(req.Env[EnvLoopAPIURL]); v != "" {
+		if v := strings.TrimSpace(req.Env[EnvnuiAPIURL]); v != "" {
 			apiURL = strings.TrimRight(v, "/")
 		}
 	}
 	env := append(os.Environ(),
-		"LOOP_EXTENSION_DIR="+a.extDir,
-		"LOOP_SESSION_ID="+sessionID,
-		"LOOP_HARNESS_ID="+a.harnessID,
-		"LOOP_API_URL="+apiURL,
+		"NUI_EXTENSION_DIR="+a.extDir,
+		"NUI_SESSION_ID="+sessionID,
+		"NUI_HARNESS_ID="+a.harnessID,
+		"NUI_API_URL="+apiURL,
 	)
 	if runID := strings.TrimSpace(req.RunID); runID != "" {
-		env = append(env, "LOOP_RUN_ID="+runID)
+		env = append(env, "NUI_RUN_ID="+runID)
 	}
 	if sdkDir, err := extensions.HitlSDKDir(); err == nil && sdkDir != "" {
-		env = append(env, "LOOP_HITL_SDK_DIR="+sdkDir)
+		env = append(env, "NUI_HITL_SDK_DIR="+sdkDir)
 		pyPath := sdkDir
 		if existing := os.Getenv("PYTHONPATH"); existing != "" {
 			pyPath = sdkDir + string(os.PathListSeparator) + existing
@@ -91,7 +91,7 @@ func (a *StdioHarnessAgent) buildHarnessEnv(req RunRequest) []string {
 	}
 	for k, v := range req.Env {
 		switch k {
-		case EnvLoopSessionID, EnvLoopRunID, EnvLoopAPIURL:
+		case EnvNuiSessionID, EnvnuiRunID, EnvnuiAPIURL:
 			continue
 		}
 		env = append(env, k+"="+v)
@@ -190,8 +190,8 @@ func (a *StdioHarnessAgent) rpcCall(method string, params any, result any) error
 
 func (a *StdioHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<- Event) error {
 	a.mu.Lock()
-	if req.LoopSessionID == "" {
-		req.LoopSessionID = a.projectID
+	if req.NuiSessionID == "" {
+		req.NuiSessionID = a.projectID
 	}
 	if a.rpc != nil && !a.rpc.closed {
 		a.closeRPC()
@@ -296,7 +296,7 @@ func extensionsExpandCommand(cmd []string, extDir string) []string {
 	out := make([]string, len(cmd))
 	for i, part := range cmd {
 		out[i] = part
-		if part == "${LOOP_EXTENSION_DIR}" {
+		if part == "${NUI_EXTENSION_DIR}" {
 			out[i] = extDir
 		}
 	}

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 type catalogProvider struct {
@@ -18,8 +18,8 @@ type catalogProvider struct {
 func newCatalogProvider(extDir, extName string, command []string) (*catalogProvider, error) {
 	fmt.Fprintf(os.Stderr, "[extensions] initializing catalog for %q\n", extName)
 	env := append(os.Environ(),
-		"LOOP_EXTENSION_DIR="+extDir,
-		"LOOP_EXTENSION_NAME="+extName,
+		"NUI_EXTENSION_DIR="+extDir,
+		"NUI_EXTENSION_NAME="+extName,
 	)
 	rpc, err := StartStdioRPC(command, env, extDir)
 	if err != nil {

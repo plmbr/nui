@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 const piSystemPromptFile = "SYSTEM.md"

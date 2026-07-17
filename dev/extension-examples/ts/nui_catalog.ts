@@ -1,10 +1,10 @@
 /**
- * Loop extension catalog provider — stdio JSON-RPC.
+ * nui extension catalog provider — stdio JSON-RPC.
  */
 
 import * as readline from "node:readline";
 
-export class LoopCatalog {
+export class NuiCatalog {
   serve(): void {
     const rl = readline.createInterface({ input: process.stdin });
     rl.on("line", (line) => {
@@ -42,7 +42,7 @@ export class LoopCatalog {
       this.write({
         jsonrpc: "2.0",
         id: rid,
-        result: { apiVersion: "loop.dev/extension/v1", extensionName: process.env.LOOP_EXTENSION_NAME ?? "" },
+        result: { apiVersion: "nui.dev/extension/v1", extensionName: process.env.NUI_EXTENSION_NAME ?? "" },
       });
       return;
     }

@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Pi agent for Loop Docker container."""
+"""Pi agent for nui Docker container."""
 
 import os
 import sys
 import threading
 
 sys.path.insert(0, "/app")
-from http_loop_agent import HttpLoopAgent
+from http_nui_agent import HttpNuiAgent
 from pi_session import PersistentPiSession
 
 
-class PiAgent(HttpLoopAgent):
+class PiAgent(HttpNuiAgent):
     name = "pi"
     version = "0.1.0"
 

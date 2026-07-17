@@ -6,8 +6,8 @@ import (
 	"context"
 	"testing"
 
-	"loop/internal/llm"
-	"loop/internal/model"
+	"nui/internal/llm"
+	"nui/internal/model"
 )
 
 type mockStreamProvider struct {

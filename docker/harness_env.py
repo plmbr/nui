@@ -1,4 +1,4 @@
-"""Helpers for applying Loop session harness config in Docker agents."""
+"""Helpers for applying nui session harness config in Docker agents."""
 
 from __future__ import annotations
 

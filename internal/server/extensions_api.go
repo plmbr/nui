@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"os"
 
-	"loop/internal/extensions"
-	"loop/internal/mentions"
+	"nui/internal/extensions"
+	"nui/internal/mentions"
 )
 
 func handleExtensions(w http.ResponseWriter, r *http.Request) {

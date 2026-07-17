@@ -1,5 +1,5 @@
 """
-Loop extension framework — HTTP/SSE variant for Docker and remote agents.
+nui extension framework — HTTP/SSE variant for Docker and remote agents.
 
 Exposes three endpoints:
   GET  /info   — agent metadata (name, version, capabilities)
@@ -31,14 +31,14 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
     daemon_threads = True
 
 
-class LoopAgent:
-    name: str = "loop-agent"
+class NuiAgent:
+    name: str = "nui-agent"
     version: str = "0.1.0"
 
     # ── Override this ────────────────────────────────────────────────────────
 
     def run(self, message: str, **kwargs) -> Generator[str, None, None]:
-        """Yield text chunks to stream back to Loop. Override in subclass."""
+        """Yield text chunks to stream back to nui. Override in subclass."""
         raise NotImplementedError
 
     # ── Optional hooks ───────────────────────────────────────────────────────
@@ -47,7 +47,7 @@ class LoopAgent:
         """Called once after the server is bound."""
 
     def on_cancel(self, run_id: str) -> None:
-        """Called when Loop sends POST /cancel."""
+        """Called when nui sends POST /cancel."""
 
     def on_shutdown(self) -> None:
         """Called before the HTTP server exits."""

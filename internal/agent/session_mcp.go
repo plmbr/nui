@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"loop/internal/mcpoauth"
-	"loop/internal/model"
+	"nui/internal/mcpoauth"
+	"nui/internal/model"
 )
 
 const sessionMCPConnectTimeout = 15 * time.Second
@@ -127,7 +127,7 @@ func (s *SessionMCP) connectWithTimeout(ctx context.Context, srv model.ADLMCPSer
 
 func (s *SessionMCP) connectOne(ctx context.Context, srv model.ADLMCPServer) (*mcp.ClientSession, error) {
 	if cmd := strings.TrimSpace(srv.Command); cmd != "" {
-		client := mcp.NewClient(&mcp.Implementation{Name: "loop", Version: "1.0.0"}, nil)
+		client := mcp.NewClient(&mcp.Implementation{Name: "nui", Version: "1.0.0"}, nil)
 		command := exec.CommandContext(ctx, cmd, srv.Args...)
 		if len(srv.Env) > 0 {
 			command.Env = envWithOverrides(srv.Env)

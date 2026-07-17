@@ -1,14 +1,14 @@
 """
-Loop extension framework.
+nui extension framework.
 
-Subclass LoopAgent, override `run()`, call `serve()`. Everything else
+Subclass NuiAgent, override `run()`, call `serve()`. Everything else
 (TCP socket, connection file, JSON-RPC dispatch, streaming) is handled here.
 
 Example:
 
-    from loop_agent import LoopAgent
+    from nui_agent import NuiAgent
 
-    class MyAgent(LoopAgent):
+    class MyAgent(NuiAgent):
         name = "my-agent"
         version = "0.1.0"
 
@@ -31,14 +31,14 @@ from pathlib import Path
 from typing import Generator
 
 
-class LoopAgent:
-    name: str = "loop-agent"
+class NuiAgent:
+    name: str = "nui-agent"
     version: str = "0.1.0"
 
     # ── Override this ────────────────────────────────────────────────────────
 
     def run(self, message: str, run_id: str, **kwargs) -> Generator[str, None, None]:
-        """Yield text chunks to stream back to Loop. Override in subclass."""
+        """Yield text chunks to stream back to nui. Override in subclass."""
         raise NotImplementedError
 
     # ── Optional hooks ───────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ class LoopAgent:
         _ = port
 
     def on_cancel(self, run_id: str) -> None:
-        """Called when Loop sends harness.cancel for a running run_id."""
+        """Called when nui sends harness.cancel for a running run_id."""
         _ = run_id
 
     def on_shutdown(self) -> None:
@@ -71,7 +71,7 @@ class LoopAgent:
         routing=None,
     ) -> dict:
         """Create a HITL question and block until the user responds."""
-        from loop_hitl import ask_user as hitl_ask_user
+        from nui_hitl import ask_user as hitl_ask_user
 
         return hitl_ask_user(
             questions=questions,
@@ -96,7 +96,7 @@ class LoopAgent:
         routing=None,
     ) -> dict:
         """Create a HITL approval gate and block until resolved."""
-        from loop_hitl import request_approval as hitl_request_approval
+        from nui_hitl import request_approval as hitl_request_approval
 
         return hitl_request_approval(
             title=title,
@@ -190,10 +190,10 @@ class LoopAgent:
         return self.name
 
     def _connection_id(self) -> str:
-        return os.environ.get("LOOP_CONNECTION_ID", self._project_id)
+        return os.environ.get("NUI_CONNECTION_ID", self._project_id)
 
     def _write_connection_file(self, port: int, session_id: str) -> Path:
-        path = Path.home() / ".loop" / "connections" / f"{self._connection_id()}.json"
+        path = Path.home() / ".nui" / "connections" / f"{self._connection_id()}.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({
             "host": "127.0.0.1",

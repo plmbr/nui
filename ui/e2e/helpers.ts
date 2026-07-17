@@ -4,7 +4,7 @@ import { expect, type Page } from '@playwright/test'
 
 export async function waitForAppReady(page: Page) {
   await page.goto('/launch')
-  await page.getByRole('heading', { name: 'The Loop' }).waitFor()
+  await page.getByRole('heading', { name: 'nui' }).waitFor()
 }
 
 export async function openNewSession(page: Page) {

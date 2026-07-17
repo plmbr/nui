@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"strings"
 
-	"loop/internal/memory"
-	"loop/internal/storageext"
-	"loop/internal/store"
+	"nui/internal/memory"
+	"nui/internal/storageext"
+	"nui/internal/store"
 )
 
 func handleMemory(w http.ResponseWriter, r *http.Request) {

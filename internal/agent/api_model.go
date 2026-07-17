@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 // providerModelEnvKeys lists env vars that override the builtin default model (first match wins).

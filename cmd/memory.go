@@ -11,15 +11,15 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"loop/internal/memory"
-	"loop/internal/store"
+	"nui/internal/memory"
+	"nui/internal/store"
 
 	"github.com/spf13/cobra"
 )
 
 var memoryCmd = &cobra.Command{
 	Use:   "memory",
-	Short: "Manage Loop persistent memory files",
+	Short: "Manage nui persistent memory files",
 }
 
 var memoryListCmd = &cobra.Command{

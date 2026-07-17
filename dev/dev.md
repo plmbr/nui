@@ -1,10 +1,10 @@
-# The Loop — Product & Technical Specification
+# nui — Product & Technical Specification
 
 > **Status:** This document describes the product vision and the architecture **as implemented today**, with a roadmap for planned features. The Go code is the source of truth; sections marked *planned* are not yet enforced at runtime.
 
 ## Vision
 
-The Loop is a self-hosted Go application with a bundled React web UI for creating and running AI agent sessions. Agent types are declared in ADL (Agent Definition Language); harnesses run as local subprocesses, Docker containers, or remote HTTP/SSE servers.
+nui is a self-hosted Go application with a bundled React web UI for creating and running AI agent sessions. Agent types are declared in ADL (Agent Definition Language); harnesses run as local subprocesses, Docker containers, or remote HTTP/SSE servers.
 
 ---
 
@@ -16,10 +16,10 @@ flowchart TB
     UI[React UI]
   end
 
-  subgraph loop_server [Loop Go server]
+  subgraph loop_server [nui Go server]
     REST[REST API]
     AGUI[AG-UI endpoint]
-    Store[(~/.loop/data.json)]
+    Store[(~/.nui/data.json)]
     ADLExec[ADLAgent]
     Mgr[Manager]
   end
@@ -34,7 +34,7 @@ flowchart TB
   subgraph http_agents [HTTP/SSE agents]
     UserDocker[User Docker image]
     RemoteSrv[Remote server]
-    BuiltinDocker[loop-* images :8090]
+    BuiltinDocker[nui-* images :8090]
   end
 
   UI -->|REST| REST
@@ -58,20 +58,20 @@ flowchart TB
    - **Extension harnesses:** installed extensions contribute harnesses wired via `Manager.getExtensionHarnessAgent()` — stdio (default), TCP (`ExtensionAgent`), or HTTP (`HTTPExtensionAgent`). ADL references them as `harness.type: ext:<extension>/<harness-id>`.
    - **Reference only:** standalone examples in `dev/harness-examples/py|ts/` (no `extension.yaml`) demonstrate the TCP JSON-RPC protocol but are not registered as agent types.
 
-4. **Docker/remote via custom ADL.** There is no built-in "Docker" or "Remote" picker in the UI. Users copy an ADL template from `dev/harness-examples/` into `~/.loop/agents/` (e.g. `docker-echo.yaml`), then select it under **Installed agents**. Loop validates the connector on session create.
+4. **Docker/remote via custom ADL.** There is no built-in "Docker" or "Remote" picker in the UI. Users copy an ADL template from `dev/harness-examples/` into `~/.nui/agents/` (e.g. `docker-echo.yaml`), then select it under **Installed agents**. nui validates the connector on session create.
 
-5. **CLI launch + UI preferences.** `loop ui -a <agent-id> --prompt --open` starts the HTTP server first, then creates a session via the same logic as `POST /api/launch` (shared with the warm-attach path when the server is already running). Session creation saves `lastAgentType` / `lastSessionId` to `settings.json` and exposes the prompt once via `GET /api/bootstrap`. `loop ui --open` (without `-a`) also creates a fresh session with the default agent. With `--open`, Loop opens the browser to `/sessions/<id>` after the session is ready. If no sessions exist at startup and no launch flags were passed, Loop auto-creates one with the default agent when the UI loads. Sidebar state and last-selected session/agent are also persisted in `settings.json`.
+5. **CLI launch + UI preferences.** `nui ui -a <agent-id> --prompt --open` starts the HTTP server first, then creates a session via the same logic as `POST /api/launch` (shared with the warm-attach path when the server is already running). Session creation saves `lastAgentType` / `lastSessionId` to `settings.json` and exposes the prompt once via `GET /api/bootstrap`. `nui ui --open` (without `-a`) also creates a fresh session with the default agent. With `--open`, nui opens the browser to `/sessions/<id>` after the session is ready. If no sessions exist at startup and no launch flags were passed, nui auto-creates one with the default agent when the UI loads. Sidebar state and last-selected session/agent are also persisted in `settings.json`.
 
 ---
 
 ## Agent Definition Language (ADL)
 
-ADL is a YAML format for declaring an agent type or multi-step workflow. It is a **static definition** — it describes *what* an agent is, not *how* Loop executes it internally.
+ADL is a YAML format for declaring an agent type or multi-step workflow. It is a **static definition** — it describes *what* an agent is, not *how* nui executes it internally.
 
 ### Three-layer architecture
 
 - **ADL** — agent identity, steps, harness, `aiAssets` (*this layer*)
-- **MCP** — runtime tool protocol; ADL `aiAssets.mcpServers` is provisioned into per-session harness config; Loop UI MCP tool frames also use `~/.loop/.mcp.json`
+- **MCP** — runtime tool protocol; ADL `aiAssets.mcpServers` is provisioned into per-session harness config; nui UI MCP tool frames also use `~/.nui/.mcp.json`
 - **SKILL.md** — referenced via `aiAssets.skills` (path, ref, content, or git+path); copied into session harness config. Legacy top-level `skill:` is still supported.
 
 ### Schema
@@ -87,7 +87,7 @@ kind: agent | workflow          # workflow = multi-step orchestration; not selec
 
 promptMode: user | auto         # auto hides input and runs default or launch prompt
 defaultPrompt: string           # optional; auto mode when no launch prompt (default: built-in phrase)
-workingDirInput: bool           # true = user picks working dir at session create; default uses ~/.loop/workspaces/<session-id>
+workingDirInput: bool           # true = user picks working dir at session create; default uses ~/.nui/workspaces/<session-id>
 
 promptSuggestions:              # quick-start pills above chat input (optional)
   - title: Review code
@@ -117,7 +117,7 @@ toolApprovals:                    # selective auto-approve when harness.permissi
 hitl:
   mode: interactive | auto | off
   required: bool                  # semi-autonomous: human involvement mandatory (conflicts with promptMode auto)
-  channels: [loop-ui, ext:...]
+  channels: [nui-ui, ext:...]
   ttlSeconds: 3600                # optional request TTL
   # approvals: [bash, write]      # deprecated; use toolApprovals with policy denylist instead
 
@@ -143,7 +143,7 @@ aiAssets:
     - name: code-review          # required; install dir name in harness config
       path: ./skills/code-review # local dir or SKILL.md
     - name: commit-helper
-      ref: commit-helper         # ~/.loop/skills/<ref>/ or builtin:* / ext:*
+      ref: commit-helper         # ~/.nui/skills/<ref>/ or builtin:* / ext:*
     - name: greeting
       content: |                 # inline SKILL.md (including frontmatter)
         ---
@@ -200,7 +200,7 @@ steps:                            # omit for single-step agents
           label: Reject
       display:
         - from: research.report   # inject prior step output into HITL payload
-      channels: [loop-ui]
+      channels: [nui-ui]
 ```
 
 #### Multi-step execution semantics
@@ -211,10 +211,10 @@ steps:                            # omit for single-step agents
 
 #### Orchestrator sub-agents
 
-- `subAgents` lists canonical registry agent IDs only (builtins, `~/.loop/agents/`, `ext:…`). Names and descriptions are resolved from the registry at runtime — do not duplicate them in the orchestrator YAML.
+- `subAgents` lists canonical registry agent IDs only (builtins, `~/.nui/agents/`, `ext:…`). Names and descriptions are resolved from the registry at runtime — do not duplicate them in the orchestrator YAML.
 - Mutually exclusive with `steps[]` / `kind: workflow`.
 - Each user message triggers an ephemeral routing turn on the orchestrator harness, then delegates to the selected sub-agent with full event streaming (not tool-calling).
-- Each sub-agent maintains its own harness session within the Loop session (`agentSessions` key `{sessionId}#{subAgentId}`).
+- Each sub-agent maintains its own harness session within the nui session (`agentSessions` key `{sessionId}#{subAgentId}`).
 
 #### Named outputs and inputs
 
@@ -228,7 +228,7 @@ steps:                            # omit for single-step agents
 | Mechanism | When to use |
 |---|---|
 | `harness.permissions: interactive` + `toolApprovals` | Per-tool approve/deny during an agent run (Claude Code, Codex) |
-| Top-level `hitl` block | Runtime ask-user via Loop HITL MCP + skill injection |
+| Top-level `hitl` block | Runtime ask-user via nui HITL MCP + skill injection |
 | `steps[].type: hitl` | Orchestration gate between workflow steps |
 | `subAgents` | Orchestrator routes user prompts to registry agents by id |
 
@@ -237,7 +237,7 @@ steps:                            # omit for single-step agents
 #### MCP configuration
 
 - **ADL `aiAssets.mcpServers`** — provisioned into per-session harness config (agent subprocess tools).
-- **`~/.loop/.mcp.json`** — Loop UI MCP tool frames only; not merged with ADL agent tools.
+- **`~/.nui/.mcp.json`** — nui UI MCP tool frames only; not merged with ADL agent tools.
 
 Per-step `aiAssets` **merges** with top-level entries by name (step entries override same name).
 
@@ -267,11 +267,11 @@ aiAssets:
       type: http
 ```
 
-Place agent YAML files in `~/.loop/agents/` to make them selectable under **Installed agents** in the UI.
+Place agent YAML files in `~/.nui/agents/` to make them selectable under **Installed agents** in the UI.
 
 ### Session harness config
 
-For each Loop session, ADL dependencies are materialized under `~/.loop/sessions/<session-id>/` and passed to harnesses via config-dir environment variables:
+For each nui session, ADL dependencies are materialized under `~/.nui/sessions/<session-id>/` and passed to harnesses via config-dir environment variables:
 
 | Harness | Env var | Provisioned files (examples) |
 |---|---|---|
@@ -288,22 +288,22 @@ ADL `env` (global) and `harness.env` are merged and set on harness subprocess en
 
 | Harness | Local (`sandbox: none`) | Bubblewrap (`sandbox: bubblewrap`) | Docker (`sandbox: docker`) |
 |---|---|---|---|
-| `claude-code` | `ClaudeCodeAgent` → `claude` CLI | bwrap + `~/.claude` | `loop-claude-code:latest` :8090 |
-| `pi` | `PiAgent` → `pi --mode rpc` | bwrap + `~/.pi` | `loop-pi:latest` :8090 |
-| `codex` | `CodexAgent` → `codex exec` | bwrap + `~/.codex` | `loop-codex:latest` :8090 |
-| `opencode` | `OpenCodeAgent` → `opencode serve/run` | bwrap + `~/.local/share/opencode` | `loop-opencode:latest` :8090 |
+| `claude-code` | `ClaudeCodeAgent` → `claude` CLI | bwrap + `~/.claude` | `nui-claude-code:latest` :8090 |
+| `pi` | `PiAgent` → `pi --mode rpc` | bwrap + `~/.pi` | `nui-pi:latest` :8090 |
+| `codex` | `CodexAgent` → `codex exec` | bwrap + `~/.codex` | `nui-codex:latest` :8090 |
+| `opencode` | `OpenCodeAgent` → `opencode serve/run` | bwrap + `~/.local/share/opencode` | `nui-opencode:latest` :8090 |
 | `docker` | — | — | User image at ADL `containerPort` (e.g. 9090) |
-| `devcontainer` | — | — | Loop-managed devcontainer + `innerHarness` CLI |
+| `devcontainer` | — | — | nui-managed devcontainer + `innerHarness` CLI |
 | `remote` | — | — | User `host:port` over HTTP/SSE |
 | `ext:<ext>/<id>` | Extension host (stdio/tcp/http) | — | — |
 
 Extension harnesses are contributed by installed extensions. See [extension-api.md](extension-api.md).
 
-Loop also auto-injects the `loop-viz` MCP server and `builtin:visualize` skill for inline chart rendering in chat (`internal/agent/harness_viz.go`).
+nui also auto-injects the `nui-viz` MCP server and `builtin:visualize` skill for inline chart rendering in chat (`internal/agent/harness_viz.go`).
 
 ### Persistent memory
 
-Markdown memory files under `~/.loop/memory/`:
+Markdown memory files under `~/.nui/memory/`:
 
 | File | Scope |
 |---|---|
@@ -322,9 +322,9 @@ Each layer supports **auto**, **manual**, or **disabled**:
 
 Default is **manual**. The `remember` skill is attached when any layer is not disabled. In **auto** mode, a system-prompt appendix encourages proactive `update_memory` calls.
 
-Agents update memory via the builtin `remember` skill, direct file writes (CLI harnesses), or the `update_memory` tool on the `loop-agent` MCP server. Writes to a **disabled** scope are rejected by the MCP tool.
+Agents update memory via the builtin `remember` skill, direct file writes (CLI harnesses), or the `update_memory` tool on the `nui-agent` MCP server. Writes to a **disabled** scope are rejected by the MCP tool.
 
-Extensions may register **storage handlers** to replace built-in persistence for session history, agent memory, or user memory per agent type. See [extension-api.md](extension-api.md#storage-handlers). Memory **modes** (`auto` / `manual` / `disabled`) remain Loop-owned; handlers control **where** data is stored.
+Extensions may register **storage handlers** to replace built-in persistence for session history, agent memory, or user memory per agent type. See [extension-api.md](extension-api.md#storage-handlers). Memory **modes** (`auto` / `manual` / `disabled`) remain nui-owned; handlers control **where** data is stored.
 
 Sandbox config flows: ADL `harness.sandbox` → `harnessBuiltinConfig()` → `Manager.getBuiltinAgent()` → agent struct `Sandbox` field.
 
@@ -344,7 +344,7 @@ Sandbox config flows: ADL `harness.sandbox` → `harnessBuiltinConfig()` → `Ma
 | `promptMode` / `defaultPrompt` → UI auto-run | Done |
 | `promptSuggestions` → chat UI pills | Done |
 | `aiAssets.rules` → harness rule files | Done |
-| Persistent memory (`~/.loop/memory/`) → system prompt | Done |
+| Persistent memory (`~/.nui/memory/`) → system prompt | Done |
 | `aiAssets.mentionProviders` → @-mention menu | Done |
 | `steps[].type: hitl` orchestration gates | Done |
 | `subAgents` orchestrator routing | Done |
@@ -374,7 +374,7 @@ Used by `docker`, `remote`, and builtin sandbox containers.
 | `GET /info` | `{"name","version","capabilities"}` — health check |
 | `POST /run` | Body: `{message, sessionId?, workingDir?, systemPrompt?, model?}` → SSE |
 | `POST /cancel` | Body: `{runId}` — cancel run best-effort |
-| `POST /shutdown` | Stop subprocesses; Loop calls this before `docker stop` |
+| `POST /shutdown` | Stop subprocesses; nui calls this before `docker stop` |
 
 SSE events (JSON in `data:` lines):
 
@@ -386,7 +386,7 @@ SSE events (JSON in `data:` lines):
 
 Also supported: `tool_call_start`, `tool_call_args`, `tool_call_end`, `tool_call_result`, `image` (see `extension.go`).
 
-Examples: `dev/harness-examples/docker/`, `dev/harness-examples/remote/`, `docker/http_loop_agent.py`.
+Examples: `dev/harness-examples/docker/`, `dev/harness-examples/remote/`, `docker/http_nui_agent.py`.
 
 ### Extension harness protocol (stdio / TCP)
 
@@ -399,7 +399,7 @@ Used by installed extension harnesses (`ext:<extension>/<harness-id>`). See [ext
 | `harness.cancel` | Cancel run |
 | `harness.shutdown` | Release resources |
 
-Framework: `harness-sdk/loop_agent_stdio.py` (stdio), `harness-sdk/loop_agent.py` (TCP reference).
+Framework: `harness-sdk/nui_agent_stdio.py` (stdio), `harness-sdk/nui_agent.py` (TCP reference).
 
 ---
 
@@ -407,7 +407,7 @@ Framework: `harness-sdk/loop_agent_stdio.py` (stdio), `harness-sdk/loop_agent.py
 
 ### Chat persistence
 
-- UI messages (user + assistant text) saved to `~/.loop/data.json` → `sessionMessages` after each turn
+- UI messages (user + assistant text) saved to `~/.nui/data.json` → `sessionMessages` after each turn
 - On session open: load `sessionMessages` if present, else fall back to agent history files
 - Tool call bubbles and images are **not** persisted across restarts (AG-UI state is in-memory during the session)
 
@@ -415,7 +415,7 @@ Framework: `harness-sdk/loop_agent_stdio.py` (stdio), `harness-sdk/loop_agent.py
 
 | Stream | Replay on disconnect? | Status |
 |---|---|---|
-| `GET /api/sessions/:id/runs/:runId/events` | Yes — `Last-Event-ID` replays from `~/.loop/runs/<runId>.jsonl` | Done |
+| `GET /api/sessions/:id/runs/:runId/events` | Yes — `Last-Event-ID` replays from `~/.nui/runs/<runId>.jsonl` | Done |
 | UI refresh during active headless run | Partial — `sessionChatStore.reconnectActiveRun()` re-attaches via runs API | Done |
 | `POST /api/sessions/:id/ag-ui` (interactive chat) | No durable offset replay | *Planned* |
 
@@ -429,11 +429,11 @@ Interactive AG-UI chat does not yet support mid-stream offset replay. A disconne
 
 | Store | Format | Location | Status |
 |---|---|---|---|
-| Sessions + agent session IDs + UI messages | JSON | `~/.loop/data.json` | Done |
-| Settings | JSON | `~/.loop/settings.json` | Done (`theme`, `lastAgentType`, `lastSessionId`, `sidebarOpen`, `disabledExtensions`) |
-| ADL definitions | YAML | `~/.loop/agents/*.yaml` | Done |
-| Run event log | JSONL | `~/.loop/runs/<runID>.jsonl` | Done |
-| Schedules | JSON | `~/.loop/schedules.json` | Done |
+| Sessions + agent session IDs + UI messages | JSON | `~/.nui/data.json` | Done |
+| Settings | JSON | `~/.nui/settings.json` | Done (`theme`, `lastAgentType`, `lastSessionId`, `sidebarOpen`, `disabledExtensions`) |
+| ADL definitions | YAML | `~/.nui/agents/*.yaml` | Done |
+| Run event log | JSONL | `~/.nui/runs/<runID>.jsonl` | Done |
+| Schedules | JSON | `~/.nui/schedules.json` | Done |
 | Claude Code sessions | JSONL | `~/.claude/projects/<dirHash>/` | External |
 | pi / codex / opencode sessions | varies | Harness-specific paths | External |
 
@@ -501,10 +501,10 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 - [x] AG-UI chat streaming with tool calls and images
 - [x] HTTP/SSE docker + remote connectors
 - [x] Builtin sandbox Docker images (`docker/`, port 8090)
-- [x] CLI session launch (`loop ui --agent-type --prompt --working-dir`)
+- [x] CLI session launch (`nui ui --agent-type --prompt --working-dir`)
 - [x] UI preferences (`lastAgentType`, `lastSessionId`, `sidebarOpen`)
 - [x] Bubblewrap sandbox for all four CLI harnesses (Linux)
-- [x] User ADL in `~/.loop/agents/*.yaml`
+- [x] User ADL in `~/.nui/agents/*.yaml`
 - [x] Docker/remote reachability check on session create
 
 ### Phase 2 — ADL workflows ✅
@@ -517,17 +517,17 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 ### Phase 3 — External integrations
 - [x] ADL `skill` references (SKILL.md) → session harness config
 - [x] ADL `aiAssets.skills` (path, ref, content, git+path) → catalog + session harness config
-- [x] `loop skills add|list|remove` CLI
-- [x] `loop memory list|show|edit` CLI
-- [x] Persistent memory (`~/.loop/memory/`) with UI toggles and agent write path
-- [x] `loop extension add|remove` CLI
+- [x] `nui skills add|list|remove` CLI
+- [x] `nui memory list|show|edit` CLI
+- [x] Persistent memory (`~/.nui/memory/`) with UI toggles and agent write path
+- [x] `nui extension add|remove` CLI
 - [x] ADL `aiAssets.mcpServers` → session harness config
 
 ### Phase 4 — Scheduled runs ✅
 - [x] Interval schedules align to clock boundaries (e.g. `5m` at :00, :05, :10… UTC), not current time + interval
 - [x] Server scheduler: each tick creates a new session + headless run
 - [x] Only `promptMode: auto` ADL agents are schedulable
-- [x] REST API + `loop schedule` CLI
+- [x] REST API + `nui schedule` CLI
 - [x] Customize → Schedules UI
 - [x] Session sidebar: scheduled indicator + relative last-run time
 

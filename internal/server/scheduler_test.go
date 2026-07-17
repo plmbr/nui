@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 func TestEnsureScheduleNextRunAt(t *testing.T) {

@@ -1,11 +1,11 @@
 ---
 name: ask-user
-description: Ask the human structured questions via Loop HITL instead of plain chat text
+description: Ask the human structured questions via nui HITL instead of plain chat text
 ---
 
-# Ask User (Loop HITL)
+# Ask User (nui HITL)
 
-When you need **any** input, clarification, preference, or approval from the human, use the **`loop-hitl`** MCP tool **`ask_user`**. Do **not** ask those questions only in assistant text — the human answers through the Loop UI prompt card.
+When you need **any** input, clarification, preference, or approval from the human, use the **`nui-hitl`** MCP tool **`ask_user`**. Do **not** ask those questions only in assistant text — the human answers through the nui UI prompt card.
 
 ## When to use `ask_user`
 
@@ -16,7 +16,7 @@ When you need **any** input, clarification, preference, or approval from the hum
 
 ## How to call it
 
-Use the MCP tool **`ask_user`** on server **`loop-hitl`** with a `questions` array. Each question object can include:
+Use the MCP tool **`ask_user`** on server **`nui-hitl`** with a `questions` array. Each question object can include:
 
 - `question` — the prompt text (required)
 - `header` — short label shown in the UI (optional)
@@ -54,7 +54,7 @@ Wait for the tool result (answers from the human), then continue with the task u
 
 ## Tool approval
 
-For yes/no gates before risky actions, use **`request_approval`** on **`loop-hitl`** instead of `ask_user`.
+For yes/no gates before risky actions, use **`request_approval`** on **`nui-hitl`** instead of `ask_user`.
 
 ## Do not
 

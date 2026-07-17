@@ -26,7 +26,7 @@ func mcpConfigPath() string {
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(home, ".loop", ".mcp.json")
+	return filepath.Join(home, ".nui", ".mcp.json")
 }
 
 func handleMCPResource(w http.ResponseWriter, r *http.Request) {
@@ -82,7 +82,7 @@ func handleMCPCallTool(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
-// bootstrapMCPLoad ensures ~/.loop/.mcp.json exists and connects configured servers.
+// bootstrapMCPLoad ensures ~/.nui/.mcp.json exists and connects configured servers.
 // Called lazily on first MCP UI use, not at server startup.
 func bootstrapMCPLoad(m *MCPManager) error {
 	cfgPath := mcpConfigPath()
@@ -129,8 +129,8 @@ func ensureMCPConfigFromClaude(loopCfgPath string) error {
 
 func mergeExtensionMCPConfig(cfgPath string) error {
 	// Catalog extension MCP servers are provisioned into harness session config only.
-	// They must not be merged into ~/.loop/.mcp.json — invalid stubs (e.g. python3 with
-	// no args) block or pollute Loop UI MCP startup.
+	// They must not be merged into ~/.nui/.mcp.json — invalid stubs (e.g. python3 with
+	// no args) block or pollute nui UI MCP startup.
 	_ = cfgPath
 	return nil
 }

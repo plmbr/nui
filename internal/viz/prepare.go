@@ -166,7 +166,7 @@ func rebuildChartHTML(html, chartSrc string) string {
 	if err != nil {
 		return ""
 	}
-	return fmt.Sprintf(`<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><canvas id="loop-chart" width="400" height="200"></canvas><script src="%s"></script><script>new Chart(document.getElementById('loop-chart').getContext('2d'),{type:'bar',data:{labels:%s,datasets:[{label:'Series 1',data:%s,backgroundColor:'rgba(54,162,235,0.5)'}]},options:{responsive:false,plugins:{legend:{display:false}}}});</script></body></html>`, chartSrc, labelsJSON, dataJSON)
+	return fmt.Sprintf(`<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><canvas id="nui-chart" width="400" height="200"></canvas><script src="%s"></script><script>new Chart(document.getElementById('nui-chart').getContext('2d'),{type:'bar',data:{labels:%s,datasets:[{label:'Series 1',data:%s,backgroundColor:'rgba(54,162,235,0.5)'}]},options:{responsive:false,plugins:{legend:{display:false}}}});</script></body></html>`, chartSrc, labelsJSON, dataJSON)
 }
 
 func extractChartStringList(re *regexp.Regexp, html string) []string {

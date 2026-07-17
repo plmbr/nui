@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 // ExtensionAgentDeployer is a named deploy command declared under contributions.aiAssets.agentDeployers.
@@ -66,7 +66,7 @@ type DeployEndpoint struct {
 	URL  string `json:"url,omitempty"`
 }
 
-// DeployerInfo is the list entry for loop agent deployers and GET /api/agent-deployers.
+// DeployerInfo is the list entry for nui agent deployers and GET /api/agent-deployers.
 type DeployerInfo struct {
 	ID          string `json:"id"`
 	Extension   string `json:"extension"`
@@ -167,8 +167,8 @@ func InvokeDeployer(ref ResolvedDeployer, req DeployRequest) (DeployResponse, er
 	cmd := exec.Command(ref.Deployer.Command[0], ref.Deployer.Command[1:]...)
 	cmd.Dir = ref.Extension.Dir
 	cmd.Env = append(os.Environ(),
-		"LOOP_EXTENSION_DIR="+ref.Extension.Dir,
-		"LOOP_EXTENSION_NAME="+ref.Extension.Manifest.Name,
+		"NUI_EXTENSION_DIR="+ref.Extension.Dir,
+		"NUI_EXTENSION_NAME="+ref.Extension.Manifest.Name,
 	)
 	cmd.Stdin = bytes.NewReader(append(payload, '\n'))
 	var stdout, stderr bytes.Buffer

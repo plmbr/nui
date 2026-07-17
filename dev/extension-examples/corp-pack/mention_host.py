@@ -7,13 +7,13 @@ import sys
 
 def _find_sdk_dir() -> str | None:
     candidates = []
-    if sdk := os.environ.get("LOOP_MENTION_SDK_DIR"):
+    if sdk := os.environ.get("NUI_MENTION_SDK_DIR"):
         candidates.append(sdk)
     ext_dir = os.path.dirname(os.path.abspath(__file__))
     candidates.extend([
         ext_dir,
         os.path.join(ext_dir, "..", "..", "..", "harness-sdk"),
-        os.path.expanduser("~/.loop/harness-sdk"),
+        os.path.expanduser("~/.nui/harness-sdk"),
     ])
     seen: set[str] = set()
     for candidate in candidates:
@@ -23,27 +23,27 @@ def _find_sdk_dir() -> str | None:
         if norm in seen:
             continue
         seen.add(norm)
-        if os.path.isfile(os.path.join(norm, "loop_mention.py")):
+        if os.path.isfile(os.path.join(norm, "nui_mention.py")):
             return norm
     return None
 
 
 _sdk_dir = _find_sdk_dir()
 if _sdk_dir is None:
-    sys.stderr.write("loop_mention.py not found (set LOOP_MENTION_SDK_DIR)\n")
+    sys.stderr.write("nui_mention.py not found (set NUI_MENTION_SDK_DIR)\n")
     sys.exit(1)
 sys.path.insert(0, _sdk_dir)
 
-from loop_mention import LoopMentionProvider
+from nui_mention import NuiMentionProvider
 
 
-class CorpMentionHost(LoopMentionProvider):
+class CorpMentionHost(NuiMentionProvider):
     name = "corp-pack-mentions"
     version = "1.0.0"
 
     def list_items(self, parent="", query="", limit=20, **kwargs):
-        ext = os.environ.get("LOOP_EXTENSION_NAME", "corp-pack")
-        provider = os.environ.get("LOOP_MENTION_PROVIDER_ID", "corp-refs")
+        ext = os.environ.get("NUI_EXTENSION_NAME", "corp-pack")
+        provider = os.environ.get("NUI_MENTION_PROVIDER_ID", "corp-refs")
         root = f"ext:{ext}:{provider}"
 
         if not parent or parent == root:

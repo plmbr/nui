@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"loop/internal/agents"
-	"loop/internal/loopclient"
-	"loop/internal/model"
+	"nui/internal/agents"
+	"nui/internal/nuiclient"
+	"nui/internal/model"
 )
 
 // Result is the outcome of running one eval case.
@@ -46,9 +46,9 @@ type Options struct {
 	JudgeAgent  string
 }
 
-// Runner executes eval cases against a Loop server.
+// Runner executes eval cases against a nui server.
 type Runner struct {
-	Client *loopclient.Client
+	Client *nuiclient.Client
 }
 
 // Run executes eval cases for the given agent.
@@ -153,7 +153,7 @@ func (r *Runner) runCase(
 		return result
 	}
 
-	sess, err := r.Client.CreateSession(caseCtx, loopclient.CreateSessionRequest{
+	sess, err := r.Client.CreateSession(caseCtx, nuiclient.CreateSessionRequest{
 		AgentType:  agentID,
 		WorkingDir: wd,
 	})
@@ -242,7 +242,7 @@ func (r *Runner) runConversation(ctx context.Context, sessionID string, messages
 }
 
 func (r *Runner) runOnce(ctx context.Context, sessionID, message string) (string, error) {
-	started, err := r.Client.StartRun(ctx, sessionID, loopclient.StartRunRequest{
+	started, err := r.Client.StartRun(ctx, sessionID, nuiclient.StartRunRequest{
 		Message: strings.TrimSpace(message),
 	})
 	if err != nil {
@@ -264,11 +264,11 @@ func (r *Runner) runOnce(ctx context.Context, sessionID, message string) (string
 	return rec.Output, nil
 }
 
-func (r *Runner) waitRunTerminal(ctx context.Context, sessionID, runID string) (loopclient.RunRecord, error) {
+func (r *Runner) waitRunTerminal(ctx context.Context, sessionID, runID string) (nuiclient.RunRecord, error) {
 	for {
 		rec, err := r.Client.GetRun(ctx, sessionID, runID)
 		if err != nil {
-			return loopclient.RunRecord{}, err
+			return nuiclient.RunRecord{}, err
 		}
 		switch rec.Status {
 		case "completed", "failed", "cancelled", "awaiting_user":

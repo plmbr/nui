@@ -9,13 +9,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/extensions"
-	"loop/internal/hitl"
-	"loop/internal/mcpoauth"
-	"loop/internal/memory"
-	"loop/internal/model"
-	"loop/internal/skills"
-	"loop/internal/store"
+	"nui/internal/extensions"
+	"nui/internal/hitl"
+	"nui/internal/mcpoauth"
+	"nui/internal/memory"
+	"nui/internal/model"
+	"nui/internal/skills"
+	"nui/internal/store"
 )
 
 const (
@@ -25,7 +25,7 @@ const (
 	envPiCodingAgentDir   = "PI_CODING_AGENT_DIR"
 )
 
-// HarnessDeps are ADL-derived files Loop materializes into a session config directory.
+// HarnessDeps are ADL-derived files nui materializes into a session config directory.
 type HarnessDeps struct {
 	SystemPrompt            string
 	MCPServers              []model.ADLMCPServer
@@ -230,11 +230,11 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 		deps.PendingCustomMCPServers = nil
 	}
 	var err error
-	deps.MCPServers, err = appendLoopVizMCP(deps.MCPServers)
+	deps.MCPServers, err = appendNuiVizMCP(deps.MCPServers)
 	if err != nil {
 		return deps, err
 	}
-	deps.MCPServers, err = appendLoopAgentMCP(deps.MCPServers, model.ADLAgentID(def))
+	deps.MCPServers, err = appendNuiAgentMCP(deps.MCPServers, model.ADLAgentID(def))
 	if err != nil {
 		return deps, err
 	}
@@ -251,7 +251,7 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 			deps.SystemPrompt = appendHitlSystemPrompt(deps.SystemPrompt)
 			deps.Skills = appendHitlAskUserSkill(deps.Skills)
 		}
-		deps.MCPServers, err = appendLoopHitlMCP(deps.MCPServers, sessionID, defaultLoopAPIURL())
+		deps.MCPServers, err = appendNuiHitlMCP(deps.MCPServers, sessionID, defaultnuiAPIURL())
 		if err != nil {
 			return deps, err
 		}
@@ -339,7 +339,7 @@ func appendRememberSkill(skillList []model.ADLSkill) []model.ADLSkill {
 	return append(skillList, skills.RememberSkill())
 }
 
-// ProvisionHarnessConfig creates ~/.loop/sessions/<sessionID> and writes harness-specific
+// ProvisionHarnessConfig creates ~/.nui/sessions/<sessionID> and writes harness-specific
 // config files derived from ADL dependencies.
 func ProvisionHarnessConfig(sessionID, harnessType string, deps HarnessDeps) (string, error) {
 	harnessType = normalizeHarnessType(harnessType)
@@ -365,7 +365,7 @@ func applyCmdEnv(cmd *exec.Cmd, harnessType, sessionConfigDir string, adlEnv map
 	for k, v := range adlEnv {
 		overrides[k] = v
 	}
-	for k, v := range loopHarnessEnv(sessionID, runID, defaultLoopAPIURL()) {
+	for k, v := range nuiHarnessEnv(sessionID, runID, defaultnuiAPIURL()) {
 		overrides[k] = v
 	}
 	if !userScope {

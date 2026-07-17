@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"strings"
 
-	"loop/internal/extensions"
-	"loop/internal/model"
+	"nui/internal/extensions"
+	"nui/internal/model"
 )
 
 var ruleFilenameSanitizer = regexp.MustCompile(`[^a-zA-Z0-9._-]+`)

@@ -10,12 +10,12 @@ import (
 
 func TestHitlSDKDirInstallsFiles(t *testing.T) {
 	srcDir := filepath.Join("..", "..", "harness-sdk")
-	if _, err := os.Stat(filepath.Join(srcDir, "loop_hitl.py")); err != nil {
+	if _, err := os.Stat(filepath.Join(srcDir, "nui_hitl.py")); err != nil {
 		t.Skip("harness-sdk not found from test cwd")
 	}
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	t.Setenv("LOOP_HITL_SDK_DIR", "")
+	t.Setenv("NUI_HITL_SDK_DIR", "")
 
 	dir, err := installHitlSDK(srcDir)
 	if err != nil {

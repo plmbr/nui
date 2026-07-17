@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"sync"
 
-	"loop/internal/hitl"
+	"nui/internal/hitl"
 )
 
 type persistentCodexSession struct {
@@ -74,7 +74,7 @@ func (s *persistentCodexSession) runTurn(ctx context.Context, agent *CodexAgent,
 			cmd.Dir = req.WorkingDir
 		}
 	}
-	applyCmdEnv(cmd, "codex", req.ConfigDir, req.Env, req.UserScopeHarness, req.LoopSessionID, req.RunID)
+	applyCmdEnv(cmd, "codex", req.ConfigDir, req.Env, req.UserScopeHarness, req.NuiSessionID, req.RunID)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -160,8 +160,8 @@ func (s *persistentCodexSession) buildArgs(req RunRequest) []string {
 	}
 	if baseURL := os.Getenv("OPENAI_BASE_URL"); baseURL != "" {
 		args = append(args,
-			"-c", `model_provider="loop_gateway"`,
-			"-c", fmt.Sprintf(`model_providers.loop_gateway={name="loop_gateway",env_key="OPENAI_API_KEY",base_url="%s",supports_websockets=false}`, baseURL),
+			"-c", `model_provider="nui_gateway"`,
+			"-c", fmt.Sprintf(`model_providers.nui_gateway={name="nui_gateway",env_key="OPENAI_API_KEY",base_url="%s",supports_websockets=false}`, baseURL),
 		)
 	}
 	if req.Model != "" {

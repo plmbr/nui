@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 // claudeEntry is a single line from a Claude Code session JSONL file.

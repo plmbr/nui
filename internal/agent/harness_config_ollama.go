@@ -13,13 +13,13 @@ Answer greetings, factual questions, math, and capability questions directly in 
 
 **show_visualization** is only when the user explicitly asks for a chart, graph, plot, table, or dashboard. Never wrap a plain text answer in HTML or call **show_visualization** for definitions, geography, or Q&A.
 
-When a chart is explicitly requested, call **show_visualization** on **loop-viz** with complete self-contained HTML in the **html** field. Use valid JSON with properly escaped quotes inside HTML attribute values. Every script tag must be properly closed.
+When a chart is explicitly requested, call **show_visualization** on **nui-viz** with complete self-contained HTML in the **html** field. Use valid JSON with properly escaped quotes inside HTML attribute values. Every script tag must be properly closed.
 `
 
 const ollamaHitlSystemPromptAppendix = `
 ## Human in the loop (Ollama)
 
-Do **not** use **ask_user** on **loop-hitl** unless the user explicitly asked you to choose between options (for example: "which do you prefer, A or B?").
+Do **not** use **ask_user** on **nui-hitl** unless the user explicitly asked you to choose between options (for example: "which do you prefer, A or B?").
 
 Never use ask_user for greetings, capability questions, demos, or follow-up quizzes. Describe capabilities in plain text instead of prompting the user to pick a demo.
 `

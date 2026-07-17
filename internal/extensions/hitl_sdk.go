@@ -10,16 +10,16 @@ import (
 )
 
 var hitlSDKFiles = []string{
-	"loop_hitl.py",
-	"loop_hitl_channel.py",
-	"loop_agent_stdio.py",
+	"nui_hitl.py",
+	"nui_hitl_channel.py",
+	"nui_agent_stdio.py",
 }
 
-// HitlSDKDir returns a directory containing loop_hitl.py, installing harness-sdk files under ~/.loop when needed.
+// HitlSDKDir returns a directory containing nui_hitl.py, installing harness-sdk files under ~/.nui when needed.
 func HitlSDKDir() (string, error) {
-	if p := strings.TrimSpace(os.Getenv("LOOP_HITL_SDK_DIR")); p != "" {
-		if _, err := os.Stat(filepath.Join(p, "loop_hitl.py")); err != nil {
-			return "", fmt.Errorf("LOOP_HITL_SDK_DIR %q: %w", p, err)
+	if p := strings.TrimSpace(os.Getenv("NUI_HITL_SDK_DIR")); p != "" {
+		if _, err := os.Stat(filepath.Join(p, "nui_hitl.py")); err != nil {
+			return "", fmt.Errorf("NUI_HITL_SDK_DIR %q: %w", p, err)
 		}
 		return p, nil
 	}
@@ -34,21 +34,21 @@ func installedHitlSDKDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(home, ".loop", "harness-sdk")
-	if _, err := os.Stat(filepath.Join(dir, "loop_hitl.py")); err != nil {
+	dir := filepath.Join(home, ".nui", "harness-sdk")
+	if _, err := os.Stat(filepath.Join(dir, "nui_hitl.py")); err != nil {
 		return "", err
 	}
 	return dir, nil
 }
 
 func findHitlSDKSourceDir() (string, error) {
-	if p, err := findHarnessSDKFileNearExecutable("loop_hitl.py"); err == nil {
+	if p, err := findHarnessSDKFileNearExecutable("nui_hitl.py"); err == nil {
 		return filepath.Dir(p), nil
 	}
-	if p, err := findHarnessSDKFileNearWorkingDir("loop_hitl.py"); err == nil {
+	if p, err := findHarnessSDKFileNearWorkingDir("nui_hitl.py"); err == nil {
 		return filepath.Dir(p), nil
 	}
-	return "", fmt.Errorf("loop_hitl.py not found (set LOOP_HITL_SDK_DIR)")
+	return "", fmt.Errorf("nui_hitl.py not found (set NUI_HITL_SDK_DIR)")
 }
 
 func installHitlSDK(srcDir string) (string, error) {
@@ -56,7 +56,7 @@ func installHitlSDK(srcDir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	destDir := filepath.Join(home, ".loop", "harness-sdk")
+	destDir := filepath.Join(home, ".nui", "harness-sdk")
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return "", err
 	}

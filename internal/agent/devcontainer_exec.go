@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"loop/internal/devcontainer"
+	"nui/internal/devcontainer"
 )
 
 const sandboxDevcontainer = "devcontainer"

@@ -5,7 +5,7 @@ package agent
 import (
 	"testing"
 
-	"loop/internal/llm"
+	"nui/internal/llm"
 )
 
 func TestIsInformationalUserMessage(t *testing.T) {

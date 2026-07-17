@@ -10,18 +10,18 @@ import (
 	"testing"
 	"time"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
-func TestSessionMCPConnectLoopViz(t *testing.T) {
-	exe := os.Getenv("LOOP_MCP_BINARY")
+func TestSessionMCPConnectnuiViz(t *testing.T) {
+	exe := os.Getenv("NUI_MCP_BINARY")
 	if exe == "" {
-		// Build loop from module root (parent of internal/agent).
-		tmp := filepath.Join(t.TempDir(), "loop")
+		// Build nui from module root (parent of internal/agent).
+		tmp := filepath.Join(t.TempDir(), "nui")
 		cmd := exec.Command("go", "build", "-o", tmp, ".")
 		cmd.Dir = filepath.Clean(filepath.Join("..", ".."))
 		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Skipf("build loop binary: %v\n%s", err, out)
+			t.Skipf("build nui binary: %v\n%s", err, out)
 		}
 		exe = tmp
 	}
@@ -32,7 +32,7 @@ func TestSessionMCPConnectLoopViz(t *testing.T) {
 	client := NewSessionMCP()
 	defer client.Close()
 	if failures := client.ConnectServers(ctx, []model.ADLMCPServer{{
-		Name:    "loop-viz",
+		Name:    "nui-viz",
 		Command: exe,
 		Args:    []string{"viz-mcp"},
 	}}); len(failures) != 0 {

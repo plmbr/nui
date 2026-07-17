@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 const anthropicBuiltinDefaultModel = "claude-sonnet-4-20250514"

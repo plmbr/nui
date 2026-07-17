@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"loop/internal/store"
+	"nui/internal/store"
 )
 
 type persistedStore struct {

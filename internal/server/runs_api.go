@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 type activeRun struct {

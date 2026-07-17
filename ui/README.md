@@ -1,6 +1,6 @@
-# Loop UI
+# nui UI
 
-React + Vite frontend for the Loop agent chat interface.
+React + Vite frontend for the nui agent chat interface.
 
 ## Development
 
@@ -28,7 +28,7 @@ Run the Go server separately (`go run . ui` from repo root). Vite proxies API ca
 
 The UI streams chat via `POST /api/sessions/:id/ag-ui` using the [AG-UI protocol](https://github.com/ag-ui-protocol/ag-ui), not the legacy `/chat` endpoint.
 
-On session select, messages load from `GET /api/sessions/:id/messages` (persisted in `~/.loop/data.json`), falling back to `GET /api/sessions/:id/history` (agent session files).
+On session select, messages load from `GET /api/sessions/:id/messages` (persisted in `~/.nui/data.json`), falling back to `GET /api/sessions/:id/history` (agent session files).
 
 ## Stack
 

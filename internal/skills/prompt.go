@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 // PromptAppendix returns skill bodies for inlining into an api harness system prompt.
@@ -33,7 +33,7 @@ func PromptAppendix(ctx Context, skillList []model.ADLSkill) string {
 	if len(blocks) == 0 {
 		return ""
 	}
-	return "## Loop skills\n\n" + strings.Join(blocks, "\n\n")
+	return "## nui skills\n\n" + strings.Join(blocks, "\n\n")
 }
 
 // ReadBody resolves a skill and returns its markdown body without YAML frontmatter.

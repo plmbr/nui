@@ -12,10 +12,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"loop/internal/agent"
-	"loop/internal/hitl"
-	"loop/internal/model"
-	"loop/internal/viz"
+	"nui/internal/agent"
+	"nui/internal/hitl"
+	"nui/internal/model"
+	"nui/internal/viz"
 )
 
 type aguiRunInput struct {
@@ -170,7 +170,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 	go func() {
 		defer close(events)
 		runReq := agent.RunRequest{
-			LoopSessionID:    sessionID,
+			NuiSessionID:    sessionID,
 			RunID:            runID,
 			WorkingDir:       workingDir,
 			Message:          resolvedMessage,

@@ -15,7 +15,7 @@ func SetRunsDirOverride(dir string) {
 	runsDirOverride = dir
 }
 
-// RunsDir returns ~/.loop/runs for durable run event logs.
+// RunsDir returns ~/.nui/runs for durable run event logs.
 func RunsDir() (string, error) {
 	if runsDirOverride != "" {
 		if err := os.MkdirAll(runsDirOverride, 0700); err != nil {
@@ -34,7 +34,7 @@ func RunsDir() (string, error) {
 	return runsDir, nil
 }
 
-// RunLogPath returns ~/.loop/runs/<runID>.jsonl.
+// RunLogPath returns ~/.nui/runs/<runID>.jsonl.
 func RunLogPath(runID string) (string, error) {
 	dir, err := RunsDir()
 	if err != nil {

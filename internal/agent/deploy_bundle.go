@@ -3,8 +3,8 @@
 package agent
 
 import (
-	"loop/internal/extensions"
-	"loop/internal/model"
+	"nui/internal/extensions"
+	"nui/internal/model"
 )
 
 // BuildDeployAssets expands ADL aiAssets into a serializable deploy bundle.

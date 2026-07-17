@@ -39,7 +39,7 @@ func TestPrepareHTML_rebuildsBrokenOllamaChart(t *testing.T) {
 		`<div id="line-chart"></div>` +
 		`<script>var ctx = document.getElementById("line-chart").getContext('2d');new Chart(ctx, {type: 'line', data: {labels: ['January', 'February', 'March'], datasets: [{'label': 'Series 1', 'data': [12, 19, 3], 'backgroundColor': 'rgba(255,99,132,1)', 'borderColor': 'rgba(255,99,132,1),0,2)}]}})`
 	prepared := PrepareHTML(raw)
-	if !contains(prepared, `<canvas id="loop-chart"`) {
+	if !contains(prepared, `<canvas id="nui-chart"`) {
 		t.Fatalf("expected rebuilt canvas chart, got %q", prepared)
 	}
 	if !contains(prepared, "January") || !contains(prepared, "[12,19,3]") {

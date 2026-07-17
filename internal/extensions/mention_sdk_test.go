@@ -7,19 +7,19 @@ import (
 	"path/filepath"
 	"testing"
 
-	"loop/internal/extensions"
+	"nui/internal/extensions"
 )
 
 func TestMentionSDKDirInstalls(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	t.Setenv("LOOP_MENTION_SDK_DIR", "")
+	t.Setenv("NUI_MENTION_SDK_DIR", "")
 
 	dir, err := extensions.MentionSDKDir()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "loop_mention.py")); err != nil {
+	if _, err := os.Stat(filepath.Join(dir, "nui_mention.py")); err != nil {
 		t.Fatalf("installed sdk: %v", err)
 	}
 }

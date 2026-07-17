@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 // ProbeConnectFailures attempts to connect to each remote MCP server and returns

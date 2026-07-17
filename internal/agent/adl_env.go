@@ -3,7 +3,7 @@
 package agent
 
 import (
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 // mergeADLEnv combines top-level ADL env with harness-level env (harness wins on conflict).

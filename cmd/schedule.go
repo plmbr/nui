@@ -9,7 +9,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"loop/internal/loopclient"
+	"nui/internal/nuiclient"
 
 	"github.com/spf13/cobra"
 )
@@ -24,19 +24,19 @@ var (
 	scheduleName       string
 )
 
-// NewScheduleCmd returns the loop schedule command tree.
+// NewScheduleCmd returns the nui schedule command tree.
 func NewScheduleCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "schedule",
 		Short: "Manage scheduled autonomous agent runs",
 	}
-	cmd.PersistentFlags().StringVar(&scheduleURL, "url", "", "Loop server base URL (default LOOP_URL or http://127.0.0.1:8080)")
+	cmd.PersistentFlags().StringVar(&scheduleURL, "url", "", "nui server base URL (default NUI_URL or http://127.0.0.1:8080)")
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		ctx := cmd.Context()
 		if ctx == nil {
 			ctx = context.Background()
 		}
-		return ensureLoopServer(ctx, loopclient.New(scheduleURL), false)
+		return ensureNuiServer(ctx, nuiclient.New(scheduleURL), false)
 	}
 
 	addCmd := newScheduleAddCmd()
@@ -60,7 +60,7 @@ func newScheduleListCmd() *cobra.Command {
 			if ctx == nil {
 				ctx = context.Background()
 			}
-			client := loopclient.New(scheduleURL)
+			client := nuiclient.New(scheduleURL)
 			items, err := client.ListSchedules(ctx)
 			if err != nil {
 				return err
@@ -112,8 +112,8 @@ func newScheduleAddCmd() *cobra.Command {
 			if name == "" {
 				name = agentType
 			}
-			client := loopclient.New(scheduleURL)
-			s, err := client.CreateSchedule(ctx, loopclient.CreateScheduleRequest{
+			client := nuiclient.New(scheduleURL)
+			s, err := client.CreateSchedule(ctx, nuiclient.CreateScheduleRequest{
 				Name:       name,
 				AgentType:  agentType,
 				Prompt:     strings.TrimSpace(schedulePrompt),
@@ -165,7 +165,7 @@ func newScheduleDeleteCmd() *cobra.Command {
 			if ctx == nil {
 				ctx = context.Background()
 			}
-			client := loopclient.New(scheduleURL)
+			client := nuiclient.New(scheduleURL)
 			if err := client.DeleteSchedule(ctx, args[0]); err != nil {
 				return err
 			}
@@ -185,7 +185,7 @@ func newScheduleRunNowCmd() *cobra.Command {
 			if ctx == nil {
 				ctx = context.Background()
 			}
-			client := loopclient.New(scheduleURL)
+			client := nuiclient.New(scheduleURL)
 			s, err := client.RunScheduleNow(ctx, args[0])
 			if err != nil {
 				return err
@@ -202,8 +202,8 @@ func scheduleSetEnabled(enabled bool) func(*cobra.Command, []string) error {
 		if ctx == nil {
 			ctx = context.Background()
 		}
-		client := loopclient.New(scheduleURL)
-		s, err := client.PatchSchedule(ctx, args[0], loopclient.PatchScheduleRequest{
+		client := nuiclient.New(scheduleURL)
+		s, err := client.PatchSchedule(ctx, args[0], nuiclient.PatchScheduleRequest{
 			Enabled: &enabled,
 		})
 		if err != nil {

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/model"
+	"nui/internal/store"
 )
 
 func latestAssistantMessageAt(msgs []model.ChatMessage) string {

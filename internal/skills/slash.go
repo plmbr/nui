@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 // ExpandSlashCommand replaces a leading /skill-name invocation with the skill body.

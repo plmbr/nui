@@ -13,12 +13,12 @@ import (
 	"syscall"
 	"time"
 
-	"loop/internal/agent"
-	"loop/internal/extensions"
-	"loop/internal/memory"
-	"loop/internal/mentions"
-	"loop/internal/mcpoauth"
-	"loop/internal/storageext"
+	"nui/internal/agent"
+	"nui/internal/extensions"
+	"nui/internal/memory"
+	"nui/internal/mentions"
+	"nui/internal/mcpoauth"
+	"nui/internal/storageext"
 )
 
 var extensionManager *agent.Manager

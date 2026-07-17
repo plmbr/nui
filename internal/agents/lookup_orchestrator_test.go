@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/model"
+	"nui/internal/store"
 )
 
 func TestValidateOrchestratorRefsBuiltin(t *testing.T) {

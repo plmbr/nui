@@ -11,13 +11,13 @@ import (
 	"sync"
 	"time"
 
-	"loop/internal/agent"
-	"loop/internal/agents"
-	"loop/internal/browser"
-	"loop/internal/extensions"
-	"loop/internal/model"
-	"loop/internal/pathutil"
-	"loop/internal/store"
+	"nui/internal/agent"
+	"nui/internal/agents"
+	"nui/internal/browser"
+	"nui/internal/extensions"
+	"nui/internal/model"
+	"nui/internal/pathutil"
+	"nui/internal/store"
 
 	"github.com/google/uuid"
 )

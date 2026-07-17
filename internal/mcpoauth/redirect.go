@@ -6,19 +6,19 @@ import (
 	"fmt"
 	"strings"
 
-	"loop/internal/store"
+	"nui/internal/store"
 )
 
 var loopListenPort = 8080
 
-// SetListenPort records the Loop HTTP listen port for OAuth callback URLs.
+// SetListenPort records the nui HTTP listen port for OAuth callback URLs.
 func SetListenPort(port int) {
 	if port > 0 {
 		loopListenPort = port
 	}
 }
 
-// RedirectURI returns the OAuth callback URL Loop uses.
+// RedirectURI returns the OAuth callback URL nui uses.
 func RedirectURI() (string, error) {
 	settings, err := store.LoadSettings()
 	if err == nil {

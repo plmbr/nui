@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	"loop/internal/loopclient"
-	"loop/internal/model"
+	"nui/internal/nuiclient"
+	"nui/internal/model"
 )
 
 // GradeResult is the outcome of grading agent output.
@@ -20,7 +20,7 @@ type GradeResult struct {
 
 // Grader grades agent output against an eval expectation.
 type Grader struct {
-	Client      *loopclient.Client
+	Client      *nuiclient.Client
 	JudgeAgent  string // agent id for llm judge runs; default claude-code
 }
 
@@ -69,7 +69,7 @@ func (g *Grader) Grade(ctx context.Context, output string, expect *model.ADLEval
 		return GradeResult{Passed: &passed, Message: msg}, nil
 	case "llm":
 		if g.Client == nil {
-			return GradeResult{}, fmt.Errorf("llm judge requires a loop client")
+			return GradeResult{}, fmt.Errorf("llm judge requires a nui client")
 		}
 		return g.gradeLLM(ctx, output, expect.Criteria)
 	default:
@@ -88,13 +88,13 @@ Agent output:
 
 Does the agent output satisfy the criteria?`, strings.TrimSpace(criteria), strings.TrimSpace(output))
 
-	sess, err := g.Client.CreateSession(ctx, loopclient.CreateSessionRequest{
+	sess, err := g.Client.CreateSession(ctx, nuiclient.CreateSessionRequest{
 		AgentType: g.judgeAgent(),
 	})
 	if err != nil {
 		return GradeResult{}, fmt.Errorf("llm judge session: %w", err)
 	}
-	started, err := g.Client.StartRun(ctx, sess.ID, loopclient.StartRunRequest{Message: prompt})
+	started, err := g.Client.StartRun(ctx, sess.ID, nuiclient.StartRunRequest{Message: prompt})
 	if err != nil {
 		return GradeResult{}, fmt.Errorf("llm judge run: %w", err)
 	}

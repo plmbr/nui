@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/devcontainer/dockercontext"
+	"nui/internal/devcontainer/dockercontext"
 )
 
 // dockerContextDirs maps inner harness types to docker/ build context directory names.
@@ -39,8 +39,8 @@ func ResolveImage(innerHarness, imageOverride string) (string, error) {
 	return image, nil
 }
 
-// IsLoopManagedImage reports whether Loop can auto-build the requested image for innerHarness.
-func IsLoopManagedImage(innerHarness, image string) bool {
+// IsNuiManagedImage reports whether nui can auto-build the requested image for innerHarness.
+func IsNuiManagedImage(innerHarness, image string) bool {
 	defaultImage, err := ResolveImage(innerHarness, "")
 	if err != nil {
 		return false
@@ -60,7 +60,7 @@ func ImageExists(image string) bool {
 	return cmd.Run() == nil
 }
 
-// EnsureImage builds the Loop-managed devcontainer image when it is missing locally.
+// EnsureImage builds the nui-managed devcontainer image when it is missing locally.
 // Custom image overrides are not auto-built.
 func EnsureImage(ctx context.Context, innerHarness, imageOverride string) error {
 	if !DockerAvailable() {
@@ -74,7 +74,7 @@ func EnsureImage(ctx context.Context, innerHarness, imageOverride string) error 
 	if ImageExists(image) {
 		return nil
 	}
-	if !IsLoopManagedImage(innerHarness, image) {
+	if !IsNuiManagedImage(innerHarness, image) {
 		return fmt.Errorf("devcontainer image %q not found locally (custom image override; build or pull it manually)", image)
 	}
 
@@ -83,14 +83,14 @@ func EnsureImage(ctx context.Context, innerHarness, imageOverride string) error 
 		return err
 	}
 
-	fmt.Fprintf(os.Stderr, "[loop] building devcontainer image %s (first use; this may take a few minutes)\n", image)
+	fmt.Fprintf(os.Stderr, "[nui] building devcontainer image %s (first use; this may take a few minutes)\n", image)
 	if err := buildImage(ctx, image, contextDir); err != nil {
 		return err
 	}
 	if !ImageExists(image) {
 		return fmt.Errorf("devcontainer image %q still missing after build", image)
 	}
-	fmt.Fprintf(os.Stderr, "[loop] devcontainer image %s ready\n", image)
+	fmt.Fprintf(os.Stderr, "[nui] devcontainer image %s ready\n", image)
 	return nil
 }
 
@@ -144,7 +144,7 @@ func materializeEmbeddedBuildContext(innerHarness string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(home, ".loop", "cache", "devcontainer-build", contextName)
+	dir := filepath.Join(home, ".nui", "cache", "devcontainer-build", contextName)
 	dockerfile := filepath.Join(dir, "Dockerfile")
 	if st, err := os.Stat(dockerfile); err == nil && !st.IsDir() {
 		return dir, nil

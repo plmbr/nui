@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Built-in claude-code extension for Loop."""
+"""Built-in claude-code extension for nui."""
 
 import os
 import sys
@@ -7,14 +7,14 @@ import threading
 
 sys.path.insert(0, os.path.dirname(__file__))
 from claude_session import PersistentClaudeSession
-from loop_agent import LoopAgent
+from nui_agent import NuiAgent
 
 
 def _wrap_with_bwrap(claude_args: list[str], working_dir: str) -> list[str]:
-    """Prepend bwrap wrapper args if LOOP_BWRAP_PATH is set, otherwise return as-is."""
+    """Prepend bwrap wrapper args if NUI_BWRAP_PATH is set, otherwise return as-is."""
     import os
 
-    bwrap_path = os.environ.get("LOOP_BWRAP_PATH", "")
+    bwrap_path = os.environ.get("NUI_BWRAP_PATH", "")
     if not bwrap_path:
         return claude_args
 
@@ -38,7 +38,7 @@ def _wrap_with_bwrap(claude_args: list[str], working_dir: str) -> list[str]:
     return bwrap_args + claude_args
 
 
-class ClaudeCodeAgent(LoopAgent):
+class ClaudeCodeAgent(NuiAgent):
     name = "claude-code"
     version = "0.1.0"
 

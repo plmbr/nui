@@ -473,7 +473,7 @@ export default function App() {
         <header className="app-header">
           <SidebarTrigger />
           <button type="button" className="app-brand shrink-0" onClick={handleOpenLaunch}>
-            The Loop
+            nui
           </button>
           {selected && selectedAgent && !customizeOpen && !schedulesOpen && !newSessionOpen && !sessionListGroup && !landingOpen && (
             <div className="flex min-w-0 items-center gap-2">

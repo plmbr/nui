@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"strings"
 
-	"loop/internal/llm"
+	"nui/internal/llm"
 	"github.com/google/uuid"
-	"loop/internal/viz"
+	"nui/internal/viz"
 )
 
 func toolNamesFromLLM(tools []llm.Tool) []string {

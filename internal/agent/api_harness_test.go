@@ -9,8 +9,8 @@ import (
 	"os"
 	"testing"
 
-	"loop/internal/llm"
-	"loop/internal/model"
+	"nui/internal/llm"
+	"nui/internal/model"
 )
 
 func TestAPIHarnessAvailable(t *testing.T) {
@@ -161,16 +161,16 @@ func TestAPIHarnessAvailableDef(t *testing.T) {
 
 func TestResolveAPIKeyFromEnvMap(t *testing.T) {
 	key, err := resolveAPIKey(APIProviderProfile{
-		APIKeyEnvs: []string{"TEST_LOOP_API_KEY"},
+		APIKeyEnvs: []string{"TEST_NUI_API_KEY"},
 		NeedsKey:   true,
-	}, map[string]string{"TEST_LOOP_API_KEY": "from-adl"})
+	}, map[string]string{"TEST_NUI_API_KEY": "from-adl"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if key != "from-adl" {
 		t.Fatalf("key = %q", key)
 	}
-	_ = os.Unsetenv("TEST_LOOP_API_KEY")
+	_ = os.Unsetenv("TEST_NUI_API_KEY")
 }
 
 func TestResolveAPIModelEnvOverride(t *testing.T) {

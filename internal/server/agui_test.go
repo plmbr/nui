@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"loop/internal/agent"
+	"nui/internal/agent"
 )
 
 func TestHandleSessionAGUI_rejectsEmptyUserMessage(t *testing.T) {
@@ -203,7 +203,7 @@ func TestHandleSessionAGUI_visualizationCustomEvent(t *testing.T) {
 		events <- agent.Event{
 			Type:       agent.EventToolCallStart,
 			ToolCallID: "tc-viz",
-			ToolName:   "mcp__loop-viz__show_visualization",
+			ToolName:   "mcp__nui-viz__show_visualization",
 		}
 		events <- agent.Event{
 			Type:       agent.EventToolCallArgs,
@@ -213,7 +213,7 @@ func TestHandleSessionAGUI_visualizationCustomEvent(t *testing.T) {
 		events <- agent.Event{
 			Type:       agent.EventToolCallEnd,
 			ToolCallID: "tc-viz",
-			ToolName:   "mcp__loop-viz__show_visualization",
+			ToolName:   "mcp__nui-viz__show_visualization",
 			ToolArgs:   toolArgs,
 		}
 		events <- agent.Event{Type: agent.EventDone, SessionID: "s1"}

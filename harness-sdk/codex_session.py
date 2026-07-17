@@ -2,7 +2,7 @@
 
 Codex does not yet expose a multi-turn stdin protocol like Claude stream-json.
 This keeps thread IDs across turns and reuses exec arguments/config until the
-Loop session ends.
+nui session ends.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ _CODEX_BINARY_CANDIDATES = (
 
 def find_codex_binary() -> str:
     """Locate the codex CLI, matching the Go agent's search order."""
-    override = os.environ.get("LOOP_CODEX_PATH", "").strip()
+    override = os.environ.get("NUI_CODEX_PATH", "").strip()
     if override:
         return override
 
@@ -96,7 +96,7 @@ class PersistentCodexSession:
             yield {
                 "type": "error",
                 "error": (
-                    "codex CLI not found. Install Codex or set LOOP_CODEX_PATH to the binary "
+                    "codex CLI not found. Install Codex or set NUI_CODEX_PATH to the binary "
                     f"(checked PATH and {_CODEX_BINARY_CANDIDATES[1]})"
                 ),
             }
@@ -107,7 +107,7 @@ class PersistentCodexSession:
             args = [self._binary, "exec"] + flags + [message]
 
         args = self._wrap_args(args, wd)
-        cwd = None if os.environ.get("LOOP_BWRAP_PATH") else wd
+        cwd = None if os.environ.get("NUI_BWRAP_PATH") else wd
 
         proc = subprocess.Popen(
             args,
@@ -163,9 +163,9 @@ class PersistentCodexSession:
         base_url = os.environ.get("OPENAI_BASE_URL", "")
         if base_url:
             flags += [
-                "-c", 'model_provider="loop_gateway"',
+                "-c", 'model_provider="nui_gateway"',
                 "-c",
-                f'model_providers.loop_gateway={{name="loop_gateway",env_key="OPENAI_API_KEY",base_url="{base_url}",supports_websockets=false}}',
+                f'model_providers.nui_gateway={{name="nui_gateway",env_key="OPENAI_API_KEY",base_url="{base_url}",supports_websockets=false}}',
             ]
         if model:
             flags += ["-m", model]

@@ -4,7 +4,7 @@ import type { AgentType, ExtensionInfo } from '@/types'
 
 export const LOCAL_CUSTOM_AGENT_SOURCE = 'local'
 
-/** Extension name from an agent id like ext:loop-extension/agent-id, or null for local agents. */
+/** Extension name from an agent id like ext:nui-extension/agent-id, or null for local agents. */
 export function parseExtensionNameFromAgentId(id: string): string | null {
   if (!id.startsWith('ext:')) return null
   const rest = id.slice(4)

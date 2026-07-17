@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"strings"
 
-	"loop/internal/llm"
-	"loop/internal/hitl"
-	"loop/internal/model"
-	"loop/internal/viz"
+	"nui/internal/llm"
+	"nui/internal/hitl"
+	"nui/internal/model"
+	"nui/internal/viz"
 )
 
 const maxAPIToolIterations = 32
@@ -441,10 +441,10 @@ func (a *APIHarnessAgent) approveTool(ctx context.Context, req RunRequest, event
 		return false, fmt.Errorf("tool %q requires approval but HITL gate is not configured", toolName)
 	}
 	created, err := gate.CreateOrchestrationGate(ctx, hitl.CreateInput{
-		SessionID: req.LoopSessionID,
+		SessionID: req.NuiSessionID,
 		RunID:     req.RunID,
 		Kind:      hitl.KindApproval,
-		Routing:   hitl.Routing{Channels: []string{hitl.ChannelLoopUI}},
+		Routing:   hitl.Routing{Channels: []string{hitl.ChannelnuiUI}},
 		Payload: map[string]any{
 			"title":    "Approve tool call",
 			"message":  fmt.Sprintf("Allow tool %q?", toolName),

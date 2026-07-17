@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 func TestParseRoutingResponse(t *testing.T) {

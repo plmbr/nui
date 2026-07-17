@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-// EnsureSessionWorkspace creates ~/.loop/workspaces/<sessionID> and returns its path.
+// EnsureSessionWorkspace creates ~/.nui/workspaces/<sessionID> and returns its path.
 func EnsureSessionWorkspace(sessionID string) (string, error) {
 	if sessionID == "" {
 		return "", os.ErrInvalid
@@ -22,7 +22,7 @@ func EnsureSessionWorkspace(sessionID string) (string, error) {
 	return path, nil
 }
 
-// RemoveSessionWorkspace deletes ~/.loop/workspaces/<sessionID> if it exists.
+// RemoveSessionWorkspace deletes ~/.nui/workspaces/<sessionID> if it exists.
 func RemoveSessionWorkspace(sessionID string) error {
 	if sessionID == "" {
 		return nil

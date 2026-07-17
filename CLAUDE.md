@@ -24,20 +24,20 @@ npm run lint    # ESLint
 
 ### Full production build
 ```sh
-cd ui && npm run build && cd .. && go build -o loop_bin . && ./loop_bin ui
+cd ui && npm run build && cd .. && go build -o nui_bin . && ./nui_bin ui
 ```
 
 > `ui/dist` must exist before `go build` — it is embedded into the binary at compile time via `//go:embed ui/dist`.
 
 ### Docker images (run from `docker/`)
 ```sh
-docker build -f claude-code/Dockerfile -t loop-claude-code:latest .
-docker build -f pi/Dockerfile          -t loop-pi:latest           .
-docker build -f codex/Dockerfile       -t loop-codex:latest        .
-docker build -f opencode/Dockerfile    -t loop-opencode:latest     .
+docker build -f claude-code/Dockerfile -t nui-claude-code:latest .
+docker build -f pi/Dockerfile          -t nui-pi:latest           .
+docker build -f codex/Dockerfile       -t nui-codex:latest        .
+docker build -f opencode/Dockerfile    -t nui-opencode:latest     .
 ```
 
-All docker sandbox images listen on port **8090** and share `http_loop_agent.py`. They forward `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `OPENAI_API_KEY`, and `OPENAI_BASE_URL` from the host. Loop adds `--add-host=<hostname>:host-gateway` when a base URL resolves to loopback.
+All docker sandbox images listen on port **8090** and share `http_nui_agent.py`. They forward `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `OPENAI_API_KEY`, and `OPENAI_BASE_URL` from the host. nui adds `--add-host=<hostname>:host-gateway` when a base URL resolves to loopback.
 
 ## Architecture
 
@@ -47,7 +47,7 @@ All docker sandbox images listen on port **8090** and share `http_loop_agent.py`
 flowchart LR
   Browser -->|REST| API["/api/*"]
   Browser -->|AG-UI SSE| AGUI["/api/sessions/:id/ag-ui"]
-  API --> Store["~/.loop/data.json"]
+  API --> Store["~/.nui/data.json"]
   AGUI --> ADLAgent
   ADLAgent --> Manager
   Manager --> Harnesses["ClaudeCode / Pi / Codex / OpenCode"]
@@ -61,10 +61,10 @@ In development, Vite (`:5173`) proxies `/api` to the Go server.
 
 | Package | Role |
 |---|---|
-| `cmd/` | Cobra CLI (`loop ui`, `loop extension add|remove`, `loop skills add|list|remove`) |
+| `cmd/` | Cobra CLI (`nui ui`, `nui extension add|remove`, `nui skills add|list|remove`) |
 | `internal/server/` | HTTP mux, REST handlers, AG-UI streaming (`agui.go`), MCP tool UI (`mcp_manager.go`) |
 | `internal/model/` | `Session`, `ChatMessage`, ADL structs |
-| `internal/store/` | Persistence: `data.json`, `settings.json`, ADL YAML in `agents/`, user plugins in `~/.loop/extensions/`, agent history loaders |
+| `internal/store/` | Persistence: `data.json`, `settings.json`, ADL YAML in `agents/`, user plugins in `~/.nui/extensions/`, agent history loaders |
 | `internal/extensions/` | Extension registry: manifest scan, list sources (file/catalog RPC), harness/MCP/skill/agent contributions |
 | `internal/agent/` | `Agent` interface, harness agents, `ADLAgent` executor, `Manager` lifecycle, `sandbox.go` (bwrap) |
 
@@ -100,12 +100,12 @@ Bind mounts per harness when bwrap is active:
 
 | Harness | Agent struct | Lifecycle |
 |---|---|---|
-| `docker` | `HTTPExtensionAgent` | Loop runs `docker run -d -p 127.0.0.1::<port> <image>`, maps port, health-checks `GET /info` |
-| `remote` | `HTTPExtensionAgent` | Loop stores `host:port`; no process management |
+| `docker` | `HTTPExtensionAgent` | nui runs `docker run -d -p 127.0.0.1::<port> <image>`, maps port, health-checks `GET /info` |
+| `remote` | `HTTPExtensionAgent` | nui stores `host:port`; no process management |
 
-`Manager` also provides `GetClaudeCodeDocker`, `GetPiDocker`, `GetCodexDocker`, `GetOpenCodeDocker` for `sandbox: docker` on builtin harnesses (images `loop-*:latest`, port 8090).
+`Manager` also provides `GetClaudeCodeDocker`, `GetPiDocker`, `GetCodexDocker`, `GetOpenCodeDocker` for `sandbox: docker` on builtin harnesses (images `nui-*:latest`, port 8090).
 
-On delete/shutdown, Loop calls `POST /shutdown` on managed containers, then `docker stop`.
+On delete/shutdown, nui calls `POST /shutdown` on managed containers, then `docker stop`.
 
 #### Extension harnesses (stdio / TCP / HTTP)
 
@@ -117,12 +117,12 @@ Installed extensions contribute harnesses via `contributions.harnesses`. `Manage
 | `tcp` | `ExtensionAgent` (JSON-RPC 2.0) |
 | `http` | `HTTPExtensionAgent` |
 
-ADL agents use `harness.type: ext:<extension>/<harness-id>`. Framework: `harness-sdk/loop_agent_stdio.py`. See `dev/extension-api.md`.
+ADL agents use `harness.type: ext:<extension>/<harness-id>`. Framework: `harness-sdk/nui_agent_stdio.py`. See `dev/extension-api.md`.
 
 #### Standalone reference examples (not registered)
 
 - `dev/harness-examples/py|ts/` — TCP JSON-RPC demos without an `extension.yaml`; not selectable as agent types
-- `harness-sdk/loop_agent.py` — TCP framework used by those examples
+- `harness-sdk/nui_agent.py` — TCP framework used by those examples
 
 ### HTTP/SSE protocol (docker + remote)
 
@@ -131,7 +131,7 @@ ADL agents use `harness.type: ext:<extension>/<harness-id>`. Framework: `harness
 | `GET /info` | Health check + metadata |
 | `POST /run` | Body: `{message, sessionId?, workingDir?, systemPrompt?, model?}` → `text/event-stream` |
 | `POST /cancel` | Body: `{runId}` — cancel current run |
-| `POST /shutdown` | Stop subprocesses; used by Loop on container teardown |
+| `POST /shutdown` | Stop subprocesses; used by nui on container teardown |
 
 SSE `data:` events support `text`, `done`, `error`, and tool-call/image event types (see `eventFromHarnessParams` in `extension.go`).
 
@@ -139,11 +139,11 @@ SSE `data:` events support `text`, `done`, `error`, and tool-call/image event ty
 
 | File | Contents |
 |---|---|
-| `~/.loop/data.json` | `sessions`, `agentSessions` (loop session ID → agent session ID), `sessionMessages` (UI chat text) |
-| `~/.loop/settings.json` | `theme`, `lastAgentType`, `lastSessionId`, `sidebarOpen` |
-| `~/.loop/agents/*.yaml` | User ADL definitions; loaded on every `GET /api/agent-types` |
-| `~/.loop/extensions/<name>/` | Backend extensions (`extension.yaml` + contribution list files); see `dev/extension-api.md` |
-| `~/.loop/connections/*.json` | Harness TCP/HTTP handshake files (`host`, `port`, `session_id`, `pid`) |
+| `~/.nui/data.json` | `sessions`, `agentSessions` (nui session ID → agent session ID), `sessionMessages` (UI chat text) |
+| `~/.nui/settings.json` | `theme`, `lastAgentType`, `lastSessionId`, `sidebarOpen` |
+| `~/.nui/agents/*.yaml` | User ADL definitions; loaded on every `GET /api/agent-types` |
+| `~/.nui/extensions/<name>/` | Backend extensions (`extension.yaml` + contribution list files); see `dev/extension-api.md` |
+| `~/.nui/connections/*.json` | Harness TCP/HTTP handshake files (`host`, `port`, `session_id`, `pid`) |
 | Agent history files | Claude: `~/.claude/projects/<dirHash>/<id>.jsonl`; pi/codex/opencode via respective `store/*_history.go` loaders |
 
 UI loads persisted `sessionMessages` first on session select; falls back to agent history files if empty.
@@ -165,7 +165,7 @@ Registered in `internal/server/api.go` and `agui.go`:
 - `GET /api/bootstrap` — one-shot CLI bootstrap (`sessionId`, `initialPrompt`); consumed on first read
 - `GET /api/capabilities` — bwrap availability
 - `GET /api/extensions` — installed extensions and contribution ids
-- `POST /api/extensions/reload` — rescan `~/.loop/extensions/`
+- `POST /api/extensions/reload` — rescan `~/.nui/extensions/`
 
 ### Frontend structure
 
@@ -183,7 +183,7 @@ Implemented in `internal/agent/adl.go`:
 - Per-step harness/model/systemPrompt override
 - Named outputs → downstream inputs
 - All six harness types + sandbox variants
-- `aiAssets.mcpServers`, `aiAssets.skills`, legacy `skill`, `systemPrompt`, `env`/`harness.env`, and `promptMode` provisioned to harness subprocesses / UI via `~/.loop/sessions/<session-id>/`
+- `aiAssets.mcpServers`, `aiAssets.skills`, legacy `skill`, `systemPrompt`, `env`/`harness.env`, and `promptMode` provisioned to harness subprocesses / UI via `~/.nui/sessions/<session-id>/`
 
 ### UI stack
 

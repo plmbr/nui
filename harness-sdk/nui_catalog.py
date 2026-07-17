@@ -1,13 +1,13 @@
 """
-Loop extension catalog provider — stdio JSON-RPC.
+nui extension catalog provider — stdio JSON-RPC.
 
-Subclass LoopCatalog and override list methods, then call serve().
+Subclass NuiCatalog and override list methods, then call serve().
 
 Example:
 
-    from loop_catalog import LoopCatalog
+    from nui_catalog import NuiCatalog
 
-    class MyCatalog(LoopCatalog):
+    class MyCatalog(NuiCatalog):
         def list_harnesses(self):
             return [{"id": "echo", "displayName": "Echo"}]
 
@@ -21,8 +21,8 @@ import sys
 from typing import Any
 
 
-class LoopCatalog:
-    api_version = "loop.dev/extension/v1"
+class NuiCatalog:
+    api_version = "nui.dev/extension/v1"
 
     def serve(self) -> None:
         for line in sys.stdin:
@@ -61,7 +61,7 @@ class LoopCatalog:
                 "id": rid,
                 "result": {
                     "apiVersion": self.api_version,
-                    "extensionName": os.environ.get("LOOP_EXTENSION_NAME", ""),
+                    "extensionName": os.environ.get("NUI_EXTENSION_NAME", ""),
                     "capabilities": ["harnesses", "mcpServers", "skills", "agents"],
                 },
             })

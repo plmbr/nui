@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"loop/internal/store"
+	"nui/internal/store"
 )
 
 const (
@@ -21,14 +21,14 @@ const (
 	ModeManual   = "manual"
 	ModeDisabled = "disabled"
 
-	EnvLoopMemoryAgentID   = "LOOP_MEMORY_AGENT_ID"
-	EnvLoopMemoryUserMode  = "LOOP_MEMORY_USER_MODE"
-	EnvLoopMemoryAgentMode = "LOOP_MEMORY_AGENT_MODE"
+	EnvnuiMemoryAgentID   = "NUI_MEMORY_AGENT_ID"
+	EnvnuiMemoryUserMode  = "NUI_MEMORY_USER_MODE"
+	EnvnuiMemoryAgentMode = "NUI_MEMORY_AGENT_MODE"
 )
 
 var agentIDSanitizer = regexp.MustCompile(`[^a-zA-Z0-9._-]+`)
 
-// Dir returns ~/.loop/memory, creating it if needed.
+// Dir returns ~/.nui/memory, creating it if needed.
 func Dir() (string, error) {
 	base, err := store.Dir()
 	if err != nil {
@@ -41,7 +41,7 @@ func Dir() (string, error) {
 	return dir, nil
 }
 
-// UserPath returns ~/.loop/memory/user.md.
+// UserPath returns ~/.nui/memory/user.md.
 func UserPath() (string, error) {
 	dir, err := Dir()
 	if err != nil {
@@ -50,7 +50,7 @@ func UserPath() (string, error) {
 	return filepath.Join(dir, userFileName), nil
 }
 
-// AgentPath returns ~/.loop/memory/agents/<agent-id>.md.
+// AgentPath returns ~/.nui/memory/agents/<agent-id>.md.
 func AgentPath(agentID string) (string, error) {
 	safe, err := sanitizeAgentID(agentID)
 	if err != nil {
@@ -252,7 +252,7 @@ func AutoSaveAppendix(settings store.Settings, agentID string) string {
 	}
 	return strings.TrimSpace(`## Memory (auto-save)
 
-When you make a durable decision or learn a fact that should persist, call **update_memory** on the **loop-agent** MCP server (` + scopeHint + `). Use ` + "`mode: append`" + `. Do not wait for the user to ask.`)
+When you make a durable decision or learn a fact that should persist, call **update_memory** on the **nui-agent** MCP server (` + scopeHint + `). Use ` + "`mode: append`" + `. Do not wait for the user to ask.`)
 }
 
 // AgentEntry describes one agent memory file.
@@ -350,17 +350,17 @@ func DeleteUser() error {
 	return currentStore.DeleteUser()
 }
 
-// AgentIDFromEnv returns LOOP_MEMORY_AGENT_ID when set.
+// AgentIDFromEnv returns NUI_MEMORY_AGENT_ID when set.
 func AgentIDFromEnv() string {
-	return strings.TrimSpace(os.Getenv(EnvLoopMemoryAgentID))
+	return strings.TrimSpace(os.Getenv(EnvnuiMemoryAgentID))
 }
 
-// UserModeFromEnv returns LOOP_MEMORY_USER_MODE when set.
+// UserModeFromEnv returns NUI_MEMORY_USER_MODE when set.
 func UserModeFromEnv() string {
-	return normalizeMode(os.Getenv(EnvLoopMemoryUserMode))
+	return normalizeMode(os.Getenv(EnvnuiMemoryUserMode))
 }
 
-// AgentModeFromEnv returns LOOP_MEMORY_AGENT_MODE when set.
+// AgentModeFromEnv returns NUI_MEMORY_AGENT_MODE when set.
 func AgentModeFromEnv() string {
-	return normalizeMode(os.Getenv(EnvLoopMemoryAgentMode))
+	return normalizeMode(os.Getenv(EnvnuiMemoryAgentMode))
 }

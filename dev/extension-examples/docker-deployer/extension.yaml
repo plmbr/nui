@@ -1,4 +1,4 @@
-apiVersion: loop.dev/extension/v1
+apiVersion: nui.dev/extension/v1
 name: docker-deployer
 version: 1.0.0
 displayName: Docker Deployer
@@ -9,4 +9,4 @@ contributions:
     agentDeployers:
       - name: docker
         description: Build and deploy agents as Docker images
-        command: ["python3", "${LOOP_EXTENSION_DIR}/deploy.py"]
+        command: ["python3", "${NUI_EXTENSION_DIR}/deploy.py"]

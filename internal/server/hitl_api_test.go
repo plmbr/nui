@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/hitl"
+	"nui/internal/hitl"
 )
 
 func TestHandleHITLCreateListRespond(t *testing.T) {
@@ -69,7 +69,7 @@ func TestHandleHITLCreateListRespond(t *testing.T) {
 		Status:  hitl.StatusAnswered,
 		Answers: map[string]any{"q1": "red"},
 		RespondedBy: hitl.RespondedBy{
-			Channel: hitl.ChannelLoopUI,
+			Channel: hitl.ChannelnuiUI,
 		},
 	}
 	raw, _ = json.Marshal(respondBody)
@@ -141,8 +141,8 @@ func TestHandleHITLChannels(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "loop-ui") {
-		t.Fatalf("expected loop-ui channel, body: %s", rec.Body.String())
+	if !strings.Contains(rec.Body.String(), "nui-ui") {
+		t.Fatalf("expected nui-ui channel, body: %s", rec.Body.String())
 	}
 }
 

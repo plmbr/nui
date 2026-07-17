@@ -1,6 +1,6 @@
 # Go
-loop_bin
-loop
+nui_bin
+nui
 *.exe
 *.test
 *.out

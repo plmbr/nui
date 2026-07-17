@@ -127,7 +127,7 @@ function rebuildChartHTML(html: string, chartScriptSrc: string): string {
   if (!data.length) return ''
   const chartLabels =
     labels.length > 0 ? labels : data.map((_, i) => `Item ${i + 1}`)
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><canvas id="loop-chart" width="400" height="200"></canvas><script src="${chartScriptSrc}"></script><script>new Chart(document.getElementById('loop-chart').getContext('2d'),{type:'bar',data:{labels:${JSON.stringify(chartLabels)},datasets:[{label:'Series 1',data:${JSON.stringify(data)},backgroundColor:'rgba(54,162,235,0.5)'}]},options:{responsive:false,plugins:{legend:{display:false}}}});</script></body></html>`
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><canvas id="nui-chart" width="400" height="200"></canvas><script src="${chartScriptSrc}"></script><script>new Chart(document.getElementById('nui-chart').getContext('2d'),{type:'bar',data:{labels:${JSON.stringify(chartLabels)},datasets:[{label:'Series 1',data:${JSON.stringify(data)},backgroundColor:'rgba(54,162,235,0.5)'}]},options:{responsive:false,plugins:{legend:{display:false}}}});</script></body></html>`
 }
 
 function ensureChartJSLibrary(html: string, chartScriptSrc: string): string {

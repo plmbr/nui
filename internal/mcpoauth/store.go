@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"golang.org/x/oauth2"
-	"loop/internal/store"
+	"nui/internal/store"
 )
 
 type storedCredential struct {

@@ -5,7 +5,7 @@ package viz
 import "strings"
 
 const (
-	MCPName  = "loop-viz"
+	MCPName  = "nui-viz"
 	ToolName = "show_visualization"
 )
 

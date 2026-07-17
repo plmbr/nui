@@ -8,13 +8,13 @@ import sys
 
 def _find_sdk_dir() -> str | None:
     candidates = []
-    if sdk := os.environ.get("LOOP_HITL_SDK_DIR"):
+    if sdk := os.environ.get("NUI_HITL_SDK_DIR"):
         candidates.append(sdk)
     ext_dir = os.path.dirname(os.path.abspath(__file__))
     candidates.extend([
         ext_dir,
         os.path.join(ext_dir, "..", "..", "..", "harness-sdk"),
-        os.path.expanduser("~/.loop/harness-sdk"),
+        os.path.expanduser("~/.nui/harness-sdk"),
     ])
     seen: set[str] = set()
     for candidate in candidates:
@@ -24,21 +24,21 @@ def _find_sdk_dir() -> str | None:
         if norm in seen:
             continue
         seen.add(norm)
-        if os.path.isfile(os.path.join(norm, "loop_hitl_channel.py")):
+        if os.path.isfile(os.path.join(norm, "nui_hitl_channel.py")):
             return norm
     return None
 
 
 _sdk_dir = _find_sdk_dir()
 if _sdk_dir is None:
-    sys.stderr.write("loop_hitl_channel.py not found (set LOOP_HITL_SDK_DIR)\n")
+    sys.stderr.write("nui_hitl_channel.py not found (set NUI_HITL_SDK_DIR)\n")
     sys.exit(1)
 sys.path.insert(0, _sdk_dir)
 
-from loop_hitl_channel import LoopHITLChannelProvider
+from nui_hitl_channel import NuiHITLChannelProvider
 
 
-class DemoHITLChannelHost(LoopHITLChannelProvider):
+class DemoHITLChannelHost(NuiHITLChannelProvider):
     name = "hitl-demo-channels"
     version = "1.0.0"
 

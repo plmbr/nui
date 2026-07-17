@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/modelcontextprotocol/go-sdk/auth"
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 const flowTTL = 10 * time.Minute

@@ -1,7 +1,7 @@
 adl: "1.0"
 id: devcontainer-claude
 name: Devcontainer Claude
-description: Claude Code running in a Loop-managed dev container (no user devcontainer.json required).
+description: Claude Code running in a nui-managed dev container (no user devcontainer.json required).
 version: 0.1.0
 
 harness:

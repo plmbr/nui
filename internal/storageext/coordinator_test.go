@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"loop/internal/extensions"
-	"loop/internal/memory"
-	"loop/internal/model"
-	"loop/internal/storageext"
-	"loop/internal/store"
+	"nui/internal/extensions"
+	"nui/internal/memory"
+	"nui/internal/model"
+	"nui/internal/storageext"
+	"nui/internal/store"
 )
 
 func testHome(t *testing.T) string {
@@ -29,7 +29,7 @@ func testHome(t *testing.T) string {
 func installStorageDemo(t *testing.T, home string) *extensions.Registry {
 	t.Helper()
 	src := filepath.Join("..", "..", "dev", "extension-examples", "storage-demo")
-	extDir := filepath.Join(home, ".loop", "extensions", "storage-demo")
+	extDir := filepath.Join(home, ".nui", "extensions", "storage-demo")
 	if err := os.MkdirAll(extDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -46,11 +46,11 @@ func installStorageDemo(t *testing.T, home string) *extensions.Registry {
 			t.Fatal(err)
 		}
 	}
-	sdk, err := os.ReadFile(filepath.Join("..", "..", "harness-sdk", "loop_storage.py"))
+	sdk, err := os.ReadFile(filepath.Join("..", "..", "harness-sdk", "nui_storage.py"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(extDir, "loop_storage.py"), sdk, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(extDir, "nui_storage.py"), sdk, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("HOME", home)

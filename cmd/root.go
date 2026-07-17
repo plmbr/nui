@@ -10,9 +10,9 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "loop",
-	Short: "Loop CLI",
-	Long:  "Loop is a CLI application with an optional web UI.",
+	Use:   "nui",
+	Short: "nui CLI",
+	Long:  "nui is a CLI application with an optional web UI.",
 }
 
 // Version is the CLI release version (set from main via SetVersion).

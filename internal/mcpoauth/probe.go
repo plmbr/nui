@@ -28,7 +28,7 @@ func ProbeServer(ctx context.Context, serverURL string) (*ProbeResult, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, url, strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"loop","version":"1.0.0"}}}`))
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, url, strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"nui","version":"1.0.0"}}}`))
 	if err != nil {
 		return nil, err
 	}

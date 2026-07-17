@@ -1,7 +1,7 @@
 adl: "1.0"
 
 # Reference agent matching the aiAssets.mcpServers schema.
-# Loop provisions ~/.loop/sessions/<session-id>/ and sets CLAUDE_CONFIG_DIR.
+# nui provisions ~/.nui/sessions/<session-id>/ and sets CLAUDE_CONFIG_DIR.
 
 id: test-agent
 name: Test Agent

@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 // ContributionManifest is returned by extension.initialize from a programmatic extension process.
@@ -45,11 +45,11 @@ func startProgrammaticHost(extDir string, manifest Manifest) (*programmaticHost,
 	entry := resolveInstallEntry(extDir, manifest.Install)
 	command := expandRuntimeCommand(manifest.Runtime.Command, extDir, entry)
 	env := append(os.Environ(),
-		"LOOP_EXTENSION_DIR="+extDir,
-		"LOOP_EXTENSION_NAME="+manifest.Name,
+		"NUI_EXTENSION_DIR="+extDir,
+		"NUI_EXTENSION_NAME="+manifest.Name,
 	)
 	if entry != "" {
-		env = append(env, "LOOP_EXTENSION_ENTRY="+entry)
+		env = append(env, "NUI_EXTENSION_ENTRY="+entry)
 	}
 	cwd := runtimeCwd(extDir, manifest.Runtime)
 	rpc, err := StartProgrammaticRPC(command, env, cwd)
@@ -66,7 +66,7 @@ func startProgrammaticHost(extDir string, manifest Manifest) (*programmaticHost,
 	if err := rpc.Call("extension.initialize", map[string]any{
 		"extensionName": manifest.Name,
 		"extensionDir":  extDir,
-		"apiUrl":        defaultLoopAPIURL(),
+		"apiUrl":        defaultnuiAPIURL(),
 	}, &initResult); err != nil {
 		_ = rpc.Close()
 		return nil, fmt.Errorf("extension %s initialize: %w", manifest.Name, err)
@@ -80,8 +80,8 @@ func startProgrammaticHost(extDir string, manifest Manifest) (*programmaticHost,
 	return host, nil
 }
 
-func defaultLoopAPIURL() string {
-	if v := os.Getenv("LOOP_API_URL"); v != "" {
+func defaultnuiAPIURL() string {
+	if v := os.Getenv("NUI_API_URL"); v != "" {
 		return v
 	}
 	return "http://127.0.0.1:8080"

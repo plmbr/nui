@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"loop/internal/agent"
-	"loop/internal/model"
+	"nui/internal/agent"
+	"nui/internal/model"
 )
 
 func TestHandleSessionRunsStartAndGet(t *testing.T) {

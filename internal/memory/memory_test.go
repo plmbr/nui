@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/store"
+	"nui/internal/store"
 )
 
 func testHome(t *testing.T) {

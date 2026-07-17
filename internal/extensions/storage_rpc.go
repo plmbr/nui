@@ -8,7 +8,7 @@ import (
 	"os"
 	"sync"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 // StorageRPCClient talks to an extension storage provider over stdio JSON-RPC.
@@ -55,8 +55,8 @@ func NewStorageRPCClient(extDir, extName string, rt RuntimeConfig) (*StorageRPCC
 	}
 	cmd := expandCommand(rt.Command, extDir)
 	env := append(os.Environ(),
-		"LOOP_EXTENSION_DIR="+extDir,
-		"LOOP_EXTENSION_NAME="+extName,
+		"NUI_EXTENSION_DIR="+extDir,
+		"NUI_EXTENSION_NAME="+extName,
 	)
 	rpc, err := StartStdioRPC(cmd, env, runtimeCwd(extDir, &rt))
 	if err != nil {

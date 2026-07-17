@@ -3,8 +3,8 @@
 package server
 
 import (
-	"loop/internal/extensions"
-	"loop/internal/model"
+	"nui/internal/extensions"
+	"nui/internal/model"
 )
 
 func allowedMentionRootsForAgent(agentType string) map[string]bool {

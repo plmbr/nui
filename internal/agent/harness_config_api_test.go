@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 func TestAssembleAPISystemPromptIncludesBuiltinSkills(t *testing.T) {
@@ -14,7 +14,7 @@ func TestAssembleAPISystemPromptIncludesBuiltinSkills(t *testing.T) {
 		SystemPrompt: "Base prompt.",
 		Skills:       nil,
 	})
-	if !strings.Contains(prompt, "## Loop skills") {
+	if !strings.Contains(prompt, "## nui skills") {
 		t.Fatalf("prompt missing skills section: %q", prompt)
 	}
 	if !strings.Contains(prompt, "create-agent") {
@@ -45,7 +45,7 @@ func TestExpandHarnessDeps_ollamaOmitsVisualizeSkill(t *testing.T) {
 	}
 }
 
-func TestExpandHarnessDeps_apiIncludesLoopAgentMCP(t *testing.T) {
+func TestExpandHarnessDeps_apiIncludesNuiAgentMCP(t *testing.T) {
 	deps := HarnessDeps{}
 	expanded, err := ExpandHarnessDeps(deps, nil, "api-session", model.ADLDefinition{
 		Harness: model.ADLHarness{Type: "api", Provider: "anthropic"},
@@ -56,22 +56,22 @@ func TestExpandHarnessDeps_apiIncludesLoopAgentMCP(t *testing.T) {
 	foundViz := false
 	foundAgent := false
 	for _, srv := range expanded.MCPServers {
-		if srv.Name == "loop-viz" {
+		if srv.Name == "nui-viz" {
 			foundViz = true
 		}
-		if srv.Name == loopAgentMCPName {
+		if srv.Name == nuiAgentMCPName {
 			foundAgent = true
 		}
 	}
 	if !foundViz {
-		t.Fatal("expected loop-viz MCP")
+		t.Fatal("expected nui-viz MCP")
 	}
 	if !foundAgent {
-		t.Fatal("expected loop-agent MCP for api harness")
+		t.Fatal("expected nui-agent MCP for api harness")
 	}
 }
 
-func TestExpandHarnessDeps_cliIncludesLoopAgentMCP(t *testing.T) {
+func TestExpandHarnessDeps_cliIncludesNuiAgentMCP(t *testing.T) {
 	deps := HarnessDeps{}
 	expanded, err := ExpandHarnessDeps(deps, nil, "cli-session", model.ADLDefinition{
 		ID:      "cli-agent",
@@ -82,14 +82,14 @@ func TestExpandHarnessDeps_cliIncludesLoopAgentMCP(t *testing.T) {
 	}
 	found := false
 	for _, srv := range expanded.MCPServers {
-		if srv.Name == loopAgentMCPName {
+		if srv.Name == nuiAgentMCPName {
 			found = true
-			if srv.Env["LOOP_MEMORY_AGENT_ID"] != "cli-agent" {
-				t.Fatalf("LOOP_MEMORY_AGENT_ID = %q", srv.Env["LOOP_MEMORY_AGENT_ID"])
+			if srv.Env["NUI_MEMORY_AGENT_ID"] != "cli-agent" {
+				t.Fatalf("NUI_MEMORY_AGENT_ID = %q", srv.Env["NUI_MEMORY_AGENT_ID"])
 			}
 		}
 	}
 	if !found {
-		t.Fatal("cli harness should include loop-agent MCP for memory updates")
+		t.Fatal("cli harness should include nui-agent MCP for memory updates")
 	}
 }

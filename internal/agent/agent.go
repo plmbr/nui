@@ -5,7 +5,7 @@ package agent
 import (
 	"context"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 type EventType string
@@ -39,7 +39,7 @@ type Event struct {
 	RoutedAgentLabel string `json:"routedAgentLabel,omitempty"`
 }
 
-// EphemeralAgentSuffix is appended to a Loop session id for one-off harness runs that must
+// EphemeralAgentSuffix is appended to a nui session id for one-off harness runs that must
 // not resume or share the main conversation's persistent agent instance.
 const EphemeralAgentSuffix = "::ephemeral"
 
@@ -50,20 +50,20 @@ func EphemeralProjectID(projectID string) string {
 
 type RunRequest struct {
 	SessionID string
-	// LoopSessionID is the Loop session id for HITL/MCP env (distinct from harness resume SessionID).
-	LoopSessionID string
+	// NuiSessionID is the nui session id for HITL/MCP env (distinct from harness resume SessionID).
+	NuiSessionID string
 	WorkingDir   string
 	Message      string
 	SystemPrompt string
 	Model        string
-	// ConfigDir is ~/.loop/sessions/<sessionID> with provisioned harness config.
+	// ConfigDir is ~/.nui/sessions/<sessionID> with provisioned harness config.
 	ConfigDir string
 	// UserScopeHarness loads harness user/project settings via native CLI flags
 	// instead of redirecting config through session-scoped env vars.
 	UserScopeHarness bool
 	// Env is merged ADL env (global + harness); applied to harness subprocesses.
 	Env map[string]string
-	// RunID is the active Loop run when executing inside a tracked run.
+	// RunID is the active nui run when executing inside a tracked run.
 	RunID string
 	// HarnessPermissions is interactive | bypass for claude-code/codex native approval gates.
 	HarnessPermissions string
@@ -71,7 +71,7 @@ type RunRequest struct {
 	ToolApprovalPolicy string
 	// ToolApprovalTools lists tool names/patterns for allowlist or denylist policies.
 	ToolApprovalTools []string
-	// AgentConfig is the Loop session override map (hitlMode, harnessPermissions, …).
+	// AgentConfig is the nui session override map (hitlMode, harnessPermissions, …).
 	AgentConfig map[string]any
 	// Ephemeral runs use a separate harness agent instance and never resume SessionID.
 	// Docker sandbox harnesses honor this via the HTTP "ephemeral" flag on a shared container.
@@ -82,7 +82,7 @@ type RunRequest struct {
 	SubAgentHarnessSession func(subAgentID string) string
 	// OnSubAgentHarnessSession persists a sub-agent harness session id after a delegated run.
 	OnSubAgentHarnessSession func(subAgentID, harnessSessionID string)
-	// History is prior chat turns for harnesses that manage context in Loop (api harness).
+	// History is prior chat turns for harnesses that manage context in nui (api harness).
 	History []model.ChatMessage
 	// MCPServers are session-scoped MCP servers for the api harness tool loop.
 	MCPServers []model.ADLMCPServer

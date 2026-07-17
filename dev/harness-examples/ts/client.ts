@@ -1,7 +1,7 @@
 /**
- * Sample Loop extension client — TypeScript.
+ * Sample nui extension client — TypeScript.
  *
- * Reads ~/.loop/connections/<name>.json, connects over TCP, and calls
+ * Reads ~/.nui/connections/<name>.json, connects over TCP, and calls
  * harness.info then harness.run, printing streamed events as they arrive.
  *
  * Usage:
@@ -35,7 +35,7 @@ interface JsonRpcMessage {
 }
 
 function loadConnection(name: string): ConnectionInfo {
-  const filePath = path.join(os.homedir(), '.loop', 'connections', `${name}.json`)
+  const filePath = path.join(os.homedir(), '.nui', 'connections', `${name}.json`)
   if (!fs.existsSync(filePath)) {
     console.error(`connection file not found: ${filePath}\nIs the extension running?`)
     process.exit(1)
@@ -107,7 +107,7 @@ async function main() {
 
   // 2. Run with streaming events
   console.log('\nharness.run →')
-  const result = await client.run('Hello from the Loop client!', (event) => {
+  const result = await client.run('Hello from the nui client!', (event) => {
     if (event.type === 'text') process.stdout.write(event.content as string)
     if (event.type === 'done') process.stdout.write('\n')
   })

@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 func TestHandleSessionStop(t *testing.T) {

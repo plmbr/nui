@@ -1,11 +1,11 @@
 ---
 name: create-agent
-description: Create a Loop ADL agent definition from the current conversation and save it to ~/.loop/agents/
+description: Create a nui ADL agent definition from the current conversation and save it to ~/.nui/agents/
 ---
 
 # Create Agent
 
-Use this skill when the user invokes `/create-agent` or asks you to turn the conversation into a reusable Loop agent.
+Use this skill when the user invokes `/create-agent` or asks you to turn the conversation into a reusable nui agent.
 
 ## Default behavior
 
@@ -18,7 +18,7 @@ When no other instructions are given, convert the conversation into a new ADL ag
 5. Choose **harness.type** from context (default `claude-code` when unclear).
 6. Omit **aiAssets**, **steps**, and **env** unless the conversation clearly requires them.
 
-Save the result as `~/.loop/agents/<id>.yaml`.
+Save the result as `~/.nui/agents/<id>.yaml`.
 
 ## When the user adds instructions
 
@@ -55,19 +55,19 @@ Optional fields when relevant: `defaultPrompt`, `promptMode`, `workingDirInput`,
 
 ## Saving
 
-- Target directory: `~/.loop/agents/`
+- Target directory: `~/.nui/agents/`
 - Filename: `<id>.yaml` (must match the `id` field)
 - Create the directory if needed.
 - If a file with the same id already exists, ask before overwriting unless the user explicitly requested an update.
 
 ### API harness (no Write tool)
 
-When you do not have filesystem Write/Edit tools, call **`save_agent`** on the **`loop-agent`** MCP server with the full YAML in the **`content`** field. Set **`overwrite`** to true only when updating an existing agent the user asked to replace.
+When you do not have filesystem Write/Edit tools, call **`save_agent`** on the **`nui-agent`** MCP server with the full YAML in the **`content`** field. Set **`overwrite`** to true only when updating an existing agent the user asked to replace.
 
 ### CLI harness
 
-Write the YAML file directly to `~/.loop/agents/<id>.yaml`.
-- After saving, tell the user the file path and that the agent will appear under **Installed agents** in Loop (they may need to refresh agent types).
+Write the YAML file directly to `~/.nui/agents/<id>.yaml`.
+- After saving, tell the user the file path and that the agent will appear under **Installed agents** in nui (they may need to refresh agent types).
 
 ## Quality bar
 

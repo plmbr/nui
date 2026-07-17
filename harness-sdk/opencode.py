@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Built-in opencode agent extension for Loop."""
+"""Built-in opencode agent extension for nui."""
 
 import os
 import sys
 import threading
 
 sys.path.insert(0, os.path.dirname(__file__))
-from loop_agent import LoopAgent
+from nui_agent import NuiAgent
 from opencode_session import PersistentOpenCodeSession
 
 
-class OpenCodeAgent(LoopAgent):
+class OpenCodeAgent(NuiAgent):
     name = "opencode"
     version = "0.1.0"
 

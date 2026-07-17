@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://loop.dev/schemas/extension-v1.json",
-  "title": "LoopExtensionManifest",
+  "$id": "https://nui.dev/schemas/extension-v1.json",
+  "title": "NuiExtensionManifest",
   "type": "object",
   "required": ["name"],
   "properties": {
-    "apiVersion": { "type": "string", "const": "loop.dev/extension/v1" },
+    "apiVersion": { "type": "string", "const": "nui.dev/extension/v1" },
     "name": { "type": "string" },
     "version": { "type": "string" },
     "displayName": { "type": "string" },

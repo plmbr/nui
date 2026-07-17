@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 func loadHarnessesFromFile(path string) ([]HarnessEntry, error) {

@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"loop/internal/eval"
-	"loop/internal/loopclient"
+	"nui/internal/eval"
+	"nui/internal/nuiclient"
 
 	"github.com/spf13/cobra"
 )
@@ -33,13 +33,13 @@ var agentEvalCmd = &cobra.Command{
 var agentEvalRunCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run eval test cases for an agent",
-	Long: `Execute eval cases from an agent's ADL definition against a running Loop server.
+	Long: `Execute eval cases from an agent's ADL definition against a running nui server.
 
 Examples:
-  loop agent eval run -a my-agent
-  loop agent eval run -a my-agent --case smoke --case regression
-  loop agent eval run -a my-agent -w ./fixtures --json
-  loop agent eval run -a my-agent --parallel 2 --spawn`,
+  nui agent eval run -a my-agent
+  nui agent eval run -a my-agent --case smoke --case regression
+  nui agent eval run -a my-agent -w ./fixtures --json
+  nui agent eval run -a my-agent --parallel 2 --spawn`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		if strings.TrimSpace(evalAgentType) == "" {
 			return fmt.Errorf("--agent-type (-a) is required")
@@ -55,8 +55,8 @@ func runAgentEval(cmd *cobra.Command, args []string) error {
 		ctx = context.Background()
 	}
 
-	client := loopclient.New(evalURL)
-	if err := ensureLoopServer(ctx, client, evalSpawn); err != nil {
+	client := nuiclient.New(evalURL)
+	if err := ensureNuiServer(ctx, client, evalSpawn); err != nil {
 		return err
 	}
 
@@ -109,8 +109,8 @@ func runAgentEval(cmd *cobra.Command, args []string) error {
 func init() {
 	agentEvalRunCmd.Flags().StringVarP(&evalAgentType, "agent-type", "a", "", "ADL agent id")
 	agentEvalRunCmd.Flags().StringVarP(&evalWorkingDir, "working-dir", "w", "", "Default working directory for eval cases")
-	agentEvalRunCmd.Flags().StringVar(&evalURL, "url", "", "Loop server base URL (default LOOP_URL or http://127.0.0.1:8080)")
-	agentEvalRunCmd.Flags().BoolVar(&evalSpawn, "spawn", false, "Start loop ui in the background if the server is unreachable")
+	agentEvalRunCmd.Flags().StringVar(&evalURL, "url", "", "nui server base URL (default NUI_URL or http://127.0.0.1:8080)")
+	agentEvalRunCmd.Flags().BoolVar(&evalSpawn, "spawn", false, "Start nui ui in the background if the server is unreachable")
 	agentEvalRunCmd.Flags().BoolVar(&evalJSON, "json", false, "Output machine-readable JSON results")
 	agentEvalRunCmd.Flags().IntVar(&evalParallel, "parallel", 1, "Number of eval cases to run concurrently")
 	agentEvalRunCmd.Flags().StringArrayVar(&evalCaseNames, "case", nil, "Run only evals with this name (repeatable)")

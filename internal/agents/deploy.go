@@ -7,10 +7,10 @@ import (
 	"os"
 	"strings"
 
-	"loop/internal/agent"
-	"loop/internal/extensions"
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/agent"
+	"nui/internal/extensions"
+	"nui/internal/model"
+	"nui/internal/store"
 
 	"gopkg.in/yaml.v3"
 )
@@ -23,7 +23,7 @@ type DeployResult struct {
 	Endpoint     *extensions.DeployEndpoint `json:"endpoint,omitempty"`
 }
 
-// LoadUserAgent loads a user-installed ADL agent by id from ~/.loop/agents/.
+// LoadUserAgent loads a user-installed ADL agent by id from ~/.nui/agents/.
 func LoadUserAgent(agentID string) (model.ADLDefinition, error) {
 	agentID = strings.TrimSpace(agentID)
 	if agentID == "" {

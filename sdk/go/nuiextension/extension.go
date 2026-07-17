@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-package loopextension
+package nuiextension
 
 import (
 	"bufio"
@@ -111,9 +111,9 @@ func (b *Base) Deploy(deployerID string, params map[string]any) (map[string]any,
 func ServeStdio(ext Extension) error {
 	extImpl := ext
 	base := Base{
-		ExtensionDir:  os.Getenv("LOOP_EXTENSION_DIR"),
-		ExtensionName: os.Getenv("LOOP_EXTENSION_NAME"),
-		APIURL:        os.Getenv("LOOP_API_URL"),
+		ExtensionDir:  os.Getenv("NUI_EXTENSION_DIR"),
+		ExtensionName: os.Getenv("NUI_EXTENSION_NAME"),
+		APIURL:        os.Getenv("NUI_API_URL"),
 	}
 	_ = base
 	scanner := bufio.NewScanner(os.Stdin)
@@ -141,8 +141,8 @@ func ServeStdio(ext Extension) error {
 			_ = extImpl.Initialize()
 			write(map[string]any{
 				"jsonrpc": "2.0", "id": rid, "result": map[string]any{
-					"apiVersion": "loop.dev/extension/v1",
-					"name":       os.Getenv("LOOP_EXTENSION_NAME"),
+					"apiVersion": "nui.dev/extension/v1",
+					"name":       os.Getenv("NUI_EXTENSION_NAME"),
 					"harnesses":  extImpl.GetHarnesses(),
 					"agents":     extImpl.GetAgents(),
 					"mentionProviders": extImpl.GetMentionProviders(),

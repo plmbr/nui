@@ -15,8 +15,8 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/agent"
-	"loop/internal/model"
+	"nui/internal/agent"
+	"nui/internal/model"
 )
 
 const testStubAgentType = "claude-code"
@@ -24,7 +24,7 @@ const testStubAgentType = "claude-code"
 func withTempHome(t *testing.T) string {
 	t.Helper()
 	home := filepath.Join(t.TempDir(), "home")
-	if err := os.MkdirAll(filepath.Join(home, ".loop"), 0o700); err != nil {
+	if err := os.MkdirAll(filepath.Join(home, ".nui"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("HOME", home)
@@ -55,7 +55,7 @@ func setupTestServerEnv(t *testing.T) *agent.Manager {
 
 func installTestRemoteAgent(t *testing.T, home string) {
 	t.Helper()
-	agentsDir := filepath.Join(home, ".loop", "agents")
+	agentsDir := filepath.Join(home, ".nui", "agents")
 	if err := os.MkdirAll(agentsDir, 0o700); err != nil {
 		t.Fatal(err)
 	}

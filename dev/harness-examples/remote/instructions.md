@@ -1,11 +1,11 @@
 # Remote Harness Example
 
-A standalone HTTP/SSE server — on the same machine or a remote host. Loop connects via a custom ADL agent; it does not start or stop the process.
+A standalone HTTP/SSE server — on the same machine or a remote host. nui connects via a custom ADL agent; it does not start or stop the process.
 
 ## Files
 
-- `echo_agent.py` — agent implementation (subclasses `LoopAgent`)
-- `loop_agent.py` — HTTP server framework
+- `echo_agent.py` — agent implementation (subclasses `NuiAgent`)
+- `nui_agent.py` — HTTP server framework
 
 ## Running
 
@@ -19,7 +19,7 @@ curl -N -X POST http://127.0.0.1:9090/run \
   -d '{"message": "hello"}'
 ```
 
-## Connecting via Loop UI
+## Connecting via nui UI
 
 Remote agents are configured through **custom ADL**, not a built-in UI picker.
 
@@ -27,14 +27,14 @@ Remote agents are configured through **custom ADL**, not a built-in UI picker.
 2. Copy the example ADL into your agents directory:
 
 ```sh
-cp dev/harness-examples/remote/remote-echo.yaml ~/.loop/agents/
+cp dev/harness-examples/remote/remote-echo.yaml ~/.nui/agents/
 ```
 
 3. Create a new session.
 4. Under **Installed agents**, select **remote-echo**.
 5. Click **Create**.
 
-Loop checks docker/remote ADL configuration on session create. Reachability is validated when the first message is sent. Edit the ADL to point at a different host:
+nui checks docker/remote ADL configuration on session create. Reachability is validated when the first message is sent. Edit the ADL to point at a different host:
 
 ```yaml
 harness:
@@ -62,7 +62,7 @@ data: {"type":"error","error":"..."}
 
 ## Lifecycle
 
-| Event | What Loop does |
+| Event | What nui does |
 |---|---|
 | Session create | `GET /info` reachability check |
 | Chat message | `POST /run` → SSE stream |
@@ -74,9 +74,9 @@ You are responsible for starting, restarting, and securing the remote process (T
 ## Writing your own remote agent
 
 ```python
-from loop_agent import LoopAgent
+from nui_agent import NuiAgent
 
-class MyAgent(LoopAgent):
+class MyAgent(NuiAgent):
     name = "my-agent"
     version = "0.1.0"
 

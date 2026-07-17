@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"golang.org/x/oauth2"
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 func TestServerKeyPrefersURL(t *testing.T) {
@@ -23,9 +23,9 @@ func TestIsBuiltin(t *testing.T) {
 		name string
 		want bool
 	}{
-		{loopHitlMCPName, true},
+		{nuiHitlMCPName, true},
 		{loopVizMCPName, true},
-		{loopAgentMCPName, true},
+		{nuiAgentMCPName, true},
 		{"ext-corp-tools", true},
 		{"my-remote", false},
 	}
@@ -38,7 +38,7 @@ func TestIsBuiltin(t *testing.T) {
 
 func TestResolveServersSkipsBuiltins(t *testing.T) {
 	servers := []model.ADLMCPServer{
-		{Name: loopHitlMCPName, Command: "loop", Args: []string{"hitl-mcp"}},
+		{Name: nuiHitlMCPName, Command: "nui", Args: []string{"hitl-mcp"}},
 		{Name: "remote", URL: "https://example.com/mcp", Auth: &model.ADLMCPServerAuth{ClientID: "id"}},
 	}
 	res := ResolveServers(servers)
@@ -92,7 +92,7 @@ func TestNeedsOAuthConfig(t *testing.T) {
 }
 
 func TestStatusForServer(t *testing.T) {
-	if got := StatusForServer(model.ADLMCPServer{Name: loopHitlMCPName, Command: "loop"}); got != AuthStatusNotApplicable {
+	if got := StatusForServer(model.ADLMCPServer{Name: nuiHitlMCPName, Command: "nui"}); got != AuthStatusNotApplicable {
 		t.Fatalf("builtin status = %q", got)
 	}
 	remote := model.ADLMCPServer{Name: "analytics", URL: "https://example.com/mcp"}

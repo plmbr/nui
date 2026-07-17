@@ -11,7 +11,7 @@ import (
 func TestInstallAndRemoveLocalAgent(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	t.Setenv("LOOP_HOME", "")
+	t.Setenv("NUI_HOME", "")
 
 	src := filepath.Join(t.TempDir(), "watchdog.yaml")
 	content := []byte(`adl: "1.0"
@@ -32,7 +32,7 @@ harness:
 		t.Fatalf("id = %q, want test-watchdog", id)
 	}
 
-	agentsDir := filepath.Join(home, ".loop", "agents")
+	agentsDir := filepath.Join(home, ".nui", "agents")
 	if _, err := os.Stat(filepath.Join(agentsDir, "test-watchdog.yaml")); err != nil {
 		t.Fatalf("installed agent file missing: %v", err)
 	}
