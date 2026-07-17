@@ -8,7 +8,7 @@ usage() {
   cat <<'EOF'
 Usage: build-release.sh <version-tag>
 
-Build release archives for linux and darwin (amd64 + arm64).
+Build release archives for linux, darwin, and windows (amd64 + arm64).
 
   version-tag   Git tag with optional v prefix (e.g. v0.1.0)
 
@@ -46,16 +46,22 @@ mkdir -p "$OUT_DIR"
 
 LDFLAGS="-s -w"
 TARGETS=(
-  "linux:amd64"
-  "linux:arm64"
-  "darwin:amd64"
-  "darwin:arm64"
+  "linux:amd64:nui"
+  "linux:arm64:nui"
+  "darwin:amd64:nui"
+  "darwin:arm64:nui"
+  "windows:amd64:nui.exe"
+  "windows:arm64:nui.exe"
 )
 
 echo "==> Cross-compiling nui ${TAG}"
 for target in "${TARGETS[@]}"; do
-  IFS=: read -r goos goarch <<<"$target"
-  archive="nui_${TAG}_${goos}_${goarch}.tar.gz"
+  IFS=: read -r goos goarch binary_name <<<"$target"
+  if [[ "$goos" == "windows" ]]; then
+    archive="nui_${TAG}_${goos}_${goarch}.zip"
+  else
+    archive="nui_${TAG}_${goos}_${goarch}.tar.gz"
+  fi
   binary_dir="$OUT_DIR/.build/${goos}_${goarch}"
   mkdir -p "$binary_dir"
 
@@ -63,19 +69,25 @@ for target in "${TARGETS[@]}"; do
   (
     cd "$ROOT"
     GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 \
-      go build -trimpath -ldflags="$LDFLAGS" -o "$binary_dir/nui" .
+      go build -trimpath -ldflags="$LDFLAGS" -o "$binary_dir/${binary_name}" .
   )
 
-  tar -czf "$OUT_DIR/$archive" -C "$binary_dir" nui
+  if [[ "$goos" == "windows" ]]; then
+    (cd "$binary_dir" && zip -q "$OUT_DIR/$archive" "$binary_name")
+  else
+    tar -czf "$OUT_DIR/$archive" -C "$binary_dir" "$binary_name"
+  fi
 done
 
 echo "==> Generating checksums.txt"
 (
   cd "$OUT_DIR"
+  shopt -s nullglob
+  files=(nui_"${TAG}"_*.tar.gz nui_"${TAG}"_*.zip)
   if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum nui_"${TAG}"_*.tar.gz >checksums.txt
+    sha256sum "${files[@]}" >checksums.txt
   else
-    shasum -a 256 nui_"${TAG}"_*.tar.gz >checksums.txt
+    shasum -a 256 "${files[@]}" >checksums.txt
   fi
 )
 

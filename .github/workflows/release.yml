@@ -53,6 +53,8 @@ jobs:
             dist/nui_${{ github.event.release.tag_name }}_linux_arm64.tar.gz
             dist/nui_${{ github.event.release.tag_name }}_darwin_amd64.tar.gz
             dist/nui_${{ github.event.release.tag_name }}_darwin_arm64.tar.gz
+            dist/nui_${{ github.event.release.tag_name }}_windows_amd64.zip
+            dist/nui_${{ github.event.release.tag_name }}_windows_arm64.zip
             dist/checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

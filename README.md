@@ -57,13 +57,23 @@ flowchart TB
 curl -fsSL https://nui.plmbr.dev/install.sh | sh
 ```
 
+**Windows** (installs to `%LOCALAPPDATA%\nui` and adds it to your user `PATH`):
+
+```powershell
+irm https://nui.plmbr.dev/install.ps1 | iex
+```
+
 Install a specific version:
 
 ```sh
 NUI_VERSION=v0.1.0 curl -fsSL https://nui.plmbr.dev/install.sh | sh
 ```
 
-**Manual install:** download the archive for your platform from [GitHub Releases](https://github.com/plmbr/nui/releases), extract the `nui` binary, and place it on your `PATH`.
+```powershell
+$env:NUI_VERSION = "v0.1.0"; irm https://nui.plmbr.dev/install.ps1 | iex
+```
+
+**Manual install:** download the archive for your platform from [GitHub Releases](https://github.com/plmbr/nui/releases), extract the `nui` binary (or `nui.exe` on Windows), and place it on your `PATH`.
 
 **macOS note:** release binaries are currently unsigned. The install script removes the quarantine attribute when possible. If macOS still blocks the binary, allow it under **System Settings → Privacy & Security**, or run:
 
@@ -337,11 +347,11 @@ Build release archives locally:
 ./scripts/build-release.sh v0.2.0
 ```
 
-Artifacts land in `dist/` as `nui_<tag>_<os>_<arch>.tar.gz` plus `checksums.txt`.
+Artifacts land in `dist/` as `nui_<tag>_<os>_<arch>.tar.gz` (or `.zip` on Windows) plus `checksums.txt`.
 
 ### Serving the install script
 
-The installer lives at [`install/install.sh`](install/install.sh). To serve it at `https://nui.plmbr.dev/install.sh`:
+The installers live at [`install/install.sh`](install/install.sh) (Unix) and [`install/install.ps1`](install/install.ps1) (Windows). To serve them at `https://nui.plmbr.dev/`:
 
 1. Enable **GitHub Pages** for this repository (source: `main` branch, `/install` folder).
 2. Add a DNS `CNAME` record: `nui.plmbr.dev` → `<user>.github.io` (the [`install/CNAME`](install/CNAME) file is already in the repo).

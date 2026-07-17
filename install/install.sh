@@ -31,7 +31,10 @@ detect_platform() {
     *)
       err "unsupported operating system: $os
 
-Download a release manually:
+On Windows, use PowerShell:
+  irm https://nui.plmbr.dev/install.ps1 | iex
+
+Or download a release manually:
   https://github.com/${GITHUB_REPO}/releases"
       ;;
   esac
