@@ -1,9 +1,19 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { test, expect } from '@playwright/test'
-import { createSessionWithAgent, openNewSession, selectAgentInNewSession, waitForAppReady } from './helpers'
+import {
+  createSessionWithAgent,
+  defaultE2EAgentLabel,
+  echoAgentAvailable,
+  openNewSession,
+  realAgentAvailable,
+  selectAgentInNewSession,
+  waitForAppReady,
+} from './helpers'
 
 test('hides tool approval toggle when agent policy is all', async ({ page }) => {
+  test.skip(echoAgentAvailable() || !realAgentAvailable(), 'requires claude-code CLI')
+
   await waitForAppReady(page)
   await openNewSession(page)
   await selectAgentInNewSession(page, /Claude Code/i)
@@ -15,8 +25,8 @@ test('hides tool approval toggle when agent policy is all', async ({ page }) => 
   await expect(page.getByText('Tool approvals')).toBeVisible()
 })
 
-test('new session with claude-code creates chat session', async ({ page }) => {
+test('new session with default agent creates chat session', async ({ page }) => {
   await waitForAppReady(page)
-  await createSessionWithAgent(page, /Claude Code/i)
+  await createSessionWithAgent(page, defaultE2EAgentLabel())
   await expect(page.getByPlaceholder(/Message your agent/)).toBeVisible()
 })

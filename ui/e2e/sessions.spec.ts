@@ -3,23 +3,25 @@
 import { test, expect } from '@playwright/test'
 import {
   createSessionWithAgent,
+  defaultE2EAgentLabel,
+  ensureAgentVisibleInNewSession,
   newSessionPanel,
   openNewSession,
-  showBuiltinAgentsInNewSession,
   waitForAppReady,
 } from './helpers'
 
 test('new session wizard opens and lists agents', async ({ page }) => {
   await waitForAppReady(page)
   await openNewSession(page)
-  await showBuiltinAgentsInNewSession(page)
+  const agentLabel = defaultE2EAgentLabel()
+  await ensureAgentVisibleInNewSession(page, agentLabel)
   const panel = newSessionPanel(page)
-  await expect(panel.getByRole('button', { name: 'Claude Code', exact: true })).toBeVisible()
+  await expect(panel.getByRole('button', { name: agentLabel })).toBeVisible()
 })
 
-test('create claude-code session and land on chat route', async ({ page }) => {
+test('create default agent session and land on chat route', async ({ page }) => {
   await waitForAppReady(page)
-  await createSessionWithAgent(page, /Claude Code/i)
+  await createSessionWithAgent(page, defaultE2EAgentLabel())
   await expect(page.getByPlaceholder(/Message your agent/)).toBeVisible()
 })
 
