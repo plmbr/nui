@@ -58,7 +58,7 @@ harness:
 		t.Fatal(err)
 	}
 
-	body := `{"name":"Hourly","agentType":"auto-test","interval":"1h"}`
+	body := `{"name":"Hourly","agentType":"auto-test","cron":"0 * * * *"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/schedules", strings.NewReader(body))
 	rec := httptest.NewRecorder()
 	handleCreateSchedule(rec, req)
@@ -74,7 +74,6 @@ harness:
 		t.Fatalf("unexpected schedule: %+v", created)
 	}
 
-	oldNext := created.NextRunAt
 	patchBody := `{"name":"Hourly updated","interval":"5m"}`
 	patchReq := httptest.NewRequest(http.MethodPatch, "/api/schedules/"+created.ID, strings.NewReader(patchBody))
 	patchRec := httptest.NewRecorder()
@@ -89,8 +88,12 @@ harness:
 	if updated.Name != "Hourly updated" || updated.Interval != "5m" || updated.Cron != "" {
 		t.Fatalf("unexpected patched schedule: %+v", updated)
 	}
-	if updated.NextRunAt == "" || updated.NextRunAt == oldNext {
-		t.Fatalf("expected nextRunAt to be recomputed, got %q (was %q)", updated.NextRunAt, oldNext)
+	want, err := model.Schedule{Interval: "5m", Enabled: true}.ComputeNextRunAt(time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.NextRunAt != want.UTC().Format(time.RFC3339) {
+		t.Fatalf("expected nextRunAt %q, got %q", want.UTC().Format(time.RFC3339), updated.NextRunAt)
 	}
 }
 

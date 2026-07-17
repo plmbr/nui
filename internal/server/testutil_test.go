@@ -19,6 +19,13 @@ import (
 	"nui/internal/model"
 )
 
+func skipUnlessHarnessCLI(t *testing.T, harnessType string) {
+	t.Helper()
+	if os.Getenv("GITHUB_ACTIONS") == "true" && !agent.CLIAvailable(harnessType) {
+		t.Skipf("skipping on GitHub Actions: %s CLI not installed", harnessType)
+	}
+}
+
 const testStubAgentType = "claude-code"
 
 func withTempHome(t *testing.T) string {

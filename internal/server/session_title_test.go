@@ -190,7 +190,14 @@ func TestHandleSessionAGUI_autoTitlesDefaultSession(t *testing.T) {
 }
 
 func TestMaybeGenerateSessionTitle_usesFallbackWhenHarnessEmpty(t *testing.T) {
-	setupTestServerEnv(t)
+	mgr := setupTestServerEnv(t)
+	mgr.SetTestHarnessRun(func(_ context.Context, req agent.RunRequest, events chan<- agent.Event) error {
+		if req.Ephemeral {
+			events <- agent.Event{Type: agent.EventDone, SessionID: "ephemeral-session"}
+			return nil
+		}
+		return nil
+	})
 	session := seedSession("sess-fallback", PendingSessionTitle, "claude-code", t.TempDir())
 	mu.Lock()
 	sessionMessages[session.ID] = []model.ChatMessage{

@@ -133,8 +133,9 @@ func TestLaunchSessionFromRequest_createsSession(t *testing.T) {
 	if err := initStore(); err != nil {
 		t.Fatal(err)
 	}
+	installTestRemoteAgent(t, home)
 
-	result, err := launchSessionFromRequest(launchRequest{AgentType: "claude-code"})
+	result, err := launchSessionFromRequest(launchRequest{AgentType: "test-remote"})
 	if err != nil {
 		t.Fatalf("launchSessionFromRequest: %v", err)
 	}
