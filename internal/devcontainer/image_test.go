@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/devcontainer/dockercontext"
+	"nui/internal/devcontainer/dockercontext"
 )
 
 func TestResolveImage(t *testing.T) {
@@ -29,13 +29,13 @@ func TestResolveImage(t *testing.T) {
 	}
 }
 
-func TestIsLoopManagedImage(t *testing.T) {
+func TestIsNuiManagedImage(t *testing.T) {
 	defaultImage := DefaultImages["claude-code"]
-	if !IsLoopManagedImage("claude-code", defaultImage) {
-		t.Fatal("expected default image to be loop-managed")
+	if !IsNuiManagedImage("claude-code", defaultImage) {
+		t.Fatal("expected default image to be nui-managed")
 	}
-	if IsLoopManagedImage("claude-code", "custom:tag") {
-		t.Fatal("expected custom image not to be loop-managed")
+	if IsNuiManagedImage("claude-code", "custom:tag") {
+		t.Fatal("expected custom image not to be nui-managed")
 	}
 }
 

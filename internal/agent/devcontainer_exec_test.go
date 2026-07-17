@@ -9,11 +9,11 @@ import (
 )
 
 func TestDevcontainerExecCommand(t *testing.T) {
-	cmd := devcontainerExecCommand(context.Background(), "/tmp/loop-session", "claude", []string{"-p", "hi"})
+	cmd := devcontainerExecCommand(context.Background(), "/tmp/nui-session", "claude", []string{"-p", "hi"})
 	if filepath.Base(cmd.Path) != "devcontainer" {
 		t.Fatalf("path = %q", cmd.Path)
 	}
-	want := []string{"exec", "--workspace-folder", "/tmp/loop-session", "claude", "-p", "hi"}
+	want := []string{"exec", "--workspace-folder", "/tmp/nui-session", "claude", "-p", "hi"}
 	if len(cmd.Args) < len(want)+1 {
 		t.Fatalf("args = %v", cmd.Args)
 	}

@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 type SchedulesData struct {

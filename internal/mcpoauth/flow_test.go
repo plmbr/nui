@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/auth"
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 func TestFlowOutcomeByID(t *testing.T) {

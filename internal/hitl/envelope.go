@@ -8,7 +8,7 @@ const (
 	KindQuestion  = "question"
 	KindApproval  = "approval"
 	KindFreeform  = "freeform"
-	ChannelLoopUI = "loop-ui"
+	ChannelnuiUI = "nui-ui"
 )
 
 const (

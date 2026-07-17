@@ -1,5 +1,5 @@
 """
-Loop HITL REST client for harness authors and extension tools.
+nui HITL REST client for harness authors and extension tools.
 
 Creates requests via POST /api/hitl/requests and blocks on GET /api/hitl/requests/:id/wait.
 """
@@ -16,33 +16,33 @@ from typing import Any
 DEFAULT_API_URL = "http://127.0.0.1:8080"
 
 
-def resolve_loop_session_id(session_id: str = "", ctx: dict[str, Any] | None = None) -> str:
-    """Resolve the Loop session id from explicit value, RPC ctx, or env."""
+def resolve_nui_session_id(session_id: str = "", ctx: dict[str, Any] | None = None) -> str:
+    """Resolve the nui session id from explicit value, RPC ctx, or env."""
     if str(session_id or "").strip():
         return str(session_id).strip()
     ctx = ctx or {}
-    loop_sid = str(ctx.get("loopSessionId") or "").strip()
-    if loop_sid:
-        return loop_sid
-    env_sid = os.environ.get("LOOP_SESSION_ID", "").strip()
+    nui_sid = str(ctx.get("nuiSessionId") or "").strip()
+    if nui_sid:
+        return nui_sid
+    env_sid = os.environ.get("NUI_SESSION_ID", "").strip()
     if env_sid:
         return env_sid
-    # mention.list/resolve pass sessionId as the Loop session id.
+    # mention.list/resolve pass sessionId as the nui session id.
     return str(ctx.get("sessionId") or "").strip()
 
 
-def resolve_loop_run_id(run_id: str = "", ctx: dict[str, Any] | None = None) -> str:
+def resolve_nui_run_id(run_id: str = "", ctx: dict[str, Any] | None = None) -> str:
     if str(run_id or "").strip():
         return str(run_id).strip()
     ctx = ctx or {}
     ctx_run = str(ctx.get("runId") or "").strip()
     if ctx_run:
         return ctx_run
-    return os.environ.get("LOOP_RUN_ID", "").strip()
+    return os.environ.get("NUI_RUN_ID", "").strip()
 
 
 def api_url() -> str:
-    for key in ("LOOP_API_URL", "LOOP_URL"):
+    for key in ("NUI_API_URL", "NUI_URL"):
         value = os.environ.get(key, "").strip()
         if value:
             return value.rstrip("/")
@@ -81,8 +81,8 @@ def create_request(
     step_name: str = "",
     ctx: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    session_id = resolve_loop_session_id(session_id, ctx)
-    run_id = resolve_loop_run_id(run_id, ctx)
+    session_id = resolve_nui_session_id(session_id, ctx)
+    run_id = resolve_nui_run_id(run_id, ctx)
     body: dict[str, Any] = {
         "kind": kind,
         "payload": payload or {},
@@ -106,7 +106,7 @@ def wait_response(request_id: str) -> dict[str, Any]:
     return _request("GET", f"/api/hitl/requests/{request_id}/wait")
 
 
-def respond(request_id: str, *, status: str = "answered", answers: dict[str, Any] | None = None, channel: str = "loop-ui") -> dict[str, Any]:
+def respond(request_id: str, *, status: str = "answered", answers: dict[str, Any] | None = None, channel: str = "nui-ui") -> dict[str, Any]:
     body: dict[str, Any] = {
         "status": status,
         "respondedBy": {"channel": channel},

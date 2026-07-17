@@ -9,13 +9,13 @@ import (
 	"strings"
 )
 
-const mentionSDKFile = "loop_mention.py"
+const mentionSDKFile = "nui_mention.py"
 
-// MentionSDKDir returns a directory containing loop_mention.py, installing under ~/.loop when needed.
+// MentionSDKDir returns a directory containing nui_mention.py, installing under ~/.nui when needed.
 func MentionSDKDir() (string, error) {
-	if p := strings.TrimSpace(os.Getenv("LOOP_MENTION_SDK_DIR")); p != "" {
+	if p := strings.TrimSpace(os.Getenv("NUI_MENTION_SDK_DIR")); p != "" {
 		if _, err := os.Stat(filepath.Join(p, mentionSDKFile)); err != nil {
-			return "", fmt.Errorf("LOOP_MENTION_SDK_DIR %q: %w", p, err)
+			return "", fmt.Errorf("NUI_MENTION_SDK_DIR %q: %w", p, err)
 		}
 		return p, nil
 	}
@@ -30,7 +30,7 @@ func installedMentionSDKDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(home, ".loop", "harness-sdk")
+	dir := filepath.Join(home, ".nui", "harness-sdk")
 	if _, err := os.Stat(filepath.Join(dir, mentionSDKFile)); err != nil {
 		return "", err
 	}
@@ -44,7 +44,7 @@ func findMentionSDKSource() (string, error) {
 	if p, err := findHarnessSDKFileNearWorkingDir(mentionSDKFile); err == nil {
 		return p, nil
 	}
-	return "", fmt.Errorf("%s not found (set LOOP_MENTION_SDK_DIR)", mentionSDKFile)
+	return "", fmt.Errorf("%s not found (set NUI_MENTION_SDK_DIR)", mentionSDKFile)
 }
 
 func findHarnessSDKFileNearExecutable(name string) (string, error) {
@@ -92,7 +92,7 @@ func installMentionSDK(source string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	destDir := filepath.Join(home, ".loop", "harness-sdk")
+	destDir := filepath.Join(home, ".nui", "harness-sdk")
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return "", err
 	}

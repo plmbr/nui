@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/model"
+	"nui/internal/store"
 )
 
 var (

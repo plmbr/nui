@@ -4,16 +4,16 @@ package agent
 
 import "testing"
 
-func TestProgrammaticHarnessExtrasLoopSessionID(t *testing.T) {
+func TestProgrammaticHarnessExtrasNuiSessionID(t *testing.T) {
 	extra := programmaticHarnessExtras(RunRequest{
-		LoopSessionID: "sess-loop",
+		NuiSessionID: "sess-nui",
 		SessionID:     "harness-resume",
 		Message:       "hi",
 		WorkingDir:    "/tmp/ws",
 	}, "sess-fallback")
 
-	if got := extra["loopSessionId"]; got != "sess-loop" {
-		t.Fatalf("loopSessionId=%v want sess-loop", got)
+	if got := extra["nuiSessionId"]; got != "sess-nui" {
+		t.Fatalf("nuiSessionId=%v want sess-nui", got)
 	}
 	if got := extra["sessionId"]; got != "harness-resume" {
 		t.Fatalf("sessionId=%v want harness-resume", got)
@@ -23,10 +23,10 @@ func TestProgrammaticHarnessExtrasLoopSessionID(t *testing.T) {
 	}
 }
 
-func TestProgrammaticHarnessExtrasLoopSessionFallback(t *testing.T) {
+func TestProgrammaticHarnessExtrasnuiSessionFallback(t *testing.T) {
 	extra := programmaticHarnessExtras(RunRequest{Message: "hi"}, "sess-fallback")
-	if got := extra["loopSessionId"]; got != "sess-fallback" {
-		t.Fatalf("loopSessionId=%v want sess-fallback", got)
+	if got := extra["nuiSessionId"]; got != "sess-fallback" {
+		t.Fatalf("nuiSessionId=%v want sess-fallback", got)
 	}
 	if _, ok := extra["sessionId"]; ok {
 		t.Fatalf("unexpected sessionId: %v", extra["sessionId"])

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/store"
+	"nui/internal/store"
 )
 
 func TestHandleSkillsList(t *testing.T) {

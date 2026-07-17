@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"loop/internal/agents"
-	"loop/internal/extensions"
+	"nui/internal/agents"
+	"nui/internal/extensions"
 )
 
 func handleAgentDeployers(w http.ResponseWriter, r *http.Request) {

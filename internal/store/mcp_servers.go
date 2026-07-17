@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 func MCPServersPath() (string, error) {
@@ -19,7 +19,7 @@ func MCPServersPath() (string, error) {
 	return filepath.Join(dir, "mcp-servers.json"), nil
 }
 
-// LoadMCPServers reads user MCP server definitions from ~/.loop/mcp-servers.json.
+// LoadMCPServers reads user MCP server definitions from ~/.nui/mcp-servers.json.
 func LoadMCPServers() ([]model.ADLMCPServer, error) {
 	path, err := MCPServersPath()
 	if err != nil {
@@ -44,7 +44,7 @@ func LoadMCPServers() ([]model.ADLMCPServer, error) {
 	return wrap.MCPServers, nil
 }
 
-// SaveMCPServers writes user MCP server definitions to ~/.loop/mcp-servers.json.
+// SaveMCPServers writes user MCP server definitions to ~/.nui/mcp-servers.json.
 func SaveMCPServers(servers []model.ADLMCPServer) error {
 	path, err := MCPServersPath()
 	if err != nil {

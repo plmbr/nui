@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/agent"
+	"nui/internal/agent"
 )
 
 func TestAssistantPartAccumulator_visualization(t *testing.T) {
@@ -21,7 +21,7 @@ func TestAssistantPartAccumulator_visualization(t *testing.T) {
 	acc.applyEvent(agent.Event{
 		Type:       agent.EventToolCallStart,
 		ToolCallID: "tc1",
-		ToolName:   "mcp__loop-viz__show_visualization",
+		ToolName:   "mcp__nui-viz__show_visualization",
 	}, nil)
 	acc.applyEvent(agent.Event{
 		Type:       agent.EventToolCallArgs,
@@ -31,7 +31,7 @@ func TestAssistantPartAccumulator_visualization(t *testing.T) {
 	acc.applyEvent(agent.Event{
 		Type:       agent.EventToolCallEnd,
 		ToolCallID: "tc1",
-		ToolName:   "mcp__loop-viz__show_visualization",
+		ToolName:   "mcp__nui-viz__show_visualization",
 		ToolArgs:   toolArgs,
 	}, nil)
 

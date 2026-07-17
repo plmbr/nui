@@ -30,7 +30,7 @@ describe('prepareVisualizationHtml', () => {
       '<div id="line-chart"></div>' +
       `<script>var ctx = document.getElementById("line-chart").getContext('2d');new Chart(ctx, {type: 'line', data: {labels: ['January', 'February', 'March'], datasets: [{'label': 'Series 1', 'data': [12, 19, 3], 'backgroundColor': 'rgba(255,99,132,1)', 'borderColor': 'rgba(255,99,132,1),0,2)}]}})`
     const prepared = prepareVisualizationHtml(raw, 'http://localhost:8080/vendor/chart.min.js')
-    expect(prepared).toContain('<canvas id="loop-chart"')
+    expect(prepared).toContain('<canvas id="nui-chart"')
     expect(prepared).toContain('January')
     expect(prepared).toContain('[12,19,3]')
     expect(prepared).toContain('http://localhost:8080/vendor/chart.min.js')

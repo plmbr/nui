@@ -7,10 +7,10 @@ import (
 	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"loop/internal/viz"
+	"nui/internal/viz"
 )
 
-// RunViz starts the loop-viz MCP server on stdio.
+// RunViz starts the nui-viz MCP server on stdio.
 func RunViz(ctx context.Context) error {
 	server := mcp.NewServer(&mcp.Implementation{
 		Name:    viz.MCPName,
@@ -26,7 +26,7 @@ func RunViz(ctx context.Context) error {
 func registerVizTools(server *mcp.Server) {
 	server.AddTool(&mcp.Tool{
 		Name:        viz.ToolName,
-		Description: "Render an HTML visualization (charts, tables, dashboards) in the Loop chat UI. Provide a complete HTML document or fragment; external libraries (Chart.js, D3, etc.) may be loaded from CDNs.",
+		Description: "Render an HTML visualization (charts, tables, dashboards) in the nui chat UI. Provide a complete HTML document or fragment; external libraries (Chart.js, D3, etc.) may be loaded from CDNs.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -48,7 +48,7 @@ func registerVizTools(server *mcp.Server) {
 			return toolError(fmt.Errorf("html is required"))
 		}
 		html = viz.PrepareHTML(html)
-		msg := "Visualization rendered in Loop UI"
+		msg := "Visualization rendered in nui UI"
 		if title != "" {
 			msg = fmt.Sprintf("Visualization rendered: %s", title)
 		}

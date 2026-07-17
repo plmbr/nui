@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"loop/internal/agents"
-	"loop/internal/eval"
-	"loop/internal/loopclient"
+	"nui/internal/agents"
+	"nui/internal/eval"
+	"nui/internal/nuiclient"
 )
 
 func handleAgentEvalRun(w http.ResponseWriter, r *http.Request, agentID string) {
@@ -47,7 +47,7 @@ func handleAgentEvalRun(w http.ResponseWriter, r *http.Request, agentID string) 
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
 	defer cancel()
 
-	client := loopclient.New(serverBaseURL(r))
+	client := nuiclient.New(serverBaseURL(r))
 	runner := &eval.Runner{Client: client}
 	summary, err := runner.Run(ctx, eval.Options{
 		AgentID:     agentID,

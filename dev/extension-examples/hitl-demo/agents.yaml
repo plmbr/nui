@@ -1,7 +1,7 @@
 agents:
   - id: hitl-claude
     name: HITL Claude Demo
-    description: Claude agent with interactive HITL via loop-hitl MCP ask_user
+    description: Claude agent with interactive HITL via nui-hitl MCP ask_user
     harness:
       type: claude-code
       model: claude-sonnet-4-6
@@ -12,7 +12,7 @@ agents:
     hitl:
       mode: interactive
       channels:
-        - loop-ui
+        - nui-ui
         - ext:hitl-demo/demo-slack
     aiAssets:
       mcpServers:
@@ -26,4 +26,4 @@ agents:
     hitl:
       mode: interactive
       channels:
-        - loop-ui
+        - nui-ui

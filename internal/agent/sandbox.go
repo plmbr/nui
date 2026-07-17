@@ -63,7 +63,7 @@ func detectBwrap() BwrapStatus {
 }
 
 // WrapWithBwrap returns the bwrap binary and args that sandbox bin+args under workDir.
-// When harnessConfigDir is set it is bind-mounted (session harness config from Loop).
+// When harnessConfigDir is set it is bind-mounted (session harness config from nui).
 // Otherwise ~/<homeSubdir> is bind-mounted read-write; everything else is read-only.
 // Network access is preserved so harness CLIs can reach their APIs.
 func WrapWithBwrap(bwrapPath, bin string, args []string, workDir, homeSubdir, harnessConfigDir string) (string, []string) {

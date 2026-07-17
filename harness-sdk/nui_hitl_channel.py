@@ -1,13 +1,13 @@
 """
-Loop extension HITL channel — stdio JSON-RPC.
+nui extension HITL channel — stdio JSON-RPC.
 
-Subclass LoopHITLChannelProvider and override on_deliver, then call serve().
+Subclass NuiHITLChannelProvider and override on_deliver, then call serve().
 
 Example:
 
-    from loop_hitl_channel import LoopHITLChannelProvider
+    from nui_hitl_channel import NuiHITLChannelProvider
 
-    class DemoChannel(LoopHITLChannelProvider):
+    class DemoChannel(NuiHITLChannelProvider):
         def on_deliver(self, channel_id, request, **kwargs):
             print(f"deliver {request['requestId']} to {channel_id}", file=sys.stderr)
             return {"ok": True}
@@ -22,8 +22,8 @@ import sys
 from typing import Any
 
 
-class LoopHITLChannelProvider:
-    api_version = "loop.dev/extension/v1"
+class NuiHITLChannelProvider:
+    api_version = "nui.dev/extension/v1"
     name = "hitl-channel"
     version = "1.0.0"
 
@@ -55,7 +55,7 @@ class LoopHITLChannelProvider:
                 "jsonrpc": "2.0",
                 "id": rid,
                 "result": {
-                    "id": os.environ.get("LOOP_HITL_CHANNEL_ID", self.name),
+                    "id": os.environ.get("NUI_HITL_CHANNEL_ID", self.name),
                     "name": self.name,
                     "version": self.version,
                     "capabilities": ["deliver"],

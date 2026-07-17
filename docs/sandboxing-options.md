@@ -1,12 +1,12 @@
-# Loop Sandboxing Options — Research Report
+# nui Sandboxing Options — Research Report
 
-> **Status:** Historical research (March 2026). The **active decision** is documented in [sandboxing-bwrap-vs-go-sandbox.md](sandboxing-bwrap-vs-go-sandbox.md): **use bubblewrap**, not go-sandbox. Loop implements bwrap via `internal/agent/sandbox.go` (`WrapWithBwrap()`).
+> **Status:** Historical research (March 2026). The **active decision** is documented in [sandboxing-bwrap-vs-go-sandbox.md](sandboxing-bwrap-vs-go-sandbox.md): **use bubblewrap**, not go-sandbox. nui implements bwrap via `internal/agent/sandbox.go` (`WrapWithBwrap()`).
 
 > Sources: SandboxEscapeBench (Oxford/UK AISI, March 2026), go-sandbox, bubblewrap, nsjail, gVisor docs.
 
 ## Summary
 
-Loop needs a platform-split sandboxing strategy. The Linux path has multiple solid options. The macOS path is limited and officially deprecated. Docker alone is provably insufficient against capable LLM agents.
+nui needs a platform-split sandboxing strategy. The Linux path has multiple solid options. The macOS path is limited and officially deprecated. Docker alone is provably insufficient against capable LLM agents.
 
 The current `ClaudeCodeAgent` path (direct subprocess in `internal/agent/claude_code.go`) has no sandboxing. The Docker extension agent path is better but still escapable if misconfigured.
 
@@ -14,7 +14,7 @@ The current `ClaudeCodeAgent` path (direct subprocess in `internal/agent/claude_
 
 ## Linux options (ranked)
 
-> **Note:** go-sandbox was initially ranked first in this report but was **rejected** after further evaluation. See [sandboxing-bwrap-vs-go-sandbox.md](sandboxing-bwrap-vs-go-sandbox.md). Loop ships **bubblewrap** for the four CLI harnesses.
+> **Note:** go-sandbox was initially ranked first in this report but was **rejected** after further evaluation. See [sandboxing-bwrap-vs-go-sandbox.md](sandboxing-bwrap-vs-go-sandbox.md). nui ships **bubblewrap** for the four CLI harnesses.
 
 ### 1. bubblewrap (bwrap) via os/exec — **implemented**
 
@@ -99,7 +99,7 @@ Caveat: `CLONE_NEWNS` cannot be combined with `CLONE_FS`. Gives namespace isolat
 ### 5. gVisor / Firecracker — stronger but heavier
 
 - **gVisor**: intercepts syscalls in user-space (Sentry process) before reaching host kernel. OCI-compatible — can wrap the existing Docker agent path. Not a full hardware boundary.
-- **Firecracker microVMs**: hardware-enforced boundary. Strongest isolation available. High integration complexity — not practical for per-project subprocess wrapping without significant rearchitecture. Relevant only if Loop becomes a multi-tenant hosted service.
+- **Firecracker microVMs**: hardware-enforced boundary. Strongest isolation available. High integration complexity — not practical for per-project subprocess wrapping without significant rearchitecture. Relevant only if nui becomes a multi-tenant hosted service.
 
 ---
 
@@ -123,7 +123,7 @@ Sample profile:
 
 **Critical limitations:**
 - Officially **deprecated by Apple** — long-term maintenance risk.
-- macOS does **not** support nested sandboxes. If Loop's Go server itself is sandboxed, child processes cannot also apply `sandbox-exec` (returns `sandbox_apply_container: Operation not permitted`).
+- macOS does **not** support nested sandboxes. If nui's Go server itself is sandboxed, child processes cannot also apply `sandbox-exec` (returns `sandbox_apply_container: Operation not permitted`).
 - Network blocking via Seatbelt does **NOT** reliably intercept `connect()` syscalls to non-localhost IPs at the kernel level (refuted 0-3). Network egress requires supplementary measures (e.g., `pf` rules).
 
 Use the limited-user-account layer as defense-in-depth on macOS, but treat Linux as the primary platform for real sandboxing.
@@ -134,7 +134,7 @@ Use the limited-user-account layer as defense-in-depth on macOS, but treat Linux
 
 Plain Docker is **insufficient** against capable LLM agents (SandboxEscapeBench, Oxford/UK AISI, March 2026). Frontier models reliably escape difficulty 1–2 Docker scenarios: `--privileged` containers, writable host mounts, exposed Docker sockets. Well-configured Docker is better but lacks a hardware boundary.
 
-Loop's Docker connector (`docker run -d -p 127.0.0.1::containerPort`) is reasonable for extension agents. For the four builtin CLI harnesses, Loop also supports **bubblewrap** sandboxing on Linux (`harness.sandbox: bubblewrap` in ADL) — see `internal/agent/sandbox.go` and `WrapWithBwrap()`. Set `sandbox: none` (the default) to run unsandboxed on the host.
+nui's Docker connector (`docker run -d -p 127.0.0.1::containerPort`) is reasonable for extension agents. For the four builtin CLI harnesses, nui also supports **bubblewrap** sandboxing on Linux (`harness.sandbox: bubblewrap` in ADL) — see `internal/agent/sandbox.go` and `WrapWithBwrap()`. Set `sandbox: none` (the default) to run unsandboxed on the host.
 
 ---
 
@@ -152,6 +152,6 @@ Loop's Docker connector (`docker run -d -p 127.0.0.1::containerPort`) is reasona
 ## Open questions before implementing
 
 1. Does `claude` CLI need loopback access (for MCP servers on localhost)? Determines whether `--unshare-net` is usable or needs a loopback-only network namespace.
-2. Does Loop's production Linux server run as root or non-root? Is `kernel.unprivileged_userns_clone` enabled? Determines whether bwrap/nsjail need setuid wrappers.
+2. Does nui's production Linux server run as root or non-root? Is `kernel.unprivileged_userns_clone` enabled? Determines whether bwrap/nsjail need setuid wrappers.
 3. Is there a Go-native Landlock LSM binding for kernel-level filesystem access control (complement to namespaces, alternative to bwrap bind-mounts)?
 4. Apple's roadmap for replacing `sandbox-exec` — is there an endorsed API for non-app-bundle process launchers before it's removed?

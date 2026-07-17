@@ -12,8 +12,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"loop/internal/mentions"
-	"loop/internal/model"
+	"nui/internal/mentions"
+	"nui/internal/model"
 )
 
 // ProgrammaticRPC is a long-lived stdio JSON-RPC connection to a programmatic extension process.

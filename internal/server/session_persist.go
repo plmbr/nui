@@ -3,9 +3,9 @@
 package server
 
 import (
-	"loop/internal/model"
-	"loop/internal/storageext"
-	"loop/internal/store"
+	"nui/internal/model"
+	"nui/internal/storageext"
+	"nui/internal/store"
 	"strings"
 )
 

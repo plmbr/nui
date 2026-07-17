@@ -17,11 +17,11 @@ import (
 	"sync"
 	"time"
 
-	"loop/internal/devcontainer"
-	"loop/internal/extensions"
+	"nui/internal/devcontainer"
+	"nui/internal/extensions"
 )
 
-// builtinAgentTypes are harness types implemented in-process inside the Loop binary.
+// builtinAgentTypes are harness types implemented in-process inside the nui binary.
 var builtinAgentTypes = map[string]bool{
 	"claude-code": true,
 	"pi":          true,
@@ -42,7 +42,7 @@ type Manager struct {
 	containerMu   sync.Mutex       // protects containers, dockerURLs, and lastActivity
 	agentMu       sync.Map         // map[projectID]*sync.Mutex — serialises per-project launch
 	containers    map[string]string // projectID → containerID
-	devcontainerDirs map[string]string // projectID → Loop-managed devcontainer up folder
+	devcontainerDirs map[string]string // projectID → nui-managed devcontainer up folder
 	dockerURLs    map[string]string // projectID → http base URL
 	lastActivity  map[string]time.Time
 }
@@ -113,7 +113,7 @@ func (m *Manager) touchActivity(projectID string) {
 // When sessionConfigDir is set, ADL-provisioned ai assets are bind-mounted into the container.
 func (m *Manager) GetClaudeCodeDocker(projectID, image, workingDir, sessionConfigDir string, userScope bool) (Agent, error) {
 	if image == "" {
-		image = "loop-claude-code:latest"
+		image = "nui-claude-code:latest"
 	}
 	baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "claude-code", sessionConfigDir, ".claude", !userScope, userScope)
 	if err != nil {
@@ -127,13 +127,13 @@ func (m *Manager) GetClaudeCodeDocker(projectID, image, workingDir, sessionConfi
 // The working dir and ~/.pi/agent/sessions are mounted.
 func (m *Manager) GetPiDocker(projectID, image, workingDir, sessionConfigDir string) (Agent, error) {
 	if image == "" {
-		image = "loop-pi:latest"
+		image = "nui-pi:latest"
 	}
 	home, _ := os.UserHomeDir()
 	piSessions := filepath.Join(home, ".pi", "agent", "sessions")
 	os.MkdirAll(piSessions, 0755) //nolint:errcheck
 	baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "pi", sessionConfigDir, "", false, false,
-		piSessions+":/home/loop/.pi/agent/sessions")
+		piSessions+":/home/nui/.pi/agent/sessions")
 	if err != nil {
 		return nil, err
 	}
@@ -144,13 +144,13 @@ func (m *Manager) GetPiDocker(projectID, image, workingDir, sessionConfigDir str
 // GetOpenCodeDocker launches (or reuses) a Docker container running the opencode HTTP agent.
 func (m *Manager) GetOpenCodeDocker(projectID, image, workingDir, sessionConfigDir string) (Agent, error) {
 	if image == "" {
-		image = "loop-opencode:latest"
+		image = "nui-opencode:latest"
 	}
 	home, _ := os.UserHomeDir()
-	ocSessions := filepath.Join(home, ".loop", "opencode-sessions")
+	ocSessions := filepath.Join(home, ".nui", "opencode-sessions")
 	os.MkdirAll(ocSessions, 0755) //nolint:errcheck
 	baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "opencode", sessionConfigDir, "", false, false,
-		ocSessions+":/home/loop/.local/share/opencode")
+		ocSessions+":/home/nui/.local/share/opencode")
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func (m *Manager) GetOpenCodeDocker(projectID, image, workingDir, sessionConfigD
 // Auth is forwarded via ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL from the host environment.
 func (m *Manager) GetCodexDocker(projectID, image, workingDir, sessionConfigDir string, userScope bool) (Agent, error) {
 	if image == "" {
-		image = "loop-codex:latest"
+		image = "nui-codex:latest"
 	}
 	baseURL, err := m.ensureBuiltinDockerRunning(projectID, image, workingDir, "codex", sessionConfigDir, ".codex", false, userScope)
 	if err != nil {
@@ -281,9 +281,9 @@ func (m *Manager) startTCPHarness(ref extensions.HarnessRef) (ConnectionInfo, er
 	cmd := exec.Command(command[0], command[1:]...)
 	cmd.Dir = cwd
 	cmd.Env = append(os.Environ(),
-		"LOOP_EXTENSION_DIR="+ref.Extension.Dir,
-		"LOOP_HARNESS_ID="+ref.Entry.ID,
-		"LOOP_CONNECTION_ID="+SanitizeConnectionID(ref.AgentID),
+		"NUI_EXTENSION_DIR="+ref.Extension.Dir,
+		"NUI_HARNESS_ID="+ref.Entry.ID,
+		"NUI_CONNECTION_ID="+SanitizeConnectionID(ref.AgentID),
 	)
 	if err := cmd.Start(); err != nil {
 		return ConnectionInfo{}, err
@@ -316,8 +316,8 @@ func (m *Manager) startHTTPHarness(ref extensions.HarnessRef) (string, error) {
 		cmd.Dir = cwd
 		connID := SanitizeConnectionID(ref.AgentID)
 		cmd.Env = append(os.Environ(),
-			"LOOP_EXTENSION_DIR="+ref.Extension.Dir,
-			"LOOP_CONNECTION_ID="+connID,
+			"NUI_EXTENSION_DIR="+ref.Extension.Dir,
+			"NUI_CONNECTION_ID="+connID,
 		)
 		if err := cmd.Start(); err != nil {
 			return "", err
@@ -386,7 +386,7 @@ func (m *Manager) getBuiltinAgent(projectID, agentType string, config map[string
 	return ag, nil
 }
 
-// GetDevcontainerAgent provisions a Loop-managed devcontainer and returns the inner CLI agent.
+// GetDevcontainerAgent provisions a nui-managed devcontainer and returns the inner CLI agent.
 func (m *Manager) GetDevcontainerAgent(projectID, innerHarness, workingDir, sessionConfigDir, image string) (Agent, error) {
 	managedDir, containerID, err := m.ensureDevcontainerUp(projectID, innerHarness, workingDir, sessionConfigDir, image)
 	if err != nil {
@@ -628,7 +628,7 @@ func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, harnessType,
 	m.containerMu.Unlock()
 
 	home, _ := os.UserHomeDir()
-	containerHome := "/home/loop"
+	containerHome := "/home/nui"
 
 	args := []string{"run", "-d", "--rm",
 		"-p", fmt.Sprintf("127.0.0.1::%d", builtinContainerPort),
@@ -661,7 +661,7 @@ func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, harnessType,
 		// may be actively updating it via atomic rename or in-place writes).
 		hostConfigJSON := filepath.Join(home, agentConfigDir+".json")
 		if _, statErr := os.Stat(hostConfigJSON); statErr == nil {
-			snapshotPath := snapshotJSONFile(hostConfigJSON, filepath.Join(home, ".loop"), agentConfigDir+"-snapshot.json")
+			snapshotPath := snapshotJSONFile(hostConfigJSON, filepath.Join(home, ".nui"), agentConfigDir+"-snapshot.json")
 			if snapshotPath != "" {
 				args = append(args, "-v", snapshotPath+":"+containerHome+"/"+agentConfigDir+".json:ro")
 			} else {
@@ -673,7 +673,7 @@ func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, harnessType,
 			// hooks, env overrides, and apiKeyHelper (which may depend on host-side
 			// mTLS certificates not available in the container) do not interfere.
 			// Docker containers authenticate via ANTHROPIC_API_KEY forwarded from the host env.
-			overridePath := filepath.Join(home, ".loop", agentConfigDir+"-settings-override.json")
+			overridePath := filepath.Join(home, ".nui", agentConfigDir+"-settings-override.json")
 			if writeErr := os.WriteFile(overridePath, []byte("{}"), 0644); writeErr == nil {
 				args = append(args, "-v", overridePath+":"+containerHome+"/"+agentConfigDir+"/settings.json:ro")
 			}

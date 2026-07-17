@@ -7,17 +7,17 @@ import (
 	"path/filepath"
 	"testing"
 
-	"loop/internal/extensions"
-	"loop/internal/model"
+	"nui/internal/extensions"
+	"nui/internal/model"
 )
 
 func TestExpandMentionProviders(t *testing.T) {
 	home := t.TempDir()
-	extDir := filepath.Join(home, ".loop", "extensions", "mention-pack")
+	extDir := filepath.Join(home, ".nui", "extensions", "mention-pack")
 	if err := os.MkdirAll(extDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: loop.dev/extension/v1
+	manifest := `apiVersion: nui.dev/extension/v1
 name: mention-pack
 version: 1.0.0
 contributions:

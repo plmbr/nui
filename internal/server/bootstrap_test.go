@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/model"
+	"nui/internal/store"
 )
 
 func TestResolveUserPromptAgentType_acceptsUserPrompt(t *testing.T) {
@@ -29,7 +29,7 @@ func TestResolveUserPromptAgentType_rejectsAutoPrompt(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	agentsDir := filepath.Join(home, ".loop", "agents")
+	agentsDir := filepath.Join(home, ".nui", "agents")
 	if err := os.MkdirAll(agentsDir, 0o700); err != nil {
 		t.Fatal(err)
 	}

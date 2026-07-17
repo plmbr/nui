@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/hitl"
+	"nui/internal/hitl"
 )
 
 func TestParseClaudePermissionRequest(t *testing.T) {

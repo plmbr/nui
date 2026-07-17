@@ -13,7 +13,7 @@ type ClaudeCodeAgent struct {
 	BinaryPath string
 	// Sandbox controls sandboxing: "none" (default), "bubblewrap", or "devcontainer".
 	Sandbox string
-	// DevcontainerWorkspace is the Loop-managed folder for devcontainer up/exec.
+	// DevcontainerWorkspace is the nui-managed folder for devcontainer up/exec.
 	DevcontainerWorkspace string
 	DevcontainerContainerID string
 

@@ -184,7 +184,7 @@ class PersistentPiSession:
             pi_args += ["--session", resume]
 
         args = self._wrap_args(pi_args, wd)
-        cwd = None if os.environ.get("LOOP_BWRAP_PATH") else wd
+        cwd = None if os.environ.get("NUI_BWRAP_PATH") else wd
 
         self._stderr_lines = []
         proc = subprocess.Popen(

@@ -60,7 +60,7 @@ export function McpAppFrame({
     const bridge = new AppBridge(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       null as any,
-      { name: 'loop-chat', version: '1.0.0' },
+      { name: 'nui-chat', version: '1.0.0' },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { serverTools: {} } as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

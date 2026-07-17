@@ -3,7 +3,7 @@ adl: "1.0"
 # Demonstrates the three sandbox variants for the codex harness:
 #   - none (default): runs `codex` directly on the host
 #   - bubblewrap: wraps the subprocess with bwrap (Linux only)
-#   - docker: runs inside a Loop-managed Docker container
+#   - docker: runs inside a nui-managed Docker container
 #
 # All three variants produce the same outputs — the sandbox field only
 # affects isolation, not the agent's capabilities or API.
@@ -56,7 +56,7 @@ steps:
     harness:
       type: codex
       sandbox: docker
-      image: loop-codex:latest    # build with: docker build -f docker/codex/Dockerfile -t loop-codex:latest docker/
+      image: nui-codex:latest    # build with: docker build -f docker/codex/Dockerfile -t nui-codex:latest docker/
     systemPrompt: |
       Analyse the repository for potential security vulnerabilities.
       Focus on: hardcoded secrets, unsafe deserialization, and injection vectors.

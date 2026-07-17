@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// ConnectionInfo mirrors the JSON written by harness processes to ~/.loop/connections/<id>.json.
+// ConnectionInfo mirrors the JSON written by harness processes to ~/.nui/connections/<id>.json.
 type ConnectionInfo struct {
 	Host      string `json:"host"`
 	Port      int    `json:"port"`

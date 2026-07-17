@@ -1,13 +1,13 @@
 """
-Loop harness framework — stdio JSON-RPC variant for ~/.loop/extensions/.
+nui harness framework — stdio JSON-RPC variant for ~/.nui/extensions/.
 
-Loop spawns this process and communicates over stdin/stdout (newline-delimited JSON-RPC).
+nui spawns this process and communicates over stdin/stdout (newline-delimited JSON-RPC).
 
 Example:
 
-    from loop_agent_stdio import LoopAgent
+    from nui_agent_stdio import NuiAgent
 
-    class EchoAgent(LoopAgent):
+    class EchoAgent(NuiAgent):
         name = "echo"
         version = "0.1.0"
 
@@ -24,8 +24,8 @@ import uuid
 from typing import Generator
 
 
-class LoopAgent:
-    name: str = "loop-agent"
+class NuiAgent:
+    name: str = "nui-agent"
     version: str = "0.1.0"
     harness_id: str = ""
 
@@ -52,7 +52,7 @@ class LoopAgent:
         run_id: str = "",
         routing=None,
     ) -> dict:
-        from loop_hitl import ask_user as hitl_ask_user
+        from nui_hitl import ask_user as hitl_ask_user
 
         return hitl_ask_user(
             questions=questions,
@@ -76,7 +76,7 @@ class LoopAgent:
         run_id: str = "",
         routing=None,
     ) -> dict:
-        from loop_hitl import request_approval as hitl_request_approval
+        from nui_hitl import request_approval as hitl_request_approval
 
         return hitl_request_approval(
             title=title,
@@ -106,7 +106,7 @@ class LoopAgent:
         })
 
     def serve_stdio(self) -> None:
-        self.harness_id = __import__("os").environ.get("LOOP_HARNESS_ID", self.name)
+        self.harness_id = __import__("os").environ.get("NUI_HARNESS_ID", self.name)
         for line in sys.stdin:
             line = line.strip()
             if not line:

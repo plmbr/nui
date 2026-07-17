@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"loop/internal/mcpoauth"
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/mcpoauth"
+	"nui/internal/model"
+	"nui/internal/store"
 )
 
 type mcpServerConfig struct {
@@ -121,7 +121,7 @@ func (m *MCPManager) load(path string) error {
 		} else {
 			cmd := exec.CommandContext(ctx, serverCfg.Command, serverCfg.Args...)
 			transport := &mcp.CommandTransport{Command: cmd}
-			client := mcp.NewClient(&mcp.Implementation{Name: "loop", Version: "1.0.0"}, nil)
+			client := mcp.NewClient(&mcp.Implementation{Name: "nui", Version: "1.0.0"}, nil)
 			session, connectErr = client.Connect(ctx, transport, nil)
 		}
 		cancel()
@@ -213,7 +213,7 @@ func (m *MCPManager) session(name string) (*mcp.ClientSession, error) {
 	defer m.mu.RUnlock()
 	s, ok := m.sessions[name]
 	if !ok || s.session == nil {
-		return nil, fmt.Errorf("MCP server %q not found (configure ~/.loop/.mcp.json)", name)
+		return nil, fmt.Errorf("MCP server %q not found (configure ~/.nui/.mcp.json)", name)
 	}
 	return s.session, nil
 }

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 func TestHTMLMatches(t *testing.T) {
@@ -31,7 +31,7 @@ func TestNormalizeParts_dedupesWriteWhenShowVisualizationPresent(t *testing.T) {
 		},
 		{
 			Type:     "tool",
-			ToolName: "mcp__loop-viz__show_visualization",
+			ToolName: "mcp__nui-viz__show_visualization",
 			ToolArgs: map[string]any{"html": html, "title": "Chart"},
 			VisualizationHTML: html,
 		},

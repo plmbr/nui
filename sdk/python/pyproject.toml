@@ -3,19 +3,19 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "loop-extension"
+name = "nui-extension"
 version = "0.1.0"
-description = "Loop programmatic extension SDK"
+description = "nui programmatic extension SDK"
 readme = "README.md"
 requires-python = ">=3.10"
 
 [project.scripts]
-loop-ext = "loop_extension.__main__:main"
+nui-ext = "nui_extension.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["loop_extension*"]
+include = ["nui_extension*"]
 
-[tool.loop]
+[tool.nui]
 id = "example-ext"
 displayName = "Example Extension"

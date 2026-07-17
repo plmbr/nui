@@ -2,7 +2,7 @@ adl: "1.0"
 
 id: eval-demo-agent
 name: Eval Demo Agent
-description: Example agent with eval test cases for loop agent eval run -a.
+description: Example agent with eval test cases for nui agent eval run -a.
 version: 0.1.0
 
 harness:

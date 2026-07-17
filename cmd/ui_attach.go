@@ -8,22 +8,22 @@ import (
 	"os"
 	"strings"
 
-	"loop/internal/browser"
-	"loop/internal/loopclient"
-	"loop/internal/server"
+	"nui/internal/browser"
+	"nui/internal/nuiclient"
+	"nui/internal/server"
 )
 
 func attachToRunningServer(ctx context.Context, port int, opts server.StartOptions) error {
 	baseURL := fmt.Sprintf("http://127.0.0.1:%d", port)
-	client := loopclient.New(baseURL)
+	client := nuiclient.New(baseURL)
 
 	hasLaunch := strings.TrimSpace(opts.AgentType) != "" || opts.Prompt != "" || opts.Open
 	if !hasLaunch {
-		fmt.Fprintf(os.Stderr, "Loop server already running at %s\n", baseURL)
+		fmt.Fprintf(os.Stderr, "nui server already running at %s\n", baseURL)
 		return nil
 	}
 
-	sess, err := client.Launch(ctx, loopclient.LaunchRequest{
+	sess, err := client.Launch(ctx, nuiclient.LaunchRequest{
 		AgentType:  opts.AgentType,
 		WorkingDir: opts.WorkingDir,
 		Prompt:     opts.Prompt,

@@ -5,48 +5,48 @@ package agent
 import (
 	"strings"
 
-	"loop/internal/memory"
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/memory"
+	"nui/internal/model"
+	"nui/internal/store"
 )
 
-const loopAgentMCPName = "loop-agent"
+const nuiAgentMCPName = "nui-agent"
 
-func loopAgentMCPServer(agentID string) (model.ADLMCPServer, error) {
-	exe, err := loopExecutable()
+func nuiAgentMCPServer(agentID string) (model.ADLMCPServer, error) {
+	exe, err := nuiExecutable()
 	if err != nil {
 		return model.ADLMCPServer{}, err
 	}
 	env := map[string]string{}
 	if id := strings.TrimSpace(agentID); id != "" {
-		env[memory.EnvLoopMemoryAgentID] = id
+		env[memory.EnvnuiMemoryAgentID] = id
 	}
 	if settings, err := store.LoadSettings(); err == nil {
-		env[memory.EnvLoopMemoryUserMode] = memory.UserMode(settings)
-		env[memory.EnvLoopMemoryAgentMode] = memory.AgentMode(settings, agentID)
+		env[memory.EnvnuiMemoryUserMode] = memory.UserMode(settings)
+		env[memory.EnvnuiMemoryAgentMode] = memory.AgentMode(settings, agentID)
 	}
 	return model.ADLMCPServer{
-		Name:    loopAgentMCPName,
+		Name:    nuiAgentMCPName,
 		Command: exe,
 		Args:    []string{"agent-mcp"},
 		Env:     env,
 	}, nil
 }
 
-func hasLoopAgentMCP(servers []model.ADLMCPServer) bool {
+func hasNuiAgentMCP(servers []model.ADLMCPServer) bool {
 	for _, srv := range servers {
-		if strings.TrimSpace(srv.Name) == loopAgentMCPName {
+		if strings.TrimSpace(srv.Name) == nuiAgentMCPName {
 			return true
 		}
 	}
 	return false
 }
 
-func appendLoopAgentMCP(servers []model.ADLMCPServer, agentID string) ([]model.ADLMCPServer, error) {
-	if hasLoopAgentMCP(servers) {
+func appendNuiAgentMCP(servers []model.ADLMCPServer, agentID string) ([]model.ADLMCPServer, error) {
+	if hasNuiAgentMCP(servers) {
 		return servers, nil
 	}
-	srv, err := loopAgentMCPServer(agentID)
+	srv, err := nuiAgentMCPServer(agentID)
 	if err != nil {
 		return servers, err
 	}

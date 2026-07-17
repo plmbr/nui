@@ -89,7 +89,7 @@ type ADLPromptSuggestion struct {
 //   - "codex"       — runs the codex CLI as a host subprocess
 //   - "opencode"    — runs the opencode CLI as a host subprocess
 //   - "docker"        — connects to an HTTP/SSE agent in a Docker container (requires image + containerPort)
-//   - "devcontainer"  — Loop-managed dev container sandbox (requires innerHarness)
+//   - "devcontainer"  — nui-managed dev container sandbox (requires innerHarness)
 //   - "remote"        — connects to a pre-running HTTP/SSE agent over the network (requires host + port)
 //   - "api"           — in-process LLM API harness (anthropic, openai, gemini, ollama, openrouter, …)
 //
@@ -139,7 +139,7 @@ type ADLMentionProvider struct {
 type ADLSkill struct {
 	Name    string `yaml:"name"              json:"name"`
 	Path    string `yaml:"path,omitempty"    json:"path,omitempty"`    // local dir/SKILL.md, or subpath within git repo
-	Ref     string `yaml:"ref,omitempty"     json:"ref,omitempty"`     // named skill in ~/.loop/skills/
+	Ref     string `yaml:"ref,omitempty"     json:"ref,omitempty"`     // named skill in ~/.nui/skills/
 	Git     string `yaml:"git,omitempty"     json:"git,omitempty"`     // remote repo URL
 	Version string `yaml:"version,omitempty" json:"version,omitempty"` // git tag/commit
 	Content string `yaml:"content,omitempty" json:"content,omitempty"` // inline SKILL.md

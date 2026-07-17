@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/memory"
-	"loop/internal/store"
+	"nui/internal/memory"
+	"nui/internal/store"
 )
 
 func TestHandleMemoryUser(t *testing.T) {

@@ -6,25 +6,25 @@ import (
 	"os"
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 const (
-	EnvLoopSessionID = "LOOP_SESSION_ID"
-	EnvLoopRunID     = "LOOP_RUN_ID"
-	EnvLoopAPIURL    = "LOOP_API_URL"
-	loopHitlMCPName  = "loop-hitl"
+	EnvNuiSessionID = "NUI_SESSION_ID"
+	EnvnuiRunID     = "NUI_RUN_ID"
+	EnvnuiAPIURL    = "NUI_API_URL"
+	nuiHitlMCPName  = "nui-hitl"
 )
 
-func defaultLoopAPIURL() string {
-	if v := strings.TrimSpace(os.Getenv("LOOP_URL")); v != "" {
+func defaultnuiAPIURL() string {
+	if v := strings.TrimSpace(os.Getenv("NUI_URL")); v != "" {
 		return strings.TrimRight(v, "/")
 	}
 	return "http://127.0.0.1:8080"
 }
 
-func loopExecutable() (string, error) {
-	if path := strings.TrimSpace(os.Getenv("LOOP_MCP_BINARY")); path != "" {
+func nuiExecutable() (string, error) {
+	if path := strings.TrimSpace(os.Getenv("NUI_MCP_BINARY")); path != "" {
 		return path, nil
 	}
 	exe, err := os.Executable()
@@ -36,100 +36,100 @@ func loopExecutable() (string, error) {
 	return exe, nil
 }
 
-func loopHitlMCPServer(sessionID, apiURL string) (model.ADLMCPServer, error) {
-	exe, err := loopExecutable()
+func nuiHitlMCPServer(sessionID, apiURL string) (model.ADLMCPServer, error) {
+	exe, err := nuiExecutable()
 	if err != nil {
 		return model.ADLMCPServer{}, err
 	}
 	if apiURL == "" {
-		apiURL = defaultLoopAPIURL()
+		apiURL = defaultnuiAPIURL()
 	}
 	return model.ADLMCPServer{
-		Name:    loopHitlMCPName,
+		Name:    nuiHitlMCPName,
 		Command: exe,
 		Args:    []string{"hitl-mcp"},
 		Env: map[string]string{
-			EnvLoopSessionID: sessionID,
-			EnvLoopAPIURL:    apiURL,
+			EnvNuiSessionID: sessionID,
+			EnvnuiAPIURL:    apiURL,
 		},
 	}, nil
 }
 
-func hasLoopHitlMCP(servers []model.ADLMCPServer) bool {
+func hasnuiHitlMCP(servers []model.ADLMCPServer) bool {
 	for _, srv := range servers {
-		if strings.TrimSpace(srv.Name) == loopHitlMCPName {
+		if strings.TrimSpace(srv.Name) == nuiHitlMCPName {
 			return true
 		}
 	}
 	return false
 }
 
-func appendLoopHitlMCP(servers []model.ADLMCPServer, sessionID, apiURL string) ([]model.ADLMCPServer, error) {
+func appendNuiHitlMCP(servers []model.ADLMCPServer, sessionID, apiURL string) ([]model.ADLMCPServer, error) {
 	for _, srv := range servers {
-		if strings.TrimSpace(srv.Name) == loopHitlMCPName {
+		if strings.TrimSpace(srv.Name) == nuiHitlMCPName {
 			return servers, nil
 		}
 	}
-	srv, err := loopHitlMCPServer(sessionID, apiURL)
+	srv, err := nuiHitlMCPServer(sessionID, apiURL)
 	if err != nil {
 		return servers, err
 	}
 	return append(servers, srv), nil
 }
 
-func loopSessionIDForRun(req RunRequest, projectID string) string {
-	if req.LoopSessionID != "" {
-		return req.LoopSessionID
+func nuiSessionIDForRun(req RunRequest, projectID string) string {
+	if req.NuiSessionID != "" {
+		return req.NuiSessionID
 	}
 	return projectID
 }
 
-// harnessResumeSessionID returns the harness-native session id when it is distinct from the Loop session id.
+// harnessResumeSessionID returns the harness-native session id when it is distinct from the nui session id.
 func harnessResumeSessionID(req RunRequest) string {
 	if req.SessionID == "" {
 		return ""
 	}
-	if req.LoopSessionID != "" && req.SessionID == req.LoopSessionID {
+	if req.NuiSessionID != "" && req.SessionID == req.NuiSessionID {
 		return ""
 	}
 	return req.SessionID
 }
 
-func loopHarnessEnv(sessionID, runID, apiURL string) map[string]string {
+func nuiHarnessEnv(sessionID, runID, apiURL string) map[string]string {
 	if apiURL == "" {
-		apiURL = defaultLoopAPIURL()
+		apiURL = defaultnuiAPIURL()
 	}
 	env := map[string]string{
-		EnvLoopAPIURL: apiURL,
+		EnvnuiAPIURL: apiURL,
 	}
 	if sessionID != "" {
-		env[EnvLoopSessionID] = sessionID
+		env[EnvNuiSessionID] = sessionID
 	}
 	if runID != "" {
-		env[EnvLoopRunID] = runID
+		env[EnvnuiRunID] = runID
 	}
 	return env
 }
 
-func mergeLoopHarnessEnv(base map[string]string, sessionID, runID, apiURL string) map[string]string {
+func mergenuiHarnessEnv(base map[string]string, sessionID, runID, apiURL string) map[string]string {
 	out := make(map[string]string, len(base)+3)
 	for k, v := range base {
 		out[k] = v
 	}
-	for k, v := range loopHarnessEnv(sessionID, runID, apiURL) {
+	for k, v := range nuiHarnessEnv(sessionID, runID, apiURL) {
 		out[k] = v
 	}
 	return out
 }
 
 const hitlSystemPromptAppendix = `
-## Human in the loop (Loop HITL)
+## Human in the loop (nui HITL)
 
-When you need input, preferences, or clarifications from the human, call the **ask_user** tool on the **loop-hitl** MCP server. Do not ask those questions only in assistant text—the human answers through the Loop UI prompt card.
+When you need input, preferences, or clarifications from the human, call the **ask_user** tool on the **nui-hitl** MCP server. Do not ask those questions only in assistant text—the human answers through the nui UI prompt card.
 
 Each question's options must be objects with a **label** field (and optional **description**), for example: {"label": "Red", "description": "Bright red"}. Do not pass bare strings in the options array.
 
-For approve/reject gates before risky actions, use **request_approval** on **loop-hitl**.
+For approve/reject gates before risky actions, use **request_approval** on **nui-hitl**.
 `
 
 func appendHitlSystemPrompt(systemPrompt string) string {

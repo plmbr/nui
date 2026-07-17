@@ -5,9 +5,9 @@ package agents
 import (
 	"strings"
 
-	"loop/internal/extensions"
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/extensions"
+	"nui/internal/model"
+	"nui/internal/store"
 )
 
 // legacyAgentTypeNames maps old Session.AgentType strings to ADL ids.

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from loop_storage import LoopStorageHandler
+from nui_storage import NuiStorageHandler
 
 _SESSIONS: dict[str, dict[str, Any]] = {}
 _AGENT_MEMORY: dict[str, str] = {}
@@ -16,7 +16,7 @@ def _session_key(session_id: str, agent_type: str) -> str:
     return f"{session_id}:{agent_type}"
 
 
-class InMemoryStorage(LoopStorageHandler):
+class InMemoryStorage(NuiStorageHandler):
     def read_session(
         self,
         handler_id: str,

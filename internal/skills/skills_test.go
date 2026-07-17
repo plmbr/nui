@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/model"
+	"nui/internal/store"
 )
 
 func TestListDiscoversSkillDirectories(t *testing.T) {
@@ -125,10 +125,10 @@ func TestMaterializeSkillsClaude(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(src, "SKILL.md"), []byte("# Hello\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(tmp, "loop", "sessions", "sess1"), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Join(tmp, "nui", "sessions", "sess1"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	configDir := filepath.Join(home, ".loop", "sessions", "sess1")
+	configDir := filepath.Join(home, ".nui", "sessions", "sess1")
 
 	skills := []model.ADLSkill{{Name: "greeter", Path: src}}
 	if err := MaterializeSkills(Context{}, "claude-code", configDir, skills); err != nil {

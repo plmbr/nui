@@ -11,8 +11,8 @@ import (
 
 const piAgentSubdir = "pi-agent"
 
-// dockerSessionConfigMount is the in-container path for ~/.loop/sessions/<id>/ bind mounts.
-const dockerSessionConfigMount = "/home/loop/.loop/session-config"
+// dockerSessionConfigMount is the in-container path for ~/.nui/sessions/<id>/ bind mounts.
+const dockerSessionConfigMount = "/home/nui/.nui/session-config"
 
 // harnessConfigBindDir returns the filesystem path bound into sandboxes and pointed at by
 // harness config env vars. Pi uses a nested agent leaf directory.

@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"strings"
 
-	"loop/internal/llm"
-	"loop/internal/viz"
+	"nui/internal/llm"
+	"nui/internal/viz"
 )
 
 func userRequestedVisualization(msg string) bool {

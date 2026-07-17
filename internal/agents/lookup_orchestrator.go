@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 // ValidateOrchestratorRefs checks sub-agent registry references, self-reference, cycles, and workflow targets.

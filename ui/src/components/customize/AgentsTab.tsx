@@ -309,7 +309,7 @@ export function AgentsTab({ onChanged }: Props) {
   return (
     <div className="customize-tab-content flex flex-col gap-4 min-h-0 max-w-none">
       <p className="text-sm text-muted-foreground shrink-0">
-        Agent definitions in <code className="text-xs">~/.loop/agents/</code> (ADL YAML).
+        Agent definitions in <code className="text-xs">~/.nui/agents/</code> (ADL YAML).
       </p>
 
       <div className="flex flex-1 min-h-0 gap-4">

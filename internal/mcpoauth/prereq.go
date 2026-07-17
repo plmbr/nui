@@ -11,7 +11,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/auth"
 	"github.com/modelcontextprotocol/go-sdk/oauthex"
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 // ErrClientRegistrationRequired indicates the server does not support dynamic client registration.

@@ -8,15 +8,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/hitl"
-	"loop/internal/model"
+	"nui/internal/hitl"
+	"nui/internal/model"
 )
 
 const (
 	claudeHitlBridgeScript    = "hitl-bridge.sh"
 	claudeVizBridgeScript     = "viz-bridge.sh"
-	claudeLoopHitlAllowedTool = "mcp__loop-hitl__*"
-	claudeLoopVizAllowedTool  = "mcp__loop-viz__*"
+	claudenuiHitlAllowedTool = "mcp__nui-hitl__*"
+	claudenuiVizAllowedTool  = "mcp__nui-viz__*"
 	claudeWriteAllowedTool    = "Write"
 )
 
@@ -38,19 +38,19 @@ func sessionHasNamedMCP(configDir, name string) bool {
 	return ok
 }
 
-func sessionHasLoopHitlMCP(configDir string) bool {
-	return sessionHasNamedMCP(configDir, loopHitlMCPName)
+func sessionHasnuiHitlMCP(configDir string) bool {
+	return sessionHasNamedMCP(configDir, nuiHitlMCPName)
 }
 
 func appendClaudeInteractiveHitlArgs(args []string, req RunRequest) []string {
 	if req.HarnessPermissions != hitl.PermissionsInteractive {
 		return args
 	}
-	if sessionHasLoopHitlMCP(req.ConfigDir) {
-		args = append(args, "--allowedTools", claudeLoopHitlAllowedTool)
+	if sessionHasnuiHitlMCP(req.ConfigDir) {
+		args = append(args, "--allowedTools", claudenuiHitlAllowedTool)
 	}
-	if sessionHasLoopVizMCP(req.ConfigDir) {
-		args = append(args, "--allowedTools", claudeLoopVizAllowedTool)
+	if sessionHasnuiVizMCP(req.ConfigDir) {
+		args = append(args, "--allowedTools", claudenuiVizAllowedTool)
 		args = append(args, "--allowedTools", claudeWriteAllowedTool)
 	}
 	return args
@@ -58,18 +58,18 @@ func appendClaudeInteractiveHitlArgs(args []string, req RunRequest) []string {
 
 func claudeAllowedTools(configDir string, servers []model.ADLMCPServer) []string {
 	var allowed []string
-	if hasLoopHitlMCP(servers) || sessionHasLoopHitlMCP(configDir) {
-		allowed = append(allowed, claudeLoopHitlAllowedTool)
+	if hasnuiHitlMCP(servers) || sessionHasnuiHitlMCP(configDir) {
+		allowed = append(allowed, claudenuiHitlAllowedTool)
 	}
-	if hasLoopVizMCP(servers) || sessionHasLoopVizMCP(configDir) {
-		allowed = append(allowed, claudeLoopVizAllowedTool, claudeWriteAllowedTool)
+	if hasNuiVizMCP(servers) || sessionHasnuiVizMCP(configDir) {
+		allowed = append(allowed, claudenuiVizAllowedTool, claudeWriteAllowedTool)
 	}
 	return allowed
 }
 
 func claudePreToolUseHooks(configDir string) ([]map[string]any, error) {
 	var hooks []map[string]any
-	if sessionHasLoopHitlMCP(configDir) {
+	if sessionHasnuiHitlMCP(configDir) {
 		bridgePath := filepath.Join(configDir, claudeHitlBridgeScript)
 		if err := os.WriteFile(bridgePath, []byte(claudeHitlBridgeSh), 0755); err != nil {
 			return nil, err
@@ -84,7 +84,7 @@ func claudePreToolUseHooks(configDir string) ([]map[string]any, error) {
 			},
 		})
 	}
-	if sessionHasLoopVizMCP(configDir) {
+	if sessionHasnuiVizMCP(configDir) {
 		bridgePath := filepath.Join(configDir, claudeVizBridgeScript)
 		if err := os.WriteFile(bridgePath, []byte(claudeVizBridgeSh), 0755); err != nil {
 			return nil, err
@@ -133,9 +133,9 @@ func writeClaudeSessionSettings(configDir string, deps HarnessDeps) error {
 const claudeHitlBridgeSh = `#!/usr/bin/env bash
 set -euo pipefail
 export PAYLOAD="$(cat)"
-export LOOP_API_URL="${LOOP_API_URL:-http://127.0.0.1:8080}"
-export LOOP_SESSION_ID="${LOOP_SESSION_ID:-}"
-export LOOP_RUN_ID="${LOOP_RUN_ID:-}"
+export NUI_API_URL="${NUI_API_URL:-http://127.0.0.1:8080}"
+export NUI_SESSION_ID="${NUI_SESSION_ID:-}"
+export NUI_RUN_ID="${NUI_RUN_ID:-}"
 python3 <<'PY'
 import json, os, sys, urllib.error, urllib.request
 
@@ -204,7 +204,7 @@ def main():
         deny("empty hook payload")
         return
     payload = json.loads(raw)
-    api = os.environ.get("LOOP_API_URL", "http://127.0.0.1:8080").rstrip("/")
+    api = os.environ.get("NUI_API_URL", "http://127.0.0.1:8080").rstrip("/")
     tool = payload.get("tool_name") or payload.get("toolName") or ""
     tool_input = payload.get("tool_input") or payload.get("toolInput") or payload.get("input") or {}
 
@@ -228,8 +228,8 @@ def main():
         hitl_payload = dict(payload)
 
     body = {"kind": kind, "payload": hitl_payload}
-    session_id = os.environ.get("LOOP_SESSION_ID", "").strip()
-    run_id = os.environ.get("LOOP_RUN_ID", "").strip()
+    session_id = os.environ.get("NUI_SESSION_ID", "").strip()
+    run_id = os.environ.get("NUI_RUN_ID", "").strip()
     if session_id:
         body["sessionId"] = session_id
     if run_id:
@@ -305,11 +305,11 @@ def main():
     tool_input = payload.get("tool_input") or payload.get("toolInput") or payload.get("input") or {}
 
     if tool == "Skill" and is_dataviz_skill(tool_input):
-        deny("Use show_visualization on the loop-viz MCP server instead of the dataviz skill. Build self-contained HTML and call show_visualization in the same turn before any closing text.")
+        deny("Use show_visualization on the nui-viz MCP server instead of the dataviz skill. Build self-contained HTML and call show_visualization in the same turn before any closing text.")
         return
 
     if tool == "Bash" and is_dataviz_bash(tool_input):
-        deny("Use show_visualization on the loop-viz MCP server instead of dataviz scripts. Build self-contained HTML and call show_visualization in the same turn.")
+        deny("Use show_visualization on the nui-viz MCP server instead of dataviz scripts. Build self-contained HTML and call show_visualization in the same turn.")
         return
 
 if __name__ == "__main__":

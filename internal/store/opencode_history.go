@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 type opencodeExport struct {

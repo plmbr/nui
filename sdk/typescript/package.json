@@ -1,13 +1,13 @@
 {
-  "name": "@loop/extension-sdk",
+  "name": "@nui/extension-sdk",
   "version": "0.1.0",
-  "description": "Loop programmatic extension SDK",
+  "description": "nui programmatic extension SDK",
   "type": "module",
-  "main": "LoopExtension.ts",
+  "main": "NuiExtension.ts",
   "bin": {
-    "loop-ext": "bin/loop-ext.js"
+    "nui-ext": "bin/nui-ext.js"
   },
-  "loop": {
+  "nui": {
     "id": "example-ext",
     "displayName": "Example Extension"
   }

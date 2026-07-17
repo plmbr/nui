@@ -3,8 +3,8 @@
 package agents
 
 import (
-	"loop/internal/hitl"
-	"loop/internal/model"
+	"nui/internal/hitl"
+	"nui/internal/model"
 )
 
 // APIBuiltinOrder is the stable preference order for default agent selection.
@@ -26,7 +26,7 @@ var apiBuiltinAgentDefs = []model.ADLDefinition{
 			Provider: "anthropic",
 			Model:    "claude-sonnet-4-20250514",
 		},
-		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelLoopUI}},
+		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelnuiUI}},
 		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
 	},
@@ -39,7 +39,7 @@ var apiBuiltinAgentDefs = []model.ADLDefinition{
 			Provider: "openai",
 			Model:    "gpt-4o-mini",
 		},
-		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelLoopUI}},
+		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelnuiUI}},
 		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
 	},
@@ -52,7 +52,7 @@ var apiBuiltinAgentDefs = []model.ADLDefinition{
 			Provider: "gemini",
 			Model:    "gemini-2.5-flash",
 		},
-		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelLoopUI}},
+		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelnuiUI}},
 		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
 	},
@@ -67,7 +67,7 @@ var apiBuiltinAgentDefs = []model.ADLDefinition{
 			BaseURL:   "https://openrouter.ai/api/v1",
 			APIKeyEnv: "OPENROUTER_API_KEY",
 		},
-		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelLoopUI}},
+		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelnuiUI}},
 		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
 	},
@@ -79,7 +79,7 @@ var apiBuiltinAgentDefs = []model.ADLDefinition{
 			Type:     "api",
 			Provider: "ollama",
 		},
-		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelLoopUI}},
+		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelnuiUI}},
 		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
 	},

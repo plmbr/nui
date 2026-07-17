@@ -14,19 +14,19 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/modelcontextprotocol/go-sdk/oauthex"
 	"golang.org/x/oauth2"
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
-// ErrNeedsAuth indicates the user must complete OAuth via the Loop UI.
+// ErrNeedsAuth indicates the user must complete OAuth via the nui UI.
 var ErrNeedsAuth = errors.New("mcp server needs authentication")
 
-// loopOAuthHandler provides stored tokens for MCP HTTP transports.
-type loopOAuthHandler struct {
+// nuiOAuthHandler provides stored tokens for MCP HTTP transports.
+type nuiOAuthHandler struct {
 	serverKey string
 	srv       model.ADLMCPServer
 }
 
-func (h *loopOAuthHandler) TokenSource(ctx context.Context) (oauth2.TokenSource, error) {
+func (h *nuiOAuthHandler) TokenSource(ctx context.Context) (oauth2.TokenSource, error) {
 	cred, ok := LoadToken(h.serverKey)
 	if !ok || cred.Token == nil || strings.TrimSpace(cred.Token.AccessToken) == "" {
 		return nil, nil
@@ -34,12 +34,12 @@ func (h *loopOAuthHandler) TokenSource(ctx context.Context) (oauth2.TokenSource,
 	return oauth2.StaticTokenSource(cred.Token), nil
 }
 
-func (h *loopOAuthHandler) Authorize(ctx context.Context, req *http.Request, resp *http.Response) error {
+func (h *nuiOAuthHandler) Authorize(ctx context.Context, req *http.Request, resp *http.Response) error {
 	drainResponse(resp)
 	return fmt.Errorf("%w: connect %q in Customize → MCP Servers", ErrNeedsAuth, h.serverKey)
 }
 
-// HandlerForServer returns an OAuth handler when the server uses Loop-managed OAuth tokens.
+// HandlerForServer returns an OAuth handler when the server uses nui-managed OAuth tokens.
 func HandlerForServer(srv model.ADLMCPServer) auth.OAuthHandler {
 	if !IsRemote(srv) || IsBuiltin(srv) || hasStaticAuthHeader(srv) {
 		return nil
@@ -49,7 +49,7 @@ func HandlerForServer(srv model.ADLMCPServer) auth.OAuthHandler {
 		return nil
 	}
 	if HasValidToken(key) || srv.Auth != nil {
-		return &loopOAuthHandler{serverKey: key, srv: srv}
+		return &nuiOAuthHandler{serverKey: key, srv: srv}
 	}
 	return nil
 }
@@ -94,7 +94,7 @@ func ConnectRemote(ctx context.Context, srv model.ADLMCPServer) (*mcp.ClientSess
 	if url == "" {
 		return nil, fmt.Errorf("mcp server %q: url is required", srv.Name)
 	}
-	client := mcp.NewClient(&mcp.Implementation{Name: "loop", Version: "1.0.0"}, nil)
+	client := mcp.NewClient(&mcp.Implementation{Name: "nui", Version: "1.0.0"}, nil)
 	transport := &mcp.StreamableClientTransport{
 		Endpoint:   url,
 		HTTPClient: HTTPClientForServer(srv),
@@ -121,7 +121,7 @@ func buildHandlerConfig(srv model.ADLMCPServer, redirect string, fetcher auth.Au
 	if cfg.PreregisteredClient == nil {
 		cfg.DynamicClientRegistrationConfig = &auth.DynamicClientRegistrationConfig{
 			Metadata: &oauthex.ClientRegistrationMetadata{
-				ClientName:              "Loop",
+				ClientName:              "nui",
 				RedirectURIs:            []string{redirect},
 				GrantTypes:              []string{"authorization_code", "refresh_token"},
 				ResponseTypes:           []string{"code"},

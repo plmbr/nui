@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 func TestHandleSessionUploads(t *testing.T) {
@@ -34,7 +34,7 @@ func TestHandleSessionUploads(t *testing.T) {
 		mu.Lock()
 		sessions = nil
 		mu.Unlock()
-		_ = os.RemoveAll(filepath.Join(os.TempDir(), "loop-uploads", sessionID))
+		_ = os.RemoveAll(filepath.Join(os.TempDir(), "nui-uploads", sessionID))
 	})
 
 	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
@@ -101,7 +101,7 @@ func TestHandleSessionUploadsAcceptsTextFile(t *testing.T) {
 		mu.Lock()
 		sessions = nil
 		mu.Unlock()
-		_ = os.RemoveAll(filepath.Join(os.TempDir(), "loop-uploads", sessionID))
+		_ = os.RemoveAll(filepath.Join(os.TempDir(), "nui-uploads", sessionID))
 	})
 
 	body := &bytes.Buffer{}

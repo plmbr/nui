@@ -5,7 +5,7 @@ package mcpoauth
 import (
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 // AuthStatus describes MCP OAuth state for a server.

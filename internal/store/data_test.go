@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 func TestSaveAndLoadDataRoundTrip(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	if err := os.MkdirAll(filepath.Join(home, ".loop"), 0o700); err != nil {
+	if err := os.MkdirAll(filepath.Join(home, ".nui"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 
@@ -50,7 +50,7 @@ func TestSaveAndLoadDataRoundTrip(t *testing.T) {
 func TestLoadDataEmptyWhenMissing(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	if err := os.MkdirAll(filepath.Join(home, ".loop"), 0o700); err != nil {
+	if err := os.MkdirAll(filepath.Join(home, ".nui"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 
@@ -69,7 +69,7 @@ func TestLoadDataEmptyWhenMissing(t *testing.T) {
 func TestSaveAndLoadSettings(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	if err := os.MkdirAll(filepath.Join(home, ".loop"), 0o700); err != nil {
+	if err := os.MkdirAll(filepath.Join(home, ".nui"), 0o700); err != nil {
 		t.Fatal(err)
 	}
 

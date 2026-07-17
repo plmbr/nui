@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"loop/internal/agent"
-	"loop/internal/store"
+	"nui/internal/agent"
+	"nui/internal/store"
 )
 
 type RunStatus string

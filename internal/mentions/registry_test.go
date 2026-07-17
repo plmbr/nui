@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/mentions"
+	"nui/internal/mentions"
 )
 
 func TestBuiltinFilesProviderRoot(t *testing.T) {
@@ -195,11 +195,11 @@ func TestRegistryResolveMessageSkipsEmailAddresses(t *testing.T) {
 }
 
 func TestRegistryResolveMessageAbsoluteUploadPath(t *testing.T) {
-	uploadDir := filepath.Join(os.TempDir(), "loop-uploads", "sess-1")
+	uploadDir := filepath.Join(os.TempDir(), "nui-uploads", "sess-1")
 	if err := os.MkdirAll(uploadDir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(os.TempDir(), "loop-uploads", "sess-1")) })
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(os.TempDir(), "nui-uploads", "sess-1")) })
 
 	imagePath := filepath.Join(uploadDir, "photo.png")
 	if err := os.WriteFile(imagePath, []byte{0x89, 0x50, 0x4e, 0x47}, 0o600); err != nil {

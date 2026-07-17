@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"loop/internal/store"
+	"nui/internal/store"
 )
 
 // SanitizeConnectionID turns an agent or project id into a safe connection file basename.

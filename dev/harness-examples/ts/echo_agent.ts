@@ -1,6 +1,6 @@
-import { LoopAgent } from './loop_agent'
+import { NuiAgent } from './nui_agent'
 
-class EchoAgent extends LoopAgent {
+class EchoAgent extends NuiAgent {
   name = 'echo-agent'
   version = '0.1.0'
 

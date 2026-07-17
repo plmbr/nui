@@ -1,11 +1,11 @@
 """
-Loop command-tool MCP proxy — stdio MCP server.
+nui command-tool MCP proxy — stdio MCP server.
 
 Reads a tools definition JSON file and exposes each tool as an MCP tool that
 runs a CLI command with JSON-serialized arguments on stdin.
 
 Usage:
-    python3 loop_mcp_tools.py /path/to/tools.json
+    python3 nui_mcp_tools.py /path/to/tools.json
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from typing import Any
 
 
 PROTOCOL_VERSION = "2024-11-05"
-SERVER_NAME = "loop-mcp-tools"
+SERVER_NAME = "nui-mcp-tools"
 SERVER_VERSION = "1.0.0"
 
 DEFAULT_INPUT_SCHEMA: dict[str, Any] = {
@@ -164,7 +164,7 @@ class MCPToolsServer:
 
 def main() -> None:
     if len(sys.argv) != 2:
-        print("usage: loop_mcp_tools.py <tools.json>", file=sys.stderr)
+        print("usage: nui_mcp_tools.py <tools.json>", file=sys.stderr)
         sys.exit(2)
     config_path = sys.argv[1]
     if not os.path.isfile(config_path):

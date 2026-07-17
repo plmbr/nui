@@ -8,17 +8,17 @@ import (
 	"path/filepath"
 	"testing"
 
-	"loop/internal/extensions"
-	"loop/internal/model"
+	"nui/internal/extensions"
+	"nui/internal/model"
 )
 
 func TestCustomMCPServerValidation(t *testing.T) {
 	home := t.TempDir()
-	extDir := filepath.Join(home, ".loop", "extensions", "tool-pack")
+	extDir := filepath.Join(home, ".nui", "extensions", "tool-pack")
 	if err := os.MkdirAll(extDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: loop.dev/extension/v1
+	manifest := `apiVersion: nui.dev/extension/v1
 name: tool-pack
 version: 1.0.0
 contributions:
@@ -49,11 +49,11 @@ contributions:
 
 func TestExpandMCPServersCustomRef(t *testing.T) {
 	home := t.TempDir()
-	extDir := filepath.Join(home, ".loop", "extensions", "tool-pack")
+	extDir := filepath.Join(home, ".nui", "extensions", "tool-pack")
 	if err := os.MkdirAll(extDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: loop.dev/extension/v1
+	manifest := `apiVersion: nui.dev/extension/v1
 name: tool-pack
 version: 1.0.0
 contributions:
@@ -88,7 +88,7 @@ contributions:
 
 func TestResolveSkillCustomRef(t *testing.T) {
 	home := t.TempDir()
-	extDir := filepath.Join(home, ".loop", "extensions", "skill-pack")
+	extDir := filepath.Join(home, ".nui", "extensions", "skill-pack")
 	skillDir := filepath.Join(extDir, "skills", "lint")
 	if err := os.MkdirAll(skillDir, 0755); err != nil {
 		t.Fatal(err)
@@ -96,7 +96,7 @@ func TestResolveSkillCustomRef(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("# Lint\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: loop.dev/extension/v1
+	manifest := `apiVersion: nui.dev/extension/v1
 name: skill-pack
 version: 1.0.0
 contributions:
@@ -124,14 +124,14 @@ contributions:
 
 func TestResolveRuleRef(t *testing.T) {
 	home := t.TempDir()
-	extDir := filepath.Join(home, ".loop", "extensions", "guide-pack")
+	extDir := filepath.Join(home, ".nui", "extensions", "guide-pack")
 	if err := os.MkdirAll(extDir, 0755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(extDir, "guidelines.md"), []byte("Always run tests before merging.\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: loop.dev/extension/v1
+	manifest := `apiVersion: nui.dev/extension/v1
 name: guide-pack
 version: 1.0.0
 contributions:
@@ -172,11 +172,11 @@ func TestMaterializeCustomMCPServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	proxyPath := filepath.Join(repoRoot, "harness-sdk", "loop_mcp_tools.py")
+	proxyPath := filepath.Join(repoRoot, "harness-sdk", "nui_mcp_tools.py")
 	if _, err := os.Stat(proxyPath); err != nil {
 		t.Skip("harness-sdk not found from test cwd")
 	}
-	t.Setenv("LOOP_MCP_TOOLS_PATH", proxyPath)
+	t.Setenv("NUI_MCP_TOOLS_PATH", proxyPath)
 
 	configDir := t.TempDir()
 	pending := extensions.PendingCustomMCPServer{

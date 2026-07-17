@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 // MaterializeSkill resolves and copies a skill into destDir (replacing existing contents).

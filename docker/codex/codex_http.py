@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Codex agent for Loop Docker container."""
+"""Codex agent for nui Docker container."""
 
 import os
 import sys
@@ -7,10 +7,10 @@ import threading
 
 sys.path.insert(0, "/app")
 from codex_session import PersistentCodexSession
-from http_loop_agent import HttpLoopAgent
+from http_nui_agent import HttpNuiAgent
 
 
-class CodexAgent(HttpLoopAgent):
+class CodexAgent(HttpNuiAgent):
     name = "codex"
     version = "0.1.0"
 

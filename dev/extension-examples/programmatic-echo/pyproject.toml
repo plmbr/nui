@@ -1,10 +1,10 @@
 [project]
-name = "loop-programmatic-echo"
+name = "nui-programmatic-echo"
 version = "0.1.0"
 
 [project.scripts]
-loop-ext = "host:main"
+nui-ext = "host:main"
 
-[tool.loop]
+[tool.nui]
 id = "programmatic-echo"
 displayName = "Programmatic Echo"

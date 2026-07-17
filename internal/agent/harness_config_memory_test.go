@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/memory"
-	"loop/internal/model"
-	"loop/internal/skills"
-	"loop/internal/store"
+	"nui/internal/memory"
+	"nui/internal/model"
+	"nui/internal/skills"
+	"nui/internal/store"
 )
 
 func TestExpandHarnessDeps_injectsMemory(t *testing.T) {

@@ -9,8 +9,8 @@ import (
 	"io"
 	"strings"
 
-	"loop/internal/hitl"
-	"loop/internal/loopclient"
+	"nui/internal/hitl"
+	"nui/internal/nuiclient"
 )
 
 type claudePermissionRequest struct {
@@ -74,12 +74,12 @@ func waitForClaudeToolApproval(ctx context.Context, req RunRequest, perm claudeP
 	if hitl.ShouldAutoApproveTool(perm.ToolName, req.ToolApprovalPolicy, req.ToolApprovalTools) {
 		return true, "", nil
 	}
-	sessionID := req.LoopSessionID
+	sessionID := req.NuiSessionID
 	if sessionID == "" {
 		sessionID = req.SessionID
 	}
-	apiURL := defaultLoopAPIURL()
-	if v := strings.TrimSpace(req.Env[EnvLoopAPIURL]); v != "" {
+	apiURL := defaultnuiAPIURL()
+	if v := strings.TrimSpace(req.Env[EnvnuiAPIURL]); v != "" {
 		apiURL = v
 	}
 
@@ -92,7 +92,7 @@ func waitForClaudeToolApproval(ctx context.Context, req RunRequest, perm claudeP
 		"toolInput": perm.ToolInput,
 	}
 
-	client := loopclient.New(apiURL)
+	client := nuiclient.New(apiURL)
 	hitlReq, err := client.CreateHITLRequest(ctx, hitl.CreateInput{
 		SessionID: sessionID,
 		RunID:     req.RunID,

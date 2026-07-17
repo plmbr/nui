@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"sync"
 
-	"loop/internal/agent"
-	"loop/internal/extensions"
-	"loop/internal/hitl"
-	"loop/internal/model"
+	"nui/internal/agent"
+	"nui/internal/extensions"
+	"nui/internal/hitl"
+	"nui/internal/model"
 )
 
 var (
@@ -114,7 +114,7 @@ func defaultHITLChannels(in hitl.CreateInput, adlDef model.ADLDefinition) hitl.R
 	if len(in.Routing.Channels) > 0 {
 		return in.Routing
 	}
-	channels := []string{hitl.ChannelLoopUI}
+	channels := []string{hitl.ChannelnuiUI}
 	if len(adlDef.HITL.Channels) > 0 {
 		channels = append([]string{}, adlDef.HITL.Channels...)
 	}

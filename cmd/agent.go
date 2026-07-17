@@ -8,8 +8,8 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"loop/internal/agents"
-	"loop/internal/loopclient"
+	"nui/internal/agents"
+	"nui/internal/nuiclient"
 
 	"github.com/spf13/cobra"
 )
@@ -18,23 +18,23 @@ var agentListURL string
 
 var agentCmd = &cobra.Command{
 	Use:   "agent",
-	Short: "Manage and run Loop agents",
+	Short: "Manage and run nui agents",
 }
 
 var agentAddCmd = &cobra.Command{
 	Use:   "add [url-or-path]",
-	Short: "Install an ADL agent YAML into ~/.loop/agents/",
+	Short: "Install an ADL agent YAML into ~/.nui/agents/",
 	Long: `Install an agent definition from a local YAML file or git URL.
 
 Local file:
-  loop agent add ./my-agent.yaml
-  loop agent add dev/adl/examples/17-auto-scheduled-agent.yaml
+  nui agent add ./my-agent.yaml
+  nui agent add dev/adl/examples/17-auto-scheduled-agent.yaml
 
 GitHub URL (tree or blob link to an agent YAML file):
-  loop agent add https://github.com/example/repo/blob/main/agents/watchdog.yaml
+  nui agent add https://github.com/example/repo/blob/main/agents/watchdog.yaml
 
 Git repository (single yaml at repo root):
-  loop agent add https://github.com/example/my-agent.git`,
+  nui agent add https://github.com/example/my-agent.git`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		id, err := agents.Install(args[0])
@@ -54,8 +54,8 @@ var agentListCmd = &cobra.Command{
 		if ctx == nil {
 			ctx = context.Background()
 		}
-		client := loopclient.New(agentListURL)
-		if err := ensureLoopServer(ctx, client, false); err != nil {
+		client := nuiclient.New(agentListURL)
+		if err := ensureNuiServer(ctx, client, false); err != nil {
 			return err
 		}
 		items, err := client.ListAgents(ctx)
@@ -94,7 +94,7 @@ var agentListCmd = &cobra.Command{
 
 var agentRemoveCmd = &cobra.Command{
 	Use:   "remove [id-or-file]",
-	Short: "Remove a user-installed agent from ~/.loop/agents/",
+	Short: "Remove a user-installed agent from ~/.nui/agents/",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := agents.Remove(args[0]); err != nil {
@@ -111,7 +111,7 @@ var agentDeployCmd = &cobra.Command{
 	Long: `Deploy an ADL agent using an extension agentDeployer.
 
 Deployer ids use the ext:<extension>/<name> convention, for example:
-  loop agent deploy ext:docker-deployer/docker my-agent
+  nui agent deploy ext:docker-deployer/docker my-agent
 
 Registry, image tags, and platform details are configured inside the deployer extension.`,
 	Args: cobra.ExactArgs(2),
@@ -161,7 +161,7 @@ var agentDeployersCmd = &cobra.Command{
 }
 
 func init() {
-	agentListCmd.Flags().StringVar(&agentListURL, "url", "", "Loop server base URL (default LOOP_URL or http://127.0.0.1:8080)")
+	agentListCmd.Flags().StringVar(&agentListURL, "url", "", "nui server base URL (default NUI_URL or http://127.0.0.1:8080)")
 	agentCmd.AddCommand(NewRunCmd(), NewScheduleCmd(), agentListCmd, agentAddCmd, agentRemoveCmd, agentDeployCmd, agentDeployersCmd, agentEvalCmd)
 	rootCmd.AddCommand(agentCmd)
 }

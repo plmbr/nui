@@ -1,14 +1,14 @@
 /**
- * Loop extension framework — TypeScript.
+ * nui extension framework — TypeScript.
  *
- * Subclass LoopAgent, override `run()`, call `serve()`. Everything else
+ * Subclass NuiAgent, override `run()`, call `serve()`. Everything else
  * (TCP socket, connection file, JSON-RPC dispatch, streaming) is handled here.
  *
  * Example:
  *
- *   import { LoopAgent } from './loop_agent'
+ *   import { NuiAgent } from './nui_agent'
  *
- *   class MyAgent extends LoopAgent {
+ *   class MyAgent extends NuiAgent {
  *     name = 'my-agent'
  *     version = '0.1.0'
  *
@@ -34,7 +34,7 @@ interface JsonRpcRequest {
   params?: Record<string, unknown>
 }
 
-export abstract class LoopAgent {
+export abstract class NuiAgent {
   abstract name: string
   abstract version: string
 
@@ -158,11 +158,11 @@ export abstract class LoopAgent {
   }
 
   private _connectionId(): string {
-    return process.env.LOOP_CONNECTION_ID ?? this.name
+    return process.env.NUI_CONNECTION_ID ?? this.name
   }
 
   private _connectionFilePath(): string {
-    return path.join(os.homedir(), '.loop', 'connections', `${this._connectionId()}.json`)
+    return path.join(os.homedir(), '.nui', 'connections', `${this._connectionId()}.json`)
   }
 
   private _writeConnectionFile(port: number, sessionId: string): string {

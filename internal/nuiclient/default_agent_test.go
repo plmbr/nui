@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-package loopclient
+package nuiclient
 
 import "testing"
 

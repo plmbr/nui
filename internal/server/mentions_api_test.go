@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 func TestHandleSessionMentionsEmptyWorkingDirUsesCWD(t *testing.T) {
@@ -79,11 +79,11 @@ func TestEffectiveWorkingDir(t *testing.T) {
 	if got != home {
 		t.Fatalf("tilde home = %q, want %q", got, home)
 	}
-	got, err = effectiveWorkingDir(filepath.Join("~", ".loop", "extensions", "nbi"))
+	got, err = effectiveWorkingDir(filepath.Join("~", ".nui", "extensions", "nbi"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := filepath.Join(home, ".loop", "extensions", "nbi")
+	want := filepath.Join(home, ".nui", "extensions", "nbi")
 	if got != want {
 		t.Fatalf("tilde path = %q, want %q", got, want)
 	}

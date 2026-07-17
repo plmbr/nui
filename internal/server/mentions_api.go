@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"loop/internal/mentions"
+	"nui/internal/mentions"
 )
 
 func handleSessionMentions(w http.ResponseWriter, r *http.Request, sessionID string) {

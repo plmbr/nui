@@ -1,7 +1,7 @@
-"""HTTP/SSE base server for Loop Docker agents.
+"""HTTP/SSE base server for nui Docker agents.
 
-Subclass HttpLoopAgent, override run(), call serve(port).
-Protocol matches HTTPExtensionAgent in Loop's Go backend:
+Subclass HttpNuiAgent, override run(), call serve(port).
+Protocol matches HTTPExtensionAgent in nui's Go backend:
   GET  /info      → {"name": "...", "version": "..."}
   POST /run       → text/event-stream
                    data: {"type":"text","content":"..."}
@@ -24,8 +24,8 @@ class _ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
     daemon_threads = True
 
 
-class HttpLoopAgent:
-    name: str = "loop-agent"
+class HttpNuiAgent:
+    name: str = "nui-agent"
     version: str = "0.1.0"
 
     def run(self, message: str, run_id: str, **kwargs):

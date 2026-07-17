@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/model"
+	"nui/internal/store"
 )
 
 func TestHandleSessionsListAndCreate(t *testing.T) {

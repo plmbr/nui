@@ -1,4 +1,4 @@
-# Extension-owned deploy settings (not part of Loop schema).
+# Extension-owned deploy settings (not part of nui schema).
 registry: ""
 baseImage: python:3.12-slim
 push: false

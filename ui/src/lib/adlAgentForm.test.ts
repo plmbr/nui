@@ -57,7 +57,7 @@ toolApprovals:
 hitl:
   mode: interactive
   channels:
-    - loop-ui
+    - nui-ui
 `
     const { form } = parseAgentYaml(original, emptyOptions)
     const merged = mergeFormIntoAgentYaml(original, form, emptyOptions)
@@ -66,7 +66,7 @@ hitl:
     expect(reparsed.toolApprovalPolicy).toBe('denylist')
     expect(reparsed.toolApprovalTools).toEqual(['Bash', 'Write'])
     expect(reparsed.hitlMode).toBe('interactive')
-    expect(merged).toContain('channels:\n    - loop-ui')
+    expect(merged).toContain('channels:\n    - nui-ui')
   })
 
   it('writes toolApprovals all policy without tools', () => {

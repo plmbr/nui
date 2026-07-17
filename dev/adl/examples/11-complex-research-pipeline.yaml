@@ -51,7 +51,7 @@ steps:
   - name: code-search
     harness:
       type: docker
-      image: loop-code-index:latest
+      image: nui-code-index:latest
       containerPort: 9090
     systemPrompt: |
       Search the internal code index for implementations, tests, or

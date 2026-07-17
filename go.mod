@@ -1,4 +1,4 @@
-module loop
+module nui
 
 go 1.26.0
 

@@ -3,8 +3,8 @@
 package server
 
 import (
-	"loop/internal/extensions"
-	"loop/internal/hitl"
+	"nui/internal/extensions"
+	"nui/internal/hitl"
 )
 
 type hitlChannelRef struct {
@@ -16,8 +16,8 @@ type hitlChannelRef struct {
 
 func listHITLChannelRefs() []hitlChannelRef {
 	out := []hitlChannelRef{{
-		ID:          hitl.ChannelLoopUI,
-		DisplayName: "Loop UI",
+		ID:          hitl.ChannelnuiUI,
+		DisplayName: "nui UI",
 		Source:      "builtin",
 	}}
 	if extensions.Default == nil {

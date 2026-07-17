@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 )
 
-// SessionConfigDir returns ~/.loop/sessions/<sessionID>, creating it if needed.
-// Loop provisions per-session harness config (MCP, skills, system prompt) here.
+// SessionConfigDir returns ~/.nui/sessions/<sessionID>, creating it if needed.
+// nui provisions per-session harness config (MCP, skills, system prompt) here.
 func SessionConfigDir(sessionID string) (string, error) {
 	if sessionID == "" {
 		return "", os.ErrInvalid
@@ -31,7 +31,7 @@ func sessionConfigDirPath(sessionID string) (string, error) {
 	return filepath.Join(base, "sessions", sessionID), nil
 }
 
-// RemoveSessionConfigDir deletes ~/.loop/sessions/<sessionID> if it exists.
+// RemoveSessionConfigDir deletes ~/.nui/sessions/<sessionID> if it exists.
 func RemoveSessionConfigDir(sessionID string) error {
 	if sessionID == "" {
 		return nil

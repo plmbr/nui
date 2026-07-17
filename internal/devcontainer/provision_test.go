@@ -12,7 +12,7 @@ import (
 func TestProvisionSession(t *testing.T) {
 	dir := t.TempDir()
 	home := filepath.Join(dir, "home")
-	if err := os.MkdirAll(filepath.Join(home, ".loop", "sessions"), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Join(home, ".nui", "sessions"), 0700); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("HOME", home)

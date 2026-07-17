@@ -12,13 +12,13 @@ Users want to publish their own agents (as zip files) and only their authorized 
 
 ### How it works
 
-Publishers sign their agent zip with a private key. Loop verifies the signature before executing.
+Publishers sign their agent zip with a private key. nui verifies the signature before executing.
 
 **Files distributed:**
 - `agent.zip` — the agent bundle
 - `agent.zip.minisig` — the detached signature
 
-**Loop client side:**
+**nui client side:**
 - Contains (or is given) the publisher's public key
 - Verifies `agent.zip.minisig` against `agent.zip` before running
 
@@ -28,7 +28,7 @@ In asymmetric cryptography, security comes from the **private key being secret**
 
 Even if an attacker knows the public key, they **cannot forge a signature** without the private key. That's the mathematical guarantee of Ed25519.
 
-To publish a malicious zip that Loop accepts, an attacker would need to:
+To publish a malicious zip that nui accepts, an attacker would need to:
 - Steal the publisher's private key (never shared, never in the repo)
 - Or break Ed25519 cryptography (computationally infeasible)
 
@@ -59,7 +59,7 @@ The publisher wants only specific users to be able to install and run the agent.
 
 **User side:**
 1. Sets the decryption key as an environment variable: `AGENT_KEY=<base64-key>`
-2. Loop reads the env var, decrypts the zip in memory, then executes
+2. nui reads the env var, decrypts the zip in memory, then executes
 
 ### Combined: Sign + Encrypt
 
@@ -67,8 +67,8 @@ For maximum security, do both:
 1. Publisher signs the plaintext zip → `agent.zip.minisig`
 2. Publisher encrypts the zip → `agent.zip.enc`
 3. User decrypts → `agent.zip` (in memory)
-4. Loop verifies signature against decrypted content
-5. Loop executes
+4. nui verifies signature against decrypted content
+5. nui executes
 
 This gives both **access control** (only key holders can decrypt) and **integrity** (signature proves it came from the publisher and wasn't tampered with after encryption).
 
@@ -93,15 +93,15 @@ Each authorized user generates an Ed25519 or X25519 keypair. Publisher encrypts 
 
 ```bash
 # User sets this in their shell profile or CI secrets
-export LOOP_AGENT_KEY="base64encodedkey..."
+export NUI_AGENT_KEY="base64encodedkey..."
 
-# Loop decrypts before running
-loop install https://github.com/publisher/agent/releases/latest/agent.zip.enc
+# nui decrypts before running
+nui install https://github.com/publisher/agent/releases/latest/agent.zip.enc
 ```
 
-Loop workflow:
+nui workflow:
 1. Download `agent.zip.enc`
-2. Read `LOOP_AGENT_KEY` from env
+2. Read `NUI_AGENT_KEY` from env
 3. Decrypt in memory → `agent.zip`
 4. Optionally verify signature
 5. Execute

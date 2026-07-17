@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"loop/internal/llm"
+	"nui/internal/llm"
 )
 
 // ensureOllamaModel picks a model that exists on the local Ollama instance.

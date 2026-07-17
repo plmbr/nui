@@ -11,18 +11,18 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/extensions"
+	"nui/internal/extensions"
 )
 
 func TestHandleAgentDeployers(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	extDir := filepath.Join(home, ".loop", "extensions", "deploy-pack")
+	extDir := filepath.Join(home, ".nui", "extensions", "deploy-pack")
 	if err := os.MkdirAll(extDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: loop.dev/extension/v1
+	manifest := `apiVersion: nui.dev/extension/v1
 name: deploy-pack
 version: 1.0.0
 contributions:
@@ -64,7 +64,7 @@ func TestHandleAgentDeployRoute(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
-	agentsDir := filepath.Join(home, ".loop", "agents")
+	agentsDir := filepath.Join(home, ".nui", "agents")
 	if err := os.MkdirAll(agentsDir, 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ harness:
 		t.Fatal(err)
 	}
 
-	extDir := filepath.Join(home, ".loop", "extensions", "stub-deployer")
+	extDir := filepath.Join(home, ".nui", "extensions", "stub-deployer")
 	if err := os.MkdirAll(extDir, 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ sys.stdout.write("\n")
 	if err := os.WriteFile(filepath.Join(extDir, "stub.py"), []byte(script), 0755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: loop.dev/extension/v1
+	manifest := `apiVersion: nui.dev/extension/v1
 name: stub-deployer
 version: 1.0.0
 contributions:

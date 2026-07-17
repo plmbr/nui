@@ -2,7 +2,7 @@
 
 package skills
 
-import "loop/internal/model"
+import "nui/internal/model"
 
 // AgentSkills returns all skills available to an agent definition, including builtins.
 func AgentSkills(def model.ADLDefinition) []model.ADLSkill {

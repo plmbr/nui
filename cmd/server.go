@@ -9,15 +9,15 @@ import (
 	"os/exec"
 	"time"
 
-	"loop/internal/loopclient"
+	"nui/internal/nuiclient"
 )
 
-func ensureLoopServer(ctx context.Context, client *loopclient.Client, spawn bool) error {
+func ensureNuiServer(ctx context.Context, client *nuiclient.Client, spawn bool) error {
 	if err := client.Health(ctx); err == nil {
 		return nil
 	}
 	if !spawn {
-		return fmt.Errorf("loop server not reachable at %s (start with `loop ui` or pass --spawn)", client.BaseURL)
+		return fmt.Errorf("nui server not reachable at %s (start with `nui ui` or pass --spawn)", client.BaseURL)
 	}
 	exe, err := os.Executable()
 	if err != nil {
@@ -27,7 +27,7 @@ func ensureLoopServer(ctx context.Context, client *loopclient.Client, spawn bool
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("spawn loop ui: %w", err)
+		return fmt.Errorf("spawn nui ui: %w", err)
 	}
 	deadline := time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {
@@ -36,5 +36,5 @@ func ensureLoopServer(ctx context.Context, client *loopclient.Client, spawn bool
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
-	return fmt.Errorf("timed out waiting for loop server at %s", client.BaseURL)
+	return fmt.Errorf("timed out waiting for nui server at %s", client.BaseURL)
 }

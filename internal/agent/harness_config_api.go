@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/skills"
+	"nui/internal/skills"
 )
 
-const apiSystemPromptFile = "LOOP_API_SYSTEM.md"
+const apiSystemPromptFile = "NUI_API_SYSTEM.md"
 
 type apiHarnessProvisioner struct{}
 

@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"strings"
 
-	"loop/internal/mcpoauth"
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/mcpoauth"
+	"nui/internal/model"
+	"nui/internal/store"
 )
 
 func registerMCPOAuthRoutes(mux *http.ServeMux) {
@@ -89,11 +89,11 @@ func handleMCPOAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprintf(w, `<!DOCTYPE html><html><head><title>Loop MCP</title></head><body><p>Authentication successful. You can close this window and return to Loop.</p><script>
+	fmt.Fprintf(w, `<!DOCTYPE html><html><head><title>nui MCP</title></head><body><p>Authentication successful. You can close this window and return to nui.</p><script>
 (function(){
-  var msg = {type:"loop-mcp-oauth-success"};
+  var msg = {type:"nui-mcp-oauth-success"};
   if(window.opener){window.opener.postMessage(msg, "*");}
-  try{new BroadcastChannel("loop-mcp-oauth").postMessage(msg);}catch(e){}
+  try{new BroadcastChannel("nui-mcp-oauth").postMessage(msg);}catch(e){}
 })();
 </script></body></html>`)
 }

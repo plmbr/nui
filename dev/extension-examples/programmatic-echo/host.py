@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Echo harness and agent example for programmatic Loop extensions."""
+"""Echo harness and agent example for programmatic nui extensions."""
 
 import os
 import sys
@@ -10,21 +10,21 @@ def _find_sdk_dir() -> str:
     candidates = [
         os.path.join(here, "..", "..", "..", "harness-sdk"),
         os.path.join(here, "..", "..", "harness-sdk"),
-        os.path.expanduser("~/.loop/harness-sdk"),
+        os.path.expanduser("~/.nui/harness-sdk"),
     ]
     for candidate in candidates:
         norm = os.path.abspath(candidate)
-        if os.path.isfile(os.path.join(norm, "loop_extension.py")):
+        if os.path.isfile(os.path.join(norm, "nui_extension.py")):
             return norm
-    raise RuntimeError("loop_extension.py not found (install harness-sdk or run from repo)")
+    raise RuntimeError("nui_extension.py not found (install harness-sdk or run from repo)")
 
 
 sys.path.insert(0, _find_sdk_dir())
 
-from loop_extension import LoopExtension
+from nui_extension import NuiExtension
 
 
-class EchoExtension(LoopExtension):
+class EchoExtension(NuiExtension):
     def get_harnesses(self):
         return [
             {"id": "echo", "displayName": "Echo Harness"}

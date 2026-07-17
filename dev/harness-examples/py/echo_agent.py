@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-from loop_agent import LoopAgent
+from nui_agent import NuiAgent
 
 
-class EchoAgent(LoopAgent):
+class EchoAgent(NuiAgent):
     name = "echo-agent"
     version = "0.1.0"
 

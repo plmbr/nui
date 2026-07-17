@@ -9,17 +9,17 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/extensions"
-	"loop/internal/mentions"
+	"nui/internal/extensions"
+	"nui/internal/mentions"
 )
 
 func TestMentionExtensionRoots(t *testing.T) {
 	home := t.TempDir()
-	extDir := filepath.Join(home, ".loop", "extensions", "mention-pack")
+	extDir := filepath.Join(home, ".nui", "extensions", "mention-pack")
 	if err := os.MkdirAll(extDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: loop.dev/extension/v1
+	manifest := `apiVersion: nui.dev/extension/v1
 name: mention-pack
 version: 1.0.0
 contributions:
@@ -39,12 +39,12 @@ contributions:
 `), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	sdkPath := filepath.Join("..", "..", "harness-sdk", "loop_mention.py")
+	sdkPath := filepath.Join("..", "..", "harness-sdk", "nui_mention.py")
 	sdkData, err := os.ReadFile(sdkPath)
 	if err != nil {
-		t.Skip("loop_mention.py not found")
+		t.Skip("nui_mention.py not found")
 	}
-	if err := os.WriteFile(filepath.Join(extDir, "loop_mention.py"), sdkData, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(extDir, "nui_mention.py"), sdkData, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	hostData, err := os.ReadFile(filepath.Join("..", "..", "dev", "extension-examples", "corp-pack", "mention_host.py"))
@@ -98,11 +98,11 @@ contributions:
 
 func TestMentionExtensionResolve(t *testing.T) {
 	home := t.TempDir()
-	extDir := filepath.Join(home, ".loop", "extensions", "mention-pack")
+	extDir := filepath.Join(home, ".nui", "extensions", "mention-pack")
 	if err := os.MkdirAll(extDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: loop.dev/extension/v1
+	manifest := `apiVersion: nui.dev/extension/v1
 name: mention-pack
 version: 1.0.0
 contributions:
@@ -122,12 +122,12 @@ contributions:
 `), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	sdkPath := filepath.Join("..", "..", "harness-sdk", "loop_mention.py")
+	sdkPath := filepath.Join("..", "..", "harness-sdk", "nui_mention.py")
 	sdkData, err := os.ReadFile(sdkPath)
 	if err != nil {
-		t.Skip("loop_mention.py not found")
+		t.Skip("nui_mention.py not found")
 	}
-	if err := os.WriteFile(filepath.Join(extDir, "loop_mention.py"), sdkData, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(extDir, "nui_mention.py"), sdkData, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	hostData, err := os.ReadFile(filepath.Join("..", "..", "dev", "extension-examples", "corp-pack", "mention_host.py"))

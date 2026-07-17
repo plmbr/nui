@@ -13,7 +13,7 @@ import (
 	"sync"
 	"syscall"
 
-	"loop/internal/hitl"
+	"nui/internal/hitl"
 )
 
 type persistentClaudeSession struct {
@@ -280,7 +280,7 @@ func (s *persistentClaudeSession) start(ctx context.Context, agent *ClaudeCodeAg
 			cmd.Dir = req.WorkingDir
 		}
 	}
-	applyCmdEnv(cmd, "claude-code", req.ConfigDir, req.Env, req.UserScopeHarness, req.LoopSessionID, req.RunID)
+	applyCmdEnv(cmd, "claude-code", req.ConfigDir, req.Env, req.UserScopeHarness, req.NuiSessionID, req.RunID)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {

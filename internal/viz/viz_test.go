@@ -10,10 +10,10 @@ func TestIsVisualizationTool(t *testing.T) {
 		want bool
 	}{
 		{"show_visualization", true},
-		{"mcp__loop-viz__show_visualization", true},
-		{"loop-viz:show_visualization", true},
+		{"mcp__nui-viz__show_visualization", true},
+		{"nui-viz:show_visualization", true},
 		{"ask_user", false},
-		{"mcp__loop-hitl__ask_user", false},
+		{"mcp__nui-hitl__ask_user", false},
 	}
 	for _, tc := range cases {
 		if got := IsVisualizationTool(tc.name); got != tc.want {

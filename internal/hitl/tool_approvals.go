@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 const (
@@ -55,7 +55,7 @@ func bareToolName(toolName string) string {
 	return strings.ToLower(name)
 }
 
-// ShouldAutoApproveTool reports whether a harness tool should skip the Loop approval UI.
+// ShouldAutoApproveTool reports whether a harness tool should skip the nui approval UI.
 func ShouldAutoApproveTool(toolName, policy string, tools []string) bool {
 	policy = normalizeToolApprovalPolicy(policy)
 	switch policy {

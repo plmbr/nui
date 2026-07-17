@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 const defaultStepOutputName = "_default"

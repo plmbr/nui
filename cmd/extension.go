@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"os"
 
-	"loop/internal/extensions"
+	"nui/internal/extensions"
 
 	"github.com/spf13/cobra"
 )
 
 var extensionCmd = &cobra.Command{
 	Use:   "extension",
-	Short: "Manage Loop extensions",
+	Short: "Manage nui extensions",
 }
 
 var extensionAddCmd = &cobra.Command{

@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"loop/internal/agent"
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/agent"
+	"nui/internal/model"
+	"nui/internal/store"
 )
 
 const (
@@ -207,7 +207,7 @@ func generateSessionTitle(ctx context.Context, session model.Session, def model.
 
 	adlAg := agent.NewADLAgent(def, session.ID, extensionManager)
 	runReq := agent.RunRequest{
-		LoopSessionID:    session.ID,
+		NuiSessionID:    session.ID,
 		WorkingDir:       workingDir,
 		Message:          prompt,
 		SystemPrompt:     sessionTitleSystemPrompt,

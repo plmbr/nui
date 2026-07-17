@@ -12,11 +12,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/store"
+	"nui/internal/store"
 )
 
 // Install copies an extension from a git URL, local directory, or zip file into
-// ~/.loop/extensions/<name>/.
+// ~/.nui/extensions/<name>/.
 func Install(source string) (string, error) {
 	source = normalizeSource(source)
 	if installType, _ := parsePackageSource(source); installType != "" {
@@ -149,7 +149,7 @@ func findExtensionRoot(dir string) (string, error) {
 }
 
 func cloneGitExtension(gitURL string) (string, func(), error) {
-	tmp, err := os.MkdirTemp("", "loop-ext-clone-*")
+	tmp, err := os.MkdirTemp("", "nui-ext-clone-*")
 	if err != nil {
 		return "", nil, err
 	}
@@ -172,7 +172,7 @@ func cloneGitExtension(gitURL string) (string, func(), error) {
 }
 
 func extractZipExtension(zipPath string) (string, func(), error) {
-	tmp, err := os.MkdirTemp("", "loop-ext-zip-*")
+	tmp, err := os.MkdirTemp("", "nui-ext-zip-*")
 	if err != nil {
 		return "", nil, err
 	}

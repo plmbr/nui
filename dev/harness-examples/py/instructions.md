@@ -1,10 +1,10 @@
 # TCP JSON-RPC Harness Examples (Reference)
 
-These examples demonstrate the TCP JSON-RPC 2.0 protocol for custom Loop harnesses. **They are not wired to `Manager.GetAgent()` today** — Loop's production path uses Go-managed CLI subprocesses and HTTP/SSE connectors instead. Use these to build standalone agents or as a reference for a future `custom` harness type.
+These examples demonstrate the TCP JSON-RPC 2.0 protocol for custom nui harnesses. **They are not wired to `Manager.GetAgent()` today** — nui's production path uses Go-managed CLI subprocesses and HTTP/SSE connectors instead. Use these to build standalone agents or as a reference for a future `custom` harness type.
 
 ## Files
 
-- `loop_agent.py` — harness framework (canonical copy of `harness-sdk/loop_agent.py`)
+- `nui_agent.py` — harness framework (canonical copy of `harness-sdk/nui_agent.py`)
 - `echo_agent.py` — minimal echo harness
 - `client.py` — sample client that connects to a running harness
 
@@ -20,7 +20,7 @@ python dev/harness-examples/py/client.py
 
 ## Protocol
 
-On startup, the harness binds a random TCP port and writes `~/.loop/connections/<name>.json`:
+On startup, the harness binds a random TCP port and writes `~/.nui/connections/<name>.json`:
 
 ```json
 {"host": "127.0.0.1", "port": 52341, "session_id": "...", "pid": 9876}

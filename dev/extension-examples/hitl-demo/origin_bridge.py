@@ -2,10 +2,10 @@
 """
 REST-only HITL origin bridge example.
 
-Polls Loop for pending requests routed to an extension channel and auto-responds.
-Run alongside Loop — no stdio JSON-RPC runtime required for this channel.
+Polls nui for pending requests routed to an extension channel and auto-responds.
+Run alongside nui — no stdio JSON-RPC runtime required for this channel.
 
-    LOOP_API_URL=http://127.0.0.1:8080 \\
+    NUI_API_URL=http://127.0.0.1:8080 \\
     HITL_CHANNEL_ID=ext:hitl-demo/demo-webhook \\
     python3 origin_bridge.py
 """
@@ -19,7 +19,7 @@ import urllib.request
 
 
 def api_url() -> str:
-    for key in ("LOOP_API_URL", "LOOP_URL"):
+    for key in ("NUI_API_URL", "NUI_URL"):
         value = os.environ.get(key, "").strip()
         if value:
             return value.rstrip("/")

@@ -46,7 +46,7 @@ export function SkillsTab() {
   return (
     <div className="customize-tab-content space-y-4">
       <p className="text-sm text-muted-foreground">
-        Skills installed in <code className="text-xs">~/.loop/skills/</code>. Reference them in agent
+        Skills installed in <code className="text-xs">~/.nui/skills/</code>. Reference them in agent
         definitions with <code className="text-xs">ref: my-skill</code>.
       </p>
 
@@ -88,7 +88,7 @@ export function SkillsTab() {
         title="Remove skill?"
         description={
           <>
-            This will permanently remove the skill <strong>{deleteTarget}</strong> from your Loop
+            This will permanently remove the skill <strong>{deleteTarget}</strong> from your nui
             installation. This action cannot be undone.
           </>
         }

@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 //go:embed builtins/*/SKILL.md
@@ -48,12 +48,12 @@ func listEmbeddedBuiltinSkillNames() ([]string, error) {
 	return names, nil
 }
 
-// IsBuiltinRef reports whether ref points at a compiled-in Loop skill.
+// IsBuiltinRef reports whether ref points at a compiled-in nui skill.
 func IsBuiltinRef(ref string) bool {
 	return strings.HasPrefix(strings.TrimSpace(ref), BuiltinRefPrefix)
 }
 
-// IsBuiltinSkill reports whether name matches a compiled-in Loop skill.
+// IsBuiltinSkill reports whether name matches a compiled-in nui skill.
 func IsBuiltinSkill(name string) bool {
 	name = strings.TrimSpace(name)
 	for _, builtin := range builtinSkillNames {
@@ -64,7 +64,7 @@ func IsBuiltinSkill(name string) bool {
 	return false
 }
 
-// BuiltinSkillNames returns compiled-in skill names shipped with Loop.
+// BuiltinSkillNames returns compiled-in skill names shipped with nui.
 func BuiltinSkillNames() []string {
 	out := make([]string, len(builtinSkillNames))
 	copy(out, builtinSkillNames)

@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"loop/internal/extensions"
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/extensions"
+	"nui/internal/model"
+	"nui/internal/store"
 )
 
-// Entry describes a skill installed in the Loop catalog.
+// Entry describes a skill installed in the nui catalog.
 type Entry struct {
 	Name        string `json:"name"`
 	Source      string `json:"source"` // local | ref | content | git
@@ -72,7 +72,7 @@ func cacheSkillDir(name string) (string, error) {
 }
 
 // List returns skills from the catalog manifest plus any skill directories under
-// ~/.loop/skills/<name>/ that contain SKILL.md (with or without a manifest entry).
+// ~/.nui/skills/<name>/ that contain SKILL.md (with or without a manifest entry).
 func List() ([]Entry, error) {
 	m, err := loadManifest()
 	if err != nil {
@@ -127,7 +127,7 @@ func recordEntry(e Entry) error {
 	return saveManifest(m)
 }
 
-// InstallLocal copies a local skill directory into ~/.loop/skills/<name>/skill/.
+// InstallLocal copies a local skill directory into ~/.nui/skills/<name>/skill/.
 func InstallLocal(name, srcPath string) (string, error) {
 	src, err := localSkillDir(srcPath)
 	if err != nil {

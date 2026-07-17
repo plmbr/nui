@@ -62,7 +62,7 @@ export function GeneralTab() {
       <div>
         <p className="text-sm font-medium mb-1">Default agent</p>
         <p className="text-xs text-muted-foreground mb-3">
-          Used when Loop creates a session on startup.
+          Used when nui creates a session on startup.
         </p>
         {selectableAgentTypesList.length > 0 && (
           <Select

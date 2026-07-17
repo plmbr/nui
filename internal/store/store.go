@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 type Settings struct {
@@ -39,7 +39,7 @@ func Dir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(home, ".loop")
+	dir := filepath.Join(home, ".nui")
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return "", err
 	}
@@ -163,7 +163,7 @@ func ExtensionsDir() (string, error) {
 	return extDir, nil
 }
 
-// ConnectionsDir returns ~/.loop/connections where harness TCP/HTTP handshake files are written.
+// ConnectionsDir returns ~/.nui/connections where harness TCP/HTTP handshake files are written.
 func ConnectionsDir() (string, error) {
 	dir, err := Dir()
 	if err != nil {
@@ -176,7 +176,7 @@ func ConnectionsDir() (string, error) {
 	return connDir, nil
 }
 
-// ConnectionFilePath returns ~/.loop/connections/<connectionID>.json.
+// ConnectionFilePath returns ~/.nui/connections/<connectionID>.json.
 func ConnectionFilePath(connectionID string) (string, error) {
 	dir, err := ConnectionsDir()
 	if err != nil {

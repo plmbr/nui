@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"loop/internal/extensions"
+	"nui/internal/extensions"
 )
 
 func TestInstallFromDirectory(t *testing.T) {
@@ -24,7 +24,7 @@ func TestInstallFromDirectory(t *testing.T) {
 		t.Fatalf("name: got %q want corp-pack", name)
 	}
 
-	dst := filepath.Join(home, ".loop", "extensions", "corp-pack", "extension.yaml")
+	dst := filepath.Join(home, ".nui", "extensions", "corp-pack", "extension.yaml")
 	if _, err := os.Stat(dst); err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func TestInstallAndRemove(t *testing.T) {
 	if err := extensions.Remove("corp-pack"); err != nil {
 		t.Fatal(err)
 	}
-	dst := filepath.Join(home, ".loop", "extensions", "corp-pack")
+	dst := filepath.Join(home, ".nui", "extensions", "corp-pack")
 	if _, err := os.Stat(dst); !os.IsNotExist(err) {
 		t.Fatalf("expected corp-pack removed, stat err=%v", err)
 	}

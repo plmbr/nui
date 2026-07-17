@@ -15,7 +15,7 @@ func TestManifestProgrammaticValidation(t *testing.T) {
 		Kind: "programmatic",
 		Runtime: &RuntimeConfig{
 			Transport: "stdio",
-			Command:   []string{"python3", "${LOOP_EXTENSION_ENTRY}"},
+			Command:   []string{"python3", "${NUI_EXTENSION_ENTRY}"},
 		},
 	}
 	if err := validateManifest(dir, m, false); err != nil {
@@ -25,7 +25,7 @@ func TestManifestProgrammaticValidation(t *testing.T) {
 
 func TestExpandRuntimeCommand(t *testing.T) {
 	cmd := expandRuntimeCommand(
-		[]string{"python3", "${LOOP_EXTENSION_ENTRY}"},
+		[]string{"python3", "${NUI_EXTENSION_ENTRY}"},
 		"/ext",
 		"/ext/pkg/host.py",
 	)
@@ -36,7 +36,7 @@ func TestExpandRuntimeCommand(t *testing.T) {
 
 func TestResolveInstallEntry(t *testing.T) {
 	entry := resolveInstallEntry("/ext", &InstallConfig{
-		Entry: "${LOOP_EXTENSION_DIR}/pkg/host.py",
+		Entry: "${NUI_EXTENSION_DIR}/pkg/host.py",
 	})
 	want := filepath.Join("/ext", "pkg", "host.py")
 	if entry != want {

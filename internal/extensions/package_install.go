@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/store"
+	"nui/internal/store"
 
 	"gopkg.in/yaml.v3"
 )
@@ -24,7 +24,7 @@ type InstallLock struct {
 	Entry       string `json:"entry"`
 	Root        string `json:"root,omitempty"`
 	PackageName string `json:"packageName,omitempty"`
-	LoopID      string `json:"loopId,omitempty"`
+	NuiID       string `json:"nuiId,omitempty"`
 	DisplayName string `json:"displayName,omitempty"`
 	Version     string `json:"version,omitempty"`
 }
@@ -51,7 +51,7 @@ func installProgrammaticPackage(source string) (string, error) {
 		defer cleanup()
 	}
 	if meta.ID == "" {
-		return "", fmt.Errorf("package metadata: loop id is required")
+		return "", fmt.Errorf("package metadata: nui id is required")
 	}
 	extDir, err := store.ExtensionsDir()
 	if err != nil {
@@ -90,7 +90,7 @@ func installProgrammaticPackage(source string) (string, error) {
 		runtimeCmd = defaultRuntimeCommand(installType)
 	}
 	manifest := Manifest{
-		APIVersion:  "loop.dev/extension/v1",
+		APIVersion:  "nui.dev/extension/v1",
 		Name:        meta.ID,
 		Version:     meta.Version,
 		DisplayName: meta.DisplayName,
@@ -102,8 +102,8 @@ func installProgrammaticPackage(source string) (string, error) {
 		Install: &InstallConfig{
 			Source: source,
 			Type:   installType,
-			Entry:  "${LOOP_EXTENSION_DIR}/" + entryRel,
-			Root:   "${LOOP_EXTENSION_DIR}/pkg",
+			Entry:  "${NUI_EXTENSION_DIR}/" + entryRel,
+			Root:   "${NUI_EXTENSION_DIR}/pkg",
 		},
 	}
 	data, err := yaml.Marshal(manifest)
@@ -121,7 +121,7 @@ func installProgrammaticPackage(source string) (string, error) {
 		Entry:       manifest.Install.Entry,
 		Root:        manifest.Install.Root,
 		PackageName: pkgRef,
-		LoopID:      meta.ID,
+		NuiID:       meta.ID,
 		DisplayName: meta.DisplayName,
 		Version:     meta.Version,
 	}
@@ -154,11 +154,11 @@ func parsePackageSource(source string) (installType, ref string) {
 func defaultRuntimeCommand(installType string) []string {
 	switch installType {
 	case "npm":
-		return []string{"node", "${LOOP_EXTENSION_ENTRY}"}
+		return []string{"node", "${NUI_EXTENSION_ENTRY}"}
 	case "pip", "python":
-		return []string{"python3", "${LOOP_EXTENSION_ENTRY}"}
+		return []string{"python3", "${NUI_EXTENSION_ENTRY}"}
 	default:
-		return []string{"${LOOP_EXTENSION_ENTRY}"}
+		return []string{"${NUI_EXTENSION_ENTRY}"}
 	}
 }
 
@@ -194,24 +194,24 @@ func readNPMPackageMetadata(dir string) (PackageMetadata, error) {
 		Name    string            `json:"name"`
 		Version string            `json:"version"`
 		Bin     map[string]string `json:"bin"`
-		Loop    struct {
+		Nui struct {
 			ID          string `json:"id"`
 			DisplayName string `json:"displayName"`
 			Entry       string `json:"entry"`
-		} `json:"loop"`
+		} `json:"nui"`
 	}
 	if err := json.Unmarshal(data, &pkg); err != nil {
 		return PackageMetadata{}, err
 	}
 	meta := PackageMetadata{
-		ID:          strings.TrimSpace(pkg.Loop.ID),
-		DisplayName: strings.TrimSpace(pkg.Loop.DisplayName),
+		ID:          strings.TrimSpace(pkg.Nui.ID),
+		DisplayName: strings.TrimSpace(pkg.Nui.DisplayName),
 		Version:     strings.TrimSpace(pkg.Version),
 	}
 	if meta.DisplayName == "" {
 		meta.DisplayName = pkg.Name
 	}
-	if entry := strings.TrimSpace(pkg.Loop.Entry); entry != "" {
+	if entry := strings.TrimSpace(pkg.Nui.Entry); entry != "" {
 		meta.Entry = filepath.Join(dir, entry)
 	} else if len(pkg.Bin) > 0 {
 		for _, path := range pkg.Bin {
@@ -229,17 +229,17 @@ func readPyPackageMetadata(dir string) (PackageMetadata, error) {
 	}
 	meta := PackageMetadata{}
 	lines := strings.Split(string(data), "\n")
-	inToolLoop := false
+	inToolnui := false
 	for _, line := range lines {
 		trim := strings.TrimSpace(line)
-		if trim == "[tool.loop]" {
-			inToolLoop = true
+		if trim == "[tool.nui]" {
+			inToolnui = true
 			continue
 		}
-		if strings.HasPrefix(trim, "[") && trim != "[tool.loop]" {
-			inToolLoop = false
+		if strings.HasPrefix(trim, "[") && trim != "[tool.nui]" {
+			inToolnui = false
 		}
-		if !inToolLoop {
+		if !inToolnui {
 			continue
 		}
 		if strings.HasPrefix(trim, "id = ") {
@@ -280,7 +280,7 @@ func goModuleID(ref string) string {
 }
 
 func stagePackageSource(installType, pkgRef string) (string, func(), error) {
-	tmp, err := os.MkdirTemp("", "loop-ext-stage-*")
+	tmp, err := os.MkdirTemp("", "nui-ext-stage-*")
 	if err != nil {
 		return "", nil, err
 	}
@@ -382,7 +382,7 @@ func installProgrammaticFromDir(srcRoot string) (string, error) {
 		return "", err
 	}
 	if meta.ID == "" {
-		return "", fmt.Errorf("package metadata: loop id is required in %q", srcRoot)
+		return "", fmt.Errorf("package metadata: nui id is required in %q", srcRoot)
 	}
 	extDir, err := store.ExtensionsDir()
 	if err != nil {
@@ -418,7 +418,7 @@ func installProgrammaticFromDir(srcRoot string) (string, error) {
 		}
 	}
 	manifest := Manifest{
-		APIVersion:  "loop.dev/extension/v1",
+		APIVersion:  "nui.dev/extension/v1",
 		Name:        meta.ID,
 		Version:     meta.Version,
 		DisplayName: meta.DisplayName,
@@ -430,8 +430,8 @@ func installProgrammaticFromDir(srcRoot string) (string, error) {
 		Install: &InstallConfig{
 			Source: srcRoot,
 			Type:   "dir",
-			Entry:  "${LOOP_EXTENSION_DIR}/" + entryRel,
-			Root:   "${LOOP_EXTENSION_DIR}/pkg",
+			Entry:  "${NUI_EXTENSION_DIR}/" + entryRel,
+			Root:   "${NUI_EXTENSION_DIR}/pkg",
 		},
 	}
 	data, err := yaml.Marshal(manifest)

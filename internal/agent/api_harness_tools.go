@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"strings"
 
-	"loop/internal/llm"
-	"loop/internal/viz"
+	"nui/internal/llm"
+	"nui/internal/viz"
 )
 
 func toolArgsStreamUpdate(previous, next string) (delta string, changed bool) {

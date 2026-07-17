@@ -68,7 +68,7 @@ func (c *Coordinator) Create(ctx context.Context, in CreateInput) (*Request, err
 		in.TTLSeconds = 3600
 	}
 	if len(in.Routing.Channels) == 0 {
-		in.Routing.Channels = []string{ChannelLoopUI}
+		in.Routing.Channels = []string{ChannelnuiUI}
 	}
 
 	mode := ModeInteractive

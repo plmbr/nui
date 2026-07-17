@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-// SkillsDir returns ~/.loop/skills, creating it if needed.
+// SkillsDir returns ~/.nui/skills, creating it if needed.
 func SkillsDir() (string, error) {
 	base, err := Dir()
 	if err != nil {
@@ -44,17 +44,17 @@ func skillRepoDir(name string) (string, error) {
 	return filepath.Join(entry, "repo"), nil
 }
 
-// SkillEntryDir returns ~/.loop/skills/<name>.
+// SkillEntryDir returns ~/.nui/skills/<name>.
 func SkillEntryDir(name string) (string, error) {
 	return skillEntryDir(name)
 }
 
-// SkillCacheDir returns ~/.loop/skills/<name>/skill.
+// SkillCacheDir returns ~/.nui/skills/<name>/skill.
 func SkillCacheDir(name string) (string, error) {
 	return skillCacheDir(name)
 }
 
-// SkillRepoDir returns ~/.loop/skills/<name>/repo.
+// SkillRepoDir returns ~/.nui/skills/<name>/repo.
 func SkillRepoDir(name string) (string, error) {
 	return skillRepoDir(name)
 }

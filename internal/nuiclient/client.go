@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-package loopclient
+package nuiclient
 
 import (
 	"bufio"
@@ -18,7 +18,7 @@ import (
 
 const defaultBaseURL = "http://127.0.0.1:8080"
 
-// Client talks to a running Loop REST API.
+// Client talks to a running nui REST API.
 type Client struct {
 	BaseURL    string
 	HTTPClient *http.Client
@@ -26,7 +26,7 @@ type Client struct {
 
 func New(baseURL string) *Client {
 	if strings.TrimSpace(baseURL) == "" {
-		baseURL = os.Getenv("LOOP_URL")
+		baseURL = os.Getenv("NUI_URL")
 	}
 	if strings.TrimSpace(baseURL) == "" {
 		baseURL = defaultBaseURL

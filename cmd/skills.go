@@ -7,33 +7,33 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"loop/internal/skills"
+	"nui/internal/skills"
 
 	"github.com/spf13/cobra"
 )
 
 var skillsCmd = &cobra.Command{
 	Use:   "skills",
-	Short: "Manage agent skills in the Loop catalog",
+	Short: "Manage agent skills in the nui catalog",
 }
 
 var skillsAddCmd = &cobra.Command{
 	Use:   "add [url-or-path]",
-	Short: "Add a skill to ~/.loop/skills/",
-	Long: `Add a skill to the Loop catalog. The catalog name defaults to the skill directory name.
+	Short: "Add a skill to ~/.nui/skills/",
+	Long: `Add a skill to the nui catalog. The catalog name defaults to the skill directory name.
 
 Local directory:
-  loop skills add ./skills/code-review
+  nui skills add ./skills/code-review
 
 GitHub URL (tree or blob link to a skill directory or SKILL.md):
-  loop skills add https://github.com/example/repo/tree/main/skills/foo
-  loop skills add https://github.com/example/repo/blob/main/skills/foo/SKILL.md
+  nui skills add https://github.com/example/repo/tree/main/skills/foo
+  nui skills add https://github.com/example/repo/blob/main/skills/foo/SKILL.md
 
 Git remote with explicit path:
-  loop skills add --git https://github.com/example/repo.git --path skills/foo
+  nui skills add --git https://github.com/example/repo.git --path skills/foo
 
 Inline content (name from SKILL.md frontmatter when omitted):
-  loop skills add --content "$(cat SKILL.md)"`,
+  nui skills add --content "$(cat SKILL.md)"`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		name, _ := cmd.Flags().GetString("name")
@@ -101,7 +101,7 @@ Inline content (name from SKILL.md frontmatter when omitted):
 
 var skillsListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List skills in the Loop catalog",
+	Short: "List skills in the nui catalog",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		entries, err := skills.List()
 		if err != nil {
@@ -129,7 +129,7 @@ var skillsListCmd = &cobra.Command{
 
 var skillsRemoveCmd = &cobra.Command{
 	Use:   "remove [name]",
-	Short: "Remove a skill from the Loop catalog",
+	Short: "Remove a skill from the nui catalog",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := skills.Remove(args[0]); err != nil {

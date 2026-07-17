@@ -8,13 +8,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/model"
+	"nui/internal/store"
 
 	"gopkg.in/yaml.v3"
 )
 
-// SaveDefinitionYAML validates and writes an ADL agent definition to ~/.loop/agents/.
+// SaveDefinitionYAML validates and writes an ADL agent definition to ~/.nui/agents/.
 func SaveDefinitionYAML(content string, overwrite bool) (string, error) {
 	def, err := ParseDefinitionYAML(content)
 	if err != nil {

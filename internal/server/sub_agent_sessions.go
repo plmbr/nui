@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"os"
 
-	"loop/internal/agent"
-	"loop/internal/agents"
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/agent"
+	"nui/internal/agents"
+	"nui/internal/model"
+	"nui/internal/store"
 )
 
 func subAgentSessionKey(sessionID, subAgentID string) string {

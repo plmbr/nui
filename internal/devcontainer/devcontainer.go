@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-// Package devcontainer wraps the Dev Container CLI for Loop harness lifecycle.
+// Package devcontainer wraps the Dev Container CLI for nui harness lifecycle.
 package devcontainer
 
 import (
@@ -52,7 +52,7 @@ func DockerAvailable() bool {
 	return cmd.Run() == nil
 }
 
-// HarnessAvailable reports whether Loop can provision and run a devcontainer harness.
+// HarnessAvailable reports whether nui can provision and run a devcontainer harness.
 func HarnessAvailable() bool {
 	return Available() && DockerAvailable()
 }
@@ -176,7 +176,7 @@ func friendlyUpMessage(msg string) string {
 		return "Docker is not running or not reachable. Start Docker Desktop and retry."
 	}
 	if strings.Contains(lower, "no such image") || strings.Contains(lower, "pull access denied") || strings.Contains(lower, "manifest unknown") {
-		return msg + "\nLoop auto-builds default devcontainer images on first use; check Docker build output above for errors."
+		return msg + "\nnui auto-builds default devcontainer images on first use; check Docker build output above for errors."
 	}
 	return msg
 }

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Sample Loop extension client.
+Sample nui extension client.
 
-Reads ~/.loop/connections/<name>.json, connects over TCP, and calls
+Reads ~/.nui/connections/<name>.json, connects over TCP, and calls
 harness.info then harness.run, printing streamed events as they arrive.
 
 Usage:
@@ -21,7 +21,7 @@ from pathlib import Path
 
 
 def load_connection(name: str) -> dict:
-    path = Path.home() / ".loop" / "connections" / f"{name}.json"
+    path = Path.home() / ".nui" / "connections" / f"{name}.json"
     if not path.exists():
         sys.exit(f"connection file not found: {path}\nIs the extension running?")
     return json.loads(path.read_text())
@@ -105,7 +105,7 @@ def main():
         elif t == "done":
             print()  # newline after stream ends
 
-    result = client.run("Hello from the Loop client!", on_event=on_event)
+    result = client.run("Hello from the nui client!", on_event=on_event)
     print(f"result: {result}")
 
     sock.close()

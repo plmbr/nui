@@ -12,7 +12,7 @@ export function LandingPage({ onNewSession, onCustomize }: Props) {
   return (
     <div className="landing-page">
       <div className="landing-page__content">
-        <h1 className="landing-page__title">The Loop</h1>
+        <h1 className="landing-page__title">nui</h1>
         <p className="landing-page__subtitle">
           Run agents in continuous sessions — pick up where you left off.
         </p>

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"io/fs"
 
-	"loop/internal/loopclient"
-	"loop/internal/server"
+	"nui/internal/nuiclient"
+	"nui/internal/server"
 
 	"github.com/spf13/cobra"
 )
@@ -47,7 +47,7 @@ var uiCmd = &cobra.Command{
 			ctx = context.Background()
 		}
 
-		client := loopclient.New(fmt.Sprintf("http://127.0.0.1:%d", port))
+		client := nuiclient.New(fmt.Sprintf("http://127.0.0.1:%d", port))
 		if err := client.Health(ctx); err == nil {
 			return attachToRunningServer(ctx, port, opts)
 		}
@@ -65,8 +65,8 @@ func init() {
 	uiCmd.Flags().BoolVar(&openBrowser, "open", false, "Open the web UI in the system default browser")
 	uiCmd.Flags().BoolVar(&noBrowser, "no-browser", false, "Do not open a browser (headless daemon mode)")
 	uiCmd.Flags().BoolVar(&hideInput, "hide-input", false, "Hide the chat input (for one-off runs with --prompt)")
-	uiCmd.Flags().StringVar(&theme, "theme", "", "UI theme: light or dark (saved to ~/.loop/settings.json)")
-	uiCmd.Flags().StringVar(&defaultAgentType, "default-agent", "", "Default agent type for new sessions (ADL id or name; saved to ~/.loop/settings.json)")
+	uiCmd.Flags().StringVar(&theme, "theme", "", "UI theme: light or dark (saved to ~/.nui/settings.json)")
+	uiCmd.Flags().StringVar(&defaultAgentType, "default-agent", "", "Default agent type for new sessions (ADL id or name; saved to ~/.nui/settings.json)")
 	rootCmd.AddCommand(uiCmd)
 }
 

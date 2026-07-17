@@ -7,8 +7,8 @@ import (
 	"strings"
 	"unicode"
 
-	"loop/internal/hitl"
-	"loop/internal/llm"
+	"nui/internal/hitl"
+	"nui/internal/llm"
 )
 
 // shouldAnswerInPlainText reports whether the user expects a direct text reply

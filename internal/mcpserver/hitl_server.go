@@ -9,15 +9,15 @@ import (
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"loop/internal/hitl"
-	"loop/internal/loopclient"
+	"nui/internal/hitl"
+	"nui/internal/nuiclient"
 )
 
-// RunHITL starts the loop-hitl MCP server on stdio.
+// RunHITL starts the nui-hitl MCP server on stdio.
 func RunHITL(ctx context.Context, baseURL string) error {
-	client := loopclient.New(baseURL)
+	client := nuiclient.New(baseURL)
 	server := mcp.NewServer(&mcp.Implementation{
-		Name:    "loop-hitl",
+		Name:    "nui-hitl",
 		Version: "1.0.0",
 	}, nil)
 
@@ -27,10 +27,10 @@ func RunHITL(ctx context.Context, baseURL string) error {
 	return server.Run(ctx, transport)
 }
 
-func registerHITLTools(server *mcp.Server, client *loopclient.Client) {
+func registerHITLTools(server *mcp.Server, client *nuiclient.Client) {
 	server.AddTool(&mcp.Tool{
 		Name:        "ask_user",
-		Description: "Ask the human a structured question and wait for an answer via Loop UI",
+		Description: "Ask the human a structured question and wait for an answer via nui UI",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -96,9 +96,9 @@ func registerHITLTools(server *mcp.Server, client *loopclient.Client) {
 	})
 }
 
-func createAndWait(ctx context.Context, client *loopclient.Client, kind string, payload map[string]any) (*mcp.CallToolResult, error) {
-	sessionID := strings.TrimSpace(os.Getenv("LOOP_SESSION_ID"))
-	runID := strings.TrimSpace(os.Getenv("LOOP_RUN_ID"))
+func createAndWait(ctx context.Context, client *nuiclient.Client, kind string, payload map[string]any) (*mcp.CallToolResult, error) {
+	sessionID := strings.TrimSpace(os.Getenv("NUI_SESSION_ID"))
+	runID := strings.TrimSpace(os.Getenv("NUI_RUN_ID"))
 	in := hitl.CreateInput{
 		SessionID: sessionID,
 		RunID:     runID,

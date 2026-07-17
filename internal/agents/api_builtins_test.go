@@ -5,8 +5,8 @@ package agents
 import (
 	"testing"
 
-	"loop/internal/agent"
-	"loop/internal/model"
+	"nui/internal/agent"
+	"nui/internal/model"
 )
 
 func TestBuiltinAgentDefsIncludesAPIProviders(t *testing.T) {

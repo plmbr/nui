@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"loop/internal/store"
+	"nui/internal/store"
 )
 
 func TestLookupDefinitionBuiltin(t *testing.T) {

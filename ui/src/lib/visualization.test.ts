@@ -15,7 +15,7 @@ import type { ToolCallPart } from '@/lib/chatMessageUtils'
 
 describe('visualization', () => {
   it('detects visualization tool names', () => {
-    expect(isVisualizationTool('mcp__loop-viz__show_visualization')).toBe(true)
+    expect(isVisualizationTool('mcp__nui-viz__show_visualization')).toBe(true)
     expect(isVisualizationTool('Read')).toBe(false)
   })
 
@@ -31,13 +31,13 @@ describe('visualization', () => {
       '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="120" height="120"/></svg>'
     expect(visualizationHTMLReady(html)).toBe(true)
     expect(
-      visualizationFromArgs('mcp__loop-viz__show_visualization', {
+      visualizationFromArgs('mcp__nui-viz__show_visualization', {
         html,
         title: 'Chart',
       }),
     ).toMatchObject({ title: 'Chart' })
     expect(
-      visualizationFromArgs('mcp__loop-viz__show_visualization', {
+      visualizationFromArgs('mcp__nui-viz__show_visualization', {
         html,
         title: 'Chart',
       })?.html,
@@ -99,14 +99,14 @@ describe('visualization', () => {
         type: 'tool',
         id: 'p1',
         toolCallId: 'call_0',
-        toolName: 'mcp__loop-viz__show_visualization',
+        toolName: 'mcp__nui-viz__show_visualization',
         visualizationHtml: html,
       },
       {
         type: 'tool',
         id: 'p2',
         toolCallId: 'call_0',
-        toolName: 'mcp__loop-viz__show_visualization',
+        toolName: 'mcp__nui-viz__show_visualization',
         visualizationHtml: html,
       },
     ]

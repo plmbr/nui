@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"loop/internal/mentions"
-	"loop/internal/model"
+	"nui/internal/mentions"
+	"nui/internal/model"
 )
 
 const extMentionPrefix = "ext:"

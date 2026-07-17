@@ -1,13 +1,13 @@
 """
-Loop extension storage handler — stdio JSON-RPC.
+nui extension storage handler — stdio JSON-RPC.
 
-Subclass LoopStorageHandler and override read/write/delete methods, then call serve().
+Subclass NuiStorageHandler and override read/write/delete methods, then call serve().
 
 Example:
 
-    from loop_storage import LoopStorageHandler
+    from nui_storage import NuiStorageHandler
 
-    class MyStorage(LoopStorageHandler):
+    class MyStorage(NuiStorageHandler):
         def read_user_memory(self, handler_id: str, **kwargs) -> dict:
             return {"content": "notes"}
 
@@ -21,8 +21,8 @@ import sys
 from typing import Any
 
 
-class LoopStorageHandler:
-    api_version = "loop.dev/extension/v1"
+class NuiStorageHandler:
+    api_version = "nui.dev/extension/v1"
     name = "storage-handler"
     version = "1.0.0"
 
@@ -130,7 +130,7 @@ class LoopStorageHandler:
                 "jsonrpc": "2.0",
                 "id": rid,
                 "result": {
-                    "id": os.environ.get("LOOP_STORAGE_HANDLER_ID", self.name),
+                    "id": os.environ.get("NUI_STORAGE_HANDLER_ID", self.name),
                     "name": self.name,
                     "version": self.version,
                 },

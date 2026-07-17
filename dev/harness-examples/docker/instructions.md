@@ -1,49 +1,49 @@
 # Docker Harness Example
 
-A custom Loop harness that runs inside a Docker container. The agent exposes an HTTP/SSE server; Loop maps the container port to a random host port at runtime.
+A custom nui harness that runs inside a Docker container. The agent exposes an HTTP/SSE server; nui maps the container port to a random host port at runtime.
 
 ## Files
 
-- `echo_agent.py` — agent implementation (subclasses `LoopAgent`)
-- `loop_agent.py` — HTTP server framework
+- `echo_agent.py` — agent implementation (subclasses `NuiAgent`)
+- `nui_agent.py` — HTTP server framework
 - `Dockerfile` — container image
 
 ## Setup
 
 ```sh
 cd dev/harness-examples/docker
-docker build -t loop-echo-agent .
+docker build -t nui-echo-agent .
 ```
 
-## Connecting via Loop UI
+## Connecting via nui UI
 
 Docker agents are configured through **custom ADL**, not a built-in UI picker.
 
 1. Copy the example ADL into your agents directory:
 
 ```sh
-cp dev/harness-examples/docker/docker-echo.yaml ~/.loop/agents/
+cp dev/harness-examples/docker/docker-echo.yaml ~/.nui/agents/
 ```
 
 2. Create a new session.
 3. Under **Installed agents**, select **docker-echo**.
 4. Click **Create**.
 
-Loop validates the connector on create (`docker run` + `GET /info`), then connects on each chat message.
+nui validates the connector on create (`docker run` + `GET /info`), then connects on each chat message.
 
 To use your own image, edit the ADL file:
 
 ```yaml
 harness:
   type: docker
-  image: loop-echo-agent    # your image name
+  image: nui-echo-agent    # your image name
   containerPort: 9090       # port your container listens on
 ```
 
-## Smoke-testing without Loop
+## Smoke-testing without nui
 
 ```sh
-docker run --rm -p 127.0.0.1:9090:9090 loop-echo-agent
+docker run --rm -p 127.0.0.1:9090:9090 nui-echo-agent
 
 curl http://127.0.0.1:9090/info
 
@@ -59,7 +59,7 @@ curl -N -X POST http://127.0.0.1:9090/run \
 | `GET /info` | `{"name", "version", "capabilities"}` — health check |
 | `POST /run` | Body: `{message, sessionId?, workingDir?, systemPrompt?, model?}` → SSE |
 | `POST /cancel` | Body: `{runId}` — cancel run best-effort |
-| `POST /shutdown` | Stop server; Loop calls before `docker stop` |
+| `POST /shutdown` | Stop server; nui calls before `docker stop` |
 
 SSE events:
 
@@ -71,7 +71,7 @@ data: {"type":"error","error":"..."}
 
 ## Lifecycle
 
-| Event | What Loop does |
+| Event | What nui does |
 |---|---|
 | Session create | `docker run` + `GET /info` health check |
 | Chat message | `POST /run` → SSE stream |
@@ -88,9 +88,9 @@ data: {"type":"error","error":"..."}
 ## Writing your own Docker agent
 
 ```python
-from loop_agent import LoopAgent
+from nui_agent import NuiAgent
 
-class MyAgent(LoopAgent):
+class MyAgent(NuiAgent):
     name = "my-agent"
     version = "0.1.0"
 
@@ -104,9 +104,9 @@ if __name__ == "__main__":
 ```dockerfile
 FROM python:3.12-slim
 WORKDIR /app
-COPY loop_agent.py my_agent.py ./
+COPY nui_agent.py my_agent.py ./
 EXPOSE 9090
 CMD ["python3", "my_agent.py", "--port", "9090"]
 ```
 
-Then create an ADL file in `~/.loop/agents/` pointing at your image and port.
+Then create an ADL file in `~/.nui/agents/` pointing at your image and port.

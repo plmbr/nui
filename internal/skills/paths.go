@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/store"
+	"nui/internal/store"
 )
 
 const skillFileName = "SKILL.md"
@@ -88,8 +88,8 @@ func refSearchPaths(ctx Context, ref string) []string {
 	return paths
 }
 
-// skillDirInEntry returns the directory containing SKILL.md under ~/.loop/skills/<name>/.
-// Supports both ~/.loop/skills/<name>/SKILL.md and ~/.loop/skills/<name>/skill/SKILL.md.
+// skillDirInEntry returns the directory containing SKILL.md under ~/.nui/skills/<name>/.
+// Supports both ~/.nui/skills/<name>/SKILL.md and ~/.nui/skills/<name>/skill/SKILL.md.
 func skillDirInEntry(entryDir string) (string, bool) {
 	if err := validateSkillDir(entryDir); err == nil {
 		return entryDir, true

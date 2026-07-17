@@ -5,7 +5,7 @@ package viz
 import (
 	"strings"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 // HTMLMatches reports whether two HTML documents are likely the same visualization.

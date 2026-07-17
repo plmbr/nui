@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 func TestBuiltinSkillNamesIncludesCreateAgent(t *testing.T) {

@@ -3,7 +3,7 @@
 package model
 
 // IsADLWorkingDirInput reports whether the user chooses the session working directory.
-// When false (default), Loop provisions an isolated workspace under ~/.loop/workspaces/<session-id>.
+// When false (default), nui provisions an isolated workspace under ~/.nui/workspaces/<session-id>.
 func IsADLWorkingDirInput(def ADLDefinition) bool {
 	return def.WorkingDirInput
 }

@@ -1,5 +1,5 @@
 /**
- * Loop programmatic extension SDK — override-based base class.
+ * nui programmatic extension SDK — override-based base class.
  */
 
 import * as readline from "node:readline";
@@ -7,11 +7,11 @@ import * as readline from "node:readline";
 export type RunContext = Record<string, unknown>;
 export type MentionContext = Record<string, unknown>;
 
-export class LoopExtension {
-  apiVersion = "loop.dev/extension/v1";
-  extensionDir = process.env.LOOP_EXTENSION_DIR ?? "";
-  extensionName = process.env.LOOP_EXTENSION_NAME ?? "";
-  apiUrl = process.env.LOOP_API_URL ?? "http://127.0.0.1:8080";
+export class NuiExtension {
+  apiVersion = "nui.dev/extension/v1";
+  extensionDir = process.env.NUI_EXTENSION_DIR ?? "";
+  extensionName = process.env.NUI_EXTENSION_NAME ?? "";
+  apiUrl = process.env.NUI_API_URL ?? "http://127.0.0.1:8080";
 
   initialize(): void {}
 

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"loop/internal/mentions"
+	"nui/internal/mentions"
 )
 
 func TestAGUIMentionResolution(t *testing.T) {

@@ -3,8 +3,8 @@
 package agent
 
 import (
-	"loop/internal/model"
-	"loop/internal/skills"
+	"nui/internal/model"
+	"nui/internal/skills"
 )
 
 func installHarnessSkills(harnessType, configDir, workingDir string, skillList []model.ADLSkill) error {

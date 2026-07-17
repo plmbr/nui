@@ -10,13 +10,13 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/hitl"
-	"loop/internal/model"
+	"nui/internal/hitl"
+	"nui/internal/model"
 )
 
-func TestWriteClaudeHITLHooksAllowsLoopHitlMCP(t *testing.T) {
+func TestWriteClaudeHITLHooksAllowsnuiHitlMCP(t *testing.T) {
 	tmp := t.TempDir()
-	if err := os.WriteFile(filepath.Join(tmp, ".claude.json"), []byte(`{"mcpServers":{"loop-hitl":{},"loop-viz":{}}}`), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmp, ".claude.json"), []byte(`{"mcpServers":{"nui-hitl":{},"nui-viz":{}}}`), 0644); err != nil {
 		t.Fatal(err)
 	}
 	if err := writeClaudeSessionSettings(tmp, HarnessDeps{}); err != nil {
@@ -115,7 +115,7 @@ func TestAppendClaudeInteractiveHitlArgs(t *testing.T) {
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(configDir, ".claude.json"), []byte(`{"mcpServers":{"loop-hitl":{}}}`), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(configDir, ".claude.json"), []byte(`{"mcpServers":{"nui-hitl":{}}}`), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -124,7 +124,7 @@ func TestAppendClaudeInteractiveHitlArgs(t *testing.T) {
 		HarnessPermissions: hitl.PermissionsInteractive,
 	}
 	args := appendClaudeInteractiveHitlArgs(nil, req)
-	if len(args) != 2 || args[0] != "--allowedTools" || args[1] != claudeLoopHitlAllowedTool {
+	if len(args) != 2 || args[0] != "--allowedTools" || args[1] != claudenuiHitlAllowedTool {
 		t.Fatalf("args = %v", args)
 	}
 
@@ -150,7 +150,7 @@ func TestProvisionClaudeHarnessWritesVizPermissionsWithoutHitl(t *testing.T) {
 	}
 	data, err := os.ReadFile(filepath.Join(configDir, "settings.json"))
 	if err != nil {
-		t.Fatalf("expected settings.json for loop-viz permissions: %v", err)
+		t.Fatalf("expected settings.json for nui-viz permissions: %v", err)
 	}
 	var settings struct {
 		Permissions struct {
@@ -180,7 +180,7 @@ func TestProvisionClaudeHarnessWritesVizPermissionsWithoutHitl(t *testing.T) {
 		t.Fatalf("PreToolUse hooks = %+v", hookSettings.Hooks.PreToolUse)
 	}
 	if _, err := os.Stat(filepath.Join(configDir, claudeHitlBridgeScript)); !os.IsNotExist(err) {
-		t.Fatalf("expected no HITL bridge without loop-hitl, err=%v", err)
+		t.Fatalf("expected no HITL bridge without nui-hitl, err=%v", err)
 	}
 }
 
@@ -213,7 +213,7 @@ func TestVizBridgeDoesNotAutoApproveBash(t *testing.T) {
 	}
 }
 
-func TestProvisionClaudeHarnessWritesHITLSettingsWithLoopHitl(t *testing.T) {
+func TestProvisionClaudeHarnessWritesHITLSettingsWithnuiHitl(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", filepath.Join(tmp, "home"))
 

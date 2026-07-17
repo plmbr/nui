@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"loop/internal/extensions"
+	"nui/internal/extensions"
 )
 
 // programmaticHarnessAgent implements Agent using a shared programmatic extension host.
@@ -56,12 +56,12 @@ func (a *programmaticHarnessAgent) Run(ctx context.Context, req RunRequest, even
 
 func programmaticHarnessExtras(req RunRequest, projectID string) map[string]any {
 	extra := map[string]any{}
-	loopSessionID := strings.TrimSpace(req.LoopSessionID)
-	if loopSessionID == "" {
-		loopSessionID = projectID
+	nuiSessionID := strings.TrimSpace(req.NuiSessionID)
+	if nuiSessionID == "" {
+		nuiSessionID = projectID
 	}
-	if loopSessionID != "" {
-		extra["loopSessionId"] = loopSessionID
+	if nuiSessionID != "" {
+		extra["nuiSessionId"] = nuiSessionID
 	}
 	if req.SessionID != "" {
 		extra["sessionId"] = req.SessionID

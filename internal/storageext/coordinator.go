@@ -8,10 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"loop/internal/extensions"
-	"loop/internal/memory"
-	"loop/internal/model"
-	"loop/internal/store"
+	"nui/internal/extensions"
+	"nui/internal/memory"
+	"nui/internal/model"
+	"nui/internal/store"
 )
 
 // Coordinator routes persistence to extension handlers or built-in storage.

@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"loop/internal/llm"
+	"nui/internal/llm"
 )
 
 // normalizeToolCallArguments ensures tool arguments are a JSON object string.

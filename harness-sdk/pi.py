@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Built-in Pi agent extension for Loop."""
+"""Built-in Pi agent extension for nui."""
 
 import os
 import sys
 import threading
 
 sys.path.insert(0, os.path.dirname(__file__))
-from loop_agent import LoopAgent
+from nui_agent import NuiAgent
 from pi_session import PersistentPiSession
 
 
-class PiAgent(LoopAgent):
+class PiAgent(NuiAgent):
     name = "pi"
     version = "0.1.0"
 

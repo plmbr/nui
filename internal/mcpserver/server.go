@@ -10,14 +10,14 @@ import (
 	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"loop/internal/loopclient"
+	"nui/internal/nuiclient"
 )
 
-// Run starts the Loop MCP server on stdio, proxying to the Loop REST API.
+// Run starts the nui MCP server on stdio, proxying to the nui REST API.
 func Run(ctx context.Context, baseURL string) error {
-	client := loopclient.New(baseURL)
+	client := nuiclient.New(baseURL)
 	server := mcp.NewServer(&mcp.Implementation{
-		Name:    "loop",
+		Name:    "nui",
 		Version: "1.0.0",
 	}, nil)
 
@@ -27,10 +27,10 @@ func Run(ctx context.Context, baseURL string) error {
 	return server.Run(ctx, transport)
 }
 
-func registerTools(server *mcp.Server, client *loopclient.Client) {
+func registerTools(server *mcp.Server, client *nuiclient.Client) {
 	server.AddTool(&mcp.Tool{
 		Name:        "list_agents",
-		Description: "List available Loop agent types (built-in and installed ADL)",
+		Description: "List available nui agent types (built-in and installed ADL)",
 		InputSchema: emptyObjectSchema(),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		agents, err := client.ListAgents(ctx)
@@ -42,7 +42,7 @@ func registerTools(server *mcp.Server, client *loopclient.Client) {
 
 	server.AddTool(&mcp.Tool{
 		Name:        "list_sessions",
-		Description: "List Loop sessions",
+		Description: "List nui sessions",
 		InputSchema: emptyObjectSchema(),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		sessions, err := client.ListSessions(ctx)
@@ -54,7 +54,7 @@ func registerTools(server *mcp.Server, client *loopclient.Client) {
 
 	server.AddTool(&mcp.Tool{
 		Name:        "create_session",
-		Description: "Create a new Loop session",
+		Description: "Create a new nui session",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -75,7 +75,7 @@ func registerTools(server *mcp.Server, client *loopclient.Client) {
 			}
 		}
 		name := stringArg(args, "name")
-		sess, err := client.CreateSession(ctx, loopclient.CreateSessionRequest{
+		sess, err := client.CreateSession(ctx, nuiclient.CreateSessionRequest{
 			Name:       name,
 			AgentType:  agentType,
 			WorkingDir: defaultWorkingDir(stringArg(args, "working_dir")),
@@ -115,7 +115,7 @@ func registerTools(server *mcp.Server, client *loopclient.Client) {
 			if wd == "" {
 				return toolError(fmt.Errorf("working directory required"))
 			}
-			sess, err := client.CreateSession(ctx, loopclient.CreateSessionRequest{
+			sess, err := client.CreateSession(ctx, nuiclient.CreateSessionRequest{
 				AgentType:  agentType,
 				WorkingDir: wd,
 			})
@@ -125,7 +125,7 @@ func registerTools(server *mcp.Server, client *loopclient.Client) {
 			sessionID = sess.ID
 		}
 
-		started, err := client.StartRun(ctx, sessionID, loopclient.StartRunRequest{
+		started, err := client.StartRun(ctx, sessionID, nuiclient.StartRunRequest{
 			Message: stringArg(args, "message"),
 		})
 		if err != nil {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 func TestExpandSlashCommand_createAgent(t *testing.T) {

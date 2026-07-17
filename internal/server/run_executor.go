@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"loop/internal/agent"
-	"loop/internal/hitl"
-	"loop/internal/mentions"
-	"loop/internal/model"
-	"loop/internal/skills"
-	"loop/internal/store"
-	"loop/internal/viz"
+	"nui/internal/agent"
+	"nui/internal/hitl"
+	"nui/internal/mentions"
+	"nui/internal/model"
+	"nui/internal/skills"
+	"nui/internal/store"
+	"nui/internal/viz"
 )
 
 type resolvedRunAgent struct {
@@ -168,7 +168,7 @@ func executeRun(ctx context.Context, opts executeRunOptions) executeRunResult {
 	go func() {
 		defer close(events)
 		runReq := agent.RunRequest{
-			LoopSessionID:    opts.Session.ID,
+			NuiSessionID:    opts.Session.ID,
 			RunID:            opts.RunID,
 			WorkingDir:       workingDir,
 			Message:          resolved,

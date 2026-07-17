@@ -2,16 +2,16 @@
 """
 Minimal echo agent — Docker edition.
 
-Build the image, then create a Loop project with Agent Type → Docker.
-Loop launches and manages the container automatically.
+Build the image, then create a nui project with Agent Type → Docker.
+nui launches and manages the container automatically.
 
-    docker build -t loop-echo-agent .
+    docker build -t nui-echo-agent .
 """
 
-from loop_agent import LoopAgent
+from nui_agent import NuiAgent
 
 
-class EchoAgent(LoopAgent):
+class EchoAgent(NuiAgent):
     name = "echo-agent"
     version = "0.1.0"
 

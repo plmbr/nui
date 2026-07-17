@@ -1,9 +1,9 @@
 adl: "1.0"
 
 # Agent that delegates to a remote HTTP/SSE server.
-# Loop connects to the server at the configured host:port on project create
+# nui connects to the server at the configured host:port on project create
 # (GET /info reachability check) and calls POST /run for each message.
-# The remote process is not managed by Loop — you must start/stop it yourself.
+# The remote process is not managed by nui — you must start/stop it yourself.
 #
 # Typical use cases:
 #   - An agent running on a GPU server

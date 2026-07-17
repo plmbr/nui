@@ -58,7 +58,7 @@ export function ExtensionsTab({ onChanged }: Props) {
     return (
       <div className="customize-tab-content">
         <p className="text-sm text-muted-foreground">
-          No extensions installed. Add packages to <code className="text-xs">~/.loop/extensions/</code>.
+          No extensions installed. Add packages to <code className="text-xs">~/.nui/extensions/</code>.
         </p>
       </div>
     )
@@ -68,7 +68,7 @@ export function ExtensionsTab({ onChanged }: Props) {
     <div className="customize-tab-content space-y-4">
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-muted-foreground">
-          Installed extensions from <code className="text-xs">~/.loop/extensions/</code>
+          Installed extensions from <code className="text-xs">~/.nui/extensions/</code>
         </p>
         <Button variant="outline" size="sm" onClick={() => void load()}>
           <RefreshCw className="size-3.5" />

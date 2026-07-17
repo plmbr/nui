@@ -306,7 +306,7 @@ export function AgentForm({ form, options, hasWorkflowSteps, hasSubAgents, editi
                 id="docker-image"
                 value={form.dockerImage}
                 onChange={(e) => patch({ dockerImage: e.target.value })}
-                placeholder="loop-echo-agent"
+                placeholder="nui-echo-agent"
               />
             </div>
             <div className="space-y-1.5">
@@ -399,7 +399,7 @@ export function AgentForm({ form, options, hasWorkflowSteps, hasSubAgents, editi
           <Label>Working directory</Label>
           <p className="text-xs text-muted-foreground">
             When enabled, users choose a project directory when creating a session.
-            Otherwise Loop uses an isolated workspace that is removed when the session is deleted.
+            Otherwise nui uses an isolated workspace that is removed when the session is deleted.
           </p>
           <Select
             value={form.workingDirInput ? 'true' : 'false'}
@@ -426,7 +426,7 @@ export function AgentForm({ form, options, hasWorkflowSteps, hasSubAgents, editi
           <div className="space-y-1.5">
             <Label>Tool approval policy</Label>
             <p className="text-xs text-muted-foreground">
-              Controls which harness tools require Loop approval cards before running.
+              Controls which harness tools require nui approval cards before running.
             </p>
             <Select
               value={form.toolApprovalPolicy || 'unset'}
@@ -461,7 +461,7 @@ export function AgentForm({ form, options, hasWorkflowSteps, hasSubAgents, editi
           <div className="space-y-1.5">
             <Label>HITL mode</Label>
             <p className="text-xs text-muted-foreground">
-              Runtime human-in-the-loop prompts via Loop UI and MCP tools.
+              Runtime human-in-the-loop prompts via nui UI and MCP tools.
             </p>
             <Select
               value={form.hitlMode || 'unset'}
@@ -489,7 +489,7 @@ export function AgentForm({ form, options, hasWorkflowSteps, hasSubAgents, editi
           <div className="space-y-1.5">
             <FieldLabel htmlFor="tool-approval-tools" required>Tool list</FieldLabel>
             <p className="text-xs text-muted-foreground">
-              One tool name per line (e.g. Bash, Write, Read, mcp__loop-hitl__*).
+              One tool name per line (e.g. Bash, Write, Read, mcp__nui-hitl__*).
             </p>
             <Textarea
               id="tool-approval-tools"
@@ -704,7 +704,7 @@ export function AgentForm({ form, options, hasWorkflowSteps, hasSubAgents, editi
         <h3 className="text-sm font-semibold">Evals</h3>
         <p className="text-xs text-muted-foreground">
           Test cases for verifying agent behavior. Run with{' '}
-          <code className="font-mono">loop agent eval run -a …</code>.
+          <code className="font-mono">nui agent eval run -a …</code>.
         </p>
         {form.evals.length > 0 && (
           <ul className="space-y-3">

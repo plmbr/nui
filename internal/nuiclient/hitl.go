@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-package loopclient
+package nuiclient
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"loop/internal/hitl"
+	"nui/internal/hitl"
 )
 
 func (c *Client) CreateHITLRequest(ctx context.Context, in hitl.CreateInput) (*hitl.Request, error) {

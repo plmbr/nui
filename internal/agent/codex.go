@@ -16,7 +16,7 @@ var codexBinaryPaths = []string{
 }
 
 func findCodexBinary() string {
-	if p := os.Getenv("LOOP_CODEX_PATH"); p != "" {
+	if p := os.Getenv("NUI_CODEX_PATH"); p != "" {
 		return p
 	}
 	for _, p := range codexBinaryPaths {
@@ -37,7 +37,7 @@ func CLIAvailable(harnessType string) bool {
 		_, err := exec.LookPath("claude")
 		return err == nil
 	case "codex":
-		if p := os.Getenv("LOOP_CODEX_PATH"); p != "" {
+		if p := os.Getenv("NUI_CODEX_PATH"); p != "" {
 			if st, err := os.Stat(p); err == nil && !st.IsDir() {
 				return true
 			}

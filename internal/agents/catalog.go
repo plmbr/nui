@@ -9,14 +9,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"loop/internal/model"
-	"loop/internal/skills"
-	"loop/internal/store"
+	"nui/internal/model"
+	"nui/internal/skills"
+	"nui/internal/store"
 
 	"gopkg.in/yaml.v3"
 )
 
-// Install copies an ADL agent YAML from a local path or git URL into ~/.loop/agents/.
+// Install copies an ADL agent YAML from a local path or git URL into ~/.nui/agents/.
 // Returns the installed agent id.
 func Install(source string) (string, error) {
 	content, err := loadAgentYAML(source)
@@ -63,7 +63,7 @@ func Remove(idOrFile string) error {
 		}
 	}
 	if strings.HasPrefix(idOrFile, "ext:") {
-		return fmt.Errorf("cannot remove extension agent %q; use loop extension remove", idOrFile)
+		return fmt.Errorf("cannot remove extension agent %q; use nui extension remove", idOrFile)
 	}
 
 	dir, err := store.AgentsDir()
@@ -128,7 +128,7 @@ func loadAgentYAMLFromGit(source string) ([]byte, error) {
 			return nil, fmt.Errorf("unsupported git url %q", source)
 		}
 	}
-	tmp, err := os.MkdirTemp("", "loop-agent-clone-*")
+	tmp, err := os.MkdirTemp("", "nui-agent-clone-*")
 	if err != nil {
 		return nil, err
 	}

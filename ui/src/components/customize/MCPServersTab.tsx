@@ -59,7 +59,7 @@ function statusLabel(status: MCPOAuthStatus | undefined): string {
 }
 
 function oauthSuccessMessage(data: unknown): boolean {
-  return typeof data === 'object' && data !== null && (data as { type?: string }).type === 'loop-mcp-oauth-success'
+  return typeof data === 'object' && data !== null && (data as { type?: string }).type === 'nui-mcp-oauth-success'
 }
 
 async function pollOAuthFlow(
@@ -141,7 +141,7 @@ export function MCPServersTab() {
     }
     let channel: BroadcastChannel | null = null
     try {
-      channel = new BroadcastChannel('loop-mcp-oauth')
+      channel = new BroadcastChannel('nui-mcp-oauth')
       channel.onmessage = (event) => {
         if (oauthSuccessMessage(event.data)) {
           onOAuthSuccess()
@@ -221,7 +221,7 @@ export function MCPServersTab() {
     <div className="customize-tab-content space-y-4">
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">
-          User MCP servers stored in <code className="text-xs">~/.loop/mcp-servers.json</code>.
+          User MCP servers stored in <code className="text-xs">~/.nui/mcp-servers.json</code>.
           Remote servers can use OAuth — register this redirect URI with your provider:
         </p>
         {redirectUri && (

@@ -1,10 +1,10 @@
 # TCP JSON-RPC Harness Examples — TypeScript (Reference)
 
-These examples demonstrate the TCP JSON-RPC 2.0 protocol for custom Loop harnesses. **They are not wired to `Manager.GetAgent()` today.** See [harness-design.md](../../harness-design.md) for the production architecture.
+These examples demonstrate the TCP JSON-RPC 2.0 protocol for custom nui harnesses. **They are not wired to `Manager.GetAgent()` today.** See [harness-design.md](../../harness-design.md) for the production architecture.
 
 ## Files
 
-- `loop_agent.ts` — harness framework base class
+- `nui_agent.ts` — harness framework base class
 - `echo_agent.ts` — minimal echo harness
 - `client.ts` — sample TCP client
 
@@ -27,12 +27,12 @@ npx ts-node client.ts
 
 ## Framework
 
-Subclass `LoopAgent` and override `run()`:
+Subclass `NuiAgent` and override `run()`:
 
 ```typescript
-import { LoopAgent } from './loop_agent'
+import { NuiAgent } from './nui_agent'
 
-class MyAgent extends LoopAgent {
+class MyAgent extends NuiAgent {
   name = 'my-agent'
   version = '0.1.0'
 
@@ -53,7 +53,7 @@ new MyAgent().serve()
 
 ### Connection file
 
-`serve()` writes `~/.loop/connections/<name>.json`:
+`serve()` writes `~/.nui/connections/<name>.json`:
 
 ```json
 {"host": "127.0.0.1", "port": 52341, "session_id": "...", "pid": 9876}

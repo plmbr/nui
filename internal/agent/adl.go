@@ -9,10 +9,10 @@ import (
 	"strings"
 	"sync"
 
-	"loop/internal/extensions"
-	"loop/internal/hitl"
-	"loop/internal/mcpoauth"
-	"loop/internal/model"
+	"nui/internal/extensions"
+	"nui/internal/hitl"
+	"nui/internal/mcpoauth"
+	"nui/internal/model"
 )
 
 // ADLAgent executes an ADLDefinition by running its steps in topological order.
@@ -87,7 +87,7 @@ func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event)
 		msg := buildStepMessage(req.Message, step, stepOutputs)
 
 		stepReq := RunRequest{
-			LoopSessionID:    a.projectID,
+			NuiSessionID:    a.projectID,
 			RunID:            req.RunID,
 			WorkingDir:       req.WorkingDir,
 			Message:          msg,
@@ -142,7 +142,7 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 	if req.Ephemeral {
 		req.Env = mergeADLEnv(a.def, harness)
 	} else {
-		req.Env = mergeLoopHarnessEnv(mergeADLEnv(a.def, harness), loopSessionIDForRun(req, a.projectID), req.RunID, defaultLoopAPIURL())
+		req.Env = mergenuiHarnessEnv(mergeADLEnv(a.def, harness), nuiSessionIDForRun(req, a.projectID), req.RunID, defaultnuiAPIURL())
 	}
 	if req.HarnessPermissions == "" {
 		req.HarnessPermissions = hitl.EffectivePermissions(a.def, req.AgentConfig)
@@ -281,7 +281,7 @@ func (a *ADLAgent) runHITLStep(ctx context.Context, req RunRequest, step model.A
 			payload[key] = text
 		}
 	}
-	channels := []string{"loop-ui"}
+	channels := []string{"nui-ui"}
 	if len(step.HITL.Channels) > 0 {
 		channels = append([]string{}, step.HITL.Channels...)
 	}

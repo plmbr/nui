@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
 WORKDIR /app
-COPY loop_agent.py echo_agent.py ./
+COPY nui_agent.py echo_agent.py ./
 
 EXPOSE 9090
 

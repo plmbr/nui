@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Claude Code agent for Loop Docker container.
+"""Claude Code agent for nui Docker container.
 
-Same logic as harness-sdk/claude_code.py but speaks HTTP/SSE (HttpLoopAgent)
+Same logic as harness-sdk/claude_code.py but speaks HTTP/SSE (HttpNuiAgent)
 instead of TCP JSON-RPC, and skips bwrap — the container itself is the sandbox.
 Auth credentials are provided via the ~/.claude volume mount.
 """
@@ -12,10 +12,10 @@ import threading
 
 sys.path.insert(0, "/app")
 from claude_session import PersistentClaudeSession, run_ephemeral_claude_turn
-from http_loop_agent import HttpLoopAgent
+from http_nui_agent import HttpNuiAgent
 
 
-class ClaudeCodeAgent(HttpLoopAgent):
+class ClaudeCodeAgent(HttpNuiAgent):
     name = "claude-code"
     version = "0.1.0"
 

@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"loop/internal/llm"
-	"loop/internal/model"
+	"nui/internal/llm"
+	"nui/internal/model"
 )
 
 func resolveAPIKey(profile APIProviderProfile, env map[string]string) (string, error) {

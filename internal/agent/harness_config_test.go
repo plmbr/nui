@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"loop/internal/extensions"
-	"loop/internal/hitl"
-	"loop/internal/model"
+	"nui/internal/extensions"
+	"nui/internal/hitl"
+	"nui/internal/model"
 )
 
 func TestProvisionClaudeHarnessConfig(t *testing.T) {
@@ -536,11 +536,11 @@ func TestExpandHarnessDepsCustomMCP(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	proxyPath := filepath.Join(repoRoot, "harness-sdk", "loop_mcp_tools.py")
+	proxyPath := filepath.Join(repoRoot, "harness-sdk", "nui_mcp_tools.py")
 	if _, err := os.Stat(proxyPath); err != nil {
 		t.Skip("harness-sdk not found")
 	}
-	t.Setenv("LOOP_MCP_TOOLS_PATH", proxyPath)
+	t.Setenv("NUI_MCP_TOOLS_PATH", proxyPath)
 
 	home := t.TempDir()
 	t.Setenv("HOME", home)
@@ -570,14 +570,14 @@ func TestExpandHarnessDepsCustomMCP(t *testing.T) {
 	if expanded.MCPServers[0].Name != "ext-corp-pack-corp-tools" || expanded.MCPServers[0].Type != "stdio" {
 		t.Fatalf("server: %+v", expanded.MCPServers[0])
 	}
-	if expanded.MCPServers[1].Name != "loop-viz" {
-		t.Fatalf("loop-viz server: %+v", expanded.MCPServers[1])
+	if expanded.MCPServers[1].Name != "nui-viz" {
+		t.Fatalf("nui-viz server: %+v", expanded.MCPServers[1])
 	}
-	if expanded.MCPServers[2].Name != loopAgentMCPName {
-		t.Fatalf("loop-agent server: %+v", expanded.MCPServers[2])
+	if expanded.MCPServers[2].Name != nuiAgentMCPName {
+		t.Fatalf("nui-agent server: %+v", expanded.MCPServers[2])
 	}
-	if expanded.MCPServers[3].Name != loopHitlMCPName {
-		t.Fatalf("loop-hitl server: %+v", expanded.MCPServers[3])
+	if expanded.MCPServers[3].Name != nuiHitlMCPName {
+		t.Fatalf("nui-hitl server: %+v", expanded.MCPServers[3])
 	}
 
 	configDir, err := ProvisionHarnessConfig(sessionID, "claude-code", expanded)

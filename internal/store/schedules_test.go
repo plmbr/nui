@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"loop/internal/model"
+	"nui/internal/model"
 )
 
 func TestSchedulesLoadSaveRoundTrip(t *testing.T) {
@@ -33,7 +33,7 @@ func TestSchedulesLoadSaveRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	path := filepath.Join(dir, ".loop", "schedules.json")
+	path := filepath.Join(dir, ".nui", "schedules.json")
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("schedules.json not written: %v", err)
 	}
