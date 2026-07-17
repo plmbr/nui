@@ -21,6 +21,9 @@ jobs:
           go-version: "1.26.x"
           cache-dependency-path: go.sum
 
+      - name: Ensure ui/dist exists for embed
+        run: ./scripts/ensure-ui-dist.sh
+
       - name: Run Go tests
         run: go test . ./cmd/... ./internal/...
 

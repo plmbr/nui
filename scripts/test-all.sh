@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "==> Go tests"
 # Avoid scanning ui/node_modules (contains nested Go packages) and Playwright artifacts.
+"$ROOT/scripts/ensure-ui-dist.sh"
 (cd "$ROOT" && go test . ./cmd/... ./internal/...)
 
 echo "==> Binary size check"
