@@ -133,7 +133,7 @@ func registerRunFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&runSessionID, "session-id", "", "Existing session id (skips session create)")
 	cmd.Flags().BoolVar(&runWait, "wait", true, "Wait for the run to finish and stream text to stdout")
 	cmd.Flags().Bool("no-wait", false, "Return immediately after starting the run (same as --wait=false)")
-	cmd.Flags().BoolVar(&runSpawn, "spawn", false, "Start nui ui in the background if the server is unreachable")
+	cmd.Flags().BoolVar(&runSpawn, "spawn", false, "Start nui server in the background if the server is unreachable")
 }
 
 func init() {

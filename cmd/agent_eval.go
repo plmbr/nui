@@ -110,7 +110,7 @@ func init() {
 	agentEvalRunCmd.Flags().StringVarP(&evalAgentType, "agent-type", "a", "", "ADL agent id")
 	agentEvalRunCmd.Flags().StringVarP(&evalWorkingDir, "working-dir", "w", "", "Default working directory for eval cases")
 	agentEvalRunCmd.Flags().StringVar(&evalURL, "url", "", "nui server base URL (default NUI_URL or http://127.0.0.1:8080)")
-	agentEvalRunCmd.Flags().BoolVar(&evalSpawn, "spawn", false, "Start nui ui in the background if the server is unreachable")
+	agentEvalRunCmd.Flags().BoolVar(&evalSpawn, "spawn", false, "Start nui server in the background if the server is unreachable")
 	agentEvalRunCmd.Flags().BoolVar(&evalJSON, "json", false, "Output machine-readable JSON results")
 	agentEvalRunCmd.Flags().IntVar(&evalParallel, "parallel", 1, "Number of eval cases to run concurrently")
 	agentEvalRunCmd.Flags().StringArrayVar(&evalCaseNames, "case", nil, "Run only evals with this name (repeatable)")

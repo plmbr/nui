@@ -36,6 +36,6 @@ var mcpCmd = &cobra.Command{
 
 func init() {
 	mcpCmd.Flags().StringVar(&mcpURL, "url", "", "nui server base URL (default NUI_URL or http://127.0.0.1:8080)")
-	mcpCmd.Flags().BoolVar(&mcpSpawn, "spawn", false, "Start nui ui in the background if the server is unreachable")
+	mcpCmd.Flags().BoolVar(&mcpSpawn, "spawn", false, "Start nui server in the background if the server is unreachable")
 	rootCmd.AddCommand(mcpCmd)
 }

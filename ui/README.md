@@ -11,7 +11,7 @@ npm run build   # output to dist/ (embedded by Go binary)
 npm run lint
 ```
 
-Run the Go server separately (`go run . ui` from repo root). Vite proxies API calls so HMR works without rebuilding the Go binary.
+Run the Go server separately (`go run . server` from repo root). Vite proxies API calls so HMR works without rebuilding the Go binary.
 
 ## Key files
 

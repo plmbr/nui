@@ -9,9 +9,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 go build ./...          # compile
 go test . ./cmd/... ./internal/...  # run tests (avoids ui/node_modules)
 ./scripts/test-all.sh               # Go + Vitest + Playwright E2E
-go run . ui             # build + run server on :8080
-go run . ui --port 3000 # custom port (use this for development)
-go run . ui -a "Claude Code" -m "Review README" -w . --open --hide-input
+go run . server             # build + run server on :8080
+go run . server --port 3000 # custom port (use this for development)
+go run . server -a "Claude Code" -m "Review README" -w . --open --hide-input
 ```
 
 ### Frontend (run from `ui/`)
@@ -24,7 +24,7 @@ npm run lint    # ESLint
 
 ### Full production build
 ```sh
-cd ui && npm run build && cd .. && go build -o nui_bin . && ./nui_bin ui
+cd ui && npm run build && cd .. && go build -o nui_bin . && ./nui_bin server
 ```
 
 > `ui/dist` must exist before `go build` — it is embedded into the binary at compile time via `//go:embed ui/dist`.
@@ -61,7 +61,7 @@ In development, Vite (`:5173`) proxies `/api` to the Go server.
 
 | Package | Role |
 |---|---|
-| `cmd/` | Cobra CLI (`nui ui`, `nui extension add|remove`, `nui skills add|list|remove`) |
+| `cmd/` | Cobra CLI (`nui server`, `nui extension add|remove`, `nui skills add|list|remove`) |
 | `internal/server/` | HTTP mux, REST handlers, AG-UI streaming (`agui.go`), MCP tool UI (`mcp_manager.go`) |
 | `internal/model/` | `Session`, `ChatMessage`, ADL structs |
 | `internal/store/` | Persistence: `data.json`, `settings.json`, ADL YAML in `agents/`, user plugins in `~/.nui/extensions/`, agent history loaders |

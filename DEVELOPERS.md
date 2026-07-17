@@ -60,7 +60,7 @@ flowchart TB
 ```
 nui/
 ├── main.go, embed.go          # entrypoint; embeds ui/dist
-├── cmd/                       # cobra CLI (`nui ui`, `nui extension`, `nui skills`)
+├── cmd/                       # cobra CLI (`nui server`, `nui extension`, `nui skills`)
 ├── internal/
 │   ├── model/                 # Session, ChatMessage, ADL structs
 │   ├── agent/                 # Agent interface, harness implementations, ADL executor
@@ -87,14 +87,14 @@ Terminal 2 — Go server (`ui/dist` must exist before `go build`):
 
 ```sh
 cd ui && npm run build && cd ..
-go run . ui              # default :8080
-go run . ui --port 3000  # custom port
+go run . server              # default :8080
+go run . server --port 3000  # custom port
 ```
 
 Production build:
 
 ```sh
-cd ui && npm run build && cd .. && go build -o nui_bin . && ./nui_bin ui
+cd ui && npm run build && cd .. && go build -o nui_bin . && ./nui_bin server
 ```
 
 ## API endpoints

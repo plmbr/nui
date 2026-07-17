@@ -38,4 +38,4 @@ if [[ "${E2E_AGENT:-}" == "ollama" ]]; then
 fi
 
 cd "$ROOT"
-exec go run . ui --port "$PORT" --no-browser
+exec go run . server --port "$PORT" --no-browser

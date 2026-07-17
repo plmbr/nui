@@ -60,7 +60,7 @@ flowchart TB
 
 4. **Docker/remote via custom ADL.** There is no built-in "Docker" or "Remote" picker in the UI. Users copy an ADL template from `dev/harness-examples/` into `~/.nui/agents/` (e.g. `docker-echo.yaml`), then select it under **Installed agents**. nui validates the connector on session create.
 
-5. **CLI launch + UI preferences.** `nui ui -a <agent-id> --prompt --open` starts the HTTP server first, then creates a session via the same logic as `POST /api/launch` (shared with the warm-attach path when the server is already running). Session creation saves `lastAgentType` / `lastSessionId` to `settings.json` and exposes the prompt once via `GET /api/bootstrap`. `nui ui --open` (without `-a`) also creates a fresh session with the default agent. With `--open`, nui opens the browser to `/sessions/<id>` after the session is ready. If no sessions exist at startup and no launch flags were passed, nui auto-creates one with the default agent when the UI loads. Sidebar state and last-selected session/agent are also persisted in `settings.json`.
+5. **CLI launch + UI preferences.** `nui server -a <agent-id> --prompt --open` starts the HTTP server first, then creates a session via the same logic as `POST /api/launch` (shared with the warm-attach path when the server is already running). Session creation saves `lastAgentType` / `lastSessionId` to `settings.json` and exposes the prompt once via `GET /api/bootstrap`. `nui server --open` (without `-a`) also creates a fresh session with the default agent. With `--open`, nui opens the browser to `/sessions/<id>` after the session is ready. If no sessions exist at startup and no launch flags were passed, nui auto-creates one with the default agent when the UI loads. Sidebar state and last-selected session/agent are also persisted in `settings.json`.
 
 ---
 
@@ -224,7 +224,7 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 - [x] AG-UI chat streaming with tool calls and images
 - [x] HTTP/SSE docker + remote connectors
 - [x] Builtin sandbox Docker images (`docker/`, port 8090)
-- [x] CLI session launch (`nui ui --agent-type --prompt --working-dir`)
+- [x] CLI session launch (`nui server --agent-type --prompt --working-dir`)
 - [x] UI preferences (`lastAgentType`, `lastSessionId`, `sidebarOpen`)
 - [x] Bubblewrap sandbox for all four CLI harnesses (Linux)
 - [x] User ADL in `~/.nui/agents/*.yaml`

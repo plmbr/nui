@@ -38,10 +38,10 @@ xattr -d com.apple.quarantine ~/.local/bin/nui
 
 ## Quick start
 
-Start the web UI:
+Start the server:
 
 ```sh
-nui ui
+nui server
 ```
 
 Open [http://localhost:8080](http://localhost:8080), pick an agent, and start chatting. nui creates a session automatically on first launch.
@@ -49,7 +49,7 @@ Open [http://localhost:8080](http://localhost:8080), pick an agent, and start ch
 Launch with a specific agent and prompt:
 
 ```sh
-nui ui --agent-type "Claude Code" --prompt "Review the README" --open
+nui server --agent-type "Claude Code" --prompt "Review the README" --open
 ```
 
 ## Prerequisites
@@ -80,11 +80,11 @@ Preferences (theme, last agent, sidebar state) are saved to `~/.nui/settings.jso
 ## CLI reference
 
 ```
-nui ui              # start web server on :8080
-nui ui --port 3000  # custom port
-nui ui --open       # open browser with a new session
+nui server              # start web server on :8080
+nui server --port 3000  # custom port
+nui server --open       # open browser with a new session
 nui run -a claude-code -m "Review README" --wait  # headless run
-nui agent list      # list agent types (requires nui ui)
+nui agent list      # list agent types (requires nui server)
 nui agent add ./my-agent.yaml  # install custom agent
 nui extension add   # install extension from git URL, directory, or zip
 nui skills add|list|remove  # manage skills catalog
@@ -112,7 +112,7 @@ nui run -m "Review README" -w .
 nui run -a claude-code -m "Review README" -w . --wait
 ```
 
-Set `NUI_URL` or pass `--url` if the server is not on `http://127.0.0.1:8080`. Use `--spawn` to start `nui ui` in the background if it is not already running.
+Set `NUI_URL` or pass `--url` if the server is not on `http://127.0.0.1:8080`. Use `--spawn` to start `nui server` in the background if it is not already running.
 
 ## Agents
 
