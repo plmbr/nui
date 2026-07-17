@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build release binaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package.json
+
+      - name: Install UI dependencies
+        working-directory: ui
+        run: npm install
+
+      - name: Validate VERSION matches release tag
+        run: |
+          tag="${{ github.event.release.tag_name }}"
+          version="${tag#v}"
+          file_version="$(tr -d '[:space:]' < VERSION)"
+          if [ "$file_version" != "$version" ]; then
+            echo "VERSION file ($file_version) does not match release tag ($tag)" >&2
+            exit 1
+          fi
+
+      - name: Build release archives
+        run: ./scripts/build-release.sh "${{ github.event.release.tag_name }}"
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: |
+            dist/nui_${{ github.event.release.tag_name }}_linux_amd64.tar.gz
+            dist/nui_${{ github.event.release.tag_name }}_linux_arm64.tar.gz
+            dist/nui_${{ github.event.release.tag_name }}_darwin_amd64.tar.gz
+            dist/nui_${{ github.event.release.tag_name }}_darwin_arm64.tar.gz
+            dist/checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

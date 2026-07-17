@@ -1,6 +1,7 @@
 # Go
 nui_bin
 nui
+dist/
 *.exe
 *.test
 *.out

@@ -49,6 +49,28 @@ flowchart TB
 
 **Session flow:** every session has an `agentType` that resolves to an ADL definition (built-in or `~/.nui/agents/*.yaml`). `ADLAgent` runs the harness — single-step for simple agents, multi-step DAG for workflows. The UI streams chat over the [AG-UI protocol](https://github.com/ag-ui-protocol/ag-ui) at `POST /api/sessions/:id/ag-ui`, not the legacy `/chat` endpoint.
 
+## Install
+
+**Linux and macOS** (installs to `~/.local/bin`):
+
+```sh
+curl -fsSL https://nui.plmbr.dev/install.sh | sh
+```
+
+Install a specific version:
+
+```sh
+NUI_VERSION=v0.1.0 curl -fsSL https://nui.plmbr.dev/install.sh | sh
+```
+
+**Manual install:** download the archive for your platform from [GitHub Releases](https://github.com/plmbr/nui/releases), extract the `nui` binary, and place it on your `PATH`.
+
+**macOS note:** release binaries are currently unsigned. The install script removes the quarantine attribute when possible. If macOS still blocks the binary, allow it under **System Settings → Privacy & Security**, or run:
+
+```sh
+xattr -d com.apple.quarantine ~/.local/bin/nui
+```
+
 ## Prerequisites
 
 - Go 1.22+
@@ -286,3 +308,45 @@ For `claude-code`, `pi`, `codex`, and `opencode` (set in ADL `harness.sandbox`):
 Custom ADL agents with `harness.type: docker`, `devcontainer`, or `remote` use the HTTP/SSE protocol. nui validates connector configuration on session create; containers and remote connections start on the first message. See [harness examples](dev/harness-examples/).
 
 **Port note:** builtin sandbox images in `docker/` listen on **8090**; custom harness examples use **9090** (configured via ADL `containerPort`).
+
+## Contributing
+
+CI runs on every pull request and push to `main`:
+
+- Go tests (`go test . ./cmd/... ./internal/...`)
+- UI lint, build, and Vitest unit tests
+- Playwright end-to-end tests
+- Binary size budget check
+
+Run the full suite locally:
+
+```sh
+./scripts/test-all.sh
+```
+
+## Releasing
+
+1. Bump [`VERSION`](VERSION) on `main` to match the upcoming tag (without the `v` prefix).
+2. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`
+3. Create a GitHub Release for the tag (`gh release create v0.2.0 --generate-notes`).
+4. The release workflow builds Linux and macOS binaries (amd64 + arm64) and attaches them to the release.
+
+Build release archives locally:
+
+```sh
+./scripts/build-release.sh v0.2.0
+```
+
+Artifacts land in `dist/` as `nui_<tag>_<os>_<arch>.tar.gz` plus `checksums.txt`.
+
+### Serving the install script
+
+The installer lives at [`install/install.sh`](install/install.sh). To serve it at `https://nui.plmbr.dev/install.sh`:
+
+1. Enable **GitHub Pages** for this repository (source: `main` branch, `/install` folder).
+2. Add a DNS `CNAME` record: `nui.plmbr.dev` → `<user>.github.io` (the [`install/CNAME`](install/CNAME) file is already in the repo).
+3. Verify: `curl -fsSL https://nui.plmbr.dev/install.sh | head`
+
+### Future macOS codesigning
+
+When an Apple Developer ID is available, add a `sign-macos` job to the release workflow with these GitHub secrets: `APPLE_CERTIFICATE_P12`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID`. Sign with hardened runtime, notarize via `notarytool`, and staple before uploading darwin assets.

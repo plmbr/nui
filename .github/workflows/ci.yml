@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: Go tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: go.sum
+
+      - name: Run Go tests
+        run: go test . ./cmd/... ./internal/...
+
+  ui:
+    name: UI lint, build, and unit tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Upload UI dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-dist
+          path: ui/dist
+          if-no-files-found: error
+
+  binary-size:
+    name: Binary size check
+    runs-on: ubuntu-latest
+    needs: ui
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: go.sum
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ui-dist
+          path: ui/dist
+
+      - name: Check binary size
+        run: ./scripts/check-binary-size.sh
+
+  e2e:
+    name: Playwright E2E
+    runs-on: ubuntu-latest
+    needs: ui
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache-dependency-path: go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ui/package.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ui-dist
+          path: ui/dist
+
+      - name: Install UI dependencies
+        working-directory: ui
+        run: npm install
+
+      - name: Install Playwright Chromium
+        working-directory: ui
+        run: npx playwright install chromium --with-deps
+
+      - name: Playwright E2E (echo agent)
+        working-directory: ui
+        env:
+          CI: "true"
+          E2E_AGENT: echo
+          NUI_E2E_SKIP_BUILD: "1"
+        run: npm run test:e2e -- --grep-invert "ollama api"
+
+      - name: Playwright E2E (ollama api mock)
+        working-directory: ui
+        env:
+          CI: "true"
+          E2E_AGENT: ollama
+          NUI_E2E_SKIP_BUILD: "1"
+        run: npm run test:e2e -- e2e/ollama-api.spec.ts
