@@ -1,14 +1,19 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { test, expect } from '@playwright/test'
-import { createSessionWithAgent, openNewSession, waitForAppReady } from './helpers'
+import {
+  createSessionWithAgent,
+  newSessionPanel,
+  openNewSession,
+  showBuiltinAgentsInNewSession,
+  waitForAppReady,
+} from './helpers'
 
 test('new session wizard opens and lists agents', async ({ page }) => {
   await waitForAppReady(page)
   await openNewSession(page)
-  const panel = page.locator('.customize-panel').filter({
-    has: page.getByRole('heading', { name: 'New Session' }),
-  })
+  await showBuiltinAgentsInNewSession(page)
+  const panel = newSessionPanel(page)
   await expect(panel.getByRole('button', { name: 'Claude Code', exact: true })).toBeVisible()
 })
 

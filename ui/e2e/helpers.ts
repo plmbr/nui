@@ -18,8 +18,32 @@ export function newSessionPanel(page: Page) {
   })
 }
 
+const AGENT_CATEGORY_TABS = [/Built-in agents/i, /Installed agents/i] as const
+
+async function switchAgentCategoryTab(
+  panel: ReturnType<typeof newSessionPanel>,
+  tabName: (typeof AGENT_CATEGORY_TABS)[number],
+) {
+  const tab = panel.getByRole('tab', { name: tabName })
+  if (await tab.isVisible()) {
+    await tab.click()
+  }
+}
+
+export async function showBuiltinAgentsInNewSession(page: Page) {
+  await switchAgentCategoryTab(newSessionPanel(page), /Built-in agents/i)
+}
+
 export async function selectAgentInNewSession(page: Page, agentLabel: string | RegExp) {
-  await newSessionPanel(page).getByRole('button', { name: agentLabel }).click()
+  const panel = newSessionPanel(page)
+  const agentButton = panel.getByRole('button', { name: agentLabel })
+  if (!(await agentButton.isVisible())) {
+    for (const tabName of AGENT_CATEGORY_TABS) {
+      await switchAgentCategoryTab(panel, tabName)
+      if (await agentButton.isVisible()) break
+    }
+  }
+  await agentButton.click()
 }
 
 export async function openCustomize(page: Page) {
