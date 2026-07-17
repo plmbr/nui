@@ -6,10 +6,10 @@ nui is a self-hosted UI for interactive AI agent sessions. A Go backend embeds a
 
 ## Documentation
 
-- [Product & technical spec](dev/dev.md) — architecture, ADL schema, roadmap
+- [Product & technical spec](dev/dev.md) — architecture, roadmap
+- [ADL](../ADL/) — Agent Definition Language schema and examples
 - [Harness protocols](dev/harness-design.md) — HTTP/SSE and JSON-RPC for custom harnesses
 - [Extension API](dev/extension-api.md) — extension manifest, HITL, deployers
-- [ADL examples](dev/adl/examples/) — sample agent/workflow YAML files
 
 ## Architecture
 
@@ -73,8 +73,7 @@ nui/
 ├── dev/
 │   ├── dev.md                 # product spec
 │   ├── harness-design.md      # custom harness protocols
-│   ├── harness-examples/      # runnable docker/remote/TCP examples
-│   └── adl/examples/          # sample ADL YAML
+│   └── harness-examples/      # runnable docker/remote/TCP examples
 └── ui/                        # Vite + React frontend
 ```
 
@@ -268,7 +267,7 @@ Four CLI harnesses, selectable in the New Session dialog under **Built-in agents
 
 ### Installed agents
 
-ADL YAML from `~/.nui/agents/*.yaml`, extensions, and other non-built-in agent types. Select them under **Installed agents** in the New Session dialog. Example templates for `docker`, `devcontainer`, and `remote` harness types live under [`dev/harness-examples/`](dev/harness-examples/) and [`dev/adl/examples/`](dev/adl/examples/).
+ADL YAML from `~/.nui/agents/*.yaml`, extensions, and other non-built-in agent types. Select them under **Installed agents** in the New Session dialog. Example templates for `docker`, `devcontainer`, and `remote` harness types live under [`dev/harness-examples/`](dev/harness-examples/); general ADL samples live in the [`ADL`](../ADL/examples/) repository.
 
 Use custom ADL for `docker`, `devcontainer`, and `remote` harness types, sandbox variants (`bubblewrap`, `docker`), and multi-step workflows.
 

@@ -28,7 +28,7 @@ var agentAddCmd = &cobra.Command{
 
 Local file:
   nui agent add ./my-agent.yaml
-  nui agent add dev/adl/examples/17-auto-scheduled-agent.yaml
+  nui agent add ../ADL/examples/17-auto-scheduled-agent.yaml
 
 GitHub URL (tree or blob link to an agent YAML file):
   nui agent add https://github.com/example/repo/blob/main/agents/watchdog.yaml
