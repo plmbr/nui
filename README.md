@@ -2,8 +2,6 @@
 
 nui is a self-hosted UI for interactive AI agent sessions. A Go backend embeds a React frontend and runs agent harnesses locally, in Docker, or over the network.
 
-<img src="media/nui-logo.png" alt="nui Logo" width="400">
-
 ## Documentation
 
 - [Product & technical spec](dev/dev.md) — architecture, ADL schema, roadmap
