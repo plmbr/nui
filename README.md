@@ -30,11 +30,7 @@ $env:NUI_VERSION = "v0.1.0"; irm https://nui.plmbr.dev/install.ps1 | iex
 
 **Manual install:** download the archive for your platform from [GitHub Releases](https://github.com/plmbr/nui/releases), extract the `nui` binary (or `nui.exe` on Windows), and place it on your `PATH`.
 
-**macOS note:** release binaries are currently unsigned. The install script removes the quarantine attribute when possible. If macOS still blocks the binary, allow it under **System Settings → Privacy & Security**, or run:
-
-```sh
-xattr -d com.apple.quarantine ~/.local/bin/nui
-```
+**macOS note:** release binaries are currently unsigned. The install script strips the download quarantine attribute automatically. If you install manually, run `xattr -d com.apple.quarantine /path/to/nui`. If macOS still blocks the binary, allow it under **System Settings → Privacy & Security**.
 
 ## Quick start
 

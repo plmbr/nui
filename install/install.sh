@@ -108,6 +108,29 @@ path_contains_dir() {
   esac
 }
 
+# macOS marks curl downloads with com.apple.quarantine; extracted binaries inherit it.
+remove_macos_quarantine() {
+  [ "$platform_os" = "darwin" ] || return 0
+  command -v xattr >/dev/null 2>&1 || return 0
+  for path in "$@"; do
+    [ -e "$path" ] || continue
+    xattr -d com.apple.quarantine "$path" 2>/dev/null || true
+  done
+}
+
+install_binary() {
+  src="$1"
+  dest="$2"
+  if [ "$platform_os" = "darwin" ]; then
+    remove_macos_quarantine "$src"
+    cp -X "$src" "$dest"
+    chmod 755 "$dest"
+    remove_macos_quarantine "$dest"
+  else
+    install -m 755 "$src" "$dest"
+  fi
+}
+
 main() {
   need_cmd tar
   need_cmd mkdir
@@ -127,16 +150,13 @@ main() {
   download_file "$checksums_url" "$tmpdir/checksums.txt"
   download_file "$archive_url" "$tmpdir/${archive_name}"
   verify_checksum "$archive_name" "$tmpdir/${archive_name}" "$tmpdir/checksums.txt"
+  remove_macos_quarantine "$tmpdir/${archive_name}"
 
   tar -xzf "$tmpdir/${archive_name}" -C "$tmpdir"
   [ -f "$tmpdir/${BINARY_NAME}" ] || err "archive did not contain ${BINARY_NAME} binary"
 
   mkdir -p "$INSTALL_DIR"
-  install -m 755 "$tmpdir/${BINARY_NAME}" "$INSTALL_DIR/${BINARY_NAME}"
-
-  if [ "$platform_os" = "darwin" ] && command -v xattr >/dev/null 2>&1; then
-    xattr -d com.apple.quarantine "$INSTALL_DIR/${BINARY_NAME}" 2>/dev/null || true
-  fi
+  install_binary "$tmpdir/${BINARY_NAME}" "$INSTALL_DIR/${BINARY_NAME}"
 
   say "Installed ${BINARY_NAME} to ${INSTALL_DIR}/${BINARY_NAME}"
 
