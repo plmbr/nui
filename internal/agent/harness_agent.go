@@ -12,7 +12,7 @@ import (
 
 const nuiAgentMCPName = "nui-agent"
 
-func loopAgentMCPServer(agentID string) (model.ADLMCPServer, error) {
+func nuiAgentMCPServer(agentID string) (model.ADLMCPServer, error) {
 	exe, err := nuiExecutable()
 	if err != nil {
 		return model.ADLMCPServer{}, err
@@ -46,7 +46,7 @@ func appendNuiAgentMCP(servers []model.ADLMCPServer, agentID string) ([]model.AD
 	if hasNuiAgentMCP(servers) {
 		return servers, nil
 	}
-	srv, err := loopAgentMCPServer(agentID)
+	srv, err := nuiAgentMCPServer(agentID)
 	if err != nil {
 		return servers, err
 	}

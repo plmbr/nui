@@ -9,7 +9,7 @@ import (
 	"nui/internal/viz"
 )
 
-func loopVizMCPServer() (model.ADLMCPServer, error) {
+func nuiVizMCPServer() (model.ADLMCPServer, error) {
 	exe, err := nuiExecutable()
 	if err != nil {
 		return model.ADLMCPServer{}, err
@@ -41,7 +41,7 @@ func appendNuiVizMCP(servers []model.ADLMCPServer) ([]model.ADLMCPServer, error)
 	if hasNuiVizMCP(servers) {
 		return servers, nil
 	}
-	srv, err := loopVizMCPServer()
+	srv, err := nuiVizMCPServer()
 	if err != nil {
 		return servers, err
 	}

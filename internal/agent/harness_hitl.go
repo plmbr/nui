@@ -36,7 +36,7 @@ func nuiExecutable() (string, error) {
 	return exe, nil
 }
 
-func loopHitlMCPServer(sessionID, apiURL string) (model.ADLMCPServer, error) {
+func nuiHitlMCPServer(sessionID, apiURL string) (model.ADLMCPServer, error) {
 	exe, err := nuiExecutable()
 	if err != nil {
 		return model.ADLMCPServer{}, err
@@ -70,14 +70,14 @@ func appendNuiHitlMCP(servers []model.ADLMCPServer, sessionID, apiURL string) ([
 			return servers, nil
 		}
 	}
-	srv, err := loopHitlMCPServer(sessionID, apiURL)
+	srv, err := nuiHitlMCPServer(sessionID, apiURL)
 	if err != nil {
 		return servers, err
 	}
 	return append(servers, srv), nil
 }
 
-func loopSessionIDForRun(req RunRequest, projectID string) string {
+func nuiSessionIDForRun(req RunRequest, projectID string) string {
 	if req.NuiSessionID != "" {
 		return req.NuiSessionID
 	}

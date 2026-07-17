@@ -100,7 +100,7 @@ func bootstrapMCPLoad(m *MCPManager) error {
 	return m.load(cfgPath)
 }
 
-func ensureMCPConfigFromClaude(loopCfgPath string) error {
+func ensureMCPConfigFromClaude(nuiCfgPath string) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -121,10 +121,10 @@ func ensureMCPConfigFromClaude(loopCfgPath string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(loopCfgPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(nuiCfgPath), 0755); err != nil {
 		return err
 	}
-	return os.WriteFile(loopCfgPath, encoded, 0644)
+	return os.WriteFile(nuiCfgPath, encoded, 0644)
 }
 
 func mergeExtensionMCPConfig(cfgPath string) error {

@@ -24,7 +24,7 @@ func TestIsBuiltin(t *testing.T) {
 		want bool
 	}{
 		{nuiHitlMCPName, true},
-		{loopVizMCPName, true},
+		{nuiVizMCPName, true},
 		{nuiAgentMCPName, true},
 		{"ext-corp-tools", true},
 		{"my-remote", false},

@@ -142,7 +142,7 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 	if req.Ephemeral {
 		req.Env = mergeADLEnv(a.def, harness)
 	} else {
-		req.Env = mergenuiHarnessEnv(mergeADLEnv(a.def, harness), loopSessionIDForRun(req, a.projectID), req.RunID, defaultnuiAPIURL())
+		req.Env = mergenuiHarnessEnv(mergeADLEnv(a.def, harness), nuiSessionIDForRun(req, a.projectID), req.RunID, defaultnuiAPIURL())
 	}
 	if req.HarnessPermissions == "" {
 		req.HarnessPermissions = hitl.EffectivePermissions(a.def, req.AgentConfig)

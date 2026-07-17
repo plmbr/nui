@@ -9,12 +9,12 @@ import (
 	"nui/internal/store"
 )
 
-var loopListenPort = 8080
+var nuiListenPort = 8080
 
 // SetListenPort records the nui HTTP listen port for OAuth callback URLs.
 func SetListenPort(port int) {
 	if port > 0 {
-		loopListenPort = port
+		nuiListenPort = port
 	}
 }
 
@@ -29,5 +29,5 @@ func RedirectURI() (string, error) {
 			return strings.TrimRight(u, "/") + "/api/mcp-oauth/callback", nil
 		}
 	}
-	return fmt.Sprintf("http://127.0.0.1:%d/api/mcp-oauth/callback", loopListenPort), nil
+	return fmt.Sprintf("http://127.0.0.1:%d/api/mcp-oauth/callback", nuiListenPort), nil
 }

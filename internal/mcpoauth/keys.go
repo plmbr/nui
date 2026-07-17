@@ -11,7 +11,7 @@ import (
 
 const (
 	nuiHitlMCPName  = "nui-hitl"
-	loopVizMCPName   = "nui-viz"
+	nuiVizMCPName    = "nui-viz"
 	nuiAgentMCPName = "nui-agent"
 )
 
@@ -38,7 +38,7 @@ func canonicalURL(raw string) string {
 func IsBuiltin(srv model.ADLMCPServer) bool {
 	name := strings.TrimSpace(srv.Name)
 	switch name {
-	case nuiHitlMCPName, loopVizMCPName, nuiAgentMCPName:
+	case nuiHitlMCPName, nuiVizMCPName, nuiAgentMCPName:
 		return true
 	default:
 		return strings.HasPrefix(name, "ext-")

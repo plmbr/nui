@@ -21,9 +21,9 @@ def resolve_nui_session_id(session_id: str = "", ctx: dict[str, Any] | None = No
     if str(session_id or "").strip():
         return str(session_id).strip()
     ctx = ctx or {}
-    loop_sid = str(ctx.get("nuiSessionId") or "").strip()
-    if loop_sid:
-        return loop_sid
+    nui_sid = str(ctx.get("nuiSessionId") or "").strip()
+    if nui_sid:
+        return nui_sid
     env_sid = os.environ.get("NUI_SESSION_ID", "").strip()
     if env_sid:
         return env_sid

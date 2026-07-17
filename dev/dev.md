@@ -16,7 +16,7 @@ flowchart TB
     UI[React UI]
   end
 
-  subgraph loop_server [nui Go server]
+  subgraph nui_server [nui Go server]
     REST[REST API]
     AGUI[AG-UI endpoint]
     Store[(~/.nui/data.json)]
