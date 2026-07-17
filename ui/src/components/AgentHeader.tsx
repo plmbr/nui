@@ -41,7 +41,7 @@ export function AgentHeader({ name, agent, sessionId, onNewSession }: Props) {
     <div className="group/agent-header flex min-w-0 items-center gap-1">
       <Tooltip>
         <TooltipTrigger
-          className="app-agent-header min-w-0 max-w-[min(12rem,50vw)] truncate text-sm font-medium text-muted-foreground transition-colors hover:text-foreground md:max-w-[min(24rem,40vw)]"
+          className="app-agent-header inline-flex h-7 min-w-0 max-w-[min(12rem,50vw)] items-center truncate text-sm font-medium leading-none text-muted-foreground transition-colors hover:text-foreground md:max-w-[min(24rem,40vw)]"
           aria-label={`${name}, ${agent.label}, ${typeLabel}${agent.description ? `, ${agent.description}` : ''}`}
         >
           {name}

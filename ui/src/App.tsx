@@ -10,6 +10,7 @@ import { CustomizePanel, CustomizeTrigger, type CustomizeTabId } from '@/compone
 import { SchedulesPanel } from '@/components/SchedulesPanel'
 import { ThemeSwitch } from '@/components/ThemeSwitch'
 import { LandingPage } from '@/components/LandingPage'
+import { NuiLogo } from '@/components/NuiLogo'
 import { NewSessionPanel } from '@/components/NewSessionPanel'
 import { SessionsListPanel } from '@/components/SessionsListPanel'
 import { ThemeProvider } from '@/contexts/theme'
@@ -471,23 +472,25 @@ export default function App() {
       ) : (
       <SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange} width={sidebarWidth}>
         <header className="app-header">
-          <SidebarTrigger />
-          <button type="button" className="app-brand shrink-0" onClick={handleOpenLaunch}>
-            nui
-          </button>
-          {selected && selectedAgent && !customizeOpen && !schedulesOpen && !newSessionOpen && !sessionListGroup && !landingOpen && (
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="text-muted-foreground/35 hidden shrink-0 select-none md:inline" aria-hidden="true">/</span>
-              <AgentHeader
-                name={sessionDisplayName(selected)}
-                agent={selectedAgent}
-                sessionId={selected.id}
-                onNewSession={() => {
-                  if (selectedGroupId) handleOpenNewSessionForGroup(selectedGroupId)
-                }}
-              />
-            </div>
-          )}
+          <div className="app-header__leading">
+            <SidebarTrigger />
+            <button type="button" className="app-brand shrink-0" onClick={handleOpenLaunch} aria-label="nui">
+              <NuiLogo decorative />
+            </button>
+            {selected && selectedAgent && !customizeOpen && !schedulesOpen && !newSessionOpen && !sessionListGroup && !landingOpen && (
+              <div className="app-header__breadcrumb">
+                <span className="text-muted-foreground/35 hidden shrink-0 select-none md:inline" aria-hidden="true">/</span>
+                <AgentHeader
+                  name={sessionDisplayName(selected)}
+                  agent={selectedAgent}
+                  sessionId={selected.id}
+                  onNewSession={() => {
+                    if (selectedGroupId) handleOpenNewSessionForGroup(selectedGroupId)
+                  }}
+                />
+              </div>
+            )}
+          </div>
           <div className="app-header__actions">
             <ThemeSwitch />
             <CustomizeTrigger active={customizeOpen} onOpen={handleOpenCustomize} compact />

@@ -139,7 +139,9 @@
     --radius: 0.625rem;
 
     --glow: oklch(0.55 0.22 275 / 14%);
-    --gradient-accent: linear-gradient(135deg, oklch(0.52 0.24 275), oklch(0.58 0.20 295));
+    --gradient-accent-from: oklch(0.52 0.24 275);
+    --gradient-accent-to: oklch(0.58 0.20 295);
+    --gradient-accent: linear-gradient(135deg, var(--gradient-accent-from), var(--gradient-accent-to));
 
     --user-bubble: oklch(0.888 0.028 275);
     --user-bubble-foreground: oklch(0.28 0.06 275);
@@ -193,7 +195,9 @@
     --chart-5: oklch(0.70 0.16 330);
 
     --glow: oklch(0.65 0.20 275 / 18%);
-    --gradient-accent: linear-gradient(135deg, oklch(0.68 0.18 275), oklch(0.62 0.22 295));
+    --gradient-accent-from: oklch(0.68 0.18 275);
+    --gradient-accent-to: oklch(0.62 0.22 295);
+    --gradient-accent: linear-gradient(135deg, var(--gradient-accent-from), var(--gradient-accent-to));
 
     --user-bubble: oklch(0.285 0.034 275);
     --user-bubble-foreground: oklch(0.90 0.012 285);
@@ -265,15 +269,24 @@
 @layer components {
   /* ─── Branding ───────────────────────────────────────────────── */
   .app-brand {
-    @apply text-lg font-semibold tracking-tight;
-    background: var(--gradient-accent);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    @apply inline-flex h-7 shrink-0 items-center justify-center;
 
     &:hover {
       opacity: 0.85;
     }
+
+    .nui-logo {
+      height: 1.25rem;
+      width: auto;
+      /* Sparkle above the i shifts the bbox center above the letterforms. */
+      transform: translateY(-1px);
+    }
+  }
+
+  .nui-logo {
+    display: block;
+    width: auto;
+    flex-shrink: 0;
   }
 
   /* ─── Landing page ───────────────────────────────────────────── */
@@ -287,11 +300,16 @@
   }
 
   .landing-page__title {
-    @apply text-4xl font-semibold tracking-tight sm:text-5xl;
-    background: var(--gradient-accent);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    @apply m-0;
+
+    .nui-logo {
+      height: 3.5rem;
+      width: auto;
+
+      @media (min-width: 640px) {
+        height: 4.5rem;
+      }
+    }
   }
 
   .landing-page__subtitle {
@@ -320,6 +338,18 @@
     backdrop-filter: blur(12px) saturate(1.4);
     -webkit-backdrop-filter: blur(12px) saturate(1.4);
     transition: box-shadow 0.15s ease;
+  }
+
+  .app-header__leading {
+    @apply flex min-w-0 flex-1 items-center gap-1.5 md:gap-2;
+  }
+
+  .app-header__breadcrumb {
+    @apply flex min-w-0 items-center gap-2 leading-none;
+  }
+
+  .app-header [data-slot="sidebar-trigger"] {
+    @apply shrink-0;
   }
 
   :root.chat-scrolled .app-header {
