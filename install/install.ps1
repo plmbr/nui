@@ -4,11 +4,11 @@
 # Environment:
 #   $env:NUI_VERSION      Release tag (default: latest), e.g. v0.1.0
 #   $env:NUI_INSTALL_DIR  Install directory (default: %LOCALAPPDATA%\nui)
-#   $env:GITHUB_REPO      GitHub owner/repo (default: plmbr/loop)
+#   $env:GITHUB_REPO      GitHub owner/repo (default: plmbr/nui)
 
 $ErrorActionPreference = "Stop"
 
-$GithubRepo = if ($env:GITHUB_REPO) { $env:GITHUB_REPO } else { "plmbr/loop" }
+$GithubRepo = if ($env:GITHUB_REPO) { $env:GITHUB_REPO } else { "plmbr/nui" }
 $InstallDir = if ($env:NUI_INSTALL_DIR) { $env:NUI_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA "nui" }
 $Version = if ($env:NUI_VERSION) { $env:NUI_VERSION } else { "latest" }
 $BinaryName = "nui.exe"

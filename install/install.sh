@@ -5,11 +5,11 @@
 # Environment:
 #   NUI_VERSION   Release tag (default: latest), e.g. v0.1.0
 #   NUI_INSTALL_DIR  Install directory (default: $HOME/.local/bin)
-#   GITHUB_REPO   GitHub owner/repo (default: plmbr/loop)
+#   GITHUB_REPO   GitHub owner/repo (default: plmbr/nui)
 
 set -e
 
-GITHUB_REPO="${GITHUB_REPO:-plmbr/loop}"
+GITHUB_REPO="${GITHUB_REPO:-plmbr/nui}"
 INSTALL_DIR="${NUI_INSTALL_DIR:-$HOME/.local/bin}"
 VERSION="${NUI_VERSION:-latest}"
 BINARY_NAME="nui"
