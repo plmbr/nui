@@ -18,7 +18,7 @@ func TestAgentDeployersLoaded(t *testing.T) {
 	if err := os.MkdirAll(extDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: nui.dev/extension/v1
+	manifest := `apiVersion: nui.plmbr.dev/extension/v1
 name: deploy-pack
 version: 1.0.0
 contributions:
@@ -69,7 +69,7 @@ sys.stdout.write("\n")
 	if err := os.WriteFile(filepath.Join(extDir, "stub.py"), []byte(script), 0755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: nui.dev/extension/v1
+	manifest := `apiVersion: nui.plmbr.dev/extension/v1
 name: stub-deployer
 version: 1.0.0
 contributions:

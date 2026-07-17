@@ -42,7 +42,7 @@ export class NuiCatalog {
       this.write({
         jsonrpc: "2.0",
         id: rid,
-        result: { apiVersion: "nui.dev/extension/v1", extensionName: process.env.NUI_EXTENSION_NAME ?? "" },
+        result: { apiVersion: "nui.plmbr.dev/extension/v1", extensionName: process.env.NUI_EXTENSION_NAME ?? "" },
       });
       return;
     }

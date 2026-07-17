@@ -15,7 +15,7 @@ class NuiExtension:
     Subclass and override discovery (get_*) and runtime (run_harness, list_mentions, ...) methods.
     """
 
-    api_version = "nui.dev/extension/v1"
+    api_version = "nui.plmbr.dev/extension/v1"
 
     def __init__(self) -> None:
         self.extension_dir = os.environ.get("NUI_EXTENSION_DIR", "")

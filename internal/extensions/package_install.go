@@ -90,7 +90,7 @@ func installProgrammaticPackage(source string) (string, error) {
 		runtimeCmd = defaultRuntimeCommand(installType)
 	}
 	manifest := Manifest{
-		APIVersion:  "nui.dev/extension/v1",
+		APIVersion:  "nui.plmbr.dev/extension/v1",
 		Name:        meta.ID,
 		Version:     meta.Version,
 		DisplayName: meta.DisplayName,
@@ -418,7 +418,7 @@ func installProgrammaticFromDir(srcRoot string) (string, error) {
 		}
 	}
 	manifest := Manifest{
-		APIVersion:  "nui.dev/extension/v1",
+		APIVersion:  "nui.plmbr.dev/extension/v1",
 		Name:        meta.ID,
 		Version:     meta.Version,
 		DisplayName: meta.DisplayName,

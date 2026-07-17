@@ -138,7 +138,7 @@ func validateManifest(dir string, m Manifest, matchDirName bool) error {
 	if matchDirName && m.Name != dirName {
 		return fmt.Errorf("extension %s: name %q must match directory name", dirName, m.Name)
 	}
-	if m.APIVersion != "" && m.APIVersion != "nui.dev/extension/v1" {
+	if m.APIVersion != "" && m.APIVersion != "nui.plmbr.dev/extension/v1" {
 		return fmt.Errorf("extension %s: unsupported apiVersion %q", m.Name, m.APIVersion)
 	}
 	if m.IsProgrammatic() {

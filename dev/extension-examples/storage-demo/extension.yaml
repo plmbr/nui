@@ -1,4 +1,4 @@
-apiVersion: nui.dev/extension/v1
+apiVersion: nui.plmbr.dev/extension/v1
 name: storage-demo
 version: 1.0.0
 displayName: Storage Demo

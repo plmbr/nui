@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://nui.dev/schemas/initialization.json",
+  "$id": "https://nui.plmbr.dev/schemas/initialization.json",
   "title": "ContributionManifest",
   "type": "object",
   "properties": {

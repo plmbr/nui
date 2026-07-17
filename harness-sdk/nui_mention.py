@@ -27,7 +27,7 @@ from typing import Any
 
 
 class NuiMentionProvider:
-    api_version = "nui.dev/extension/v1"
+    api_version = "nui.plmbr.dev/extension/v1"
     name = "mention-provider"
     version = "1.0.0"
 

@@ -8,7 +8,7 @@ export type RunContext = Record<string, unknown>;
 export type MentionContext = Record<string, unknown>;
 
 export class NuiExtension {
-  apiVersion = "nui.dev/extension/v1";
+  apiVersion = "nui.plmbr.dev/extension/v1";
   extensionDir = process.env.NUI_EXTENSION_DIR ?? "";
   extensionName = process.env.NUI_EXTENSION_NAME ?? "";
   apiUrl = process.env.NUI_API_URL ?? "http://127.0.0.1:8080";

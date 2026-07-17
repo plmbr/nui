@@ -22,7 +22,7 @@ from typing import Any
 
 
 class NuiStorageHandler:
-    api_version = "nui.dev/extension/v1"
+    api_version = "nui.plmbr.dev/extension/v1"
     name = "storage-handler"
     version = "1.0.0"
 

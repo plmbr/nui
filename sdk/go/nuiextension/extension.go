@@ -141,7 +141,7 @@ func ServeStdio(ext Extension) error {
 			_ = extImpl.Initialize()
 			write(map[string]any{
 				"jsonrpc": "2.0", "id": rid, "result": map[string]any{
-					"apiVersion": "nui.dev/extension/v1",
+					"apiVersion": "nui.plmbr.dev/extension/v1",
 					"name":       os.Getenv("NUI_EXTENSION_NAME"),
 					"harnesses":  extImpl.GetHarnesses(),
 					"agents":     extImpl.GetAgents(),

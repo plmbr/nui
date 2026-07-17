@@ -23,7 +23,7 @@ from typing import Any
 
 
 class NuiHITLChannelProvider:
-    api_version = "nui.dev/extension/v1"
+    api_version = "nui.plmbr.dev/extension/v1"
     name = "hitl-channel"
     version = "1.0.0"
 

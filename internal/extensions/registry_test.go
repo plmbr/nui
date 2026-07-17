@@ -21,7 +21,7 @@ func TestLoadRegistryFromFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	manifest := `apiVersion: nui.dev/extension/v1
+	manifest := `apiVersion: nui.plmbr.dev/extension/v1
 name: corp-pack
 version: 1.0.0
 displayName: Corp Pack
@@ -148,7 +148,7 @@ func TestLoadRegistryLegacyCatalogKeys(t *testing.T) {
 	if err := os.MkdirAll(extDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: nui.dev/extension/v1
+	manifest := `apiVersion: nui.plmbr.dev/extension/v1
 name: legacy-pack
 version: 1.0.0
 contributions:

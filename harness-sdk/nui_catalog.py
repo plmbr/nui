@@ -22,7 +22,7 @@ from typing import Any
 
 
 class NuiCatalog:
-    api_version = "nui.dev/extension/v1"
+    api_version = "nui.plmbr.dev/extension/v1"
 
     def serve(self) -> None:
         for line in sys.stdin:

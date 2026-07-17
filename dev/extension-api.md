@@ -54,7 +54,7 @@ nui extension remove corp-pack
 ## Manifest
 
 ```yaml
-apiVersion: nui.dev/extension/v1
+apiVersion: nui.plmbr.dev/extension/v1
 name: corp-pack              # must match directory name
 version: 1.0.0
 displayName: Corp Pack

@@ -18,7 +18,7 @@ func TestCustomMCPServerValidation(t *testing.T) {
 	if err := os.MkdirAll(extDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: nui.dev/extension/v1
+	manifest := `apiVersion: nui.plmbr.dev/extension/v1
 name: tool-pack
 version: 1.0.0
 contributions:
@@ -53,7 +53,7 @@ func TestExpandMCPServersCustomRef(t *testing.T) {
 	if err := os.MkdirAll(extDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: nui.dev/extension/v1
+	manifest := `apiVersion: nui.plmbr.dev/extension/v1
 name: tool-pack
 version: 1.0.0
 contributions:
@@ -96,7 +96,7 @@ func TestResolveSkillCustomRef(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("# Lint\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: nui.dev/extension/v1
+	manifest := `apiVersion: nui.plmbr.dev/extension/v1
 name: skill-pack
 version: 1.0.0
 contributions:
@@ -131,7 +131,7 @@ func TestResolveRuleRef(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(extDir, "guidelines.md"), []byte("Always run tests before merging.\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: nui.dev/extension/v1
+	manifest := `apiVersion: nui.plmbr.dev/extension/v1
 name: guide-pack
 version: 1.0.0
 contributions:

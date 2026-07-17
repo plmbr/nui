@@ -16,7 +16,7 @@ func TestAllowedMentionRootsForAgent(t *testing.T) {
 	if err := os.MkdirAll(extDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `apiVersion: nui.dev/extension/v1
+	manifest := `apiVersion: nui.plmbr.dev/extension/v1
 name: nbi
 version: 1.0.0
 contributions:
