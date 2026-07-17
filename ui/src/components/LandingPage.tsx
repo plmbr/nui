@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { Plus, Settings2 } from 'lucide-react'
+import { Plus, Settings } from 'lucide-react'
 import { NuiLogo } from '@/components/NuiLogo'
 import { Button } from '@/components/ui/button'
 
@@ -25,7 +25,7 @@ export function LandingPage({ onNewSession, onCustomize }: Props) {
             New Session
           </Button>
           <Button size="lg" variant="outline" className="gap-2 px-6" onClick={onCustomize}>
-            <Settings2 className="size-4" />
+            <Settings className="size-4" />
             Customize
           </Button>
         </div>
