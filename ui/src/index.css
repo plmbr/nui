@@ -394,6 +394,11 @@
     padding-top: calc(3rem + env(safe-area-inset-top, 0px));
   }
 
+  .app-sidebar {
+    --sidebar-text-ui: 0.8125rem;
+    --sidebar-text-meta: 0.75rem;
+  }
+
   .app-sidebar [data-slot="sidebar-container"] {
     top: 3rem;
     bottom: auto;
@@ -418,13 +423,13 @@
   }
 
   .sidebar-session__button {
-    @apply h-8 min-h-8 items-center gap-1.5 py-0 pl-3 text-muted-foreground;
-    font-size: var(--text-ui);
+    @apply h-7 min-h-7 items-center gap-1 py-0 pl-3 text-muted-foreground;
+    font-size: var(--sidebar-text-ui);
   }
 
   .sidebar-session__name {
     @apply min-w-0 flex-1 truncate text-left leading-snug text-sidebar-foreground/85;
-    font-size: var(--text-ui);
+    font-size: var(--sidebar-text-ui);
   }
 
   [data-active="true"].sidebar-session__button,
@@ -434,7 +439,7 @@
 
   .sidebar-session__last-run {
     @apply shrink-0 tabular-nums text-muted-foreground;
-    font-size: var(--text-meta);
+    font-size: var(--sidebar-text-meta);
   }
 
   .sidebar-meta-rail {
@@ -442,13 +447,13 @@
   }
 
   .sidebar-session__time {
-    font-size: var(--text-meta);
+    font-size: var(--sidebar-text-meta);
     @apply text-muted-foreground/70;
   }
 
   .sidebar-group-count {
-    @apply ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-md border border-sidebar-border/80 bg-sidebar-accent/50 px-1.5 font-medium text-sidebar-foreground/75;
-    font-size: var(--text-meta);
+    @apply ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded border border-sidebar-border/80 bg-sidebar-accent/50 px-1 font-medium text-sidebar-foreground/75;
+    font-size: var(--sidebar-text-meta);
   }
 
   .sidebar-group-actions {
@@ -477,7 +482,11 @@
   }
 
   .sidebar-actions {
-    @apply gap-0;
+    @apply gap-0 text-xs;
+
+    & button {
+      font-size: var(--sidebar-text-ui);
+    }
   }
 
   .sidebar-session__scheduled-icon {

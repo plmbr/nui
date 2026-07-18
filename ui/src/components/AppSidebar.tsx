@@ -147,6 +147,7 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
     <>
       <SidebarMenuItem data-sidebar-session-id={session.id}>
         <SidebarMenuButton
+          size="sm"
           isActive={isActive}
           onClick={onSelect}
           title={
@@ -313,11 +314,11 @@ function CollapsibleSessionGroup({
   }, [hasSelected])
 
   return (
-    <SidebarGroup className="px-2 pb-2 pt-0">
+    <SidebarGroup className="px-2 pb-0.5 pt-0">
       <SidebarGroupLabel
         render={<button type="button" />}
         className={cn(
-          'group/label relative h-9 cursor-pointer gap-1.5 pr-8 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
+          'group/label relative h-7 cursor-pointer gap-1 pr-8 text-xs font-semibold text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
           listViewOpen && 'bg-sidebar-accent/60 text-sidebar-accent-foreground',
         )}
         onClick={() => setOpen((value) => !value)}
@@ -450,7 +451,7 @@ export function AppSidebar({
         onWidthChange={onSidebarWidthChange}
         onWidthCommit={onSidebarWidthCommit}
       />
-      <SidebarHeader className="sidebar-actions shrink-0 px-3 py-3">
+      <SidebarHeader className="sidebar-actions shrink-0 px-3 py-2">
         <div className="flex flex-wrap items-center gap-2">
           <Button
             size="sm"
@@ -501,7 +502,7 @@ export function AppSidebar({
           </Button>
         </div>
       </SidebarHeader>
-        <SidebarContent className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain pb-4">
+        <SidebarContent className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain pb-2">
           {groups.length === 0 ? (
             <p className="px-4 py-4 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
               No sessions yet.
