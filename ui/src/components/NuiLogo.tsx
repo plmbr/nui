@@ -24,8 +24,8 @@ export function NuiLogo({ className, decorative = false }: Props) {
     >
       <defs>
         <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="var(--gradient-accent-from)" />
-          <stop offset="100%" stopColor="var(--gradient-accent-to)" />
+          <stop offset="0%" stopColor="var(--brand-gradient-from)" />
+          <stop offset="100%" stopColor="var(--brand-gradient-to)" />
         </linearGradient>
       </defs>
       <g transform="translate(0,577.6) scale(0.1,-0.1)" fill={`url(#${gradientId})`} stroke="none">
