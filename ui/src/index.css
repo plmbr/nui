@@ -324,6 +324,20 @@
     }
   }
 
+  .landing-page__slogan {
+    font-weight: 700;
+    font-size: 1.35rem;
+    font-style: italic;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.3em;
+
+    span {
+      color: #75aaff;
+      font-weight: 900;
+      letter-spacing: 2px;
+    }
+  }
+
   .landing-page__subtitle {
     @apply max-w-md text-base text-muted-foreground sm:text-lg;
   }

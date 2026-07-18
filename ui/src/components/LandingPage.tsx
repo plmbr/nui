@@ -16,8 +16,12 @@ export function LandingPage({ onNewSession, onCustomize }: Props) {
         <h1 className="landing-page__title" aria-label="nui">
           <NuiLogo decorative />
         </h1>
+        <p className="landing-page__slogan">
+          tiny but <span>nui</span>
+        </p>
+   
         <p className="landing-page__subtitle">
-          Run agents in continuous sessions — pick up where you left off.
+          Scale any task with AI — scale your business, scale your life.
         </p>
         <div className="landing-page__actions">
           <Button size="lg" className="landing-page__btn-primary gap-2 px-6" onClick={onNewSession}>
