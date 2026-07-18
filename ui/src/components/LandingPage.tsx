@@ -21,7 +21,7 @@ export function LandingPage({ onNewSession, onCustomize }: Props) {
         </p>
    
         <p className="landing-page__subtitle">
-          Scale any task with AI — scale your business, scale your life.
+          Scale any task with AI — scale your work, scale your life.
         </p>
         <div className="landing-page__actions">
           <Button size="lg" className="landing-page__btn-primary gap-2 px-6" onClick={onNewSession}>
