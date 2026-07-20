@@ -1,0 +1,11 @@
+adl: "1.0"
+id: my-claude-agent
+name: My Claude Agent
+description: Claude Code with a custom system prompt.
+version: 0.1.0
+
+harness:
+  type: claude-code
+  sandbox: none
+
+systemPrompt: You are a helpful coding assistant.

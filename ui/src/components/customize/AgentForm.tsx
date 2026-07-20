@@ -77,6 +77,10 @@ function isCliHarness(harnessType: string | undefined): boolean {
   return harnessType != null && ['claude-code', 'pi', 'codex', 'opencode'].includes(harnessType)
 }
 
+function isApiHarness(harnessType: string | undefined): boolean {
+  return harnessType === 'api'
+}
+
 function KeyValueList({
   label,
   description,
@@ -304,11 +308,74 @@ export function AgentForm({ form, options, hasWorkflowSteps, hasSubAgents, editi
               id="harness-model"
               value={form.harnessModel}
               onChange={(e) => patch({ harnessModel: e.target.value })}
-              placeholder={isCliHarness(harnessType) ? 'claude-sonnet-4-6' : '—'}
-              disabled={!isCliHarness(harnessType)}
+              placeholder={
+                isCliHarness(harnessType)
+                  ? 'claude-sonnet-4-6'
+                  : isApiHarness(harnessType)
+                    ? 'claude-sonnet-4-20250514'
+                    : '—'
+              }
+              disabled={!isCliHarness(harnessType) && !isApiHarness(harnessType)}
             />
           </div>
         </div>
+
+        {harnessType === 'api' && (
+          <div className="space-y-1.5 max-w-md">
+            <FieldLabel required>API provider</FieldLabel>
+            <Select
+              value={form.apiProvider}
+              onValueChange={(v) => patch({ apiProvider: v ?? 'anthropic' })}
+              items={[
+                { value: 'anthropic', label: 'Anthropic' },
+                { value: 'openai', label: 'OpenAI' },
+                { value: 'gemini', label: 'Gemini' },
+                { value: 'openrouter', label: 'OpenRouter' },
+                { value: 'ollama', label: 'Ollama' },
+              ]}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="anthropic">Anthropic</SelectItem>
+                <SelectItem value="openai">OpenAI</SelectItem>
+                <SelectItem value="gemini">Gemini</SelectItem>
+                <SelectItem value="openrouter">OpenRouter</SelectItem>
+                <SelectItem value="ollama">Ollama</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {harnessType === 'devcontainer' && (
+          <div className="space-y-1.5 max-w-md">
+            <FieldLabel required>Inner harness</FieldLabel>
+            <p className="text-xs text-muted-foreground">
+              CLI harness to run inside the nui-managed dev container.
+            </p>
+            <Select
+              value={form.innerHarness}
+              onValueChange={(v) => patch({ innerHarness: v ?? 'claude-code' })}
+              items={[
+                { value: 'claude-code', label: 'Claude Code' },
+                { value: 'pi', label: 'Pi' },
+                { value: 'codex', label: 'Codex' },
+                { value: 'opencode', label: 'OpenCode' },
+              ]}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="claude-code">Claude Code</SelectItem>
+                <SelectItem value="pi">Pi</SelectItem>
+                <SelectItem value="codex">Codex</SelectItem>
+                <SelectItem value="opencode">OpenCode</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {harnessType === 'docker' && (
           <div className="grid gap-3 sm:grid-cols-2">

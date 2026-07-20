@@ -30,7 +30,7 @@ function resolveAgentMode(
   summary: MemorySummary | null,
   settingsModes?: Record<string, MemoryMode>,
 ): MemoryMode {
-  const fromSummary = summary?.agents.find((a) => a.agentId === agentId)?.mode
+  const fromSummary = summary?.agents?.find((a) => a.agentId === agentId)?.mode
   if (fromSummary) return fromSummary
   return settingsModes?.[agentId] ?? 'manual'
 }

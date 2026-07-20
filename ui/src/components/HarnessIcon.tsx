@@ -31,6 +31,7 @@ const HARNESS_ACCENTS: Partial<Record<IconKey, string>> = {
   docker: '#2496ed',
   devcontainer: '#2496ed',
   remote: '#64748b',
+  extension: '#a855f7',
 }
 
 const BRAND_ICON_SRC: Partial<Record<IconKey, string | { light: string; dark: string }>> = {
@@ -117,6 +118,18 @@ function HarnessGlyph({ harness, className }: { harness: Harness; className?: st
             d="M7 8h10M7 12h10M7 16h6"
           />
           <rect x="4" y="5" width="16" height="14" rx="2" stroke="currentColor" strokeWidth="1.75" />
+        </svg>
+      )
+    case 'extension':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+          <path
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"
+          />
         </svg>
       )
     default:

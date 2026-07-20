@@ -25,7 +25,14 @@ jobs:
         run: ./scripts/ensure-ui-dist.sh
 
       - name: Run Go tests
-        run: go test . ./cmd/... ./internal/...
+        run: go test -coverprofile=coverage.out . ./cmd/... ./internal/...
+
+      - name: Upload Go coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-coverage
+          path: coverage.out
+          if-no-files-found: error
 
   ui:
     name: UI lint, build, and unit tests
@@ -52,7 +59,14 @@ jobs:
         run: npm run build
 
       - name: Unit tests
-        run: npm run test
+        run: npm run test:coverage
+
+      - name: Upload Vitest coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-coverage
+          path: ui/coverage
+          if-no-files-found: error
 
       - name: Upload UI dist
         uses: actions/upload-artifact@v4
@@ -111,6 +125,9 @@ jobs:
       - name: Install UI dependencies
         working-directory: ui
         run: npm install
+
+      - name: harness-sdk pytest
+        run: python3 -m pip install pytest && python3 -m pytest harness-sdk
 
       - name: Install Playwright Chromium
         working-directory: ui

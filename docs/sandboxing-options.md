@@ -6,9 +6,11 @@
 
 ## Summary
 
+> **Update (2026):** CLI harnesses (`claude-code`, `pi`, `codex`, `opencode`) now support optional bubblewrap sandboxing via ADL `harness.sandbox: bubblewrap` (Linux only) and Docker sandboxing via `harness.sandbox: docker`. See `internal/agent/sandbox.go`.
+
 nui needs a platform-split sandboxing strategy. The Linux path has multiple solid options. The macOS path is limited and officially deprecated. Docker alone is provably insufficient against capable LLM agents.
 
-The current `ClaudeCodeAgent` path (direct subprocess in `internal/agent/claude_code.go`) has no sandboxing. The Docker extension agent path is better but still escapable if misconfigured.
+CLI harnesses run as host subprocesses by default (`harness.sandbox: none`). When `bubblewrap` is set and `bwrap` is available, nui wraps the subprocess with `WrapWithBwrap()`. The Docker extension agent path is better but still escapable if misconfigured.
 
 ---
 

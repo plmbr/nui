@@ -1,0 +1,12 @@
+adl: "1.0"
+id: my-anthropic-agent
+name: My Anthropic Agent
+description: Claude via the Anthropic API harness.
+version: 0.1.0
+
+harness:
+  type: api
+  provider: anthropic
+  model: claude-sonnet-4-20250514
+
+systemPrompt: You are a concise technical writer.

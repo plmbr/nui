@@ -335,7 +335,7 @@ func (c *Coordinator) ListSummary(settings store.Settings) (memory.Summary, erro
 			out.User.Size = int64(len(content))
 		}
 	}
-	var agents []memory.AgentEntry
+	var agents = make([]memory.AgentEntry, 0)
 	for _, ag := range out.Agents {
 		if c.Registry.HasAgentMemoryHandler(ag.AgentID) {
 			continue

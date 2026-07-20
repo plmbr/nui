@@ -66,10 +66,10 @@ flowchart TB
 
 ## Agent Definition Language (ADL)
 
-ADL design documentation and example YAML files live in the [ADL repository](../ADL/).
+ADL design documentation and example YAML files live in this repository under [`dev/adl/`](adl/).
 
-- [design.md](../ADL/design.md) — schema, semantics, harness types, executor status
-- [examples/](../ADL/examples/) — sample agent and workflow YAML
+- [design.md](adl/design.md) — schema, semantics, harness types
+- [examples/](adl/examples/) — sample agent and workflow YAML
 
 In nui, place agent YAML in `~/.nui/agents/` to make them selectable under **Installed agents**. Sandbox config flows: ADL `harness.sandbox` → `harnessBuiltinConfig()` → `Manager.getBuiltinAgent()` → agent struct `Sandbox` field.
 
@@ -262,4 +262,4 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 2. **Chat persistence scope** — persist tool calls/images in `sessionMessages` or separate store?
 3. **Docker security** — gVisor/Firecracker for untrusted agents?
 
-See also: [harness-design.md](harness-design.md), [ADL design](../ADL/design.md), [ADL examples](../ADL/examples/), [harness-examples/](harness-examples/).
+See also: [harness-design.md](harness-design.md), [ADL design](adl/design.md), [ADL examples](adl/examples/), [harness-examples/](harness-examples/).

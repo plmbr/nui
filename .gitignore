@@ -30,3 +30,6 @@ __pycache__/
 
 # Test results
 ui/test-results/
+ui/coverage/
+coverage.out
+.venv-harness/

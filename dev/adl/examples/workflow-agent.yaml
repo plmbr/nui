@@ -1,0 +1,19 @@
+adl: "1.0"
+id: review-and-fix
+name: Review and Fix
+description: Two-step workflow — review then apply fixes.
+version: 0.1.0
+
+harness:
+  type: claude-code
+
+steps:
+  - name: review
+    harness:
+      type: claude-code
+    systemPrompt: Review the codebase and list issues. Do not edit files.
+  - name: fix
+    harness:
+      type: claude-code
+    systemPrompt: Apply fixes for the issues found in the review step.
+    input: "{{steps.review.output}}"

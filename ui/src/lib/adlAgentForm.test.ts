@@ -12,6 +12,8 @@ import {
 const emptyOptions: AgentFormOptions = {
   harnesses: [
     { id: 'builtin:claude-code', label: 'Claude Code', group: 'Built-in', harnessType: 'claude-code' },
+    { id: 'builtin:api', label: 'API', group: 'Built-in', harnessType: 'api' },
+    { id: 'builtin:devcontainer', label: 'Dev container', group: 'Built-in', harnessType: 'devcontainer' },
   ],
   skills: [],
   mcpServers: [],
@@ -368,5 +370,65 @@ subAgents:
     const { form } = parseAgentYaml(original, emptyOptions)
     const merged = mergeFormIntoAgentYaml(original, { ...form, subAgents: [] }, emptyOptions)
     expect(merged).not.toContain('subAgents:')
+  })
+})
+
+describe('adlAgentForm api and devcontainer harnesses', () => {
+  it('parses api harness provider and model', () => {
+    const yaml = `adl: "1.0"
+id: api-agent
+name: API Agent
+harness:
+  type: api
+  provider: openai
+  model: gpt-4o-mini
+`
+    const { form } = parseAgentYaml(yaml, emptyOptions)
+    expect(form.harnessOptionId).toBe('builtin:api')
+    expect(form.apiProvider).toBe('openai')
+    expect(form.harnessModel).toBe('gpt-4o-mini')
+  })
+
+  it('round-trips api harness', () => {
+    const original = `adl: "1.0"
+id: api-agent
+name: API Agent
+harness:
+  type: api
+  provider: gemini
+  model: gemini-2.5-flash
+`
+    const { form } = parseAgentYaml(original, emptyOptions)
+    const merged = mergeFormIntoAgentYaml(original, form, emptyOptions)
+    expect(merged).toContain('type: api')
+    expect(merged).toContain('provider: gemini')
+    expect(merged).toContain('model: gemini-2.5-flash')
+  })
+
+  it('parses devcontainer innerHarness', () => {
+    const yaml = `adl: "1.0"
+id: dev-agent
+name: Dev Agent
+harness:
+  type: devcontainer
+  innerHarness: pi
+`
+    const { form } = parseAgentYaml(yaml, emptyOptions)
+    expect(form.harnessOptionId).toBe('builtin:devcontainer')
+    expect(form.innerHarness).toBe('pi')
+  })
+
+  it('round-trips devcontainer harness', () => {
+    const original = `adl: "1.0"
+id: dev-agent
+name: Dev Agent
+harness:
+  type: devcontainer
+  innerHarness: codex
+`
+    const { form } = parseAgentYaml(original, emptyOptions)
+    const merged = mergeFormIntoAgentYaml(original, form, emptyOptions)
+    expect(merged).toContain('type: devcontainer')
+    expect(merged).toContain('innerHarness: codex')
   })
 })

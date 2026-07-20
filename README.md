@@ -59,6 +59,16 @@ Install the agent CLI you want to use and make sure it is on your `PATH`:
 | codex | `codex` |
 | opencode | `opencode` |
 
+**API agents** (no CLI required) use provider API keys instead:
+
+| Agent | API key environment variable |
+|---|---|
+| Anthropic | `ANTHROPIC_API_KEY` (or `ANTHROPIC_AUTH_TOKEN`) |
+| OpenAI | `OPENAI_API_KEY` |
+| Gemini | `GEMINI_API_KEY` or `GOOGLE_API_KEY` |
+| OpenRouter | `OPENROUTER_API_KEY` |
+| Ollama | none (local; optional `OLLAMA_HOST`) |
+
 **Optional:**
 
 - **Docker** — for sandboxed built-in agents and custom Docker-based agents
@@ -82,6 +92,7 @@ nui server --open       # open browser with a new session
 nui run -a claude-code -m "Review README" --wait  # headless run
 nui agent list      # list agent types (requires nui server)
 nui agent add ./my-agent.yaml  # install custom agent
+nui agent eval run -a my-agent  # run ADL eval cases against a running server
 nui extension add   # install extension from git URL, directory, or zip
 nui skills add|list|remove  # manage skills catalog
 nui schedule list|add|enable|disable|delete|run-now  # recurring runs
@@ -114,12 +125,26 @@ Set `NUI_URL` or pass `--url` if the server is not on `http://127.0.0.1:8080`. U
 
 ### Built-in agents
 
+**CLI agents** (require the corresponding binary on `PATH`):
+
 | Name | Description |
 |---|---|
 | Claude Code | Anthropic's Claude Code CLI |
 | pi | pi agent CLI |
 | codex | OpenAI Codex CLI |
 | opencode | OpenCode CLI |
+
+**API agents** (in-process LLM calls; selectable under **Built-in → API** in the New Session dialog):
+
+| Name | Description |
+|---|---|
+| Anthropic | Claude models via the Anthropic API |
+| OpenAI | GPT models via the OpenAI API |
+| Gemini | Google Gemini via the Gemini API |
+| OpenRouter | Multi-model routing via OpenRouter |
+| Ollama | Local models via Ollama |
+
+See [harness design](dev/harness-design.md) for API harness configuration and env vars.
 
 ### Custom agents
 
@@ -129,7 +154,7 @@ Install your own agent definitions (ADL YAML) to `~/.nui/agents/`:
 nui agent add ./my-agent.yaml
 ```
 
-Custom agents appear under **Installed agents** in the New Session dialog. They can run in Docker, dev containers, remote servers, or sandboxes. See the [ADL examples](../ADL/examples/) and [harness examples](dev/harness-examples/) for templates.
+Custom agents appear under **Installed agents** in the New Session dialog. They can run in Docker, dev containers, remote servers, or sandboxes. See the [ADL examples](dev/adl/examples/) and [harness examples](dev/harness-examples/) for templates.
 
 ## Extensions
 
@@ -161,10 +186,25 @@ Expose nui agents to MCP hosts (Cursor, Claude Desktop, etc.) by adding this to 
 
 Available tools: `list_agents`, `list_sessions`, `create_session`, `run_agent`, `get_run`, `get_run_events`, `stop_run`.
 
+nui also injects built-in MCP servers into agent harnesses when configured:
+
+| MCP server | Command | Purpose |
+|---|---|---|
+| `nui-hitl` | `nui hitl-mcp` | Human-in-the-loop prompts (`ask_user`, approvals) |
+| `nui-viz` | `nui viz-mcp` | Inline chart/visualization rendering in chat |
+| `nui-agent` | `nui agent-mcp` | Save ADL agents (`save_agent`) and update memory (`update_memory`) |
+
+## Known limitations
+
+- Tool-call details and image attachments are not persisted across server restarts (text messages are).
+- AG-UI mid-stream replay after reconnect is not yet implemented.
+- Bubblewrap sandboxing is Linux-only; macOS native sandboxing is not implemented.
+- TCP JSON-RPC harness examples under `dev/harness-examples/py/` and `ts/` are reference-only and not wired as built-in agent types.
+
 ## Further reading
 
 - [Developer guide](DEVELOPERS.md) — build from source, API reference, contributing, releasing
 - [Product & technical spec](dev/dev.md) — architecture and roadmap
 - [Extension API](dev/extension-api.md) — extension manifest, HITL, deployers
 - [Harness protocols](dev/harness-design.md) — custom harness HTTP/SSE and JSON-RPC
-- [ADL](../ADL/) — Agent Definition Language schema and examples
+- [ADL](dev/adl/design.md) — Agent Definition Language schema and examples

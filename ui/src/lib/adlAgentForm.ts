@@ -53,6 +53,8 @@ export interface AgentFormModel {
   workingDirInput: boolean
   harnessOptionId: string
   harnessModel: string
+  apiProvider: string
+  innerHarness: string
   dockerImage: string
   containerPort: string
   remoteHost: string
@@ -118,6 +120,8 @@ const BUILTIN_HARNESSES: HarnessOption[] = [
   { id: 'builtin:pi', label: 'Pi', group: 'Built-in', harnessType: 'pi', sandbox: 'none' },
   { id: 'builtin:codex', label: 'Codex', group: 'Built-in', harnessType: 'codex', sandbox: 'none' },
   { id: 'builtin:opencode', label: 'OpenCode', group: 'Built-in', harnessType: 'opencode', sandbox: 'none' },
+  { id: 'builtin:api', label: 'API (LLM provider)', group: 'Built-in', harnessType: 'api' },
+  { id: 'builtin:devcontainer', label: 'Dev container', group: 'Built-in', harnessType: 'devcontainer' },
   { id: 'builtin:docker', label: 'Docker (HTTP/SSE container)', group: 'Built-in', harnessType: 'docker' },
   { id: 'builtin:remote', label: 'Remote (HTTP/SSE server)', group: 'Built-in', harnessType: 'remote' },
 ]
@@ -134,6 +138,8 @@ export function defaultAgentForm(): AgentFormModel {
     workingDirInput: false,
     harnessOptionId: 'builtin:claude-code',
     harnessModel: '',
+    apiProvider: 'anthropic',
+    innerHarness: 'claude-code',
     dockerImage: '',
     containerPort: '',
     remoteHost: '127.0.0.1',
@@ -192,7 +198,7 @@ function harnessOptionIdFromDoc(
     const id = `ext:${type.slice(4)}`
     return options.find((o) => o.harnessType === type)?.id ?? id
   }
-  if (type === 'docker' || type === 'remote') {
+  if (type === 'docker' || type === 'remote' || type === 'api' || type === 'devcontainer') {
     return `builtin:${type}`
   }
   return options.find((o) => o.harnessType === type && o.group === 'Built-in')?.id ?? `builtin:${type}`
@@ -349,6 +355,8 @@ export function parseAgentYaml(content: string, options: AgentFormOptions): Pars
     workingDirInput: doc.workingDirInput === true,
     harnessOptionId: harnessOptionIdFromDoc(harness, options.harnesses),
     harnessModel: String(harness?.model ?? ''),
+    apiProvider: String(harness?.provider ?? 'anthropic'),
+    innerHarness: String(harness?.innerHarness ?? 'claude-code'),
     dockerImage: String(harness?.image ?? ''),
     containerPort: harness?.containerPort != null ? String(harness.containerPort) : '',
     remoteHost: String(harness?.host ?? '127.0.0.1'),
@@ -395,7 +403,20 @@ function mergeHarness(root: YAMLMap, form: AgentFormModel, options: HarnessOptio
   harness.set('type', harnessType)
 
   if (harnessType.startsWith('ext:')) {
-    for (const key of ['model', 'image', 'containerPort', 'host', 'port']) harness.delete(key)
+    for (const key of ['model', 'provider', 'innerHarness', 'image', 'containerPort', 'host', 'port']) harness.delete(key)
+    return
+  }
+
+  if (harnessType === 'api') {
+    setMapKey(harness, 'provider', form.apiProvider.trim() || 'anthropic')
+    setMapKey(harness, 'model', form.harnessModel.trim() || undefined)
+    for (const key of ['innerHarness', 'image', 'containerPort', 'host', 'port']) harness.delete(key)
+    return
+  }
+
+  if (harnessType === 'devcontainer') {
+    setMapKey(harness, 'innerHarness', form.innerHarness.trim() || 'claude-code')
+    for (const key of ['model', 'provider', 'image', 'containerPort', 'host', 'port']) harness.delete(key)
     return
   }
 
@@ -414,7 +435,7 @@ function mergeHarness(root: YAMLMap, form: AgentFormModel, options: HarnessOptio
   }
 
   setMapKey(harness, 'model', form.harnessModel.trim() || undefined)
-  for (const key of ['image', 'containerPort', 'host', 'port']) harness.delete(key)
+  for (const key of ['provider', 'innerHarness', 'image', 'containerPort', 'host', 'port']) harness.delete(key)
 }
 
 function buildSkillEntry(

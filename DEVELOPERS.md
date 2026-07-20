@@ -5,7 +5,7 @@ This document covers building, contributing to, and releasing nui. For day-to-da
 ## Documentation
 
 - [Product & technical spec](dev/dev.md) — architecture, roadmap, API surface
-- [ADL](../ADL/) — Agent Definition Language schema and examples
+- [ADL](dev/adl/design.md) — Agent Definition Language schema and examples
 - [Harness protocols](dev/harness-design.md) — HTTP/SSE and JSON-RPC for custom harnesses
 - [Extension API](dev/extension-api.md) — extension manifest, HITL, deployers
 
@@ -145,7 +145,9 @@ Full reference: [`dev/dev.md`](dev/dev.md#api-surface).
 
 ### Built-in agents
 
-Four CLI harnesses, selectable in the New Session dialog under **Built-in agents**:
+Nine built-in agent types: four CLI harnesses and five API harnesses. Select them under **Built-in** in the New Session dialog (CLI and API tabs).
+
+**CLI harnesses:**
 
 | Name | Harness | Runs |
 |---|---|---|
@@ -154,9 +156,21 @@ Four CLI harnesses, selectable in the New Session dialog under **Built-in agents
 | codex | `codex` | `codex exec` subprocess |
 | opencode | `opencode` | `opencode serve` + `opencode run` |
 
+**API harnesses** (`harness.type: api` — in-process via `internal/llm/`):
+
+| Name | Provider | Default model | API key env |
+|---|---|---|---|
+| Anthropic | `anthropic` | `claude-sonnet-4-20250514` | `ANTHROPIC_API_KEY` |
+| OpenAI | `openai` | `gpt-4o-mini` | `OPENAI_API_KEY` |
+| Gemini | `gemini` | `gemini-2.5-flash` | `GEMINI_API_KEY` / `GOOGLE_API_KEY` |
+| OpenRouter | `openrouter` | `anthropic/claude-sonnet-4` | `OPENROUTER_API_KEY` |
+| Ollama | `ollama` | (none) | none (`OLLAMA_HOST` optional) |
+
+Definitions live in `internal/agents/api_builtins.go`. Availability is checked via `APIHarnessAvailable()` in `internal/agent/api_availability.go`. See [harness-design.md](dev/harness-design.md) §4 for ADL fields (`provider`, `model`, `baseURL`, `apiKeyEnv`).
+
 ### Installed agents
 
-ADL YAML from `~/.nui/agents/*.yaml`, extensions, and other non-built-in agent types. Select them under **Installed agents** in the New Session dialog. Example templates for `docker`, `devcontainer`, and `remote` harness types live under [`dev/harness-examples/`](dev/harness-examples/); general ADL samples live in the [`ADL`](../ADL/examples/) repository.
+ADL YAML from `~/.nui/agents/*.yaml`, extensions, and other non-built-in agent types. Select them under **Installed agents** in the New Session dialog. Example templates for `docker`, `devcontainer`, and `remote` harness types live under [`dev/harness-examples/`](dev/harness-examples/); general ADL samples live in [`dev/adl/examples/`](dev/adl/examples/).
 
 Use custom ADL for `docker`, `devcontainer`, and `remote` harness types, sandbox variants (`bubblewrap`, `docker`), and multi-step workflows.
 
@@ -176,12 +190,42 @@ Custom ADL agents with `harness.type: docker`, `devcontainer`, or `remote` use t
 
 **Port note:** builtin sandbox images in `docker/` listen on **8090**; custom harness examples use **9090** (configured via ADL `containerPort`).
 
+### Agent evals
+
+ADL agents can define `evals:` test cases. Run them against a running server:
+
+```sh
+nui agent eval run -a my-agent
+nui agent eval run -a my-agent --case smoke --parallel 2
+```
+
+Or via HTTP: `POST /api/agents/:id/evals/run`. Implementation: `internal/eval/runner.go`, CLI: `cmd/agent_eval.go`.
+
+### Built-in MCP servers (injected into harnesses)
+
+| Server | CLI | Tools |
+|---|---|---|
+| `nui-hitl` | `nui hitl-mcp` | `ask_user`, approval flows |
+| `nui-viz` | `nui viz-mcp` | `show_visualization` (inline charts in chat) |
+| `nui-agent` | `nui agent-mcp` | `save_agent`, `update_memory` |
+
+Source: `internal/mcpserver/`. Harness config injects these when HITL, visualization, or memory features are enabled (`internal/agent/harness_config*.go`).
+
+### Known limitations
+
+- **Persistence:** UI text messages persist; tool-call payloads and image attachments do not survive server restart.
+- **AG-UI replay:** Mid-stream reconnect offset replay is planned but not implemented.
+- **Sandboxing:** Bubblewrap (`harness.sandbox: bubblewrap`) is Linux-only. macOS `sandbox-exec` is not implemented.
+- **Legacy endpoints:** `POST /api/sessions/:id/chat` and `GET /api/sessions/:id/history` remain registered but the UI uses AG-UI exclusively.
+- **Reference harnesses:** TCP JSON-RPC examples in `dev/harness-examples/py/` and `ts/` are not registered as built-in agent types.
+
 ## Contributing
 
 CI runs on every pull request and push to `main`:
 
-- Go tests (`go test . ./cmd/... ./internal/...`)
-- UI lint, build, and Vitest unit tests
+- Go tests (`go test -coverprofile=coverage.out . ./cmd/... ./internal/...`)
+- harness-sdk pytest (`pytest harness-sdk`)
+- UI lint, build, and Vitest unit tests (with coverage artifacts)
 - Playwright end-to-end tests
 - Binary size budget check
 
