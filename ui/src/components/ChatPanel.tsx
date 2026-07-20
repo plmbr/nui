@@ -14,6 +14,7 @@ import remarkGfm from 'remark-gfm'
 import { api } from '@/api'
 import { CodeBlock } from '@/components/CodeBlock'
 import { DiffBlock } from '@/components/DiffBlock'
+import { ThinkingBlock } from '@/components/ThinkingBlock'
 import { ThinkingIndicator } from '@/components/ThinkingIndicator'
 import { MentionMenu } from '@/components/MentionMenu'
 import { SlashCommandMenu } from '@/components/SlashCommandMenu'
@@ -22,6 +23,12 @@ import { ToolCallGroup } from '@/components/ToolCallGroup'
 import { VisualizationFrame } from '@/components/VisualizationFrame'
 import { imageSrc, useSessionChat } from '@/hooks/useSessionChat'
 import { segmentAssistantParts } from '@/lib/toolCallDisplay'
+import {
+  hasIncompleteThinkingBlock,
+  hasThinkingContent,
+  segmentThinkingContent,
+  stripThinkingBlocks,
+} from '@/lib/thinkingBlocks'
 import { useMentionMenu } from '@/hooks/useMentionMenu'
 import { useSlashCommandMenu } from '@/hooks/useSlashCommandMenu'
 import { looksLikeDiff } from '@/lib/diff'
@@ -29,6 +36,8 @@ import { normalizeMarkdown, stripInlineCodeDelimiters } from '@/lib/markdown'
 import { getCodeBlockInfo } from '@/lib/reactNodeText'
 import { normalizeVisualizationParts } from '@/lib/visualization'
 import type { PromptSuggestion, Session } from '@/types'
+import type { SessionChatMessage } from '@/lib/chatMessageUtils'
+import { assistantTextContent } from '@/lib/chatMessageUtils'
 
 const AUTO_PROMPT_FALLBACK = 'Follow your system instructions and run.'
 const SCROLL_ANCHOR_TOP_GAP = 12
@@ -441,6 +450,15 @@ export function ChatPanel({
     ? [...messages].reverse().find((m) => m.role === 'assistant')?.id
     : undefined
 
+  const messageHasRenderableContent = (msg: SessionChatMessage) => {
+    const text = assistantTextContent(msg)
+    if (hasThinkingContent(text)) return true
+    if (stripThinkingBlocks(text).trim()) return true
+    if ((msg.parts?.length ?? 0) > 0) return true
+    if ((msg.images?.length ?? 0) > 0) return true
+    return Boolean(msg.content.trim())
+  }
+
   const renderAssistantText = (content: string) => (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -488,12 +506,51 @@ export function ChatPanel({
     </ReactMarkdown>
   )
 
-  const renderAssistantSegments = (parts: NonNullable<(typeof messages)[number]['parts']>, msgId: string) =>
+  const renderTextWithThinking = (
+    content: string,
+    keyPrefix: string,
+    streaming = false,
+  ) => {
+    if (!hasThinkingContent(content)) {
+      if (!content.trim()) return null
+      return (
+        <div key={`${keyPrefix}-text`} className="agui-message__text-part">
+          {renderAssistantText(content)}
+        </div>
+      )
+    }
+
+    return segmentThinkingContent(content).map((segment, index) => {
+      if (segment.type === 'thinking') {
+        return (
+          <ThinkingBlock
+            key={`${keyPrefix}-thinking-${index}`}
+            running={streaming && !segment.complete}
+          >
+            {renderAssistantText(segment.content)}
+          </ThinkingBlock>
+        )
+      }
+
+      if (!segment.content.trim()) return null
+      return (
+        <div key={`${keyPrefix}-text-${index}`} className="agui-message__text-part">
+          {renderAssistantText(segment.content)}
+        </div>
+      )
+    })
+  }
+
+  const renderAssistantSegments = (
+    parts: NonNullable<(typeof messages)[number]['parts']>,
+    msgId: string,
+    streaming = false,
+  ) =>
     segmentAssistantParts(parts).map((segment) => {
       if (segment.type === 'text') {
         return (
-          <div key={`${msgId}-${segment.key}`} className="agui-message__text-part">
-            {renderAssistantText(segment.content)}
+          <div key={`${msgId}-${segment.key}`}>
+            {renderTextWithThinking(segment.content, `${msgId}-${segment.key}`, streaming)}
           </div>
         )
       }
@@ -550,11 +607,17 @@ export function ChatPanel({
                       />
                     ))}
                     {hasParts ? (
-                      renderAssistantSegments(normalizeVisualizationParts(parts!), msg.id)
+                      renderAssistantSegments(
+                        normalizeVisualizationParts(parts!),
+                        msg.id,
+                        isStreaming,
+                      )
                     ) : msg.content ? (
-                      renderAssistantText(msg.content)
+                      renderTextWithThinking(msg.content, msg.id, isStreaming)
                     ) : null}
-                    {isStreaming && <ThinkingIndicator variant="streaming" />}
+                    {isStreaming && !messageHasRenderableContent(msg) && (
+                      <ThinkingIndicator variant="streaming" />
+                    )}
                   </>
                 ) : (
                   <p>{msg.content}</p>

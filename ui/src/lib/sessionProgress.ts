@@ -3,6 +3,7 @@
 import type { SessionChatMessage, ToolCallPart } from '@/lib/chatMessageUtils'
 import { formatToolCallSummary } from '@/lib/toolCallSummary'
 import { isHarnessSubagentTool, latestSubagentProgressLabel } from '@/lib/subagentTrace'
+import { hasIncompleteThinkingBlock, stripThinkingBlocks } from '@/lib/thinkingBlocks'
 
 export type SessionProgressKind = 'thinking' | 'generating' | 'tool'
 
@@ -68,7 +69,12 @@ export function deriveSessionProgress(
     }
   }
 
-  if (assistantTextContent(msg).trim()) {
+  const rawText = assistantTextContent(msg)
+  if (hasIncompleteThinkingBlock(rawText)) {
+    return { kind: 'thinking', label: 'Thinking…' }
+  }
+
+  if (stripThinkingBlocks(rawText).trim()) {
     return { kind: 'generating', label: 'Generating…' }
   }
 
