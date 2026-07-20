@@ -21,6 +21,7 @@ var apiBuiltinAgentDefs = []model.ADLDefinition{
 		ID:          "anthropic",
 		Name:        "Anthropic",
 		Description: "Claude models via the Anthropic API",
+		Tags:        []string{"builtin", "api"},
 		Harness: model.ADLHarness{
 			Type:     "api",
 			Provider: "anthropic",
@@ -34,6 +35,7 @@ var apiBuiltinAgentDefs = []model.ADLDefinition{
 		ID:          "openai",
 		Name:        "OpenAI",
 		Description: "GPT models via the OpenAI API",
+		Tags:        []string{"builtin", "api"},
 		Harness: model.ADLHarness{
 			Type:     "api",
 			Provider: "openai",
@@ -47,6 +49,7 @@ var apiBuiltinAgentDefs = []model.ADLDefinition{
 		ID:          "gemini",
 		Name:        "Gemini",
 		Description: "Google Gemini via the Gemini API",
+		Tags:        []string{"builtin", "api"},
 		Harness: model.ADLHarness{
 			Type:     "api",
 			Provider: "gemini",
@@ -60,6 +63,7 @@ var apiBuiltinAgentDefs = []model.ADLDefinition{
 		ID:          "openrouter",
 		Name:        "OpenRouter",
 		Description: "Multi-model routing via OpenRouter",
+		Tags:        []string{"builtin", "api"},
 		Harness: model.ADLHarness{
 			Type:      "api",
 			Provider:  "openrouter",
@@ -75,6 +79,7 @@ var apiBuiltinAgentDefs = []model.ADLDefinition{
 		ID:          "ollama",
 		Name:        "Ollama",
 		Description: "Local models via Ollama",
+		Tags:        []string{"builtin", "api"},
 		Harness: model.ADLHarness{
 			Type:     "api",
 			Provider: "ollama",

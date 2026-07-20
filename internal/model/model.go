@@ -57,6 +57,7 @@ type ADLDefinition struct {
 	ID           string         `yaml:"id"           json:"id"`
 	Name         string         `yaml:"name"         json:"name"`
 	Description  string         `yaml:"description"  json:"description,omitempty"`
+	Tags         []string       `yaml:"tags"         json:"tags,omitempty"`
 	Version      string         `yaml:"version"      json:"version,omitempty"`
 	Harness      ADLHarness     `yaml:"harness"      json:"harness"`
 	SystemPrompt string         `yaml:"systemPrompt" json:"systemPrompt,omitempty"`

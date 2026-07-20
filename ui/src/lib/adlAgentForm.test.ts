@@ -129,6 +129,24 @@ hitl:
     expect(reparsed.toolApprovalTools).toEqual(['Read', 'Grep', 'Glob'])
   })
 
+  it('round-trips agent tags through parse and sync', () => {
+    const original = `adl: "1.0"
+id: tagged-agent
+name: Tagged Agent
+tags:
+  - coding
+  - research
+harness:
+  type: claude-code
+`
+    const parsed = parseAgentYaml(original, emptyOptions)
+    expect(parsed.form.tags).toBe('coding, research')
+    const synced = syncYamlFromForm(original, parsed.form, emptyOptions)
+    expect(synced).toContain('tags:')
+    expect(synced).toContain('- coding')
+    expect(synced).toContain('- research')
+  })
+
   it('syncYamlFromForm merges form edits while preserving yaml-only fields', () => {
     const original = `adl: "1.0"
 id: my-agent

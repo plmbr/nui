@@ -272,6 +272,18 @@ export function AgentForm({ form, options, hasWorkflowSteps, hasSubAgents, editi
             placeholder="What this agent does"
           />
         </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="agent-tags">Tags</Label>
+          <Input
+            id="agent-tags"
+            value={form.tags}
+            onChange={(e) => patch({ tags: e.target.value })}
+            placeholder="coding, research"
+          />
+          <p className="text-xs text-muted-foreground">
+            Comma-separated labels for filtering in the new-session UI.
+          </p>
+        </div>
       </section>
 
       <section className="space-y-3">

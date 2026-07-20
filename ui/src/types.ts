@@ -77,6 +77,7 @@ export interface AgentType {
   toolApprovalTools?: string[]
   isBuiltin: boolean
   source?: 'builtin' | 'user' | 'extension'
+  tags?: string[]
   available: boolean
 }
 

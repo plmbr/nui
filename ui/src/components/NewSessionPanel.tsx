@@ -15,6 +15,10 @@ import {
   sortCustomAgentsByName,
 } from '@/lib/agentSources'
 import {
+  collectAgentTags,
+  filterAgentsByTags,
+} from '@/lib/agentTags'
+import {
   partitionBuiltinAgents,
   pickDefaultAgentTypeId,
   selectableAgentTypes,
@@ -23,6 +27,7 @@ import {
   showToolApprovalsOption,
 } from '@/lib/agentTypes'
 import { BUILTIN_AGENTS_LABEL, API_AGENTS_LABEL, CLI_AGENTS_LABEL, INSTALLED_AGENTS_LABEL } from '@/lib/sessionGroups'
+import { TagFilterInput } from '@/components/TagFilterInput'
 import type { AgentType, CreateSessionRequest, ExtensionInfo, Session } from '@/types'
 
 interface Props {
@@ -52,6 +57,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   const [customSearch, setCustomSearch] = useState('')
   const [agentTab, setAgentTab] = useState<AgentCategoryTab>('builtin')
   const [selectedSourceKeys, setSelectedSourceKeys] = useState<Set<string>>(() => new Set())
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [extensions, setExtensions] = useState<ExtensionInfo[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -158,6 +164,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
     setWorkingDir('')
     setCustomSearch('')
     setSelectedSourceKeys(new Set())
+    setSelectedTags([])
     setError('')
     setUserScopeHarnessConfig(false)
     setHarnessPermissionsEnabled(true)
@@ -183,11 +190,14 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   const allSourcesActive = selectedSourceKeys.size === 0
     || (allSourceKeys.length > 0 && allSourceKeys.every((key) => selectedSourceKeys.has(key)))
   const searchQuery = customSearch.trim().toLowerCase()
+  const availableTags = useMemo(() => collectAgentTags(userDefined), [userDefined])
+  const selectedTagSet = useMemo(() => new Set(selectedTags), [selectedTags])
   const filteredCustom = useMemo(() => {
     const bySource = filterCustomAgentsBySources(userDefined, selectedSourceKeys)
-    if (!searchQuery) return bySource
-    return bySource.filter((a) => agentMatchesSearch(a, searchQuery))
-  }, [searchQuery, userDefined, selectedSourceKeys])
+    const byTags = filterAgentsByTags(bySource, selectedTagSet)
+    if (!searchQuery) return byTags
+    return byTags.filter((a) => agentMatchesSearch(a, searchQuery))
+  }, [searchQuery, userDefined, selectedSourceKeys, selectedTagSet])
 
   useEffect(() => {
     const validKeys = new Set(customSourceOptions.map((option) => option.key))
@@ -375,6 +385,28 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
                   aria-label={INSTALLED_AGENTS_LABEL}
                   className="flex min-h-0 flex-1 flex-col gap-2"
                 >
+                  <div className="relative shrink-0">
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={customSearch}
+                      onChange={(e) => setCustomSearch(e.target.value)}
+                      placeholder="Search by name or description…"
+                      className="pl-8 pr-8"
+                      aria-label="Search custom agents"
+                    />
+                    {customSearch && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        onClick={() => setCustomSearch('')}
+                        aria-label="Clear search"
+                      >
+                        <X className="size-3.5" />
+                      </Button>
+                    )}
+                  </div>
                   {customSourceOptions.length > 0 && (
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 shrink-0">
                       <Label className="shrink-0 text-muted-foreground">Source</Label>
@@ -414,33 +446,16 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
                       </div>
                     </div>
                   )}
-                  <div className="relative shrink-0">
-                    <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={customSearch}
-                      onChange={(e) => setCustomSearch(e.target.value)}
-                      placeholder="Search by name or description…"
-                      className="pl-8 pr-8"
-                      aria-label="Search custom agents"
-                    />
-                    {customSearch && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        onClick={() => setCustomSearch('')}
-                        aria-label="Clear search"
-                      >
-                        <X className="size-3.5" />
-                      </Button>
-                    )}
-                  </div>
+                  <TagFilterInput
+                    availableTags={availableTags}
+                    selectedTags={selectedTags}
+                    onChange={setSelectedTags}
+                  />
                   <div ref={customAgentsScrollRef} className="min-h-0 flex-1 overflow-y-auto">
                     <div className="flex flex-col gap-1.5 pr-1">
                       {filteredCustom.length === 0 ? (
                         <p className="text-sm text-muted-foreground py-2">
-                          {searchQuery || selectedSourceKeys.size > 0
+                          {searchQuery || selectedSourceKeys.size > 0 || selectedTags.length > 0
                             ? 'No agents match your filters.'
                             : 'No custom agents available.'}
                         </p>
@@ -660,23 +675,39 @@ function AgentCard({ agent, selected, onSelect }: AgentCardProps) {
       data-agent-id={agent.id}
       onClick={onSelect}
       className={[
-        'flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
+        'flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
         selected
           ? 'border-primary bg-primary/5 text-foreground'
           : 'border-border bg-background hover:bg-muted/60',
       ].join(' ')}
     >
-      <HarnessIcon harness={agent.harness} provider={agent.provider} agentId={agent.id} size="lg" className="shrink-0" />
-      <span className="flex-1 min-w-0">
-        <span className="block text-sm font-medium leading-tight">{agent.label}</span>
-        {agent.description && (
-          <span className="block text-xs text-muted-foreground mt-0.5 leading-snug">
-            {agent.description}
+      <HarnessIcon harness={agent.harness} provider={agent.provider} agentId={agent.id} size="lg" className="shrink-0 mt-0.5" />
+      <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <span className="flex items-start gap-2 min-w-0">
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium leading-tight">{agent.label}</span>
+            {agent.description && (
+              <span className="block text-xs text-muted-foreground mt-0.5 leading-snug">
+                {agent.description}
+              </span>
+            )}
+          </span>
+          <span className="shrink-0 max-w-[40%] truncate rounded px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground bg-muted" title={harnessLabel(agent.harness, agent.sandbox)}>
+            {harnessLabel(agent.harness, agent.sandbox)}
+          </span>
+        </span>
+        {agent.tags && agent.tags.length > 0 && (
+          <span className="flex w-full flex-wrap gap-1">
+            {agent.tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground bg-muted"
+              >
+                {tag}
+              </span>
+            ))}
           </span>
         )}
-      </span>
-      <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground bg-muted">
-        {harnessLabel(agent.harness, agent.sandbox)}
       </span>
     </button>
   )

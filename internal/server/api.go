@@ -46,6 +46,7 @@ type AgentTypeInfo struct {
 	PromptSuggestions []model.ADLPromptSuggestion `json:"promptSuggestions,omitempty"`
 	Skills            []string                   `json:"skills,omitempty"`
 	WorkingDirInput   bool                       `json:"workingDirInput,omitempty"` // true = user picks working dir at session create
+	Tags              []string                   `json:"tags,omitempty"`
 	IsBuiltin     bool   `json:"isBuiltin"`
 	Source        string `json:"source,omitempty"` // builtin | user | extension
 	Available     bool   `json:"available"` // false when the required CLI is not installed
@@ -393,6 +394,7 @@ func agentTypeInfoFromDef(def model.ADLDefinition, builtin bool) AgentTypeInfo {
 		PromptSuggestions: def.PromptSuggestions,
 		Skills:            skillNamesFromADL(def),
 		WorkingDirInput:   model.IsADLWorkingDirInput(def),
+		Tags:              def.Tags,
 		IsBuiltin:         builtin,
 		Available:         harnessAvailable(def),
 	}

@@ -57,6 +57,7 @@ func ParseDefinitionYAML(content string) (model.ADLDefinition, error) {
 	}
 	model.NormalizeADLDefinition(&def)
 	model.NormalizeADLSkills(&def)
+	model.NormalizeADLTags(&def)
 	if err := model.ValidateADLDefinition(def); err != nil {
 		return model.ADLDefinition{}, err
 	}

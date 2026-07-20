@@ -27,6 +27,9 @@ func ValidateADLDefinition(def ADLDefinition) error {
 	if err := ValidateADLEvals(def.Evals); err != nil {
 		return err
 	}
+	if err := ValidateADLTags(def.Tags); err != nil {
+		return err
+	}
 	if err := validateSubAgents(def); err != nil {
 		return err
 	}

@@ -46,6 +46,7 @@ export interface AgentFormModel {
   id: string
   name: string
   description: string
+  tags: string
   systemPrompt: string
   promptMode: 'user' | 'auto'
   defaultPrompt: string
@@ -126,6 +127,7 @@ export function defaultAgentForm(): AgentFormModel {
     id: 'my-agent',
     name: 'My Agent',
     description: '',
+    tags: '',
     systemPrompt: '',
     promptMode: 'user',
     defaultPrompt: '',
@@ -332,6 +334,7 @@ export function parseAgentYaml(content: string, options: AgentFormOptions): Pars
     id: String(doc.id ?? doc.name ?? 'my-agent'),
     name: String(doc.name ?? doc.id ?? 'My Agent'),
     description: String(doc.description ?? ''),
+    tags: parseStringList(doc.tags).join(', '),
     systemPrompt: String(doc.systemPrompt ?? ''),
     promptMode: doc.promptMode === 'auto' ? 'auto' : 'user',
     defaultPrompt: String(doc.defaultPrompt ?? ''),
@@ -608,6 +611,12 @@ export function mergeFormIntoAgentYaml(
   setMapKey(root, 'id', form.id.trim() || undefined)
   setMapKey(root, 'name', form.name.trim() || undefined)
   setMapKey(root, 'description', form.description.trim() || undefined)
+  const tags = form.tags
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+  if (tags.length > 0) root.set('tags', tags)
+  else root.delete('tags')
   setMapKey(root, 'systemPrompt', form.systemPrompt.trim() || undefined)
 
   if (form.promptMode === 'auto') {
