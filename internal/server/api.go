@@ -355,17 +355,11 @@ func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(os.Stderr, "warn: load ADL definitions: %v\n", err)
 	}
 	for _, def := range userDefs {
-		if def.Kind == "workflow" {
-			continue // workflows are not selectable as session agent types
-		}
 		all = append(all, agentTypeInfoFromDef(def, false))
 	}
 
 	if extensions.Default != nil {
 		for _, def := range extensions.Default.AllAgents() {
-			if def.Kind == "workflow" {
-				continue
-			}
 			info := agentTypeInfoFromDef(def, false)
 			info.Source = "extension"
 			all = append(all, info)

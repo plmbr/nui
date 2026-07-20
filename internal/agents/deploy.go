@@ -47,9 +47,6 @@ func LoadUserAgent(agentID string) (model.ADLDefinition, error) {
 	}
 	model.NormalizeADLDefinition(&def)
 	model.NormalizeADLSkills(&def)
-	if def.Kind == "workflow" {
-		return model.ADLDefinition{}, fmt.Errorf("workflow agents cannot be deployed")
-	}
 	return def, nil
 }
 

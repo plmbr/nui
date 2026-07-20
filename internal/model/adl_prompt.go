@@ -14,9 +14,17 @@ const ADLPromptModeUser = "user"
 const ADLPromptModeAuto = "auto"
 
 // IsMultiStepWorkflow reports whether the agent re-runs all steps on each user turn.
-// Multi-step workflows do not map harness session IDs in agentSessions.
+// Multi-step pipelines do not map harness session IDs in agentSessions.
 func IsMultiStepWorkflow(def ADLDefinition) bool {
-	return len(def.Steps) > 0 || def.Kind == "workflow"
+	if len(def.Steps) > 1 {
+		return true
+	}
+	for _, step := range def.Steps {
+		if strings.TrimSpace(step.Type) == "hitl" {
+			return true
+		}
+	}
+	return false
 }
 
 // IsOrchestratorAgent reports whether the agent routes user prompts to sub-agents.

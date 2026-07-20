@@ -32,9 +32,6 @@ func Install(source string) (string, error) {
 	if err := model.ValidateADLDefinition(def); err != nil {
 		return "", fmt.Errorf("invalid agent ADL: %w", err)
 	}
-	if def.Kind == "workflow" {
-		return "", fmt.Errorf("workflow ADL files cannot be installed as agent types")
-	}
 
 	filename, err := agentFilename(def)
 	if err != nil {

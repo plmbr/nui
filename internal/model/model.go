@@ -48,12 +48,9 @@ type ChatMessage struct {
 
 // ── ADL (Agent Definition Language) ─────────────────────────────────────────
 
-// ADLDefinition describes a single agent or multi-step workflow.
-// Kind "agent" (default) is selectable at session creation time.
-// Kind "workflow" is an orchestration plan that sequences multiple steps.
+// ADLDefinition describes a single agent or multi-step pipeline.
 type ADLDefinition struct {
 	ADL          string         `yaml:"adl"          json:"adl"`
-	Kind         string         `yaml:"kind"         json:"kind,omitempty"` // "agent" | "workflow"; defaults to "agent"
 	ID           string         `yaml:"id"           json:"id"`
 	Name         string         `yaml:"name"         json:"name"`
 	Description  string         `yaml:"description"  json:"description,omitempty"`

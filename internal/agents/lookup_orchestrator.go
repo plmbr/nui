@@ -24,8 +24,8 @@ func ValidateOrchestratorRefs(def model.ADLDefinition) error {
 		if !ok {
 			return fmt.Errorf("subAgents: unknown agent %q", id)
 		}
-		if sub.Kind == "workflow" || len(sub.Steps) > 0 {
-			return fmt.Errorf("subAgents: %q is a workflow and cannot be a sub-agent", id)
+		if model.IsMultiStepWorkflow(sub) {
+			return fmt.Errorf("subAgents: %q is a multi-step pipeline and cannot be a sub-agent", id)
 		}
 	}
 	return detectOrchestratorCycle(def.SubAgents)

@@ -94,9 +94,6 @@ func applyStartSettings(opts StartOptions) error {
 		if !ok {
 			return fmt.Errorf("unknown agent id %q", defaultAgent)
 		}
-		if def.Kind == "workflow" {
-			return fmt.Errorf("workflows cannot be used as the default agent type")
-		}
 		settings.DefaultAgentType = model.ADLAgentID(def)
 	}
 	if settings.Theme == "" {

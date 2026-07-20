@@ -309,6 +309,14 @@ function parseSubAgents(doc: Record<string, unknown>): string[] {
   return raw.map((item) => String(item).trim()).filter(Boolean)
 }
 
+function hasMultiStepPipeline(steps: unknown[] | undefined): boolean {
+  if (!Array.isArray(steps) || steps.length === 0) return false
+  if (steps.length > 1) return true
+  const step = steps[0]
+  if (!step || typeof step !== 'object') return false
+  return String((step as Record<string, unknown>).type ?? '').trim() === 'hitl'
+}
+
 /** Read supported form fields from YAML without modifying the source text. */
 export function parseAgentYaml(content: string, options: AgentFormOptions): ParsedAgentDoc {
   let doc: Record<string, unknown> | null = null
@@ -326,7 +334,7 @@ export function parseAgentYaml(content: string, options: AgentFormOptions): Pars
   const hitl = doc.hitl as Record<string, unknown> | undefined
   const { skills: skillsRaw, mcpServers: mcpRaw } = aiAssetsLists(doc)
   const steps = doc.steps as unknown[] | undefined
-  const hasWorkflowSteps = Array.isArray(steps) && steps.length > 0
+  const hasWorkflowSteps = hasMultiStepPipeline(steps)
   const subAgents = parseSubAgents(doc)
   const hasSubAgents = subAgents.length > 0
 

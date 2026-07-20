@@ -183,7 +183,7 @@ func validateSubAgents(def ADLDefinition) error {
 	if len(def.SubAgents) == 0 {
 		return nil
 	}
-	if len(def.Steps) > 0 || def.Kind == "workflow" {
+	if len(def.Steps) > 0 {
 		return fmt.Errorf("subAgents cannot be combined with workflow steps")
 	}
 	seen := map[string]bool{}

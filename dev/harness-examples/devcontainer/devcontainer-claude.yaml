@@ -8,6 +8,4 @@ harness:
   type: devcontainer
   innerHarness: claude-code
 
-steps:
-  - name: chat
-    systemPrompt: You are a helpful coding assistant.
+systemPrompt: You are a helpful coding assistant.

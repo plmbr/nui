@@ -223,13 +223,13 @@ export function AgentForm({ form, options, hasWorkflowSteps, hasSubAgents, editi
     <div className="agent-form space-y-6 max-w-2xl">
       {hasWorkflowSteps && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
-          This agent has workflow steps defined in YAML. The form edits top-level fields only; steps
+          This agent has pipeline steps defined in YAML. The form edits top-level fields only; steps
           are preserved when you save.
         </div>
       )}
       {hasSubAgents && hasWorkflowSteps && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-          This agent defines both sub-agents and workflow steps. Only one orchestration mode is
+          This agent defines both sub-agents and pipeline steps. Only one orchestration mode is
           supported — remove steps or sub-agents in YAML.
         </div>
       )}

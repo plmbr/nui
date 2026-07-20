@@ -46,17 +46,23 @@ func TestIsMultiStepWorkflow(t *testing.T) {
 	if IsMultiStepWorkflow(ADLDefinition{Harness: ADLHarness{Type: "claude-code"}}) {
 		t.Fatal("single-step agent should not be multi-step workflow")
 	}
-	if !IsMultiStepWorkflow(ADLDefinition{
+	if IsMultiStepWorkflow(ADLDefinition{
 		Harness: ADLHarness{Type: "claude-code"},
 		Steps:   []ADLStep{{Name: "a"}},
 	}) {
-		t.Fatal("expected multi-step when steps present")
+		t.Fatal("single explicit step should not be multi-step workflow")
 	}
 	if !IsMultiStepWorkflow(ADLDefinition{
-		Kind:    "workflow",
 		Harness: ADLHarness{Type: "claude-code"},
+		Steps:   []ADLStep{{Name: "a"}, {Name: "b"}},
 	}) {
-		t.Fatal("expected multi-step for kind workflow")
+		t.Fatal("expected multi-step when more than one step")
+	}
+	if !IsMultiStepWorkflow(ADLDefinition{
+		Harness: ADLHarness{Type: "claude-code"},
+		Steps:   []ADLStep{{Name: "gate", Type: "hitl", HITL: &ADLStepHITL{Kind: "approval", Title: "Approve"}}},
+	}) {
+		t.Fatal("expected multi-step when a HITL gate step is present")
 	}
 }
 
