@@ -76,6 +76,10 @@ func normalizeHarnessType(harnessType string) string {
 	return harnessType
 }
 
+func apiHarnessDisablesTools(h model.ADLHarness) bool {
+	return normalizeHarnessType(h.Type) == "api" && h.DisableTools
+}
+
 // dockerSessionConfigArgs returns docker run -v/-e flags for a provisioned session config dir.
 // When userScope is true the session dir is still mounted for ADL files such as MCP config,
 // but harness config env vars are omitted so the container keeps user-scoped settings.
@@ -230,15 +234,17 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 		deps.PendingCustomMCPServers = nil
 	}
 	var err error
-	deps.MCPServers, err = appendNuiVizMCP(deps.MCPServers)
-	if err != nil {
-		return deps, err
+	if !apiHarnessDisablesTools(def.Harness) {
+		deps.MCPServers, err = appendNuiVizMCP(deps.MCPServers)
+		if err != nil {
+			return deps, err
+		}
+		deps.MCPServers, err = appendNuiAgentMCP(deps.MCPServers, model.ADLAgentID(def))
+		if err != nil {
+			return deps, err
+		}
 	}
-	deps.MCPServers, err = appendNuiAgentMCP(deps.MCPServers, model.ADLAgentID(def))
-	if err != nil {
-		return deps, err
-	}
-	if !(def.Harness.Type == "api" && strings.TrimSpace(def.Harness.Provider) == "ollama") {
+	if !(def.Harness.Type == "api" && strings.TrimSpace(def.Harness.Provider) == "ollama") && !apiHarnessDisablesTools(def.Harness) {
 		deps.SystemPrompt = appendVizSystemPrompt(deps.SystemPrompt)
 	}
 	if def.Harness.Type == "api" && strings.TrimSpace(def.Harness.Provider) == "ollama" {

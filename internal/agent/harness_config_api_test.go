@@ -45,6 +45,23 @@ func TestExpandHarnessDeps_ollamaOmitsVisualizeSkill(t *testing.T) {
 	}
 }
 
+func TestExpandHarnessDeps_apiDisableToolsOmitsBuiltinMCP(t *testing.T) {
+	expanded, err := ExpandHarnessDeps(HarnessDeps{}, nil, "api-session", model.ADLDefinition{
+		Harness: model.ADLHarness{Type: "api", Provider: "openai", DisableTools: true},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, srv := range expanded.MCPServers {
+		if srv.Name == "nui-viz" || srv.Name == nuiAgentMCPName {
+			t.Fatalf("unexpected builtin MCP when disableTools is set: %+v", srv)
+		}
+	}
+	if strings.Contains(expanded.SystemPrompt, "show_visualization") {
+		t.Fatal("disableTools api harness should not get viz system prompt")
+	}
+}
+
 func TestExpandHarnessDeps_apiIncludesNuiAgentMCP(t *testing.T) {
 	deps := HarnessDeps{}
 	expanded, err := ExpandHarnessDeps(deps, nil, "api-session", model.ADLDefinition{

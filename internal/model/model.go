@@ -111,6 +111,7 @@ type ADLHarness struct {
 	Port          int               `yaml:"port"          json:"port,omitempty"`           // harness type=remote only
 	Env           map[string]string `yaml:"env"           json:"env,omitempty"`
 	Permissions   string            `yaml:"permissions"   json:"permissions,omitempty"` // interactive | bypass (claude-code, codex)
+	DisableTools  bool              `yaml:"disableTools"  json:"disableTools,omitempty"` // harness type=api: omit tools/tool_choice from LLM requests
 }
 
 type ADLAIAssets struct {

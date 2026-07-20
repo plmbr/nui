@@ -32,11 +32,17 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 
 	mcpClient := NewSessionMCP()
 	defer mcpClient.Close()
-	if len(req.MCPServers) > 0 {
-		for _, msg := range mcpClient.ConnectServers(ctx, req.MCPServers) {
-			events <- Event{Type: EventText, Content: msg + "\n"}
+	var tools []llm.Tool
+	if !a.Harness.DisableTools {
+		if len(req.MCPServers) > 0 {
+			for _, msg := range mcpClient.ConnectServers(ctx, req.MCPServers) {
+				events <- Event{Type: EventText, Content: msg + "\n"}
+			}
 		}
+		tools = sessionToolsToLLMTools(mcpClient.Tools())
 	}
+
+	messages := buildAPIMessages(req)
 
 	modelName := strings.TrimSpace(req.Model)
 	if modelName == "" {
@@ -61,9 +67,6 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 	}
 	candidateIdx := 0
 	modelName = modelCandidates[0]
-
-	messages := buildAPIMessages(req)
-	tools := sessionToolsToLLMTools(mcpClient.Tools())
 
 	for iteration := 0; iteration < maxAPIToolIterations; iteration++ {
 		if ctx.Err() != nil {
@@ -173,6 +176,9 @@ func (a *APIHarnessAgent) streamCompletion(
 	userMessage string,
 	events chan<- Event,
 ) (llm.Message, string, error) {
+	if a.Harness.DisableTools {
+		tools = nil
+	}
 	params := llm.CompletionParams{
 		Model:    modelName,
 		Messages: messages,

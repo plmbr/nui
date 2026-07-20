@@ -33,6 +33,62 @@ func (p *mockStreamProvider) CompletionStream(context.Context, llm.CompletionPar
 	return chunks, errs
 }
 
+type capturingStreamProvider struct {
+	lastParams llm.CompletionParams
+	chunks     []llm.ChatCompletionChunk
+}
+
+func (p *capturingStreamProvider) Name() string { return "capturing" }
+
+func (p *capturingStreamProvider) Completion(context.Context, llm.CompletionParams) (*llm.ChatCompletion, error) {
+	return nil, nil
+}
+
+func (p *capturingStreamProvider) CompletionStream(_ context.Context, params llm.CompletionParams) (<-chan llm.ChatCompletionChunk, <-chan error) {
+	p.lastParams = params
+	chunks := make(chan llm.ChatCompletionChunk, len(p.chunks))
+	errs := make(chan error, 1)
+	go func() {
+		defer close(chunks)
+		defer close(errs)
+		for _, chunk := range p.chunks {
+			chunks <- chunk
+		}
+	}()
+	return chunks, errs
+}
+
+func TestStreamCompletion_disableToolsOmitsToolParams(t *testing.T) {
+	provider := &capturingStreamProvider{
+		chunks: []llm.ChatCompletionChunk{{
+			Choices: []llm.ChunkChoice{{
+				Delta: llm.ChunkDelta{Content: "Hello!"},
+			}},
+		}},
+	}
+	agent := &APIHarnessAgent{Harness: model.ADLHarness{Type: "api", Provider: "openai", DisableTools: true}}
+	events := make(chan Event, 2)
+	_, _, err := agent.streamCompletion(
+		context.Background(),
+		provider,
+		"bedrock/amazon.nova-lite-v1:0",
+		nil,
+		[]llm.Tool{{Type: "function", Function: llm.Function{Name: "ask_user"}}},
+		"hi",
+		events,
+	)
+	close(events)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(provider.lastParams.Tools) != 0 {
+		t.Fatalf("tools = %#v, want none when disableTools is set", provider.lastParams.Tools)
+	}
+	if provider.lastParams.ToolChoice != nil {
+		t.Fatalf("tool choice = %#v, want nil", provider.lastParams.ToolChoice)
+	}
+}
+
 func TestStreamCompletion_nativeAskUserBlockedOnOllama(t *testing.T) {
 	provider := &mockStreamProvider{
 		chunks: []llm.ChatCompletionChunk{{
