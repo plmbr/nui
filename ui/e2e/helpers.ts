@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { expect, type Page } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 export async function waitForAppReady(page: Page) {
   await page.goto('/launch')
@@ -92,6 +92,22 @@ export function realAgentAvailable(): boolean {
 
 export function ollamaAgentAvailable(): boolean {
   return process.env.E2E_AGENT === 'ollama'
+}
+
+export function localIntegrationAvailable(): boolean {
+  return process.env.E2E_AGENT === 'integration'
+}
+
+export function skipUnlessLocalIntegration() {
+  test.skip(
+    !!process.env.CI || !localIntegrationAvailable(),
+    'run locally with: E2E_AGENT=integration npm run test:e2e:local',
+  )
+}
+
+export async function openCustomizeTab(page: Page, tab: string) {
+  await openCustomize(page)
+  await page.getByRole('button', { name: tab }).click()
 }
 
 export async function waitForAssistantReply(page: Page) {

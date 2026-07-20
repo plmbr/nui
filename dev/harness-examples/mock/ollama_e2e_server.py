@@ -29,6 +29,15 @@ def last_user_message(messages: list[dict[str, Any]]) -> str:
     return ""
 
 
+def has_tool_results_since_last_user(messages: list[dict[str, Any]]) -> bool:
+    for msg in reversed(messages):
+        if msg.get("role") == "user":
+            break
+        if msg.get("role") == "tool":
+            return True
+    return False
+
+
 def stream_chunks(handler: BaseHTTPRequestHandler, pieces: list[str]) -> None:
     handler.send_response(200)
     handler.send_header("Content-Type", "application/x-ndjson")
@@ -90,6 +99,8 @@ def plain_text_reply(user_text: str) -> list[str]:
         return ["Hello! How can I help you today?"]
     if "what is 2+2" in lower or lower == "2+2":
         return ["2+2 equals 4."]
+    if "2+2" in lower and ("prefer" in lower or "choose" in lower):
+        return ["Thanks for confirming. 2+2 equals 4."]
     if "what can you do" in lower or "what can u do" in lower or "what can u fo" in lower:
         return [
             "I can answer questions, help with code, and create charts when you ask for them."
@@ -171,6 +182,20 @@ def response_pieces(user_text: str) -> list[str]:
     return [f"Mock echo: {user_text}"]
 
 
+def user_requested_explicit_choices(user_text: str) -> bool:
+    lower = user_text.lower()
+    phrases = (
+        "which do you prefer",
+        "which would you prefer",
+        "choose between",
+        "pick one",
+        "pick between",
+        "multiple choice",
+        "select one",
+    )
+    return any(phrase in lower for phrase in phrases)
+
+
 def native_ask_user_args(user_text: str) -> dict[str, Any]:
     lower = user_text.lower()
     if "what can you do" in lower or "what can u do" in lower or "what can u fo" in lower:
@@ -234,10 +259,17 @@ class Handler(BaseHTTPRequestHandler):
             return
         user_text = last_user_message(req.get("messages") or [])
         has_tools = bool(req.get("tools"))
+        messages = req.get("messages") or []
         if not has_tools:
             stream_chunks(self, plain_text_reply(user_text))
             return
+        if has_tool_results_since_last_user(messages):
+            stream_chunks(self, plain_text_reply(user_text))
+            return
         lower = user_text.lower()
+        if user_requested_explicit_choices(user_text):
+            stream_native_ask_user(self, native_ask_user_args(user_text))
+            return
         if "what can you do" in lower or "what can u do" in lower or "what can u fo" in lower:
             stream_native_ask_user(self, native_ask_user_args(user_text))
             return

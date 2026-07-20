@@ -1,0 +1,9 @@
+{
+  "tools": [
+    {
+      "name": "ping",
+      "description": "Health check — returns pong",
+      "command": ["echo", "pong"]
+    }
+  ]
+}

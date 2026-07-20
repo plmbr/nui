@@ -26,7 +26,8 @@ export default defineConfig({
   webServer: {
     command: '../scripts/e2e-server.sh',
     url: `${baseURL}/health`,
-    reuseExistingServer: !process.env.CI,
+    // Integration tests seed ~/.nui; never attach to an unrelated local server.
+    reuseExistingServer: !process.env.CI && process.env.E2E_AGENT !== 'integration',
     timeout: 120_000,
   },
 })

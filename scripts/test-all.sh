@@ -24,7 +24,7 @@ echo "==> UI lint + build + unit tests"
 
 echo "==> Playwright E2E (echo agent by default; set ANTHROPIC_API_KEY for real claude-code chat)"
 export E2E_AGENT="${E2E_AGENT:-echo}"
-(cd "$ROOT/ui" && npx playwright install chromium && npm run test:e2e -- --grep-invert "ollama api")
+(cd "$ROOT/ui" && npx playwright install chromium && npm run test:e2e -- --grep-invert "ollama api|@local-only")
 
 echo "==> Playwright E2E (ollama api mock)"
 export E2E_AGENT=ollama

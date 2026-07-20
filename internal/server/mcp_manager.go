@@ -119,7 +119,10 @@ func (m *MCPManager) load(path string) error {
 		if strings.TrimSpace(srv.URL) != "" {
 			session, connectErr = mcpoauth.ConnectRemote(ctx, srv)
 		} else {
-			cmd := exec.CommandContext(ctx, serverCfg.Command, serverCfg.Args...)
+			// Use exec.Command (not CommandContext): the connect timeout context must not
+			// be tied to the child process lifetime or cancel() kills stdio MCP servers
+			// right after Connect returns, breaking later tools/call requests.
+			cmd := exec.Command(serverCfg.Command, serverCfg.Args...)
 			transport := &mcp.CommandTransport{Command: cmd}
 			client := mcp.NewClient(&mcp.Implementation{Name: "nui", Version: "1.0.0"}, nil)
 			session, connectErr = client.Connect(ctx, transport, nil)

@@ -139,7 +139,7 @@ jobs:
           CI: "true"
           E2E_AGENT: echo
           NUI_E2E_SKIP_BUILD: "1"
-        run: npm run test:e2e -- --grep-invert "ollama api"
+        run: npm run test:e2e -- --grep-invert "ollama api|@local-only"
 
       - name: Playwright E2E (ollama api mock)
         working-directory: ui
