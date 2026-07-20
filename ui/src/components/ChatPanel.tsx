@@ -12,6 +12,7 @@ import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
 import remarkGfm from 'remark-gfm'
 import { api } from '@/api'
+import { PlumeriaRandomBackdrop } from '@/components/PlumeriaBackdrop'
 import { CodeBlock } from '@/components/CodeBlock'
 import { DiffBlock } from '@/components/DiffBlock'
 import { ThinkingBlock } from '@/components/ThinkingBlock'
@@ -568,6 +569,13 @@ export function ChatPanel({
 
   return (
     <div className="agui-chat flex flex-col flex-1 min-h-0">
+      {messages.length === 0 && (
+        <PlumeriaRandomBackdrop
+          count={4}
+          opacityVariant="chat"
+          layoutKey={session.id}
+        />
+      )}
       <div ref={messagesContainerRef} className="agui-chat__messages">
         {messages.length === 0 && (
           <div className="agui-chat__empty">

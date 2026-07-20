@@ -164,6 +164,20 @@
     --sidebar-accent-foreground: oklch(0.35 0.04 215);
     --sidebar-border: oklch(0.90 0.006 90);
     --sidebar-ring: oklch(0.52 0.11 215);
+
+    /* Plumeria (pua melia) — warm lei accents */
+    --plumeria-petal-base: oklch(0.99 0.02 98);
+    --plumeria-petal-mid: oklch(0.96 0.05 95);
+    --plumeria-petal-tip: oklch(0.62 0.24 350);
+    --plumeria-petal-gold: oklch(0.78 0.20 85);
+    --plumeria-petal-highlight: oklch(1 0.01 98);
+    --plumeria-throat: oklch(0.90 0.19 95);
+    --plumeria-center: oklch(0.74 0.21 82);
+    --plumeria-center-bright: oklch(0.90 0.22 98);
+    --plumeria-edge: oklch(0.58 0.16 350 / 50%);
+    --plumeria-shadow: oklch(0.55 0.12 350 / 22%);
+    --plumeria-opacity: 0.52;
+    --plumeria-chat-opacity: 0.28;
 }
 
 .dark {
@@ -223,6 +237,19 @@
     --sidebar-accent-foreground: oklch(0.82 0.008 250);
     --sidebar-border: oklch(0.35 0.012 240 / 55%);
     --sidebar-ring: oklch(0.70 0.10 215);
+
+    --plumeria-petal-base: oklch(0.94 0.03 98);
+    --plumeria-petal-mid: oklch(0.90 0.05 95);
+    --plumeria-petal-tip: oklch(0.68 0.22 350);
+    --plumeria-petal-gold: oklch(0.80 0.18 85);
+    --plumeria-petal-highlight: oklch(0.98 0.02 98);
+    --plumeria-throat: oklch(0.86 0.17 95);
+    --plumeria-center: oklch(0.72 0.19 82);
+    --plumeria-center-bright: oklch(0.84 0.20 98);
+    --plumeria-edge: oklch(0.64 0.14 350 / 42%);
+    --plumeria-shadow: oklch(0.30 0.08 350 / 35%);
+    --plumeria-opacity: 0.42;
+    --plumeria-chat-opacity: 0.22;
 }
 
 @layer base {
@@ -288,10 +315,10 @@
     }
 
     .nui-logo {
-      height: 1.25rem;
+      height: 1.5rem;
       width: auto;
       /* Sparkle above the i shifts the bbox center above the letterforms. */
-      transform: translateY(-1px);
+      transform: translateY(-5px);
     }
   }
 
@@ -304,11 +331,61 @@
   /* ─── Landing page ───────────────────────────────────────────── */
   .landing-page {
     @apply relative flex flex-1 flex-col items-center justify-center overflow-hidden;
+
+    &::before,
+    &::after {
+      content: "";
+      position: absolute;
+      pointer-events: none;
+      border-radius: 50%;
+      filter: blur(48px);
+      opacity: 0.35;
+    }
+
+    &::before {
+      top: 12%;
+      left: 18%;
+      width: 12rem;
+      height: 12rem;
+      background: radial-gradient(circle, oklch(0.88 0.16 92 / 38%), transparent 70%);
+      animation: plumeria-glow 12s ease-in-out infinite;
+    }
+
+    &::after {
+      bottom: 18%;
+      right: 14%;
+      width: 10rem;
+      height: 10rem;
+      background: radial-gradient(circle, oklch(0.68 0.20 18 / 32%), transparent 70%);
+      animation: plumeria-glow 14s ease-in-out infinite reverse;
+    }
   }
 
   .landing-page__content {
-    @apply flex flex-col items-center gap-6 px-6 text-center;
+    @apply relative z-[1] isolate flex flex-col items-center gap-6 px-6 text-center;
     transform: translateY(-6vh);
+
+    &::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      z-index: -1;
+      width: min(92vw, 34rem);
+      height: min(92vw, 34rem);
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      pointer-events: none;
+      background: radial-gradient(
+        circle,
+        color-mix(in oklch, var(--background) 88%, transparent) 0%,
+        color-mix(in oklch, var(--background) 72%, transparent) 52%,
+        color-mix(in oklch, var(--background) 38%, transparent) 72%,
+        transparent 80%
+      );
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
   }
 
   .landing-page__title {
@@ -368,6 +445,11 @@
     @apply flex min-w-0 flex-1 items-center gap-1.5 md:gap-2;
   }
 
+  .app-header [data-slot="sidebar-trigger"],
+  .app-header .app-brand {
+    transform: translateY(3px);
+  }
+
   .app-header__breadcrumb {
     @apply flex min-w-0 items-center gap-2 leading-none;
   }
@@ -390,8 +472,72 @@
   }
 
   .app-body {
-    @apply flex h-screen w-full overflow-hidden;
+    @apply relative z-[1] flex h-screen w-full overflow-hidden;
     padding-top: calc(3rem + env(safe-area-inset-top, 0px));
+  }
+
+  /* ─── Plumeria backdrop ─────────────────────────────────────── */
+  .plumeria-backdrop {
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .plumeria-backdrop--app {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+  }
+
+  .plumeria-backdrop--chat {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+
+  .plumeria-backdrop--scattered {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+
+  .plumeria-backdrop__bloom {
+    position: absolute;
+    opacity: var(--plumeria-opacity);
+    transform-origin: center center;
+    will-change: transform;
+  }
+
+  .plumeria-backdrop--scattered .plumeria-backdrop__bloom {
+    opacity: var(--plumeria-opacity);
+  }
+
+  .plumeria-backdrop--chat .plumeria-backdrop__bloom {
+    opacity: var(--plumeria-chat-opacity);
+  }
+
+  .plumeria-backdrop--landing .plumeria-backdrop__bloom {
+    opacity: var(--plumeria-opacity);
+  }
+
+  .plumeria-backdrop__scatter {
+    position: absolute;
+  }
+
+  .plumeria-backdrop__spin {
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+
+  .plumeria-backdrop__spin--cw {
+    animation-name: plumeria-spin-cw;
+  }
+
+  .plumeria-backdrop__spin--ccw {
+    animation-name: plumeria-spin-ccw;
+  }
+
+  .plumeria-flower {
+    display: block;
   }
 
   .app-sidebar {
@@ -751,11 +897,11 @@
 
   /* ─── Chat panel ────────────────────────────────────────────── */
   .agui-chat {
-    @apply min-h-0 bg-background;
+    @apply relative min-h-0 overflow-hidden bg-background;
   }
 
   .agui-chat__messages {
-    @apply flex-1 overflow-y-auto px-0 py-6 scroll-smooth;
+    @apply relative z-[1] flex-1 overflow-y-auto px-0 py-6 scroll-smooth;
   }
 
   .agui-chat__scroll-spacer {
@@ -763,7 +909,29 @@
   }
 
   .agui-chat__empty {
-    @apply flex h-full flex-col items-center justify-center gap-2 text-muted-foreground;
+    @apply relative isolate flex h-full flex-col items-center justify-center gap-2 text-muted-foreground;
+
+    &::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      z-index: -1;
+      width: min(88vw, 24rem);
+      height: min(88vw, 24rem);
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      pointer-events: none;
+      background: radial-gradient(
+        circle,
+        color-mix(in oklch, var(--background) 88%, transparent) 0%,
+        color-mix(in oklch, var(--background) 72%, transparent) 52%,
+        color-mix(in oklch, var(--background) 38%, transparent) 72%,
+        transparent 80%
+      );
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
   }
 
   .agui-chat__empty-icon {
@@ -922,7 +1090,7 @@
   }
 
   .agui-chat__input-area {
-    @apply mx-auto flex w-full max-w-[800px] shrink-0 flex-col gap-3.5 border-t bg-background/80 px-3 py-3.5 backdrop-blur-md md:px-5;
+    @apply relative z-[1] mx-auto flex w-full max-w-[800px] shrink-0 flex-col gap-3.5 border-t bg-background/80 px-3 py-3.5 backdrop-blur-md md:px-5;
     padding-bottom: calc(0.875rem + env(safe-area-inset-bottom, 0px));
   }
 
@@ -1095,6 +1263,35 @@
 
   @keyframes agui-spin {
     to { transform: rotate(360deg); }
+  }
+
+  @keyframes plumeria-spin-cw {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes plumeria-spin-ccw {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(-360deg); }
+  }
+
+  @keyframes plumeria-glow {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 0.28;
+    }
+    50% {
+      transform: scale(1.08);
+      opacity: 0.42;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .plumeria-backdrop__spin,
+    .landing-page::before,
+    .landing-page::after {
+      animation: none !important;
+    }
   }
 
   .tool-call {

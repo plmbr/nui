@@ -1,7 +1,9 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
+import { useState } from 'react'
 import { Plus, Settings } from 'lucide-react'
 import { NuiLogo } from '@/components/NuiLogo'
+import { PlumeriaRandomBackdrop } from '@/components/PlumeriaBackdrop'
 import { Button } from '@/components/ui/button'
 
 interface Props {
@@ -10,8 +12,11 @@ interface Props {
 }
 
 export function LandingPage({ onNewSession, onCustomize }: Props) {
+  const [layoutKey] = useState(() => Date.now())
+
   return (
     <div className="landing-page">
+      <PlumeriaRandomBackdrop count={6} opacityVariant="landing" layoutKey={layoutKey} />
       <div className="landing-page__content">
         <h1 className="landing-page__title" aria-label="nui">
           <NuiLogo decorative />
