@@ -244,6 +244,29 @@ func TestClaudeStreamParserSubagentToolEventsScopedToParent(t *testing.T) {
 	}
 }
 
+func TestClaudeStreamParserCompletesOnSlashCommandResult(t *testing.T) {
+	parser := newClaudeStreamParser()
+	events := make(chan Event, 4)
+
+	parser.handleLine([]byte(`{"type":"assistant","message":{"content":[{"type":"text","text":"## Context Usage"}]},"session_id":"sess-ctx"}`), events)
+	parser.handleLine([]byte(`{"type":"result","subtype":"success","is_error":false,"session_id":"sess-ctx","result":"## Context Usage"}`), events)
+	close(events)
+
+	if !parser.completedTurn() {
+		t.Fatal("expected completed turn after slash command result")
+	}
+
+	var text string
+	for ev := range events {
+		if ev.Type == EventText {
+			text += ev.Content
+		}
+	}
+	if text == "" {
+		t.Fatal("expected slash command text")
+	}
+}
+
 func TestClaudeStreamParserTextSepAfterToolCall(t *testing.T) {
 	parser := newClaudeStreamParser()
 	events := make(chan Event, 16)

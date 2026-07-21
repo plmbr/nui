@@ -143,9 +143,12 @@ func (s *persistentClaudeSession) runTurn(ctx context.Context, agent *ClaudeCode
 			}
 			// message_stop/end_turn returns before claude emits the trailing
 			// "result" line; drain it so the next runTurn does not treat it
-			// as an immediate empty completion.
-			if err := s.drainThroughResultLine(ctx); err != nil {
-				return err
+			// as an immediate empty completion. Builtin slash commands such as
+			// /context complete on the result line itself (no stream_event stop).
+			if envelope.Type != "result" {
+				if err := s.drainThroughResultLine(ctx); err != nil {
+					return err
+				}
 			}
 			return nil
 		}
