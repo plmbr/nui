@@ -19,6 +19,7 @@ import (
 	"nui/internal/mentions"
 	"nui/internal/mcpoauth"
 	"nui/internal/storageext"
+	"nui/harness-sdk"
 )
 
 var extensionManager *agent.Manager
@@ -38,6 +39,10 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 
 	if err := initStore(); err != nil {
 		return fmt.Errorf("loading store: %w", err)
+	}
+
+	if _, err := harnesssdk.InstallDir(); err != nil {
+		fmt.Fprintf(os.Stderr, "[harness-sdk] failed to install: %v\n", err)
 	}
 
 	extensionManager = agent.NewManager()

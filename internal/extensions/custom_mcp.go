@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"nui/harness-sdk"
 	"nui/internal/model"
 )
 
@@ -267,66 +268,7 @@ func MCPToolsProxyPath() (string, error) {
 		}
 		return p, nil
 	}
-	if source, err := findMCPToolsProxySource(); err == nil {
-		return installMCPToolsProxy(source)
-	}
-	return installedMCPToolsProxyPath()
-}
-
-func installedMCPToolsProxyPath() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	path := filepath.Join(home, ".nui", "harness-sdk", "nui_mcp_tools.py")
-	if _, err := os.Stat(path); err != nil {
-		return "", err
-	}
-	return path, nil
-}
-
-func findMCPToolsProxySource() (string, error) {
-	if exe, err := os.Executable(); err == nil {
-		dir := filepath.Dir(exe)
-		for i := 0; i < 6; i++ {
-			candidate := filepath.Join(dir, "harness-sdk", "nui_mcp_tools.py")
-			if _, err := os.Stat(candidate); err == nil {
-				return filepath.Abs(candidate)
-			}
-			parent := filepath.Dir(dir)
-			if parent == dir {
-				break
-			}
-			dir = parent
-		}
-	}
-	if wd, err := os.Getwd(); err == nil {
-		candidate := filepath.Join(wd, "harness-sdk", "nui_mcp_tools.py")
-		if _, err := os.Stat(candidate); err == nil {
-			return filepath.Abs(candidate)
-		}
-	}
-	return "", fmt.Errorf("nui_mcp_tools.py not found (set NUI_MCP_TOOLS_PATH)")
-}
-
-func installMCPToolsProxy(source string) (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	destDir := filepath.Join(home, ".nui", "harness-sdk")
-	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return "", err
-	}
-	dest := filepath.Join(destDir, "nui_mcp_tools.py")
-	data, err := os.ReadFile(source)
-	if err != nil {
-		return "", err
-	}
-	if err := os.WriteFile(dest, data, 0644); err != nil {
-		return "", err
-	}
-	return dest, nil
+	return harnesssdk.FilePath("nui_mcp_tools.py")
 }
 
 func python3Path() string {

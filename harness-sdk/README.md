@@ -59,13 +59,20 @@ These wrap builtin CLI harnesses inside Docker sandbox images and are **not** pa
 
 ## Auto-install behavior
 
-nui copies SDK files to `~/.nui/harness-sdk/` when an extension feature first needs them:
+nui embeds author-facing SDK modules in the binary and copies them to `~/.nui/harness-sdk/` on `nui server` start (or when any file is missing). Reinstall from the CLI:
 
-| Trigger | Files installed |
+```bash
+nui harness-sdk reinstall
+```
+
+| Trigger | Files used |
 |---|---|
 | HITL (`hitl_sdk.go`) | `nui_hitl.py`, `nui_hitl_channel.py`, `nui_agent_stdio.py` |
 | Mention providers (`mention_sdk.go`) | `nui_mention.py` |
 | Custom MCP tools (`custom_mcp.go`) | `nui_mcp_tools.py` |
+| Storage handlers | `nui_storage.py` |
+
+All author-facing modules are installed together: `nui_extension.py`, `nui_agent_stdio.py`, `nui_agent.py`, `nui_catalog.py`, `nui_hitl.py`, `nui_hitl_channel.py`, `nui_mention.py`, `nui_mcp_tools.py`, `nui_storage.py`.
 
 Environment overrides:
 
