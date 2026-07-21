@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"nui/harness-sdk"
+	harnesssdk "nui/harness-sdk"
 	"nui/internal/model"
 )
 
