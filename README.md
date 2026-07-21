@@ -2,7 +2,7 @@
 
 nui is a self-hosted web UI for interactive AI agent sessions. Run agents locally in your terminal, in Docker, or on a remote server — all from one interface.
 
-<img src="media/logo.svg" alt="nui Logo" width="400">
+<img src="media/nui.png" alt="nui">
 
 ## Install
 
