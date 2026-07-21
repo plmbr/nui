@@ -38,12 +38,12 @@ func LookupDefinition(agentType string) (model.ADLDefinition, bool) {
 	userDefs, _ := store.LoadADLDefinitions()
 	for _, def := range userDefs {
 		if adlDefMatches(def, agentType) {
-			return def, true
+			return resolveExtensionAgentHarnessRef(def), true
 		}
 	}
 	if extensions.Default != nil {
 		if def, ok := extensions.Default.FindAgent(agentType); ok {
-			return def, true
+			return resolveExtensionAgentHarnessRef(def), true
 		}
 		if ref, ok := extensions.Default.ResolveHarness(agentType); ok {
 			label := ref.Entry.DisplayName
@@ -66,4 +66,23 @@ func adlDefMatches(def model.ADLDefinition, key string) bool {
 		return false
 	}
 	return def.ID == key || def.Name == key || model.ADLAgentID(def) == key
+}
+
+// resolveExtensionAgentHarnessRef replaces harness.type when it names an extension
+// agent id (e.g. ext:pack/mgw-model) instead of a harness type (api, claude-code, …).
+func resolveExtensionAgentHarnessRef(def model.ADLDefinition) model.ADLDefinition {
+	harnessType := strings.TrimSpace(def.Harness.Type)
+	if !extensions.IsExtRef(harnessType) || extensions.Default == nil {
+		return def
+	}
+	agent, ok := extensions.Default.FindAgent(harnessType)
+	if !ok {
+		return def
+	}
+	// Extension harness agents use harness.type equal to the harness ref; leave those alone.
+	if agent.Harness.Type == harnessType {
+		return def
+	}
+	def.Harness = agent.Harness
+	return def
 }

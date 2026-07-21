@@ -53,6 +53,11 @@ func (a *ADLAgent) dispatchHarness(ctx context.Context, req RunRequest, harness 
 	if extensions.IsExtRef(harnessType) || (a.manager.registry != nil && a.manager.registry.IsExtensionHarnessAgent(harnessType)) {
 		ag, err := a.manager.GetAgent(a.harnessProjectID(req, harness), harnessType, req.WorkingDir, nil)
 		if err != nil {
+			if extensions.IsExtRef(harnessType) && a.manager.registry != nil {
+				if _, ok := a.manager.registry.FindAgent(harnessType); ok {
+					return fmt.Errorf("harness.type %q is an extension agent id, not a harness type; use harness.type: api or select that agent directly", harnessType)
+				}
+			}
 			return fmt.Errorf("extension harness: %w", err)
 		}
 		return ag.Run(ctx, req, events)

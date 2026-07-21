@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"nui/internal/extensions"
 	"nui/internal/store"
 )
 
@@ -62,5 +63,77 @@ func TestLookupDefinitionLegacyName(t *testing.T) {
 	def, ok := LookupDefinition("Claude Code")
 	if !ok || def.ID != "claude-code" {
 		t.Fatalf("legacy lookup failed: ok=%v id=%q", ok, def.ID)
+	}
+}
+
+func TestLookupDefinitionResolvesExtensionAgentHarnessRef(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	extDir := filepath.Join(home, ".nui", "extensions", "corp-pack")
+	if err := os.MkdirAll(extDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := `apiVersion: nui.plmbr.dev/extension/v1
+name: corp-pack
+version: 1.0.0
+contributions:
+  agents:
+    source:
+      file: agents.yaml
+`
+	agents := `agents:
+  - id: mgw-chat-model
+    name: Chat Model
+    harness:
+      type: api
+      provider: openai
+      model: example/chat-model
+      baseUrl: http://example.test/v1
+      disableTools: true
+`
+	for name, content := range map[string]string{
+		"extension.yaml": manifest,
+		"agents.yaml":    agents,
+	} {
+		if err := os.WriteFile(filepath.Join(extDir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	prev := extensions.Default
+	reg, err := extensions.LoadRegistry()
+	if err != nil {
+		t.Fatal(err)
+	}
+	extensions.Default = reg
+	t.Cleanup(func() { extensions.Default = prev })
+
+	agentsDir, err := store.AgentsDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	userAgent := `adl: "1.0"
+id: wrapped-agent
+name: Wrapped Agent
+harness:
+  type: ext:corp-pack/mgw-chat-model
+`
+	if err := os.WriteFile(filepath.Join(agentsDir, "wrapped-agent.yaml"), []byte(userAgent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	def, ok := LookupDefinition("wrapped-agent")
+	if !ok {
+		t.Fatal("expected user agent")
+	}
+	if def.Harness.Type != "api" {
+		t.Fatalf("harness.type = %q, want api", def.Harness.Type)
+	}
+	if def.Harness.Model != "example/chat-model" {
+		t.Fatalf("harness.model = %q", def.Harness.Model)
+	}
+	if !def.Harness.DisableTools {
+		t.Fatal("expected disableTools from referenced extension agent")
 	}
 }
