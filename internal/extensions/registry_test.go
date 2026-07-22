@@ -191,3 +191,33 @@ contributions:
 		t.Fatalf("skills: %+v", ext.Skills)
 	}
 }
+
+func TestList(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	extDir := filepath.Join(home, ".nui", "extensions", "test-pack")
+	if err := os.MkdirAll(extDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := `apiVersion: nui.plmbr.dev/extension/v1
+name: test-pack
+version: 1.0.0
+displayName: Test Pack
+description: A test extension
+`
+	if err := os.WriteFile(filepath.Join(extDir, "extension.yaml"), []byte(manifest), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	entries, err := extensions.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("entries = %+v", entries)
+	}
+	if entries[0].Name != "test-pack" || entries[0].DisplayName != "Test Pack" {
+		t.Fatalf("entry = %+v", entries[0])
+	}
+}

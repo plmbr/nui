@@ -5,6 +5,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"text/tabwriter"
 
 	"nui/internal/extensions"
 
@@ -30,6 +31,35 @@ var extensionAddCmd = &cobra.Command{
 	},
 }
 
+var extensionListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List installed extensions",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		entries, err := extensions.List()
+		if err != nil {
+			return err
+		}
+		if len(entries) == 0 {
+			fmt.Println("No extensions installed.")
+			return nil
+		}
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(w, "NAME\tVERSION\tDISPLAY NAME\tSTATUS\tDESCRIPTION")
+		for _, e := range entries {
+			status := "enabled"
+			if e.Disabled {
+				status = "disabled"
+			}
+			displayName := e.DisplayName
+			if displayName == "" {
+				displayName = e.Name
+			}
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", e.Name, e.Version, displayName, status, e.Description)
+		}
+		return w.Flush()
+	},
+}
+
 var extensionRemoveCmd = &cobra.Command{
 	Use:   "remove [ext-id]",
 	Short: "Remove an installed extension",
@@ -44,6 +74,6 @@ var extensionRemoveCmd = &cobra.Command{
 }
 
 func init() {
-	extensionCmd.AddCommand(extensionAddCmd, extensionRemoveCmd)
+	extensionCmd.AddCommand(extensionAddCmd, extensionListCmd, extensionRemoveCmd)
 	rootCmd.AddCommand(extensionCmd)
 }

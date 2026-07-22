@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 
@@ -563,6 +564,20 @@ type ExtensionInfo struct {
 	HITLChannels     []string `json:"hitlChannels,omitempty"`
 	StorageHandlers  []string `json:"storageHandlers,omitempty"`
 	Agents        []string `json:"agents,omitempty"`
+}
+
+// List returns installed extension metadata sorted by name.
+func List() ([]ExtensionInfo, error) {
+	reg, err := LoadRegistry()
+	if err != nil {
+		return nil, err
+	}
+	info := reg.Info()
+	if info == nil {
+		info = []ExtensionInfo{}
+	}
+	sort.Slice(info, func(i, j int) bool { return info[i].Name < info[j].Name })
+	return info, nil
 }
 
 // Info returns API metadata for all extensions.

@@ -91,6 +91,48 @@ func TestAgentListWithMockServer(t *testing.T) {
 	}
 }
 
+func TestExtensionList(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	extDir := filepath.Join(home, ".nui", "extensions", "cli-pack")
+	if err := os.MkdirAll(extDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := `apiVersion: nui.plmbr.dev/extension/v1
+name: cli-pack
+version: 2.0.0
+displayName: CLI Pack
+description: Installed from CLI test
+`
+	if err := os.WriteFile(filepath.Join(extDir, "extension.yaml"), []byte(manifest), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = w
+
+	rootCmd.SetArgs([]string{"extension", "list"})
+	runErr := rootCmd.Execute()
+
+	w.Close()
+	os.Stdout = oldStdout
+	var buf bytes.Buffer
+	_, _ = buf.ReadFrom(r)
+	out := buf.String()
+
+	if runErr != nil {
+		t.Fatal(runErr)
+	}
+	if !strings.Contains(out, "cli-pack") || !strings.Contains(out, "CLI Pack") || !strings.Contains(out, "2.0.0") {
+		t.Fatalf("output = %q", out)
+	}
+}
+
 func TestRunHelp(t *testing.T) {
 	cmd := NewRunCmd()
 	cmd.SetOut(&bytes.Buffer{})
