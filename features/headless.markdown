@@ -36,7 +36,13 @@ Schedules require a running `nui server` instance. Use `--every` instead of `--c
 
 ## Agent evaluation
 
-Define test cases in an agent's ADL `evals:` block, then run them from the terminal or CI:
+Define test cases in an agent's ADL `evals:` block — in **Customize → Agents → Evals** or directly in YAML — then run them from the UI or terminal.
+
+### From the UI
+
+Open **Customize → Agents**, select an agent, and use the **Evals** section to add cases (name, prompt, expected text). Run a single case with **Run**, or all enabled cases with **Run evals**. See [ADL agents — eval UI]({{ '/features/adl/#define-and-run-evals-in-the-ui' | relative_url }}) for the full form reference.
+
+### From the CLI
 
 ```bash
 nui agent eval run -a my-agent

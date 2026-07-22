@@ -99,6 +99,8 @@ nui agent eval run -a my-agent --parallel 2 --spawn
 
 Exit code is non-zero when any case fails or errors. See [Agent evaluation](#agent-evaluation-schema) below for the ADL schema.
 
+You can also define and run evals from the web UI: **Customize → Agents → Evals**. See [ADL agents — Define and run evals in the UI]({{ '/features/adl/#define-and-run-evals-in-the-ui' | relative_url }}).
+
 ## Schedules
 
 Manage recurring autonomous agent runs. Requires a running server.

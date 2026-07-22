@@ -32,7 +32,44 @@ systemPrompt: |
 
 ## Eval test cases
 
-ADL agents can include an `evals:` list for automated testing. Run cases with `nui agent eval run -a <id>` against a running server.
+ADL agents can include an `evals:` list for automated testing. Define cases in the UI or YAML, then run them from the agent editor or the CLI.
+
+### Define and run evals in the UI
+
+1. Open **Customize** (sidebar gear icon) → **Agents** tab.
+2. Select an installed agent or create a new one.
+3. Scroll to the **Evals** section in the form editor.
+
+Each eval case has:
+
+| Field | Description |
+|---|---|
+| **Name** | Unique case id (used by `--case` on the CLI) |
+| **On** | Enable or disable the case without deleting it |
+| **Prompt** | User message sent to the agent |
+| **Expected text** | Substring the response should contain (maps to a `contains` grader) |
+
+Click **Add eval** to create another case. Expand **Advanced** for more options:
+
+| Field | Description |
+|---|---|
+| **Grader** | `Contains`, `Exact match`, `Regex`, `LLM judge`, or `Manual (none)` |
+| **Expected value / Criteria** | Required for `exact`, `regex`, and `llm` graders |
+| **Description** | Optional note about what the case verifies |
+| **Timeout** | Per-case timeout in seconds (default `120`) |
+| **Tags** | Labels for organization (CLI filtering only for now) |
+| **Working dir override** | Optional path for this case |
+
+**Run from the UI:**
+
+- Click **Run** on a single case to execute it immediately.
+- Click **Run evals** in the editor toolbar to run all enabled cases. nui saves unsaved changes first, then shows pass/fail results in a dialog. You can optionally set a working directory for the run.
+
+**Form vs YAML mode:** Use the **Form** / **YAML** toggle at the top of the editor. Single-turn evals are easiest in Form mode. **Conversation evals** (multi-turn `messages:`) are read-only in the form — switch to YAML mode to edit message turns. Assistant turns are not injected into the session; only user messages are sent at run time.
+
+For CI and scripting, the same cases run via CLI: `nui agent eval run -a <id>`. See [Headless & scheduled runs]({{ '/features/headless/#agent-evaluation' | relative_url }}).
+
+### YAML schema
 
 ```yaml
 evals:

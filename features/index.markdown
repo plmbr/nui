@@ -12,7 +12,7 @@ permalink: /features/
   </a>
   <a class="card" href="{{ '/features/adl/' | relative_url }}">
     <h3 class="card__title">ADL agents</h3>
-    <p class="card__body">Define custom agents in YAML with a harness, system prompt, eval test cases, and optional sandbox or multi-step workflow.</p>
+    <p class="card__body">Define custom agents in YAML or the form editor — with eval test cases, harness, system prompt, and optional sandbox or multi-step workflow.</p>
   </a>
   <a class="card" href="{{ '/features/extensions/' | relative_url }}">
     <h3 class="card__title">Extensions</h3>
