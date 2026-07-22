@@ -26,7 +26,7 @@ nui exposes itself as an MCP server — wire it into Cursor or Claude Desktop an
 
 ## Headless and scheduled
 
-Not everything needs a browser. `nui run` executes agents from the terminal or CI. `nui schedule` sets up recurring runs. `nui agent eval` validates ADL agents against test cases.
+Not everything needs a browser. [`nui run`](/cli/#headless-runs) executes agents from the terminal or CI. [`nui schedule`](/cli/#schedules) sets up recurring runs. [`nui agent eval`](/cli/#agent-evaluation) validates ADL agents against test cases defined in the agent's `evals:` block.
 
 ## Get started
 

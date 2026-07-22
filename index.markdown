@@ -132,7 +132,7 @@ systemPrompt: |
         Schedule recurring runs with <code>nui schedule</code>. Evaluate ADL agents with
         <code>nui agent eval</code> — no browser required.
       </p>
-      <a class="stripe__link" href="{{ '/docs/' | relative_url }}">CLI reference →</a>
+      <a class="stripe__link" href="{{ '/cli/' | relative_url }}">CLI reference →</a>
     </div>
     <div class="stripe__media" style="padding: var(--space-5);">
 {% highlight bash %}
