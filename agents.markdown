@@ -9,16 +9,16 @@ permalink: /agents/
 
 These require the corresponding binary on your `PATH`:
 
-| Name | CLI | Description |
+| Agent (ADL id) | CLI | Description |
 |---|---|---|
-| Claude Code | `claude` | Anthropic's Claude Code CLI |
-| pi | `pi` | pi agent CLI |
-| codex | `codex` | OpenAI Codex CLI |
-| opencode | `opencode` | OpenCode CLI |
+| `claude-code` | `claude` | Anthropic's Claude Code CLI |
+| `pi` | `pi` | pi agent CLI |
+| `codex` | `codex` | OpenAI Codex CLI |
+| `opencode` | `opencode` | OpenCode CLI |
 
 ## API agents
 
-In-process LLM calls — no CLI required. Select under **Built-in → API** in the New Session dialog:
+In-process LLM calls — no CLI required. Select under **Built-in → API** in the New Session panel:
 
 | Name | API key environment variable |
 |---|---|
@@ -36,7 +36,7 @@ Install your own agent definitions (ADL YAML) to `~/.nui/agents/`:
 nui agent add ./my-agent.yaml
 ```
 
-Custom agents appear under **Installed agents** in the New Session dialog. They can run in Docker, dev containers, remote servers, or sandboxes.
+Custom agents appear under **Installed agents** in the New Session panel. They can run in Docker, dev containers, remote servers, or sandboxes.
 
 See [ADL agents](/features/adl/) for the schema and [harness examples](https://github.com/plmbr/nui/tree/main/dev/harness-examples) for templates.
 

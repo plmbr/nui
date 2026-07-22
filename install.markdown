@@ -27,11 +27,11 @@ irm https://nui.plmbr.dev/install.ps1 | iex
 Install a specific version:
 
 ```bash
-NUI_VERSION=v0.1.0 curl -fsSL https://nui.plmbr.dev/install.sh | sh
+NUI_VERSION=v0.3.0 curl -fsSL https://nui.plmbr.dev/install.sh | sh
 ```
 
 ```powershell
-$env:NUI_VERSION = "v0.1.0"; irm https://nui.plmbr.dev/install.ps1 | iex
+$env:NUI_VERSION = "v0.3.0"; irm https://nui.plmbr.dev/install.ps1 | iex
 ```
 
 ## Manual install
@@ -53,19 +53,19 @@ Download the archive for your platform from [GitHub Releases](https://github.com
 Launch with a specific agent and prompt:
 
 ```bash
-nui server --agent-type "Claude Code" --prompt "Review the README" --open
+nui server --agent-type claude-code --prompt "Review the README" --open
 ```
 
 ## Agent prerequisites
 
 Install the agent CLI you want to use and make sure it is on your `PATH`:
 
-| Agent | CLI command |
+| Agent (ADL id) | CLI command |
 |---|---|
-| Claude Code | `claude` |
-| pi | `pi` |
-| codex | `codex` |
-| opencode | `opencode` |
+| `claude-code` | `claude` |
+| `pi` | `pi` |
+| `codex` | `codex` |
+| `opencode` | `opencode` |
 
 **API agents** (no CLI required) use provider API keys instead:
 

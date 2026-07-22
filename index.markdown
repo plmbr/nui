@@ -63,7 +63,7 @@ description: A self-hosted web UI for interactive AI agent sessions. Run agents 
 nui server --open
 
 # Launch with a specific agent and prompt
-nui server -a "Claude Code" -m "Review the README" -w . --open
+nui server -a claude-code -m "Review the README" -w . --open
 {% endhighlight %}
     </div>
   </div>

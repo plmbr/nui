@@ -23,13 +23,13 @@ nui server -a claude-code -m "Review README" -w . --open
 | `--port` | `-p` | Port to listen on (default `8080`) |
 | `--open` | | Open the web UI in the system default browser |
 | `--no-browser` | | Do not open a browser (daemon mode) |
-| `--agent-type` | `-a` | Agent id for a session created on startup |
+| `--agent-type` | `-a` | ADL agent id for a session created on startup (e.g. `claude-code`, `anthropic`) |
 | `--prompt` | `-m` | Initial prompt for the new session |
 | `--working-dir` | `-w` | Working directory for the new session |
 | `--hide-input` | | Hide the chat input (use with `--prompt`) |
 | `--theme` | | UI theme: `light` or `dark` |
-| `--default-agent` | | Default agent for new sessions (saved to `~/.nui/settings.json`) |
-| `--default-harness` | | Default harness for internal agents (saved to settings) |
+| `--default-agent` | | Default ADL agent id for new sessions (saved to `~/.nui/settings.json`) |
+| `--default-harness` | | Default harness for internal agents (e.g. `api/anthropic`, `claude-code`; saved to settings) |
 
 If a server is already running on the target port, `nui server` attaches to it and can still create a session when launch flags are passed.
 

@@ -72,9 +72,10 @@ These flags apply to `nui server` when starting the web UI with a pre-created se
 | Flag | Short | Description |
 |---|---|---|
 | `--open` | | Open the web UI in your browser with a new session |
-| `--agent-type` | `-a` | Agent to use (e.g. `claude-code`, `pi`, `codex`) |
+| `--agent-type` | `-a` | ADL agent id (e.g. `claude-code`, `pi`, `codex`) |
 | `--prompt` | `-m` | Initial prompt sent automatically |
 | `--hide-input` | | Hide the chat input (use with `--prompt`) |
 | `--working-dir` | `-w` | Working directory for the session |
 | `--theme` | | UI theme: `light` or `dark` |
-| `--default-agent` | | Default agent for new sessions |
+| `--default-agent` | | Default ADL agent id for new sessions |
+| `--default-harness` | | Default harness for internal agents (e.g. `api/anthropic`) |

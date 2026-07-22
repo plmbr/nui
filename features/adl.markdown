@@ -13,7 +13,7 @@ The Agent Definition Language (ADL) lets you define custom agents as YAML files 
 nui agent add ./my-agent.yaml
 ```
 
-Custom agents appear under **Installed agents** in the New Session dialog.
+Custom agents appear under **Installed agents** in the New Session panel.
 
 ## Example
 

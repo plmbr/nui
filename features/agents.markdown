@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Built-in agents
-subtitle: CLI subprocesses and in-process API agents — all selectable from the New Session dialog.
+subtitle: CLI subprocesses and in-process API agents — all selectable from the New Session panel.
 permalink: /features/agents/
 ---
 
