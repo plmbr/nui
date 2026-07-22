@@ -166,11 +166,10 @@
     --sidebar-ring: oklch(0.52 0.11 215);
 
     /* Plumeria (pua melia) — warm lei accents */
-    --plumeria-petal-base: oklch(0.99 0.02 98);
-    --plumeria-petal-mid: oklch(0.96 0.05 95);
-    --plumeria-petal-tip: oklch(0.78 0.12 350);
-    --plumeria-petal-highlight: oklch(1 0.01 98);
-    --plumeria-throat: oklch(0.90 0.19 95);
+    --plumeria-petal-base: oklch(0.99 0.01 350);
+    --plumeria-petal-mid: oklch(0.97 0.03 350);
+    --plumeria-petal-tip: oklch(0.86 0.07 350);
+    --plumeria-petal-highlight: oklch(1 0.008 350);
     --plumeria-edge: oklch(0.58 0.16 350 / 50%);
     --plumeria-shadow: oklch(0.55 0.12 350 / 22%);
     --plumeria-opacity: 0.52;
@@ -239,11 +238,10 @@
     --sidebar-border: oklch(0.35 0.012 240 / 55%);
     --sidebar-ring: oklch(0.70 0.10 215);
 
-    --plumeria-petal-base: oklch(0.94 0.03 98);
-    --plumeria-petal-mid: oklch(0.90 0.05 95);
-    --plumeria-petal-tip: oklch(0.80 0.10 350);
-    --plumeria-petal-highlight: oklch(0.98 0.02 98);
-    --plumeria-throat: oklch(0.86 0.17 95);
+    --plumeria-petal-base: oklch(0.94 0.015 350);
+    --plumeria-petal-mid: oklch(0.91 0.03 350);
+    --plumeria-petal-tip: oklch(0.82 0.06 350);
+    --plumeria-petal-highlight: oklch(0.98 0.015 350);
     --plumeria-edge: oklch(0.64 0.14 350 / 42%);
     --plumeria-shadow: oklch(0.30 0.08 350 / 35%);
     --plumeria-opacity: 0.42;

@@ -32,23 +32,18 @@ export function PlumeriaFlower({ className, size = 48 }: Props) {
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
-        {PETAL_ANGLES.map((angle) => (
-          <linearGradient
-            key={angle}
-            id={`plumeria-petal-${uid}-${angle}`}
-            x1="24"
-            y1="22"
-            x2="24"
-            y2="2.5"
-            gradientUnits="userSpaceOnUse"
-            gradientTransform={`rotate(${angle} 24 24)`}
-          >
-            <stop offset="0%" stopColor="var(--plumeria-throat)" />
-            <stop offset="32%" stopColor="var(--plumeria-petal-base)" />
-            <stop offset="72%" stopColor="var(--plumeria-petal-mid)" />
-            <stop offset="100%" stopColor="var(--plumeria-petal-tip)" />
-          </linearGradient>
-        ))}
+        <linearGradient
+          id={`plumeria-petal-${uid}`}
+          x1="24"
+          y1="22"
+          x2="24"
+          y2="2.5"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0%" stopColor="var(--plumeria-petal-base)" />
+          <stop offset="45%" stopColor="var(--plumeria-petal-mid)" />
+          <stop offset="100%" stopColor="var(--plumeria-petal-tip)" />
+        </linearGradient>
         <filter id={`plumeria-shadow-${uid}`} x="-30%" y="-30%" width="160%" height="160%">
           <feDropShadow dx="0" dy="0.6" stdDeviation="0.7" floodColor="var(--plumeria-shadow)" />
         </filter>
@@ -58,7 +53,7 @@ export function PlumeriaFlower({ className, size = 48 }: Props) {
           <g key={angle} transform={`rotate(${angle} 24 24)`}>
             <path
               d={PETAL_PATH}
-              fill={`url(#plumeria-petal-${uid}-${angle})`}
+              fill={`url(#plumeria-petal-${uid})`}
               stroke="var(--plumeria-edge)"
               strokeWidth="0.28"
               strokeLinejoin="round"
