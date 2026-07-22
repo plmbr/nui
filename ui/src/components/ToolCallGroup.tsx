@@ -9,6 +9,7 @@ import { isHarnessSubagentTool } from '@/lib/subagentTrace'
 
 interface Props {
   parts: ToolCallPart[]
+  sessionId?: string
 }
 
 function hasActiveSubagentTrace(parts: ToolCallPart[]): boolean {
@@ -20,7 +21,7 @@ function hasActiveSubagentTrace(parts: ToolCallPart[]): boolean {
   )
 }
 
-export function ToolCallGroup({ parts }: Props) {
+export function ToolCallGroup({ parts, sessionId }: Props) {
   const running = isToolGroupRunning(parts)
   const [expanded, setExpanded] = useState(false)
 
@@ -52,7 +53,7 @@ export function ToolCallGroup({ parts }: Props) {
       {expanded && (
         <div className="tool-group__timeline">
           {parts.map((part) => (
-            <ToolCallBubble key={part.id} part={part} nested />
+            <ToolCallBubble key={part.id} part={part} nested sessionId={sessionId} />
           ))}
         </div>
       )}

@@ -7,24 +7,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"nui/internal/mcpoauth"
+	"nui/internal/mcpclient"
 	"nui/internal/model"
 	"nui/internal/store"
 )
 
 type mcpServerConfig struct {
-	Command string            `json:"command"`
-	Args    []string          `json:"args"`
-	URL     string            `json:"url,omitempty"`
-	Type    string            `json:"type,omitempty"`
-	Headers map[string]string `json:"headers,omitempty"`
+	Command string                  `json:"command"`
+	Args    []string                `json:"args"`
+	URL     string                  `json:"url,omitempty"`
+	Type    string                  `json:"type,omitempty"`
+	Headers map[string]string       `json:"headers,omitempty"`
 	Auth    *model.ADLMCPServerAuth `json:"auth,omitempty"`
 }
 
@@ -32,23 +29,14 @@ type mcpConfigFile struct {
 	MCPServers map[string]mcpServerConfig `json:"mcpServers"`
 }
 
-type mcpSession struct {
-	name    string
-	session *mcp.ClientSession
-}
-
 type MCPManager struct {
-	mu         sync.RWMutex
-	loadOnce   sync.Once
-	loadErr    error
-	sessions   map[string]*mcpSession
-	toolUI     map[string]string
-	toolServer map[string]string
+	mu       sync.RWMutex
+	loadOnce sync.Once
+	loadErr  error
+	client   *mcpclient.Client
 }
 
 var mcpManager MCPManager
-
-const mcpConnectTimeout = 15 * time.Second
 
 func isValidMCPServerCfg(cfg mcpServerConfig) bool {
 	if u := strings.TrimSpace(cfg.URL); u != "" {
@@ -93,64 +81,28 @@ func (m *MCPManager) load(path string) error {
 		return nil
 	}
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if m.sessions == nil {
-		m.sessions = map[string]*mcpSession{}
-	}
-	if m.toolUI == nil {
-		m.toolUI = map[string]string{}
-	}
-	if m.toolServer == nil {
-		m.toolServer = map[string]string{}
-	}
-
+	var servers []model.ADLMCPServer
 	var skippedInvalid int
 	for name, serverCfg := range cfg.MCPServers {
 		if !isValidMCPServerCfg(serverCfg) {
 			skippedInvalid++
 			continue
 		}
-		srv := serverCfg.toADL(name)
-		ctx, cancel := context.WithTimeout(context.Background(), mcpConnectTimeout)
-		var session *mcp.ClientSession
-		var connectErr error
-		if strings.TrimSpace(srv.URL) != "" {
-			session, connectErr = mcpoauth.ConnectRemote(ctx, srv)
-		} else {
-			// Use exec.Command (not CommandContext): the connect timeout context must not
-			// be tied to the child process lifetime or cancel() kills stdio MCP servers
-			// right after Connect returns, breaking later tools/call requests.
-			cmd := exec.Command(serverCfg.Command, serverCfg.Args...)
-			transport := &mcp.CommandTransport{Command: cmd}
-			client := mcp.NewClient(&mcp.Implementation{Name: "nui", Version: "1.0.0"}, nil)
-			session, connectErr = client.Connect(ctx, transport, nil)
-		}
-		cancel()
-		if connectErr != nil {
-			fmt.Fprintf(os.Stderr, "[MCP] failed to connect to %q: %v\n", name, connectErr)
-			continue
-		}
-
-		listCtx, listCancel := context.WithTimeout(context.Background(), mcpConnectTimeout)
-		tools, err := session.ListTools(listCtx, &mcp.ListToolsParams{})
-		listCancel()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "[MCP] list tools for %q: %v\n", name, err)
-			_ = session.Close()
-			continue
-		}
-		for _, tool := range tools.Tools {
-			if uri := toolUIResourceURI(tool); uri != "" {
-				m.toolUI[tool.Name] = uri
-				m.toolServer[tool.Name] = name
-			}
-		}
-
-		m.sessions[name] = &mcpSession{name: name, session: session}
-		fmt.Fprintf(os.Stderr, "[MCP] connected to %q\n", name)
+		servers = append(servers, serverCfg.toADL(name))
 	}
+
+	client := mcpclient.New()
+	failures := client.ConnectServers(context.Background(), servers)
+	for _, msg := range failures {
+		fmt.Fprintf(os.Stderr, "[MCP] %s\n", msg)
+	}
+
+	m.mu.Lock()
+	if m.client != nil {
+		m.client.Close()
+	}
+	m.client = client
+	m.mu.Unlock()
 
 	if skippedInvalid > 0 {
 		fmt.Fprintf(os.Stderr, "[MCP] skipped %d server(s) with invalid or incomplete config\n", skippedInvalid)
@@ -195,106 +147,65 @@ func readMCPManagerConfig(path string) (mcpConfigFile, error) {
 	return cfg, nil
 }
 
-func toolUIResourceURI(tool *mcp.Tool) string {
-	if tool == nil || tool.Meta == nil {
-		return ""
-	}
-	meta := tool.Meta
-	if ui, ok := meta["ui"].(map[string]any); ok {
-		if uri, ok := ui["resourceUri"].(string); ok && strings.HasPrefix(uri, "ui://") {
-			return uri
-		}
-	}
-	if uri, ok := meta["ui/resourceUri"].(string); ok && strings.HasPrefix(uri, "ui://") {
-		return uri
-	}
-	return ""
-}
-
-func (m *MCPManager) session(name string) (*mcp.ClientSession, error) {
+func (m *MCPManager) clientOrNil() *mcpclient.Client {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	s, ok := m.sessions[name]
-	if !ok || s.session == nil {
-		return nil, fmt.Errorf("MCP server %q not found (configure ~/.nui/.mcp.json)", name)
-	}
-	return s.session, nil
+	return m.client
 }
 
 func (m *MCPManager) readResource(ctx context.Context, serverName, uri string) (string, error) {
 	if err := m.ensureLoaded(); err != nil {
 		return "", err
 	}
-	session, err := m.session(serverName)
-	if err != nil {
-		return "", err
+	client := m.clientOrNil()
+	if client == nil {
+		return "", fmt.Errorf("MCP server %q not found (configure ~/.nui/.mcp.json)", serverName)
 	}
-	result, err := session.ReadResource(ctx, &mcp.ReadResourceParams{URI: uri})
-	if err != nil {
-		return "", err
-	}
-	for _, content := range result.Contents {
-		if content.Text != "" {
-			return content.Text, nil
-		}
-	}
-	return "", fmt.Errorf("no HTML content in resource")
+	return client.ReadResource(ctx, serverName, uri)
 }
 
 func (m *MCPManager) callTool(ctx context.Context, serverName, name string, args map[string]any) (any, error) {
 	if err := m.ensureLoaded(); err != nil {
 		return nil, err
 	}
-	session, err := m.session(serverName)
-	if err != nil {
-		return nil, err
+	client := m.clientOrNil()
+	if client == nil {
+		return nil, fmt.Errorf("MCP server %q not found (configure ~/.nui/.mcp.json)", serverName)
 	}
-	result, err := session.CallTool(ctx, &mcp.CallToolParams{
-		Name:      name,
-		Arguments: args,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return mcpCallToolResult(result), nil
-}
-
-func mcpCallToolResult(result *mcp.CallToolResult) map[string]any {
-	out := map[string]any{
-		"isError": result.IsError,
-	}
-	if result.StructuredContent != nil {
-		out["structuredContent"] = result.StructuredContent
-	}
-	var content []map[string]any
-	for _, c := range result.Content {
-		switch v := c.(type) {
-		case *mcp.TextContent:
-			content = append(content, map[string]any{"type": "text", "text": v.Text})
-		default:
-			content = append(content, map[string]any{"type": "text", "text": fmt.Sprintf("%v", v)})
-		}
-	}
-	out["content"] = content
-	return out
+	return client.CallToolStructured(ctx, serverName, name, args)
 }
 
 func (m *MCPManager) LookupToolUI(toolName string) (resourceURI, serverName string, ok bool) {
 	if err := m.ensureLoaded(); err != nil {
 		return "", "", false
 	}
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	if uri, found := m.toolUI[toolName]; found {
-		return uri, m.toolServer[toolName], true
+	client := m.clientOrNil()
+	if client == nil {
+		return "", "", false
 	}
-	for _, sep := range []string{"__", ":", "_"} {
-		if idx := strings.LastIndex(toolName, sep); idx >= 0 {
-			bare := toolName[idx+len(sep):]
-			if uri, found := m.toolUI[bare]; found {
-				return uri, m.toolServer[bare], true
+	return client.LookupToolUI(toolName)
+}
+
+// LookupSessionToolUI checks a session-scoped MCP client first, then the global manager.
+func LookupSessionToolUI(sessionID, toolName string) (resourceURI, serverName string, ok bool) {
+	if sessionID != "" && extensionManager != nil {
+		if client := extensionManager.SessionMCPClient(sessionID); client != nil {
+			if uri, server, found := client.LookupToolUI(toolName); found {
+				return uri, server, true
 			}
 		}
 	}
-	return "", "", false
+	return mcpManager.LookupToolUI(toolName)
+}
+
+// ReadMCPResource reads a resource from a session client or the global manager.
+func ReadMCPResource(ctx context.Context, sessionID, serverName, uri string) (string, error) {
+	if sessionID != "" && extensionManager != nil {
+		if client := extensionManager.SessionMCPClient(sessionID); client != nil {
+			if html, err := client.ReadResource(ctx, serverName, uri); err == nil {
+				return html, nil
+			}
+		}
+	}
+	return mcpManager.readResource(ctx, serverName, uri)
 }

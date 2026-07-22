@@ -146,7 +146,7 @@ harness:
   model: claude-sonnet-4-20250514
 ```
 
-Tool calling uses session-scoped MCP servers from ADL `aiAssets.mcpServers` (including extension custom tools). nui implements the agentic tool loop and emits the same `agent.Event` tool-call events as CLI harnesses.
+Tool calling uses session-scoped MCP servers from ADL `aiAssets.mcpServers` (including extension custom tools). nui runs an in-process MCP client (`internal/mcpclient`) that connects stdio and remote servers, exposes tools to the LLM, executes the agentic tool loop, and supports MCP App UI frames for ADL-declared servers. Tool-call events match CLI harnesses.
 
 ## 5. Standalone reference examples (not wired)
 

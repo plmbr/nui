@@ -200,6 +200,6 @@ func runRemoteHarness(ctx context.Context, a *ADLAgent, req RunRequest, harness 
 }
 
 func runAPIHarness(ctx context.Context, a *ADLAgent, req RunRequest, harness model.ADLHarness, events chan<- Event) error {
-	ag := &APIHarnessAgent{Harness: harness}
+	ag := &APIHarnessAgent{Harness: harness, Manager: a.manager}
 	return ag.Run(ctx, req, events)
 }

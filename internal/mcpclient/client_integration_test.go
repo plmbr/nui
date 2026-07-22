@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-package agent
+package mcpclient
 
 import (
 	"context"
@@ -13,10 +13,9 @@ import (
 	"nui/internal/model"
 )
 
-func TestSessionMCPConnectnuiViz(t *testing.T) {
+func TestClientConnectNuiViz(t *testing.T) {
 	exe := os.Getenv("NUI_MCP_BINARY")
 	if exe == "" {
-		// Build nui from module root (parent of internal/agent).
 		tmp := filepath.Join(t.TempDir(), "nui")
 		cmd := exec.Command("go", "build", "-o", tmp, ".")
 		cmd.Dir = filepath.Clean(filepath.Join("..", ".."))
@@ -29,7 +28,7 @@ func TestSessionMCPConnectnuiViz(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	client := NewSessionMCP()
+	client := New()
 	defer client.Close()
 	if failures := client.ConnectServers(ctx, []model.ADLMCPServer{{
 		Name:    "nui-viz",
@@ -40,7 +39,7 @@ func TestSessionMCPConnectnuiViz(t *testing.T) {
 	}
 	tools := client.Tools()
 	if len(tools) == 0 {
-		t.Fatal("expected show_visualization tool")
+		t.Fatal("expected tools")
 	}
 	found := false
 	for _, tool := range tools {
@@ -50,5 +49,33 @@ func TestSessionMCPConnectnuiViz(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("tools = %+v", tools)
+	}
+}
+
+func TestClientConnectE2EMCP(t *testing.T) {
+	script := filepath.Clean(filepath.Join("..", "..", "dev", "harness-examples", "mock", "e2e_mcp_stdio_server.py"))
+	if _, err := os.Stat(script); err != nil {
+		t.Skipf("mock mcp server: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	client := New()
+	defer client.Close()
+	failures := client.ConnectServers(ctx, []model.ADLMCPServer{{
+		Name:    "e2e",
+		Command: "python3",
+		Args:    []string{script},
+	}})
+	if len(failures) != 0 {
+		t.Fatalf("ConnectServers: %v", failures)
+	}
+	result, err := client.CallTool(ctx, "ping", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result != "pong" {
+		t.Fatalf("result = %q", result)
 	}
 }

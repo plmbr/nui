@@ -37,12 +37,13 @@ func handleMCPResource(w http.ResponseWriter, r *http.Request) {
 
 	serverName := r.URL.Query().Get("server")
 	uri := r.URL.Query().Get("uri")
+	sessionID := r.URL.Query().Get("sessionId")
 	if serverName == "" || uri == "" {
 		http.Error(w, "server and uri are required", http.StatusBadRequest)
 		return
 	}
 
-	html, err := mcpManager.readResource(r.Context(), serverName, uri)
+	html, err := ReadMCPResource(r.Context(), sessionID, serverName, uri)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return

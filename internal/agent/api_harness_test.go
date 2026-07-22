@@ -276,10 +276,11 @@ func TestAccumulatedToolCallCumulativeArgs(t *testing.T) {
 	var lastEmitted string
 	for _, chunk := range chunks {
 		prev := lastEmitted
-		lastEmitted = chunk
+		updated := accumulateToolCallArgs(acc.args.String(), chunk)
 		acc.args.Reset()
-		acc.args.WriteString(chunk)
-		if delta, changed := toolArgsStreamUpdate(prev, chunk); changed {
+		acc.args.WriteString(updated)
+		lastEmitted = updated
+		if delta, changed := toolArgsStreamUpdate(prev, updated); changed {
 			deltas = append(deltas, delta)
 		}
 	}

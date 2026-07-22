@@ -196,7 +196,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 	runCancelled := false
 	seq := 0
 	mcpLookup := func(toolName string) (string, string, bool) {
-		return mcpManager.LookupToolUI(toolName)
+		return LookupSessionToolUI(sessionID, toolName)
 	}
 	go func() {
 		for req := range hitlCh {
@@ -258,7 +258,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 				emitVisualizationEvent(reqCtx, w, flusher, acc, ev.ToolCallID, ev.ToolName, ev.ToolArgs)
 			}
 			if ev.ParentToolCallID == "" {
-				if uri, server, ok := mcpManager.LookupToolUI(ev.ToolName); ok {
+				if uri, server, ok := LookupSessionToolUI(sessionID, ev.ToolName); ok {
 					var toolInput map[string]any
 					if ev.ToolArgs != "" {
 						json.Unmarshal([]byte(ev.ToolArgs), &toolInput)

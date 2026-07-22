@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 interface McpAppFrameProps {
   serverName: string
   resourceUri: string
+  sessionId?: string
   toolName?: string
   toolInput?: Record<string, unknown>
   toolResult?: unknown
@@ -40,6 +41,7 @@ function buildCallToolResult(toolResult: unknown): {
 export function McpAppFrame({
   serverName,
   resourceUri,
+  sessionId,
   toolName,
   toolInput,
   toolResult,
@@ -50,7 +52,9 @@ export function McpAppFrame({
   const toolInputSentRef = useRef(false)
   const toolResultSentRef = useRef(false)
 
-  const resourceUrl = `/mcp-resource?server=${encodeURIComponent(serverName)}&uri=${encodeURIComponent(resourceUri)}`
+  const resourceUrl = `/mcp-resource?server=${encodeURIComponent(serverName)}&uri=${encodeURIComponent(resourceUri)}${
+    sessionId ? `&sessionId=${encodeURIComponent(sessionId)}` : ''
+  }`
   const bareToolName = toolName?.split('__').pop() ?? toolName ?? ''
 
   useEffect(() => {

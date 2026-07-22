@@ -10,6 +10,31 @@ import (
 	"nui/internal/viz"
 )
 
+// accumulateToolCallArgs merges streamed tool argument chunks from OpenAI-compatible APIs.
+// Providers may send cumulative snapshots (each chunk is the full JSON so far) or incremental
+// deltas (each chunk appends to the previous). A valid complete JSON object replaces partial state.
+func accumulateToolCallArgs(current, chunk string) string {
+	if chunk == "" {
+		return current
+	}
+	if current == "" {
+		return chunk
+	}
+	if chunk == current {
+		return current
+	}
+	if strings.HasPrefix(chunk, current) {
+		return chunk
+	}
+	if json.Valid([]byte(chunk)) {
+		var obj map[string]any
+		if err := json.Unmarshal([]byte(chunk), &obj); err == nil && len(obj) > 0 {
+			return chunk
+		}
+	}
+	return current + chunk
+}
+
 func toolArgsStreamUpdate(previous, next string) (delta string, changed bool) {
 	next = strings.TrimSpace(next)
 	if next == "" {

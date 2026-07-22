@@ -45,6 +45,8 @@ type Manager struct {
 	devcontainerDirs map[string]string // projectID → nui-managed devcontainer up folder
 	dockerURLs    map[string]string // projectID → http base URL
 	lastActivity  map[string]time.Time
+	mcpMu         sync.Mutex
+	mcpClients    map[string]*sessionMCPEntry // nui session ID → MCP client
 }
 
 // SetExtensionRegistry attaches the loaded extension registry.
@@ -60,6 +62,7 @@ func NewManager() *Manager {
 		devcontainerDirs: make(map[string]string),
 		dockerURLs:       make(map[string]string),
 		lastActivity:  make(map[string]time.Time),
+		mcpClients:    make(map[string]*sessionMCPEntry),
 	}
 	go m.idleReaper()
 	return m
@@ -437,6 +440,7 @@ func (m *Manager) stopBuiltinAgent(projectID string) {
 
 // Stop terminates the in-process harness agent or Docker container for a specific project.
 func (m *Manager) Stop(projectID string) {
+	m.EvictSessionMCP(projectID)
 	m.stopBuiltinAgent(projectID)
 	m.stopExtensionAgent(projectID)
 
@@ -489,6 +493,7 @@ func (m *Manager) stopExtensionAgent(projectID string) {
 
 // StopAll terminates all managed harness agents and Docker containers.
 func (m *Manager) StopAll() {
+	m.EvictAllSessionMCP()
 	type stopEntry struct {
 		projectID    string
 		baseURL      string

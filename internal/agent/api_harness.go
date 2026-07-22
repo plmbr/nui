@@ -11,6 +11,7 @@ import (
 
 	"nui/internal/llm"
 	"nui/internal/hitl"
+	"nui/internal/mcpclient"
 	"nui/internal/model"
 	"nui/internal/viz"
 )
@@ -20,6 +21,7 @@ const maxAPIToolIterations = 32
 // APIHarnessAgent runs an in-process LLM conversation via internal/llm HTTP clients.
 type APIHarnessAgent struct {
 	Harness model.ADLHarness
+	Manager *Manager
 }
 
 func (a *APIHarnessAgent) Name() string { return "api" }
@@ -30,16 +32,25 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 		return err
 	}
 
-	mcpClient := NewSessionMCP()
-	defer mcpClient.Close()
+	var mcpClient *mcpclient.Client
 	var tools []llm.Tool
 	if !a.Harness.DisableTools {
 		if len(req.MCPServers) > 0 {
-			for _, msg := range mcpClient.ConnectServers(ctx, req.MCPServers) {
+			var failures []string
+			if a.Manager != nil {
+				mcpClient, failures = a.Manager.GetOrConnectSessionMCP(ctx, req.NuiSessionID, req.MCPServers)
+			} else {
+				mcpClient = mcpclient.New()
+				failures = mcpClient.ConnectServers(ctx, req.MCPServers)
+				defer mcpClient.Close()
+			}
+			for _, msg := range failures {
 				events <- Event{Type: EventText, Content: msg + "\n"}
 			}
 		}
-		tools = sessionToolsToLLMTools(mcpClient.Tools())
+		if mcpClient != nil {
+			tools = mcpToolsToLLM(mcpClient.Tools())
+		}
 	}
 
 	messages := buildAPIMessages(req)
@@ -228,8 +239,9 @@ func (a *APIHarnessAgent) streamCompletion(
 				acc.name = tc.Function.Name
 			}
 			if tc.Function.Arguments != "" {
+				updated := accumulateToolCallArgs(acc.args.String(), tc.Function.Arguments)
 				acc.args.Reset()
-				acc.args.WriteString(tc.Function.Arguments)
+				acc.args.WriteString(updated)
 			}
 		}
 		if choice.FinishReason != "" {
@@ -409,7 +421,7 @@ func assistantHistoryContent(msg model.ChatMessage) string {
 	return strings.TrimSpace(b.String())
 }
 
-func sessionToolsToLLMTools(tools []sessionMCPTool) []llm.Tool {
+func mcpToolsToLLM(tools []mcpclient.Tool) []llm.Tool {
 	out := make([]llm.Tool, 0, len(tools))
 	for _, t := range tools {
 		schema := t.InputSchema

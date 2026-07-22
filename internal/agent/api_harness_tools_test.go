@@ -8,6 +8,40 @@ import (
 	"nui/internal/llm"
 )
 
+func TestAccumulateToolCallArgs_incremental(t *testing.T) {
+	current := ""
+	for _, chunk := range []string{`{"query": `, `"employee`, ` count"}`} {
+		current = accumulateToolCallArgs(current, chunk)
+	}
+	if current != `{"query": "employee count"}` {
+		t.Fatalf("incremental = %q", current)
+	}
+}
+
+func TestAccumulateToolCallArgs_cumulative(t *testing.T) {
+	current := ""
+	chunks := []string{
+		`{"query": "empl`,
+		`{"query": "employee`,
+		`{"query": "employee count"}`,
+	}
+	for _, chunk := range chunks {
+		current = accumulateToolCallArgs(current, chunk)
+	}
+	if current != `{"query": "employee count"}` {
+		t.Fatalf("cumulative = %q", current)
+	}
+}
+
+func TestAccumulateToolCallArgs_snapshotReplace(t *testing.T) {
+	prev := `{"html":"<canvas id=","title":""}`
+	next := `{"html":"<canvas id=\"c\"></canvas><script>new Chart()</script>","title":"Sales"}`
+	got := accumulateToolCallArgs(prev, next)
+	if got != next {
+		t.Fatalf("snapshot replace = %q", got)
+	}
+}
+
 func TestToolArgsStreamUpdate_cumulative(t *testing.T) {
 	prev := `{"html":"`
 	next := `{"html":"<c`
@@ -42,7 +76,7 @@ func TestFilterExecutableToolCalls_skipsPartialViz(t *testing.T) {
 		{
 			ID: "2",
 			Function: llm.FunctionCall{
-				Name: "show_visualization",
+				Name:      "show_visualization",
 				Arguments: `{"html":"<script src=\"https://cdn.jsdelivr.net/npm/chart.js\"></script><canvas id=\"c\"></canvas><script>new Chart(document.getElementById('c'), {type:'bar'});","title":"Sales"}`,
 			},
 		},

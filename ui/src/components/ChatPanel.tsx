@@ -564,7 +564,7 @@ export function ChatPanel({
         )
       }
 
-      return <ToolCallGroup key={segment.key} parts={segment.parts} />
+      return <ToolCallGroup key={segment.key} parts={segment.parts} sessionId={session.id} />
     })
 
   return (

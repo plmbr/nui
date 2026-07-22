@@ -13,9 +13,10 @@ import { isHarnessSubagentTool } from '@/lib/subagentTrace'
 interface Props {
   part: ToolCallPart
   nested?: boolean
+  sessionId?: string
 }
 
-export function ToolCallBubble({ part: msg, nested = false }: Props) {
+export function ToolCallBubble({ part: msg, nested = false, sessionId }: Props) {
   const [expanded, setExpanded] = useState(false)
   const displayName = formatToolDisplayName(msg.toolName)
   const mcpServer = formatMcpServerLabel(msg.toolName)
@@ -102,6 +103,7 @@ export function ToolCallBubble({ part: msg, nested = false }: Props) {
           <McpAppFrame
             serverName={msg.mcpAppServerName}
             resourceUri={msg.mcpAppResourceUri}
+            sessionId={sessionId}
             toolName={msg.toolName}
             toolInput={msg.mcpAppToolInput}
             toolResult={msg.toolResult}
@@ -159,6 +161,7 @@ export function ToolCallBubble({ part: msg, nested = false }: Props) {
         <McpAppFrame
           serverName={msg.mcpAppServerName}
           resourceUri={msg.mcpAppResourceUri}
+          sessionId={sessionId}
           toolName={msg.toolName}
           toolInput={msg.mcpAppToolInput}
           toolResult={msg.toolResult}

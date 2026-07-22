@@ -14,8 +14,8 @@ func TestBootstrapMCPLoad_noConfig(t *testing.T) {
 	if err := bootstrapMCPLoad(&m); err != nil {
 		t.Fatalf("bootstrapMCPLoad: %v", err)
 	}
-	if len(m.sessions) != 0 {
-		t.Fatalf("sessions = %d, want 0", len(m.sessions))
+	if m.clientOrNil() != nil {
+		t.Fatalf("client should be nil when no config")
 	}
 }
 
