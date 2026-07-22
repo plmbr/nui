@@ -48,9 +48,6 @@ export function LandingPage({ onLaunchWithPrompt, onNewSession, onCustomize }: P
         <h1 className="landing-page__title" aria-label="nui">
           <NuiLogo decorative />
         </h1>
-        <p className="landing-page__slogan">
-          tiny but <span>nui</span>
-        </p>
 
         <div className="landing-page__prompt">
           <textarea
@@ -88,7 +85,7 @@ export function LandingPage({ onLaunchWithPrompt, onNewSession, onCustomize }: P
         )}
 
         <div className="landing-page__actions">
-          <Button size="default" variant="outline" className="gap-2 px-5" onClick={onNewSession}>
+          <Button size="default" variant="ghost" className="gap-2 pl-3 pr-5" onClick={onNewSession}>
             <Plus className="size-4" />
             New Session
           </Button>

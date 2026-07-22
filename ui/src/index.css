@@ -168,16 +168,17 @@
     /* Plumeria (pua melia) — warm lei accents */
     --plumeria-petal-base: oklch(0.99 0.02 98);
     --plumeria-petal-mid: oklch(0.96 0.05 95);
-    --plumeria-petal-tip: oklch(0.62 0.24 350);
-    --plumeria-petal-gold: oklch(0.78 0.20 85);
+    --plumeria-petal-tip: oklch(0.78 0.12 350);
     --plumeria-petal-highlight: oklch(1 0.01 98);
     --plumeria-throat: oklch(0.90 0.19 95);
-    --plumeria-center: oklch(0.74 0.21 82);
-    --plumeria-center-bright: oklch(0.90 0.22 98);
     --plumeria-edge: oklch(0.58 0.16 350 / 50%);
     --plumeria-shadow: oklch(0.55 0.12 350 / 22%);
     --plumeria-opacity: 0.52;
     --plumeria-chat-opacity: 0.28;
+    --landing-send-from: color-mix(in oklch, var(--brand-gradient-from) 82%, black);
+    --landing-send-to: color-mix(in oklch, var(--brand-gradient-to) 76%, black);
+    --landing-send-fg: oklch(0.99 0.005 215);
+    --landing-send-shadow: color-mix(in oklch, var(--brand-gradient-from) 38%, transparent);
 }
 
 .dark {
@@ -240,16 +241,17 @@
 
     --plumeria-petal-base: oklch(0.94 0.03 98);
     --plumeria-petal-mid: oklch(0.90 0.05 95);
-    --plumeria-petal-tip: oklch(0.68 0.22 350);
-    --plumeria-petal-gold: oklch(0.80 0.18 85);
+    --plumeria-petal-tip: oklch(0.80 0.10 350);
     --plumeria-petal-highlight: oklch(0.98 0.02 98);
     --plumeria-throat: oklch(0.86 0.17 95);
-    --plumeria-center: oklch(0.72 0.19 82);
-    --plumeria-center-bright: oklch(0.84 0.20 98);
     --plumeria-edge: oklch(0.64 0.14 350 / 42%);
     --plumeria-shadow: oklch(0.30 0.08 350 / 35%);
     --plumeria-opacity: 0.42;
     --plumeria-chat-opacity: 0.22;
+    --landing-send-from: color-mix(in oklch, var(--brand-gradient-from) 58%, black);
+    --landing-send-to: color-mix(in oklch, var(--brand-gradient-to) 52%, black);
+    --landing-send-fg: oklch(0.99 0.005 215);
+    --landing-send-shadow: oklch(0.18 0.04 255 / 48%);
 }
 
 @layer base {
@@ -373,17 +375,19 @@
       left: 50%;
       top: 50%;
       z-index: -1;
-      width: min(96vw, 56rem);
-      height: min(96vw, 56rem);
+      width: min(78vw, 44rem);
+      height: min(78vw, 44rem);
       transform: translate(-50%, -50%);
       border-radius: 50%;
       pointer-events: none;
       background: radial-gradient(
         circle,
-        color-mix(in oklch, var(--background) 88%, transparent) 0%,
-        color-mix(in oklch, var(--background) 72%, transparent) 52%,
-        color-mix(in oklch, var(--background) 38%, transparent) 72%,
-        transparent 80%
+        color-mix(in oklch, var(--background) 97%, transparent) 0%,
+        color-mix(in oklch, var(--background) 90%, transparent) 30%,
+        color-mix(in oklch, var(--background) 62%, transparent) 50%,
+        color-mix(in oklch, var(--background) 28%, transparent) 64%,
+        color-mix(in oklch, var(--background) 10%, transparent) 76%,
+        transparent 84%
       );
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
@@ -403,20 +407,6 @@
     }
   }
 
-  .landing-page__slogan {
-    font-weight: 700;
-    font-size: 1.35rem;
-    font-style: italic;
-    letter-spacing: 0.5px;
-    margin-bottom: 0.3em;
-
-    span {
-      color: #75aaff;
-      font-weight: 900;
-      letter-spacing: 2px;
-    }
-  }
-
 
   .landing-page__prompt {
     @apply relative w-full max-w-3xl;
@@ -430,19 +420,15 @@
   }
 
   .landing-page__prompt-send {
-    @apply absolute right-3 bottom-3 inline-flex h-10 min-w-10 items-center justify-center gap-1.5 rounded-full px-3.5 text-primary-foreground shadow-sm transition-[filter,transform,opacity] disabled:opacity-40;
-    background: linear-gradient(
-      135deg,
-      oklch(0.72 0.18 35) 0%,
-      oklch(0.78 0.16 75) 48%,
-      oklch(0.62 0.12 205) 100%
-    );
+    @apply absolute right-3 bottom-3 inline-flex h-10 min-w-10 items-center justify-center gap-1.5 rounded-full px-3.5 shadow-sm transition-[filter,transform,opacity] disabled:opacity-40;
+    color: var(--landing-send-fg);
+    background: linear-gradient(135deg, var(--landing-send-from), var(--landing-send-to));
     box-shadow:
-      0 2px 10px oklch(0.55 0.12 45 / 22%),
-      inset 0 1px 0 oklch(1 0 0 / 18%);
+      0 2px 10px var(--landing-send-shadow),
+      inset 0 1px 0 oklch(1 0 0 / 16%);
 
     &:not(:disabled):hover {
-      filter: brightness(1.06);
+      filter: brightness(1.08);
       transform: translateY(-1px);
     }
 
@@ -452,11 +438,13 @@
   }
 
   .landing-page__prompt-send-flower {
-    @apply shrink-0 drop-shadow-sm;
+    @apply shrink-0;
+    filter: drop-shadow(0 1px 1px oklch(0.22 0.06 255 / 28%));
   }
 
   .landing-page__prompt-send-label {
     @apply text-sm font-semibold tracking-wide;
+    text-shadow: 0 1px 1px oklch(0.22 0.06 255 / 24%);
   }
 
   .landing-page__error {

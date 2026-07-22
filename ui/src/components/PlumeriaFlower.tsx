@@ -10,13 +10,7 @@ interface Props {
 }
 
 /** Spiral offsets give the classic overlapping plumeria pinwheel. */
-const PETALS = [
-  { angle: -18, variant: 'pink' as const },
-  { angle: 54, variant: 'gold' as const },
-  { angle: 126, variant: 'pink' as const },
-  { angle: 198, variant: 'gold' as const },
-  { angle: 270, variant: 'pink' as const },
-]
+const PETAL_ANGLES = [-18, 54, 126, 198, 270]
 
 const PETAL_PATH =
   'M 24 22.6 C 19.4 21.2 17.6 14.2 19.2 7.4 C 20.5 3.6 24 2.2 27.5 3.6 C 29.1 7.4 28.6 14.2 24 22.6 Z'
@@ -38,9 +32,9 @@ export function PlumeriaFlower({ className, size = 48 }: Props) {
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
-        {PETALS.map(({ angle, variant }) => (
+        {PETAL_ANGLES.map((angle) => (
           <linearGradient
-            key={`${angle}-${variant}`}
+            key={angle}
             id={`plumeria-petal-${uid}-${angle}`}
             x1="24"
             y1="22"
@@ -52,25 +46,15 @@ export function PlumeriaFlower({ className, size = 48 }: Props) {
             <stop offset="0%" stopColor="var(--plumeria-throat)" />
             <stop offset="32%" stopColor="var(--plumeria-petal-base)" />
             <stop offset="72%" stopColor="var(--plumeria-petal-mid)" />
-            <stop
-              offset="100%"
-              stopColor={
-                variant === 'pink' ? 'var(--plumeria-petal-tip)' : 'var(--plumeria-petal-gold)'
-              }
-            />
+            <stop offset="100%" stopColor="var(--plumeria-petal-tip)" />
           </linearGradient>
         ))}
-        <radialGradient id={`plumeria-center-${uid}`} cx="50%" cy="48%" r="42%">
-          <stop offset="0%" stopColor="var(--plumeria-center-bright)" />
-          <stop offset="55%" stopColor="var(--plumeria-center)" />
-          <stop offset="100%" stopColor="var(--plumeria-throat)" />
-        </radialGradient>
         <filter id={`plumeria-shadow-${uid}`} x="-30%" y="-30%" width="160%" height="160%">
           <feDropShadow dx="0" dy="0.6" stdDeviation="0.7" floodColor="var(--plumeria-shadow)" />
         </filter>
       </defs>
       <g filter={`url(#plumeria-shadow-${uid})`}>
-        {PETALS.map(({ angle }) => (
+        {PETAL_ANGLES.map((angle) => (
           <g key={angle} transform={`rotate(${angle} 24 24)`}>
             <path
               d={PETAL_PATH}
@@ -82,9 +66,6 @@ export function PlumeriaFlower({ className, size = 48 }: Props) {
             <path d={HIGHLIGHT_PATH} fill="var(--plumeria-petal-highlight)" opacity="0.42" />
           </g>
         ))}
-        <circle cx="24" cy="24" r="5.8" fill={`url(#plumeria-center-${uid})`} />
-        <circle cx="24" cy="24" r="3.4" fill="var(--plumeria-center)" opacity="0.9" />
-        <circle cx="23.2" cy="22.8" r="1.5" fill="var(--plumeria-center-bright)" opacity="0.95" />
       </g>
     </svg>
   )
