@@ -546,6 +546,7 @@ export default function App() {
             ) : sessionListGroup ? (
               <SessionsListPanel
                 group={sessionListGroup}
+                agentTypes={agentTypes}
                 selectedId={selectedId}
                 onSelect={handleSelect}
                 onClose={handleCloseSessionList}

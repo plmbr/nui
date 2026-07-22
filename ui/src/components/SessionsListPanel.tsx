@@ -3,13 +3,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { List, Trash2, X, CalendarClock } from 'lucide-react'
 import { sessionDisplayName } from '@/lib/sessionDisplay'
+import { filterSessionsByQuery, normalizeSearchQuery } from '@/lib/searchFilter'
 import { Button } from '@/components/ui/button'
+import { SearchInput } from '@/components/SearchInput'
 import { cn } from '@/lib/utils'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { BUILTIN_GROUP_ID, type SessionGroup } from '@/lib/sessionGroups'
 
+import type { AgentType } from '@/types'
+
 interface Props {
   group: SessionGroup
+  agentTypes: AgentType[]
   selectedId: string | null
   onSelect: (id: string) => void
   onClose: () => void
@@ -18,19 +23,25 @@ interface Props {
 
 export function SessionsListPanel({
   group,
+  agentTypes,
   selectedId,
   onSelect,
   onClose,
   onBulkDelete,
 }: Props) {
-  const sessionIds = useMemo(() => group.sessions.map((s) => s.id), [group.sessions])
+  const [searchQuery, setSearchQuery] = useState('')
+  const filteredSessions = useMemo(
+    () => filterSessionsByQuery(group.sessions, searchQuery, agentTypes),
+    [group.sessions, searchQuery, agentTypes],
+  )
+  const sessionIds = useMemo(() => filteredSessions.map((s) => s.id), [filteredSessions])
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set())
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     setCheckedIds(new Set())
-  }, [group.id])
+  }, [group.id, searchQuery])
 
   const allChecked = sessionIds.length > 0 && sessionIds.every((id) => checkedIds.has(id))
   const someChecked = checkedIds.size > 0
@@ -76,7 +87,11 @@ export function SessionsListPanel({
           <h1 className="text-sm font-semibold truncate">
             {group.id === BUILTIN_GROUP_ID ? group.label : `${group.label} sessions`}
           </h1>
-          <span className="text-xs text-muted-foreground tabular-nums">{group.sessions.length}</span>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {normalizeSearchQuery(searchQuery)
+              ? `${filteredSessions.length} / ${group.sessions.length}`
+              : group.sessions.length}
+          </span>
         </div>
         <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close session list">
           <X className="size-4" />
@@ -88,21 +103,33 @@ export function SessionsListPanel({
           <div className="empty-state">No sessions in this category.</div>
         ) : (
           <>
-            <div className="flex shrink-0 items-center gap-2 border-b px-4 py-2 md:px-6">
-              <Button
-                variant="destructive"
-                size="sm"
-                disabled={!someChecked || deleting}
-                onClick={() => setDeleteOpen(true)}
-              >
-                <Trash2 className="size-3.5" />
-                <span className="hidden sm:inline">Delete selected</span>
-                {someChecked ? ` (${checkedIds.size})` : ''}
-              </Button>
+            <div className="shrink-0 space-y-2 border-b px-4 py-2 md:px-6">
+              <SearchInput
+                value={searchQuery}
+                onChange={setSearchQuery}
+                placeholder="Search sessions…"
+                aria-label="Search sessions in this group"
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={!someChecked || deleting}
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  <Trash2 className="size-3.5" />
+                  <span className="hidden sm:inline">Delete selected</span>
+                  {someChecked ? ` (${checkedIds.size})` : ''}
+                </Button>
+              </div>
             </div>
 
+            {filteredSessions.length === 0 ? (
+              <div className="empty-state">No sessions match your search.</div>
+            ) : (
+              <>
             <ul className="md:hidden flex-1 divide-y overflow-auto">
-              {group.sessions.map((session) => {
+              {filteredSessions.map((session) => {
                 const isActive = session.id === selectedId
                 const isChecked = checkedIds.has(session.id)
                 return (
@@ -170,7 +197,7 @@ export function SessionsListPanel({
                   </tr>
                 </thead>
                 <tbody>
-                  {group.sessions.map((session) => {
+                  {filteredSessions.map((session) => {
                     const isActive = session.id === selectedId
                     const isChecked = checkedIds.has(session.id)
                     return (
@@ -219,6 +246,8 @@ export function SessionsListPanel({
                 </tbody>
               </table>
             </div>
+              </>
+            )}
           </>
         )}
       </div>

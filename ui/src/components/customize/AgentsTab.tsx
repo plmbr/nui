@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FileCode2, ChevronLeft, FlaskConical, FormInput, Plus, Rocket, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,7 +27,9 @@ import {
 import { useAgentFormOptions } from '@/lib/useAgentFormOptions'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
+import { SearchInput } from '@/components/SearchInput'
 import { api } from '@/api'
+import { filterBySearchQuery } from '@/lib/searchFilter'
 import type { AgentDeployerInfo, AgentDeployResult, AgentEvalSummary, AgentFileInfo } from '@/types'
 
 type EditMode = 'form' | 'yaml'
@@ -99,6 +101,15 @@ export function AgentsTab({ onChanged }: Props) {
   const [evalWorkingDir, setEvalWorkingDir] = useState('')
   const [runningEvals, setRunningEvals] = useState(false)
   const [evalSummary, setEvalSummary] = useState<AgentEvalSummary | null>(null)
+  const [agentSearchQuery, setAgentSearchQuery] = useState('')
+
+  const filteredAgents = useMemo(
+    () =>
+      filterBySearchQuery(agents, agentSearchQuery, (agent) =>
+        [agent.name, agent.file].filter(Boolean).join(' '),
+      ),
+    [agents, agentSearchQuery],
+  )
 
   const syncFormFromContent = useCallback(
     (yaml: string) => {
@@ -319,8 +330,19 @@ export function AgentsTab({ onChanged }: Props) {
             <Plus className="size-3.5" />
             New agent
           </Button>
+          <SearchInput
+            value={agentSearchQuery}
+            onChange={setAgentSearchQuery}
+            placeholder="Search agents…"
+            aria-label="Search agent definitions"
+          />
           <ul className="flex-1 overflow-y-auto rounded-lg border divide-y">
-            {agents.map((agent) => (
+            {filteredAgents.length === 0 ? (
+              <li className="px-3 py-4 text-xs text-muted-foreground">
+                {agentSearchQuery.trim() ? 'No agents match your search.' : 'No agents yet.'}
+              </li>
+            ) : (
+              filteredAgents.map((agent) => (
               <li key={agent.file}>
                 <button
                   type="button"
@@ -332,7 +354,8 @@ export function AgentsTab({ onChanged }: Props) {
                   <span className="text-xs text-muted-foreground block truncate">{agent.file}</span>
                 </button>
               </li>
-            ))}
+              ))
+            )}
           </ul>
         </div>
         )}

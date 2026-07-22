@@ -1,10 +1,12 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { Button } from '@/components/ui/button'
+import { SearchInput } from '@/components/SearchInput'
 import { api } from '@/api'
+import { filterBySearchQuery } from '@/lib/searchFilter'
 import type { SkillEntry } from '@/types'
 
 export function SkillsTab() {
@@ -12,6 +14,15 @@ export function SkillsTab() {
   const [loading, setLoading] = useState(true)
   const [removing, setRemoving] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredSkills = useMemo(
+    () =>
+      filterBySearchQuery(skills, searchQuery, (skill) =>
+        [skill.name, skill.source, skill.path, skill.git].filter(Boolean).join(' '),
+      ),
+    [skills, searchQuery],
+  )
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -53,8 +64,18 @@ export function SkillsTab() {
       {skills.length === 0 ? (
         <p className="text-sm text-muted-foreground">No skills installed yet.</p>
       ) : (
+        <>
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search skills…"
+            aria-label="Search installed skills"
+          />
+          {filteredSkills.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No skills match your search.</p>
+          ) : (
         <ul className="divide-y rounded-lg border">
-          {skills.map((skill) => (
+          {filteredSkills.map((skill) => (
             <li key={skill.name} className="flex items-start justify-between gap-4 p-4">
               <div className="min-w-0">
                 <p className="font-medium text-sm">{skill.name}</p>
@@ -80,6 +101,8 @@ export function SkillsTab() {
             </li>
           ))}
         </ul>
+          )}
+        </>
       )}
 
       <ConfirmDeleteDialog

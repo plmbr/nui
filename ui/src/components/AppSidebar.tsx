@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { ChevronRight, CalendarClock, Filter, List, Loader2, MoreHorizontal, Pencil, Plus, Square, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/SearchInput'
 import { cn } from '@/lib/utils'
 import {
   Sidebar,
@@ -30,6 +31,7 @@ import {
 import { decodeSessionProgress, type SessionProgress } from '@/lib/sessionProgress'
 import { formatExactTime, formatRelativeTime } from '@/lib/formatRelativeTime'
 import { sessionDisplayName } from '@/lib/sessionDisplay'
+import { filterSessionsByQuery, normalizeSearchQuery } from '@/lib/searchFilter'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import {
   Dialog,
@@ -281,6 +283,7 @@ function SessionListItem({ session, isActive, onSelect, onRename, onDelete }: Se
 interface CollapsibleSessionGroupProps {
   group: DisplaySessionGroup
   runningOnly: boolean
+  searchQuery: string
   selectedId: string | null
   listViewOpen: boolean
   onSelect: (id: string) => void
@@ -293,6 +296,7 @@ interface CollapsibleSessionGroupProps {
 function CollapsibleSessionGroup({
   group,
   runningOnly,
+  searchQuery,
   selectedId,
   listViewOpen,
   onSelect,
@@ -305,13 +309,14 @@ function CollapsibleSessionGroup({
   const hasSelected = group.sessions.some((s) => s.id === selectedId)
   const [open, setOpen] = useState(true)
   const sessionCount = group.sessions.length
+  const searchActive = normalizeSearchQuery(searchQuery).length > 0
   const countTitle = runningOnly && sessionCount !== group.totalSessions
     ? `${sessionCount} running (${group.totalSessions} total)`
     : `${sessionCount} session${sessionCount === 1 ? '' : 's'}`
 
   useEffect(() => {
-    if (hasSelected) setOpen(true)
-  }, [hasSelected])
+    if (hasSelected || searchActive) setOpen(true)
+  }, [hasSelected, searchActive])
 
   return (
     <SidebarGroup className="px-2 pb-0.5 pt-0">
@@ -420,9 +425,15 @@ export function AppSidebar({
   const { closeMobileSidebar } = useSidebar()
   const runningSessions = useRunningSessions()
   const [runningOnly, setRunningOnly] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredSessions = useMemo(
+    () => filterSessionsByQuery(sessions, searchQuery, agentTypes),
+    [sessions, searchQuery, agentTypes],
+  )
 
   const groups = useMemo((): DisplaySessionGroup[] => {
-    const allGroups = groupSessionsByAgentType(sessions, agentTypes)
+    const allGroups = groupSessionsByAgentType(filteredSessions, agentTypes)
     if (!runningOnly) {
       return allGroups.map((group) => ({
         ...group,
@@ -434,7 +445,7 @@ export function AppSidebar({
       totalSessions: group.sessions.length,
       sessions: group.sessions.filter((session) => runningSessions.has(session.id)),
     }))
-  }, [sessions, agentTypes, runningOnly, runningSessions])
+  }, [filteredSessions, agentTypes, runningOnly, runningSessions])
 
   const visibleGroups = useMemo(
     () => groups.filter((group) => group.sessions.length > 0),
@@ -501,17 +512,34 @@ export function AppSidebar({
             <Filter className="size-4 shrink-0" />
           </Button>
         </div>
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search sessions…"
+          aria-label="Search sessions"
+          className="mt-2 group-data-[collapsible=icon]:hidden"
+          inputClassName="bg-background/40"
+        />
       </SidebarHeader>
         <SidebarContent className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain pb-2">
           {groups.length === 0 ? (
             <p className="px-4 py-4 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-              No sessions yet.
+              {normalizeSearchQuery(searchQuery)
+                ? 'No sessions match your search.'
+                : 'No sessions yet.'}
             </p>
           ) : (
             <>
               {runningOnly && visibleGroups.length === 0 && (
                 <p className="px-4 py-3 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-                  No running sessions.
+                  {normalizeSearchQuery(searchQuery)
+                    ? 'No running sessions match your search.'
+                    : 'No running sessions.'}
+                </p>
+              )}
+              {normalizeSearchQuery(searchQuery) && visibleGroups.length === 0 && !runningOnly && (
+                <p className="px-4 py-3 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+                  No sessions match your search.
                 </p>
               )}
               {visibleGroups.map((group) => (
@@ -519,6 +547,7 @@ export function AppSidebar({
                   key={group.id}
                   group={group}
                   runningOnly={runningOnly}
+                  searchQuery={searchQuery}
                   selectedId={selectedId}
                   listViewOpen={sessionListGroupId === group.id}
                   onSelect={onSelect}

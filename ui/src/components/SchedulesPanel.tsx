@@ -9,14 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { formatRelativeTime } from '@/lib/formatRelativeTime'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  selectItemData,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { api } from '@/api'
 import type { AgentType, Schedule } from '@/types'
 
@@ -137,18 +130,17 @@ function ScheduleFormFields({
       </div>
       <div className="grid gap-2">
         <Label>Agent</Label>
-        <Select
+        <SearchableSelect
           value={agentType}
-          onValueChange={(v) => onAgentTypeChange(v ?? '')}
-          items={selectItemData(autoAgents)}
-        >
-          <SelectTrigger><SelectValue placeholder="Select agent" /></SelectTrigger>
-          <SelectContent>
-            {autoAgents.map((a) => (
-              <SelectItem key={a.id} value={a.id}>{a.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onValueChange={onAgentTypeChange}
+          items={autoAgents.map((agent) => ({
+            id: agent.id,
+            label: agent.label,
+            description: agent.description,
+          }))}
+          placeholder="Select agent"
+          searchPlaceholder="Search agents…"
+        />
       </div>
       <div className="grid gap-2">
         <Label>Schedule type</Label>

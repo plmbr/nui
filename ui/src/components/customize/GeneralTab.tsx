@@ -1,17 +1,8 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { TriangleAlert } from 'lucide-react'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-  selectItemData,
-} from '@/components/ui/select'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import { api } from '@/api'
 import { pickDefaultAgentTypeId, selectableAgentTypes } from '@/lib/agentTypes'
 import { BUILTIN_AGENTS_LABEL, INSTALLED_AGENTS_LABEL } from '@/lib/sessionGroups'
@@ -36,8 +27,7 @@ export function GeneralTab() {
       .catch(() => {})
   }, [])
 
-  const handleDefaultAgentChange = (id: string | null) => {
-    if (!id) return
+  const handleDefaultAgentChange = (id: string) => {
     setDefaultAgentType(id)
     api.settings.update({ defaultAgentType: id }).catch(() => {})
   }
@@ -45,6 +35,16 @@ export function GeneralTab() {
   const bwrapUnavailable = capabilities !== null && !capabilities.sandbox.bwrap.available
 
   const selectableAgentTypesList = selectableAgentTypes(agentTypes)
+  const agentSelectItems = useMemo(
+    () =>
+      selectableAgentTypesList.map((agent) => ({
+        id: agent.id,
+        label: agent.label,
+        group: agent.isBuiltin ? BUILTIN_AGENTS_LABEL : INSTALLED_AGENTS_LABEL,
+        description: agent.description,
+      })),
+    [selectableAgentTypesList],
+  )
 
   return (
     <div className="customize-tab-content space-y-6">
@@ -65,37 +65,14 @@ export function GeneralTab() {
           Used when nui creates a session on startup.
         </p>
         {selectableAgentTypesList.length > 0 && (
-          <Select
+          <SearchableSelect
             value={defaultAgentType}
             onValueChange={handleDefaultAgentChange}
-            items={selectItemData(selectableAgentTypesList)}
-          >
-            <SelectTrigger className="w-full max-w-md">
-              <SelectValue placeholder="Select agent" />
-            </SelectTrigger>
-            <SelectContent>
-              {selectableAgentTypesList.some((a) => a.isBuiltin) && (
-                <SelectGroup>
-                  <SelectLabel>{BUILTIN_AGENTS_LABEL}</SelectLabel>
-                  {selectableAgentTypesList.filter((a) => a.isBuiltin).map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              )}
-              {selectableAgentTypesList.some((a) => !a.isBuiltin) && (
-                <SelectGroup>
-                  <SelectLabel>{INSTALLED_AGENTS_LABEL}</SelectLabel>
-                  {selectableAgentTypesList.filter((a) => !a.isBuiltin).map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              )}
-            </SelectContent>
-          </Select>
+            items={agentSelectItems}
+            placeholder="Select agent"
+            searchPlaceholder="Search agents…"
+            triggerClassName="max-w-md"
+          />
         )}
       </div>
     </div>

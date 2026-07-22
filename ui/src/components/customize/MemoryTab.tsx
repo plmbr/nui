@@ -1,11 +1,13 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Check, Copy, Trash2 } from 'lucide-react'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { Button } from '@/components/ui/button'
+import { SearchInput } from '@/components/SearchInput'
 import { api } from '@/api'
 import { selectableAgentTypes } from '@/lib/agentTypes'
+import { filterBySearchQuery } from '@/lib/searchFilter'
 import type { AgentType, MemoryAgentEntry, MemoryMode, MemorySummary } from '@/types'
 
 type DeleteTarget = { scope: 'user' } | { scope: 'agent'; agentId: string }
@@ -73,6 +75,7 @@ export function MemoryTab() {
   const [agentContent, setAgentContent] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
   const [copiedPath, setCopiedPath] = useState<string | null>(null)
+  const [agentSearchQuery, setAgentSearchQuery] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -199,6 +202,13 @@ export function MemoryTab() {
   }
 
   const selectableAgents = selectableAgentTypes(agentTypes)
+  const filteredAgents = useMemo(
+    () =>
+      filterBySearchQuery(selectableAgents, agentSearchQuery, (agent) =>
+        [agent.label, agent.id, agent.description].filter(Boolean).join(' '),
+      ),
+    [selectableAgents, agentSearchQuery],
+  )
   const agentEntries: MemoryAgentEntry[] = summary?.agents ?? []
   const agentMemoryById = new Map(agentEntries.map((entry) => [entry.agentId, entry]))
   const userPath = memoryPath('user')
@@ -262,8 +272,17 @@ export function MemoryTab() {
 
       <div className="space-y-3">
         <p className="text-sm font-medium">Per-agent memory</p>
+        <SearchInput
+          value={agentSearchQuery}
+          onChange={setAgentSearchQuery}
+          placeholder="Search agents…"
+          aria-label="Search agents with memory"
+        />
+        {filteredAgents.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No agents match your search.</p>
+        ) : (
         <ul className="divide-y rounded-lg border">
-          {selectableAgents.map((agent) => {
+          {filteredAgents.map((agent) => {
             const entry = agentMemoryById.get(agent.id)
             const path = memoryPath('agent', agent.id)
             const selected = selectedAgentId === agent.id
@@ -318,6 +337,7 @@ export function MemoryTab() {
             )
           })}
         </ul>
+        )}
       </div>
 
       {selectedAgentId && (

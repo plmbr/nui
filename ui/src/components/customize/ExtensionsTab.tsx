@@ -1,9 +1,11 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SearchInput } from '@/components/SearchInput'
 import { api } from '@/api'
+import { filterBySearchQuery } from '@/lib/searchFilter'
 import type { ExtensionInfo } from '@/types'
 
 interface Props {
@@ -14,6 +16,15 @@ export function ExtensionsTab({ onChanged }: Props) {
   const [extensions, setExtensions] = useState<ExtensionInfo[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredExtensions = useMemo(
+    () =>
+      filterBySearchQuery(extensions, searchQuery, (ext) =>
+        [ext.displayName, ext.name, ext.description, ext.version].filter(Boolean).join(' '),
+      ),
+    [extensions, searchQuery],
+  )
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -75,8 +86,17 @@ export function ExtensionsTab({ onChanged }: Props) {
           Refresh
         </Button>
       </div>
+      <SearchInput
+        value={searchQuery}
+        onChange={setSearchQuery}
+        placeholder="Search extensions…"
+        aria-label="Search installed extensions"
+      />
+      {filteredExtensions.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No extensions match your search.</p>
+      ) : (
       <ul className="divide-y rounded-lg border">
-        {extensions.map((ext) => (
+        {filteredExtensions.map((ext) => (
           <li key={ext.name} className="flex items-start justify-between gap-4 p-4">
             <div className="min-w-0 flex-1">
               <p className="font-medium text-sm">{ext.displayName || ext.name}</p>
@@ -118,6 +138,7 @@ export function ExtensionsTab({ onChanged }: Props) {
           </li>
         ))}
       </ul>
+      )}
     </div>
   )
 }

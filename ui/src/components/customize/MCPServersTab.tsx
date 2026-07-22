@@ -1,11 +1,12 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link2, Plus, Trash2 } from 'lucide-react'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SearchInput } from '@/components/SearchInput'
 import {
   Select,
   SelectContent,
@@ -93,6 +94,27 @@ export function MCPServersTab() {
   const [connectingKey, setConnectingKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredServerEntries = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    return servers
+      .map((server, index) => ({ server, index }))
+      .filter(({ server }) => {
+        if (!query) return true
+        const haystack = [
+          server.name,
+          server.type,
+          server.command,
+          server.url,
+          server.args?.join(' '),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+        return haystack.includes(query)
+      })
+  }, [servers, searchQuery])
 
   const refreshAuthStatus = useCallback(async () => {
     try {
@@ -233,7 +255,16 @@ export function MCPServersTab() {
         <p className="text-sm text-muted-foreground">No MCP servers configured yet.</p>
       ) : (
         <div className="space-y-4">
-          {servers.map((server, index) => {
+          <SearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search MCP servers…"
+            aria-label="Search configured MCP servers"
+          />
+          {filteredServerEntries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No MCP servers match your search.</p>
+          ) : (
+          filteredServerEntries.map(({ server, index }) => {
             const key = serverKey(server)
             const status = authStatus[key] ?? authStatus[server.name]
             const remote = isRemote(server)
@@ -388,7 +419,8 @@ export function MCPServersTab() {
                 )}
               </div>
             )
-          })}
+          })
+          )}
         </div>
       )}
 

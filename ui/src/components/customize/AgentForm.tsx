@@ -5,15 +5,13 @@ import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SearchableSelect } from '@/components/SearchableSelect'
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
-  selectItemData,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -57,16 +55,6 @@ function FieldLabel({
       {required && <> <RequiredMark /></>}
     </Label>
   )
-}
-
-function groupBy<T extends { group: string }>(items: T[]): Map<string, T[]> {
-  const map = new Map<string, T[]>()
-  for (const item of items) {
-    const list = map.get(item.group) ?? []
-    list.push(item)
-    map.set(item.group, list)
-  }
-  return map
 }
 
 function selectedHarness(form: AgentFormModel, options: AgentFormOptions) {
@@ -144,40 +132,27 @@ function KeyValueList({
   )
 }
 
-function SelectGrouped<T extends { id: string; label: string; group: string }>({
+function SelectGrouped<T extends { id: string; label: string; group: string; description?: string }>({
   value,
   onValueChange,
   items,
   placeholder,
+  searchPlaceholder = 'Search…',
 }: {
   value: string
   onValueChange: (value: string) => void
   items: T[]
   placeholder: string
+  searchPlaceholder?: string
 }) {
-  const groups = groupBy(items)
   return (
-    <Select
+    <SearchableSelect
       value={value || null}
-      onValueChange={(v) => v && onValueChange(v)}
-      items={selectItemData(items)}
-    >
-      <SelectTrigger className="w-full">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {[...groups.entries()].map(([group, groupItems]) => (
-          <SelectGroup key={group}>
-            <SelectLabel>{group}</SelectLabel>
-            {groupItems.map((item) => (
-              <SelectItem key={item.id} value={item.id}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        ))}
-      </SelectContent>
-    </Select>
+      onValueChange={onValueChange}
+      items={items}
+      placeholder={placeholder}
+      searchPlaceholder={searchPlaceholder}
+    />
   )
 }
 
@@ -300,6 +275,7 @@ export function AgentForm({ form, options, hasWorkflowSteps, hasSubAgents, editi
               onValueChange={(harnessOptionId) => patch({ harnessOptionId })}
               items={options.harnesses}
               placeholder="Select harness"
+              searchPlaceholder="Search harnesses…"
             />
           </div>
           <div className="space-y-1.5">
@@ -624,27 +600,19 @@ export function AgentForm({ form, options, hasWorkflowSteps, hasSubAgents, editi
           </ul>
         )}
         {options.skills.length > 0 ? (
-          <Select
-            key={`add-skill-${form.skills.length}`}
-            onValueChange={(v) => v && addSkill(v)}
-            items={selectItemData(options.skills)}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Add skill…" />
-            </SelectTrigger>
-            <SelectContent>
-              {[...groupBy(options.skills).entries()].map(([group, items]) => (
-                <SelectGroup key={group}>
-                  <SelectLabel>{group}</SelectLabel>
-                  {items.map((item) => (
-                    <SelectItem key={item.id} value={item.id} disabled={form.skills.some((s) => s.optionId === item.id)}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            onValueChange={addSkill}
+            resetOnSelect
+            items={options.skills.map((item) => ({
+              id: item.id,
+              label: item.label,
+              group: item.group,
+              searchText: item.ref,
+              disabled: form.skills.some((skill) => skill.optionId === item.id),
+            }))}
+            placeholder="Add skill…"
+            searchPlaceholder="Search skills…"
+          />
         ) : (
           <p className="text-xs text-muted-foreground">No skills available. Install skills or enable extensions.</p>
         )}
@@ -688,27 +656,20 @@ export function AgentForm({ form, options, hasWorkflowSteps, hasSubAgents, editi
           </ul>
         )}
         {options.mcpServers.length > 0 ? (
-          <Select
-            key={`add-mcp-${form.mcpServers.length}`}
-            onValueChange={(v) => v && addMCP(v)}
-            items={selectItemData(options.mcpServers)}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Add MCP server…" />
-            </SelectTrigger>
-            <SelectContent>
-              {[...groupBy(options.mcpServers).entries()].map(([group, items]) => (
-                <SelectGroup key={group}>
-                  <SelectLabel>{group}</SelectLabel>
-                  {items.map((item) => (
-                    <SelectItem key={item.id} value={item.id} disabled={form.mcpServers.some((s) => s.optionId === item.id)}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            onValueChange={addMCP}
+            resetOnSelect
+            items={options.mcpServers.map((item) => ({
+              id: item.id,
+              label: item.label,
+              group: item.group,
+              description: item.ref ?? item.server?.url ?? item.server?.command,
+              searchText: [item.ref, item.server?.url, item.server?.command].filter(Boolean).join(' '),
+              disabled: form.mcpServers.some((server) => server.optionId === item.id),
+            }))}
+            placeholder="Add MCP server…"
+            searchPlaceholder="Search MCP servers…"
+          />
         ) : (
           <p className="text-xs text-muted-foreground">
             No MCP servers available. Add servers under Customize → MCP servers or enable extensions.
@@ -748,32 +709,18 @@ export function AgentForm({ form, options, hasWorkflowSteps, hasSubAgents, editi
           </ul>
         )}
         {selectableAgents.length > 0 ? (
-          <Select
-            key={`add-sub-agent-${form.subAgents.length}`}
-            onValueChange={(v) => v && addSubAgent(v)}
-            items={selectItemData(selectableAgents.map((a) => ({ id: a.id, label: a.label, group: a.group })))}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Add sub-agent…" />
-            </SelectTrigger>
-            <SelectContent>
-              {[...groupBy(selectableAgents).entries()].map(([group, items]) => (
-                <SelectGroup key={group}>
-                  <SelectLabel>{group}</SelectLabel>
-                  {items.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
-                      <span className="block">{item.label}</span>
-                      {item.description ? (
-                        <span className="block text-xs text-muted-foreground truncate max-w-md">
-                          {item.description}
-                        </span>
-                      ) : null}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            onValueChange={addSubAgent}
+            resetOnSelect
+            items={selectableAgents.map((item) => ({
+              id: item.id,
+              label: item.label,
+              group: item.group,
+              description: item.description,
+            }))}
+            placeholder="Add sub-agent…"
+            searchPlaceholder="Search agents…"
+          />
         ) : (
           <p className="text-xs text-muted-foreground">No other agents available to add.</p>
         )}
