@@ -1,0 +1,22 @@
+---
+permalink: /404.html
+layout: default
+title: Page not found
+---
+
+<section class="section">
+  <div class="container-narrow" style="text-align: center;">
+    <p class="eyebrow">404</p>
+    <h1 style="font-size: var(--fs-5xl); letter-spacing: -0.03em;">This page wandered off.</h1>
+    <p class="lede" style="margin: var(--space-6) auto 0; max-width: 48ch;">
+      The URL you tried doesn't match anything on the site. Try one of these.
+    </p>
+
+    <div style="margin-top: var(--space-10); display: flex; gap: var(--space-3); justify-content: center; flex-wrap: wrap;">
+      <a class="btn btn--primary" href="{{ '/' | relative_url }}">Home</a>
+      <a class="btn btn--ghost" href="{{ '/install/' | relative_url }}">Install</a>
+      <a class="btn btn--ghost" href="{{ '/features/' | relative_url }}">Features</a>
+      <a class="btn btn--ghost" href="https://github.com/plmbr/nui/issues" rel="noopener">Report an issue</a>
+    </div>
+  </div>
+</section>

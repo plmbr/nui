@@ -1,0 +1,88 @@
+title: nui
+description: >-
+  A self-hosted web UI for interactive AI agent sessions. Run Claude Code, pi,
+  codex, and opencode locally, in Docker, or on a remote server — from one interface.
+url: https://nui.plmbr.dev
+baseurl: /
+domain: nui.plmbr.dev
+
+twitter_username: mbektash
+github_username: mbektas
+
+author:
+  name: Mehmet Bektaş
+  twitter: mbektash
+
+social:
+  name: nui
+  links:
+    - https://github.com/plmbr/nui
+    - https://twitter.com/mbektash
+
+logo: /assets/og/og-default.png
+image: /assets/og/og-default.png
+
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-feed
+  - jekyll-redirect-from
+
+permalink: /blog/:slug/
+future: true
+
+defaults:
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: post
+  - scope:
+      path: ""
+      type: pages
+    values:
+      layout: page
+
+markdown: kramdown
+highlighter: rouge
+kramdown:
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    css_class: highlight
+    block:
+      line_numbers: false
+
+sass:
+  style: compressed
+  sass_dir: _sass
+
+include:
+  - install.sh
+  - install.ps1
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor/
+  - node_modules/
+  - .git/
+  - .github/
+  - ui/
+  - internal/
+  - cmd/
+  - dev/
+  - docker/
+  - harness-sdk/
+  - scripts/
+  - media/
+  - "*.go"
+  - go.mod
+  - go.sum
+  - Makefile
+  - CLAUDE.md
+  - DEVELOPERS.md
+  - README.md
+  - LICENSE
+  - nui
+  - nui_bin
+  - .DS_Store
