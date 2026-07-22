@@ -216,6 +216,10 @@ func (c *Client) CreateSession(ctx context.Context, req CreateSessionRequest) (S
 	return out, nil
 }
 
+func (c *Client) DeleteSession(ctx context.Context, sessionID string) error {
+	return c.deleteJSON(ctx, "/api/sessions/"+sessionID)
+}
+
 type LaunchRequest struct {
 	AgentType  string `json:"agentType,omitempty"`
 	WorkingDir string `json:"workingDir,omitempty"`
@@ -463,7 +467,7 @@ func (c *Client) deleteJSON(ctx context.Context, path string) error {
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		raw, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("DELETE %s failed: %s: %s", path, resp.Status, strings.TrimSpace(string(raw)))
 	}

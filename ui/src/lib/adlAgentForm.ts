@@ -703,6 +703,15 @@ export function slugFromName(name: string): string {
     .replace(/^-+|-+$/g, '') || 'my-agent'
 }
 
+export function isConversationEval(ev: FormEval): boolean {
+  return ev.inputMode === 'conversation'
+}
+
+export function usesSimpleGrader(ev: FormEval): boolean {
+  const t = ev.expectType.trim()
+  return t === '' || t === 'contains'
+}
+
 export function defaultFormEval(name = ''): FormEval {
   return {
     name,

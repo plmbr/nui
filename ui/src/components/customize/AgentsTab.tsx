@@ -31,6 +31,7 @@ import { SearchInput } from '@/components/SearchInput'
 import { api } from '@/api'
 import { filterBySearchQuery } from '@/lib/searchFilter'
 import type { AgentDeployerInfo, AgentDeployResult, AgentEvalSummary, AgentFileInfo } from '@/types'
+import { EvalResultRow } from '@/components/customize/EvalResultRow'
 
 type EditMode = 'form' | 'yaml'
 
@@ -100,7 +101,10 @@ export function AgentsTab({ onChanged }: Props) {
   const [evalOpen, setEvalOpen] = useState(false)
   const [evalWorkingDir, setEvalWorkingDir] = useState('')
   const [runningEvals, setRunningEvals] = useState(false)
+  const [runningEvalCase, setRunningEvalCase] = useState<string | null>(null)
   const [evalSummary, setEvalSummary] = useState<AgentEvalSummary | null>(null)
+  const [evalRunError, setEvalRunError] = useState<string | null>(null)
+  const [evalCasesToRun, setEvalCasesToRun] = useState<string[] | undefined>(undefined)
   const [agentSearchQuery, setAgentSearchQuery] = useState('')
 
   const filteredAgents = useMemo(
@@ -189,6 +193,15 @@ export function AgentsTab({ onChanged }: Props) {
     setEditMode(mode)
   }
 
+  const saveAgentYaml = async (yaml: string): Promise<void> => {
+    if (!selectedFile) return
+    await api.agents.save(selectedFile, yaml)
+    setContent(yaml)
+    syncFormFromContent(yaml)
+    await load()
+    onChanged?.()
+  }
+
   const save = async () => {
     if (!selectedFile) return
     setSaving(true)
@@ -197,15 +210,31 @@ export function AgentsTab({ onChanged }: Props) {
       const yaml = editMode === 'form'
         ? mergeFormIntoAgentYaml(content, form, options)
         : content
-      await api.agents.save(selectedFile, yaml)
-      setContent(yaml)
-      syncFormFromContent(yaml)
-      await load()
-      onChanged?.()
+      await saveAgentYaml(yaml)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const ensureSaved = async (): Promise<boolean> => {
+    if (!selectedFile) return false
+    setError(null)
+    try {
+      const yaml = editMode === 'form'
+        ? mergeFormIntoAgentYaml(content, form, options)
+        : content
+      if (yaml !== content) {
+        setSaving(true)
+        await saveAgentYaml(yaml)
+        setSaving(false)
+      }
+      return true
+    } catch (e) {
+      setSaving(false)
+      setError(e instanceof Error ? e.message : 'Failed to save before running evals')
+      return false
     }
   }
 
@@ -257,27 +286,43 @@ export function AgentsTab({ onChanged }: Props) {
 
   const enabledEvals = form.evals.filter((e) => !e.disabled && e.name.trim())
 
-  const openEval = () => {
+  const openEval = (cases?: string[]) => {
     setEvalSummary(null)
+    setEvalRunError(null)
     setEvalWorkingDir('')
+    setEvalCasesToRun(cases)
     setEvalOpen(true)
   }
 
-  const runEvals = async () => {
-    if (!agentIdForDeploy || enabledEvals.length === 0) return
+  const runEvalsForAgent = async (cases?: string[]) => {
+    if (!agentIdForDeploy) return
+    const caseFilter = cases ?? evalCasesToRun
+    const evalCount = caseFilter?.length ?? enabledEvals.length
+    if (evalCount === 0) return
+
     setRunningEvals(true)
-    setError(null)
+    setEvalRunError(null)
+    if (caseFilter?.length === 1) {
+      setRunningEvalCase(caseFilter[0])
+    }
     try {
+      if (!(await ensureSaved())) return
       const summary = await api.agents.runEvals(agentIdForDeploy, {
         workingDir: evalWorkingDir.trim() || undefined,
+        cases: caseFilter,
       })
       setEvalSummary(summary)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Eval run failed')
-      setEvalOpen(false)
+      setEvalRunError(e instanceof Error ? e.message : 'Eval run failed')
     } finally {
       setRunningEvals(false)
+      setRunningEvalCase(null)
     }
+  }
+
+  const handleRunEvalCase = (name: string) => {
+    openEval([name])
+    void runEvalsForAgent([name])
   }
 
   const openDeploy = () => {
@@ -414,6 +459,12 @@ export function AgentsTab({ onChanged }: Props) {
                     hasSubAgents={hasSubAgents}
                     editingAgentId={form.id}
                     onChange={handleFormChange}
+                    onRunEvalCase={
+                      !creating && selectedFile && agentIdForDeploy
+                        ? handleRunEvalCase
+                        : undefined
+                    }
+                    runningEvalCase={runningEvalCase}
                   />
                 ) : (
                   <Textarea
@@ -440,7 +491,7 @@ export function AgentsTab({ onChanged }: Props) {
                       {saving ? 'Saving…' : 'Save changes'}
                     </Button>
                     {enabledEvals.length > 0 && agentIdForDeploy && (
-                      <Button variant="outline" size="sm" onClick={openEval}>
+                      <Button variant="outline" size="sm" onClick={() => openEval()}>
                         <FlaskConical className="size-3.5" />
                         Run evals
                       </Button>
@@ -544,36 +595,32 @@ export function AgentsTab({ onChanged }: Props) {
           <DialogHeader>
             <DialogTitle>Run evals</DialogTitle>
             <DialogDescription>
-              Run {enabledEvals.length} eval case{enabledEvals.length === 1 ? '' : 's'} for{' '}
-              <strong>{agentIdForDeploy}</strong>. Save the agent first so the latest eval
-              definitions are used.
+              {evalCasesToRun?.length === 1 ? (
+                <>
+                  Run eval <strong>{evalCasesToRun[0]}</strong> for{' '}
+                  <strong>{agentIdForDeploy}</strong>.
+                </>
+              ) : (
+                <>
+                  Run {enabledEvals.length} eval case{enabledEvals.length === 1 ? '' : 's'} for{' '}
+                  <strong>{agentIdForDeploy}</strong>. Unsaved changes are saved automatically
+                  before running.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
+          {evalRunError && (
+            <p className="text-sm text-destructive">{evalRunError}</p>
+          )}
           {evalSummary ? (
-            <div className="space-y-2 max-h-64 overflow-y-auto text-sm">
+            <div className="space-y-2 max-h-80 overflow-y-auto text-sm">
               {evalSummary.results.map((res) => (
-                <div
-                  key={res.name}
-                  className={cn(
-                    'rounded-md border px-3 py-2',
-                    res.status === 'pass' && 'border-green-500/40 bg-green-500/5',
-                    res.status === 'fail' && 'border-destructive/40 bg-destructive/5',
-                    (res.status === 'error' || res.status === 'skip') && 'border-amber-500/40 bg-amber-500/5',
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium">{res.name}</span>
-                    <span className="text-xs uppercase text-muted-foreground">{res.status}</span>
-                  </div>
-                  {(res.message || res.error) && (
-                    <p className="text-xs text-muted-foreground mt-1">{res.error || res.message}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground mt-0.5">{res.duration}</p>
-                </div>
+                <EvalResultRow key={res.name} res={res} />
               ))}
               <p className="text-xs text-muted-foreground pt-1">
                 {evalSummary.passed} passed, {evalSummary.failed} failed
                 {evalSummary.errors > 0 ? `, ${evalSummary.errors} errors` : ''}
+                {evalSummary.skipped > 0 ? `, ${evalSummary.skipped} skipped` : ''}
               </p>
             </div>
           ) : (
@@ -584,10 +631,14 @@ export function AgentsTab({ onChanged }: Props) {
                 value={evalWorkingDir}
                 onChange={(e) => setEvalWorkingDir(e.target.value)}
                 placeholder="Defaults to server process working directory"
+                disabled={runningEvals}
               />
+              <p className="text-xs text-muted-foreground">
+                Per-eval working dir in Advanced overrides this default.
+              </p>
               <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
-                {enabledEvals.map((ev) => (
-                  <li key={ev.name}>{ev.name}</li>
+                {(evalCasesToRun ?? enabledEvals.map((ev) => ev.name)).map((name) => (
+                  <li key={name}>{name}</li>
                 ))}
               </ul>
             </div>
@@ -597,8 +648,13 @@ export function AgentsTab({ onChanged }: Props) {
               <Button onClick={() => setEvalOpen(false)}>Close</Button>
             ) : (
               <>
-                <Button variant="outline" onClick={() => setEvalOpen(false)}>Cancel</Button>
-                <Button onClick={() => void runEvals()} disabled={runningEvals}>
+                <Button variant="outline" onClick={() => setEvalOpen(false)} disabled={runningEvals}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => void runEvalsForAgent()}
+                  disabled={runningEvals || enabledEvals.length === 0}
+                >
                   {runningEvals ? 'Running evals…' : 'Run evals'}
                 </Button>
               </>

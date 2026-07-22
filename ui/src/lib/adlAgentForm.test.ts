@@ -3,9 +3,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   defaultAgentForm,
+  defaultFormEval,
+  isConversationEval,
   mergeFormIntoAgentYaml,
   parseAgentYaml,
   syncYamlFromForm,
+  usesSimpleGrader,
   type AgentFormOptions,
 } from '@/lib/adlAgentForm'
 
@@ -324,6 +327,22 @@ evals:
     const { form } = parseAgentYaml(original, emptyOptions)
     const merged = mergeFormIntoAgentYaml(original, { ...form, evals: [] }, emptyOptions)
     expect(merged).not.toContain('evals:')
+  })
+
+  it('classifies conversation evals and simple graders', () => {
+    const single = defaultFormEval('smoke')
+    expect(isConversationEval(single)).toBe(false)
+    expect(usesSimpleGrader(single)).toBe(true)
+
+    const regex = { ...defaultFormEval('pattern'), expectType: 'regex' as const }
+    expect(usesSimpleGrader(regex)).toBe(false)
+
+    const conversation = {
+      ...defaultFormEval('follow-up'),
+      inputMode: 'conversation' as const,
+      messages: [{ role: 'user' as const, content: 'Hi' }],
+    }
+    expect(isConversationEval(conversation)).toBe(true)
   })
 })
 

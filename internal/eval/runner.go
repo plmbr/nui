@@ -123,7 +123,7 @@ func filterEvals(evals []model.ADLEval, names []string) []model.ADLEval {
 	}
 	var out []model.ADLEval
 	for _, ev := range evals {
-		if want[ev.Name] {
+		if want[ev.Name] && !ev.Disabled {
 			out = append(out, ev)
 		}
 	}
@@ -163,6 +163,9 @@ func (r *Runner) runCase(
 		result.Duration = time.Since(start).String()
 		return result
 	}
+	defer func() {
+		_ = r.Client.DeleteSession(context.Background(), sess.ID)
+	}()
 
 	output, runErr := r.executeEval(caseCtx, sess.ID, ev)
 	if runErr != nil {

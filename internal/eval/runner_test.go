@@ -70,7 +70,7 @@ evals:
 		t.Fatal(err)
 	}
 
-	var getRunCalls atomic.Int32
+	var deleteCalls atomic.Int32
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/sessions", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -85,6 +85,14 @@ evals:
 			"workingDir": t.TempDir(),
 		})
 	})
+	mux.HandleFunc("/api/sessions/sess-1", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			deleteCalls.Add(1)
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	})
 	mux.HandleFunc("/api/sessions/sess-1/runs", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -98,7 +106,6 @@ evals:
 		})
 	})
 	mux.HandleFunc("/api/sessions/sess-1/runs/run-1", func(w http.ResponseWriter, r *http.Request) {
-		getRunCalls.Add(1)
 		_ = json.NewEncoder(w).Encode(map[string]string{
 			"runId":     "run-1",
 			"sessionId": "sess-1",
@@ -122,5 +129,8 @@ evals:
 	}
 	if len(summary.Results) != 1 || summary.Results[0].Status != "pass" {
 		t.Fatalf("results = %+v", summary.Results)
+	}
+	if deleteCalls.Load() != 1 {
+		t.Fatalf("expected session delete, got %d calls", deleteCalls.Load())
 	}
 }
