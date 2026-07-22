@@ -8,6 +8,7 @@ import { AppSidebar } from '@/components/AppSidebar'
 import { ConversationPanel } from '@/components/ConversationPanel'
 import { CustomizePanel, CustomizeTrigger, type CustomizeTabId } from '@/components/customize/CustomizePanel'
 import { SchedulesPanel } from '@/components/SchedulesPanel'
+import { AppVersion } from '@/components/AppVersion'
 import { ThemeSwitch } from '@/components/ThemeSwitch'
 import { LandingPage } from '@/components/LandingPage'
 import { NuiLogo } from '@/components/NuiLogo'
@@ -492,6 +493,7 @@ export default function App() {
             )}
           </div>
           <div className="app-header__actions">
+            <AppVersion />
             <ThemeSwitch />
             <CustomizeTrigger active={customizeOpen} onOpen={handleOpenCustomize} compact />
           </div>

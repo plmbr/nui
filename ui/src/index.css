@@ -463,7 +463,23 @@
   }
 
   .app-header__actions {
-    @apply ml-auto flex shrink-0 items-center gap-1;
+    @apply ml-auto flex shrink-0 items-center gap-2;
+  }
+
+  .app-header__version-group {
+    @apply flex items-center gap-1;
+  }
+
+  .app-header__version {
+    @apply text-xs text-muted-foreground tabular-nums select-none;
+  }
+
+  .app-header__version-warning {
+    @apply inline-flex size-5 shrink-0 items-center justify-center rounded-sm text-amber-500/80 transition-colors hover:text-amber-500;
+  }
+
+  .app-header__version-warning-content {
+    @apply block max-w-sm px-3 py-2 text-left leading-relaxed;
   }
 
   .app-header__theme-switch {
