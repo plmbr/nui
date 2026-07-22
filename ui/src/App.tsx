@@ -405,6 +405,21 @@ export default function App() {
     handleSelect(session.id)
   }, [loadSessions, handleSelect])
 
+  const handleLaunchWithPrompt = useCallback(async (prompt: string) => {
+    const result = await api.orchestrate({ prompt })
+    await loadSessions()
+    setCustomizeOpen(false)
+    setSchedulesOpen(false)
+    setNewSessionOpen(false)
+    setLandingOpen(false)
+    setSessionListGroupId(null)
+    setSelectedId(result.session.id)
+    setInitialPrompt(result.prompt)
+    setHideInput(false)
+    navigateToSession(result.session.id)
+    api.settings.update({ lastSessionId: result.session.id }).catch(() => {})
+  }, [loadSessions])
+
   const handleAgentTypesChanged = useCallback(() => {
     void loadAgentTypes()
   }, [loadAgentTypes])
@@ -520,6 +535,7 @@ export default function App() {
           <main className="flex min-h-0 flex-1 overflow-hidden">
             {landingOpen ? (
               <LandingPage
+                onLaunchWithPrompt={handleLaunchWithPrompt}
                 onNewSession={handleOpenNewSession}
                 onCustomize={handleOpenCustomize}
               />

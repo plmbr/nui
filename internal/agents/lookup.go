@@ -20,6 +20,7 @@ var legacyAgentTypeNames = map[string]string{
 	"docker-pi":       "pi",
 	"docker-opencode": "opencode",
 	"Claude Code":     "claude-code",
+	"nui-orchestrator": "nui",
 }
 
 // LookupDefinition resolves an ADL definition by id from builtins, user agents, and extensions.
@@ -31,6 +32,11 @@ func LookupDefinition(agentType string) (model.ADLDefinition, bool) {
 	agentType = strings.TrimPrefix(agentType, "adl:")
 
 	for _, def := range BuiltinAgentDefs() {
+		if adlDefMatches(def, agentType) {
+			return def, true
+		}
+	}
+	for _, def := range InternalAgentDefs() {
 		if adlDefMatches(def, agentType) {
 			return def, true
 		}

@@ -71,8 +71,9 @@ var builtinAgentDefs = []model.ADLDefinition{
 
 // BuiltinAgentDefs returns compiled-in ADL agent definitions shipped with nui.
 func BuiltinAgentDefs() []model.ADLDefinition {
-	out := make([]model.ADLDefinition, 0, len(builtinAgentDefs)+len(apiBuiltinAgentDefs))
+	out := make([]model.ADLDefinition, 0, len(builtinAgentDefs)+len(apiBuiltinAgentDefs)+1)
 	out = append(out, builtinAgentDefs...)
 	out = append(out, apiBuiltinAgentDefs...)
+	out = append(out, orchestratorAgentDef())
 	return out
 }

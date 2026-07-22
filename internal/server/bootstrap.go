@@ -31,6 +31,7 @@ type StartOptions struct {
 	HideInput        bool // hide the chat input in the UI (one-off runs)
 	Theme            string // "light" | "dark"; persisted to settings when set
 	DefaultAgentType string // ADL agent id; persisted to settings when set
+	DefaultHarness   string // harness ref for internal agents; persisted to settings when set
 }
 
 type bootstrapState struct {
@@ -74,7 +75,8 @@ func takeBootstrap() bootstrapState {
 func applyStartSettings(opts StartOptions) error {
 	theme := strings.TrimSpace(opts.Theme)
 	defaultAgent := strings.TrimSpace(opts.DefaultAgentType)
-	if theme == "" && defaultAgent == "" {
+	defaultHarness := strings.TrimSpace(opts.DefaultHarness)
+	if theme == "" && defaultAgent == "" && defaultHarness == "" {
 		return nil
 	}
 
@@ -95,6 +97,12 @@ func applyStartSettings(opts StartOptions) error {
 			return fmt.Errorf("unknown agent id %q", defaultAgent)
 		}
 		settings.DefaultAgentType = model.ADLAgentID(def)
+	}
+	if defaultHarness != "" {
+		if !agents.HarnessAvailable(defaultHarness) {
+			return fmt.Errorf("harness %q is not available on this system", defaultHarness)
+		}
+		settings.DefaultHarness = defaultHarness
 	}
 	if settings.Theme == "" {
 		settings.Theme = "light"
@@ -392,7 +400,10 @@ func createSessionEx(opts sessionCreateOpts) (model.Session, error) {
 	if agentType == "" {
 		return model.Session{}, fmt.Errorf("agentType is required")
 	}
-	def, ok := findADLDef(agentType)
+	if agents.IsInternalAgent(agentType) {
+		return model.Session{}, fmt.Errorf("agent %q is internal and cannot be used for user sessions", agentType)
+	}
+	def, ok := resolveAgentDefinition(agentType)
 	if !ok {
 		return model.Session{}, fmt.Errorf("unknown agent type: %s", agentType)
 	}

@@ -1,6 +1,8 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { cn } from '@/lib/utils'
+import { NuiLogo } from '@/components/NuiLogo'
+import { isNuiAgent } from '@/lib/agentTypes'
 import type { AgentType } from '@/types'
 import claudeCodeIcon from '@/assets/harness/claude-code.svg?url'
 import piLightIcon from '@/assets/harness/pi-light.svg?url'
@@ -161,6 +163,20 @@ function BrandIcon({
 }
 
 export function HarnessIcon({ harness, provider, agentId, className, size = 'md' }: Props) {
+  if (isNuiAgent(agentId)) {
+    return (
+      <span
+        className={cn(
+          'inline-flex shrink-0 items-center justify-center rounded-lg bg-muted/35',
+          SIZE[size],
+          className,
+        )}
+      >
+        <NuiLogo decorative className={IMG_SIZE[size]} />
+      </span>
+    )
+  }
+
   const iconKey = resolveIconKey(harness, provider, agentId)
   const brandSrc = BRAND_ICON_SRC[iconKey]
   const accent = HARNESS_ACCENTS[iconKey] ?? 'var(--muted-foreground)'

@@ -9,8 +9,10 @@ test('health endpoint responds', async ({ request }) => {
   expect(await res.json()).toEqual({ status: 'ok' })
 })
 
-test('launch page loads with sidebar actions', async ({ page }) => {
+test('launch page loads with prompt input and actions', async ({ page }) => {
   await waitForAppReady(page)
+  await expect(page.getByRole('textbox', { name: 'Launch prompt' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Launch session' })).toBeVisible()
   await expect(page.getByRole('main').getByRole('button', { name: 'New Session' })).toBeVisible()
   await expect(page.getByRole('main').getByRole('button', { name: 'Customize' })).toBeVisible()
 })

@@ -2,6 +2,15 @@
 
 import type { AgentType } from '@/types'
 
+export const NUI_AGENT_ID = 'nui'
+
+/** The nui master agent (launcher orchestrator). */
+export function isNuiAgent(agentOrId: AgentType | string | undefined | null): boolean {
+  if (!agentOrId) return false
+  const id = typeof agentOrId === 'string' ? agentOrId : agentOrId.id
+  return id === NUI_AGENT_ID || id === 'nui-orchestrator'
+}
+
 /** Agent types that can be selected for a new session or as the default agent. */
 export function selectableAgentTypes(types: AgentType[]): AgentType[] {
   return types.filter((t) => t.available)
@@ -19,12 +28,12 @@ function sortAgentsByIdOrder(agents: AgentType[], order: readonly string[]): Age
 
 /** Built-in agents that use the in-process API harness (internal/llm HTTP clients). */
 export function isApiBuiltinAgent(agent: AgentType): boolean {
-  return agent.isBuiltin && agent.harness === 'api'
+  return agent.isBuiltin && agent.harness === 'api' && !isNuiAgent(agent)
 }
 
 /** Built-in agents that shell out to a CLI harness. */
 export function isCliBuiltinAgent(agent: AgentType): boolean {
-  return agent.isBuiltin && agent.harness !== 'api'
+  return agent.isBuiltin && agent.harness !== 'api' && !isNuiAgent(agent)
 }
 
 export function partitionBuiltinAgents(builtins: AgentType[]): {
@@ -57,7 +66,7 @@ export function pickDefaultAgentTypeId(
     const match = selectable.find((t) => t.id === id)
     if (match) return match.id
   }
-  const builtin = selectable.find((t) => t.isBuiltin)
+  const builtin = selectable.find((t) => t.isBuiltin && !isNuiAgent(t))
   return builtin?.id ?? selectable[0]?.id ?? ''
 }
 
@@ -89,4 +98,36 @@ export function showToolApprovalsOption(agent: AgentType | undefined): boolean {
 export function defaultUserScopeHarnessConfig(agent: AgentType | undefined): boolean {
   if (!agent || !harnessSupportsUserScope(agent.harness)) return false
   return agent.isBuiltin
+}
+
+export interface HarnessRefOption {
+  ref: string
+  label: string
+  group: 'API' | 'CLI'
+}
+
+/** Build selectable default harness refs from available agent types. */
+export function selectableHarnessRefs(types: AgentType[]): HarnessRefOption[] {
+  const out: HarnessRefOption[] = []
+  const { api, cli } = partitionBuiltinAgents(types.filter((t) => t.available))
+  for (const agent of api) {
+    const provider = agent.provider?.trim() || agent.id
+    out.push({ ref: `api/${provider}`, label: agent.label, group: 'API' })
+  }
+  for (const agent of cli) {
+    out.push({ ref: agent.harness, label: agent.label, group: 'CLI' })
+  }
+  return out
+}
+
+export function pickDefaultHarnessRef(
+  types: AgentType[],
+  preferredRef?: string | null,
+): string {
+  const selectable = selectableHarnessRefs(types)
+  if (preferredRef) {
+    const preferred = selectable.find((h) => h.ref === preferredRef)
+    if (preferred) return preferred.ref
+  }
+  return selectable[0]?.ref ?? ''
 }

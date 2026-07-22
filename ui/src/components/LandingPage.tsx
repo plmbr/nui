@@ -1,18 +1,45 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useState } from 'react'
-import { Plus, Settings } from 'lucide-react'
+import { useCallback, useState } from 'react'
+import { Loader2, Plus, Settings } from 'lucide-react'
 import { NuiLogo } from '@/components/NuiLogo'
+import { PlumeriaFlower } from '@/components/PlumeriaFlower'
 import { PlumeriaRandomBackdrop } from '@/components/PlumeriaBackdrop'
 import { Button } from '@/components/ui/button'
 
 interface Props {
+  onLaunchWithPrompt: (prompt: string) => Promise<void>
   onNewSession: () => void
   onCustomize: () => void
 }
 
-export function LandingPage({ onNewSession, onCustomize }: Props) {
+export function LandingPage({ onLaunchWithPrompt, onNewSession, onCustomize }: Props) {
   const [layoutKey] = useState(() => Date.now())
+  const [prompt, setPrompt] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const submit = useCallback(async () => {
+    const trimmed = prompt.trim()
+    if (!trimmed || loading) return
+    setError(null)
+    setLoading(true)
+    try {
+      await onLaunchWithPrompt(trimmed)
+      setPrompt('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to launch session')
+    } finally {
+      setLoading(false)
+    }
+  }, [loading, onLaunchWithPrompt, prompt])
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      void submit()
+    }
+  }
 
   return (
     <div className="landing-page">
@@ -24,16 +51,48 @@ export function LandingPage({ onNewSession, onCustomize }: Props) {
         <p className="landing-page__slogan">
           tiny but <span>nui</span>
         </p>
-   
-        <p className="landing-page__subtitle">
-          Scale any task with AI — scale your work, scale your life.
-        </p>
+
+        <div className="landing-page__prompt">
+          <textarea
+            className="landing-page__prompt-input"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="Aloha! Drop a task here — nui will route the mahi so you can kick back and enjoy the breeze."
+            rows={4}
+            disabled={loading}
+            aria-label="Launch prompt"
+          />
+          <button
+            type="button"
+            className="landing-page__prompt-send"
+            onClick={() => void submit()}
+            disabled={!prompt.trim() || loading}
+            aria-label="Imua — send prompt"
+            title="Imua — forward, send your task"
+          >
+            {loading ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <>
+                <PlumeriaFlower size={18} className="landing-page__prompt-send-flower" />
+                <span className="landing-page__prompt-send-label">Imua</span>
+              </>
+            )}
+          </button>
+        </div>
+        {error && (
+          <p className="landing-page__error" role="alert">
+            {error}
+          </p>
+        )}
+
         <div className="landing-page__actions">
-          <Button size="lg" className="landing-page__btn-primary gap-2 px-6" onClick={onNewSession}>
+          <Button size="default" variant="outline" className="gap-2 px-5" onClick={onNewSession}>
             <Plus className="size-4" />
             New Session
           </Button>
-          <Button size="lg" variant="outline" className="gap-2 px-6" onClick={onCustomize}>
+          <Button size="default" variant="ghost" className="gap-2 px-5" onClick={onCustomize}>
             <Settings className="size-4" />
             Customize
           </Button>

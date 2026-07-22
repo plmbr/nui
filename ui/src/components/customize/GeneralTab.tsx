@@ -4,7 +4,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { TriangleAlert } from 'lucide-react'
 import { SearchableSelect } from '@/components/SearchableSelect'
 import { api } from '@/api'
-import { pickDefaultAgentTypeId, selectableAgentTypes } from '@/lib/agentTypes'
+import {
+  pickDefaultAgentTypeId,
+  pickDefaultHarnessRef,
+  selectableAgentTypes,
+  selectableHarnessRefs,
+} from '@/lib/agentTypes'
 import { BUILTIN_AGENTS_LABEL, INSTALLED_AGENTS_LABEL } from '@/lib/sessionGroups'
 import type { AgentType, Capabilities } from '@/types'
 
@@ -12,6 +17,7 @@ export function GeneralTab() {
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null)
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([])
   const [defaultAgentType, setDefaultAgentType] = useState('')
+  const [defaultHarness, setDefaultHarness] = useState('')
 
   useEffect(() => {
     Promise.all([
@@ -23,6 +29,7 @@ export function GeneralTab() {
         setCapabilities(caps)
         setAgentTypes(types)
         setDefaultAgentType(pickDefaultAgentTypeId(types, settings.defaultAgentType))
+        setDefaultHarness(pickDefaultHarnessRef(types, settings.defaultHarness))
       })
       .catch(() => {})
   }, [])
@@ -30,6 +37,11 @@ export function GeneralTab() {
   const handleDefaultAgentChange = (id: string) => {
     setDefaultAgentType(id)
     api.settings.update({ defaultAgentType: id }).catch(() => {})
+  }
+
+  const handleDefaultHarnessChange = (ref: string) => {
+    setDefaultHarness(ref)
+    api.settings.update({ defaultHarness: ref }).catch(() => {})
   }
 
   const bwrapUnavailable = capabilities !== null && !capabilities.sandbox.bwrap.available
@@ -46,6 +58,16 @@ export function GeneralTab() {
     [selectableAgentTypesList],
   )
 
+  const harnessSelectItems = useMemo(
+    () =>
+      selectableHarnessRefs(agentTypes).map((h) => ({
+        id: h.ref,
+        label: h.label,
+        group: h.group,
+      })),
+    [agentTypes],
+  )
+
   return (
     <div className="customize-tab-content space-y-6">
       {bwrapUnavailable && (
@@ -59,6 +81,22 @@ export function GeneralTab() {
           </div>
         </div>
       )}
+      <div>
+        <p className="text-sm font-medium mb-1">Default harness</p>
+        <p className="text-xs text-muted-foreground mb-3">
+          Used by the nui master agent (launcher orchestrator).
+        </p>
+        {harnessSelectItems.length > 0 && (
+          <SearchableSelect
+            value={defaultHarness}
+            onValueChange={handleDefaultHarnessChange}
+            items={harnessSelectItems}
+            placeholder="Select harness"
+            searchPlaceholder="Search harnesses…"
+            triggerClassName="max-w-md"
+          />
+        )}
+      </div>
       <div>
         <p className="text-sm font-medium mb-1">Default agent</p>
         <p className="text-xs text-muted-foreground mb-3">

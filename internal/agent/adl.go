@@ -151,7 +151,9 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 		req.ToolApprovalPolicy, req.ToolApprovalTools = hitl.EffectiveToolApprovals(a.def, req.AgentConfig)
 	}
 	if harness.Type == "api" {
-		req.MCPServers = deps.MCPServers
+		if len(req.MCPServers) == 0 {
+			req.MCPServers = deps.MCPServers
+		}
 		req.APIProvider = harness.Provider
 		req.Model = resolveAPIModel(req, harness)
 	} else if !req.Ephemeral && len(deps.MCPServers) > 0 {

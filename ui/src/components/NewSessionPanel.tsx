@@ -25,8 +25,9 @@ import {
   harnessSupportsUserScope,
   defaultUserScopeHarnessConfig,
   showToolApprovalsOption,
+  isNuiAgent,
 } from '@/lib/agentTypes'
-import { BUILTIN_AGENTS_LABEL, API_AGENTS_LABEL, CLI_AGENTS_LABEL, INSTALLED_AGENTS_LABEL } from '@/lib/sessionGroups'
+import { BUILTIN_AGENTS_LABEL, API_AGENTS_LABEL, CLI_AGENTS_LABEL, INSTALLED_AGENTS_LABEL, ORCHESTRATOR_AGENTS_LABEL } from '@/lib/sessionGroups'
 import { TagFilterInput } from '@/components/TagFilterInput'
 import type { AgentType, CreateSessionRequest, ExtensionInfo, Session } from '@/types'
 
@@ -71,7 +72,11 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   const initialTabSynced = useRef(false)
 
   const builtins = useMemo(
-    () => selectableAgentTypes(agentTypes).filter((a) => a.isBuiltin),
+    () => selectableAgentTypes(agentTypes).filter((a) => a.isBuiltin && !isNuiAgent(a)),
+    [agentTypes],
+  )
+  const nuiAgent = useMemo(
+    () => selectableAgentTypes(agentTypes).find((a) => isNuiAgent(a)),
     [agentTypes],
   )
   const { api: apiBuiltins, cli: cliBuiltins } = useMemo(
@@ -88,7 +93,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   function selectAgent(id: string) {
     setSelectedId(id)
     if (userDefined.some((a) => a.id === id)) setAgentTab('installed')
-    else if (builtins.some((a) => a.id === id)) setAgentTab('builtin')
+    else if (builtins.some((a) => a.id === id) || isNuiAgent(id)) setAgentTab('builtin')
   }
 
   useEffect(() => {
@@ -116,7 +121,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
     if (initialTabSynced.current || !selectedId) return
     initialTabSynced.current = true
     if (userDefined.some((a) => a.id === selectedId)) setAgentTab('installed')
-    else if (builtins.some((a) => a.id === selectedId)) setAgentTab('builtin')
+    else if (builtins.some((a) => a.id === selectedId) || isNuiAgent(selectedId)) setAgentTab('builtin')
   }, [selectedId, userDefined, builtins])
 
   useEffect(() => {
@@ -359,6 +364,14 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
                   className="min-h-0 flex-1 overflow-y-auto"
                 >
                   <div className="flex flex-col gap-5">
+                    {nuiAgent && (
+                      <BuiltinAgentSection
+                        label={ORCHESTRATOR_AGENTS_LABEL}
+                        agents={[nuiAgent]}
+                        selectedId={selectedId}
+                        onSelect={selectAgent}
+                      />
+                    )}
                     {apiBuiltins.length > 0 && (
                       <BuiltinAgentSection
                         label={API_AGENTS_LABEL}

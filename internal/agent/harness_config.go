@@ -233,6 +233,15 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 		}
 		deps.PendingCustomMCPServers = nil
 	}
+	if isOrchestratorAgent(def) {
+		servers, orchErr := NuiOrchestratorMCPServers(defaultnuiAPIURL())
+		if orchErr != nil {
+			return deps, orchErr
+		}
+		deps.MCPServers = append(deps.MCPServers, servers...)
+		deps.MCPServers = mcpoauth.ResolveServers(deps.MCPServers)
+		return deps, nil
+	}
 	var err error
 	if !apiHarnessDisablesTools(def.Harness) {
 		deps.MCPServers, err = appendNuiVizMCP(deps.MCPServers)

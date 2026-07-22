@@ -57,15 +57,16 @@ func (c *Client) Health(ctx context.Context) error {
 }
 
 type AgentType struct {
-	ID            string `json:"id"`
-	Label         string `json:"label"`
-	Description   string `json:"description,omitempty"`
-	Harness       string `json:"harness"`
-	PromptMode    string `json:"promptMode,omitempty"`
-	DefaultPrompt string `json:"defaultPrompt,omitempty"`
-	Available     bool   `json:"available"`
-	IsBuiltin     bool   `json:"isBuiltin"`
-	Source        string `json:"source,omitempty"` // builtin | user | extension
+	ID            string   `json:"id"`
+	Label         string   `json:"label"`
+	Description   string   `json:"description,omitempty"`
+	Harness       string   `json:"harness"`
+	PromptMode    string   `json:"promptMode,omitempty"`
+	DefaultPrompt string   `json:"defaultPrompt,omitempty"`
+	Tags          []string `json:"tags,omitempty"`
+	Available     bool     `json:"available"`
+	IsBuiltin     bool     `json:"isBuiltin"`
+	Source        string   `json:"source,omitempty"` // builtin | user | extension
 }
 
 type Settings struct {

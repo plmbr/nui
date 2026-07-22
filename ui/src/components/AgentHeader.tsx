@@ -41,10 +41,12 @@ export function AgentHeader({ name, agent, sessionId, onNewSession }: Props) {
     <div className="group/agent-header flex min-w-0 items-center gap-1">
       <Tooltip>
         <TooltipTrigger
-          className="app-agent-header inline-flex h-7 min-w-0 max-w-[min(12rem,50vw)] items-center truncate text-sm font-medium leading-none text-muted-foreground transition-colors hover:text-foreground md:max-w-[min(24rem,40vw)]"
-          aria-label={`${name}, ${agent.label}, ${typeLabel}${agent.description ? `, ${agent.description}` : ''}`}
+          className="app-agent-header inline-flex h-7 min-w-0 max-w-[min(18rem,70vw)] items-center gap-2 truncate text-sm leading-none transition-colors hover:text-foreground md:max-w-[min(32rem,50vw)]"
+          aria-label={`${agent.label}, ${name}, ${typeLabel}${agent.description ? `, ${agent.description}` : ''}`}
         >
-          {name}
+          <span className="shrink-0 font-medium text-muted-foreground">{agent.label}</span>
+          <span className="shrink-0 select-none text-muted-foreground/35" aria-hidden="true">/</span>
+          <span className="min-w-0 truncate font-medium text-muted-foreground">{name}</span>
         </TooltipTrigger>
         <TooltipContent
           side="bottom"

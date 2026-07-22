@@ -69,7 +69,8 @@ type ADLDefinition struct {
 	ToolApprovals     ADLToolApprovals     `yaml:"toolApprovals"     json:"toolApprovals,omitempty"`
 	Evals             []ADLEval            `yaml:"evals"             json:"evals,omitempty"`
 	SubAgents         []string             `yaml:"subAgents"         json:"subAgents,omitempty"` // orchestrator: registry agent IDs only
-	Steps        []ADLStep      `yaml:"steps"        json:"steps,omitempty"`
+	Steps             []ADLStep            `yaml:"steps"             json:"steps,omitempty"`
+	Internal          bool                 `yaml:"internal"          json:"internal,omitempty"` // hidden from UI/CLI discovery
 }
 
 // ADLPromptSuggestion is a quick-start prompt shown as a pill above the chat input.

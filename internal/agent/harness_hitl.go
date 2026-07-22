@@ -23,6 +23,14 @@ func defaultnuiAPIURL() string {
 	return "http://127.0.0.1:8080"
 }
 
+// DefaultNuiAPIURL returns the nui REST API base URL for MCP subprocesses.
+func DefaultNuiAPIURL() string {
+	if v := strings.TrimSpace(os.Getenv("NUI_API_URL")); v != "" {
+		return strings.TrimRight(v, "/")
+	}
+	return defaultnuiAPIURL()
+}
+
 func nuiExecutable() (string, error) {
 	if path := strings.TrimSpace(os.Getenv("NUI_MCP_BINARY")); path != "" {
 		return path, nil

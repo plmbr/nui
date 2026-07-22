@@ -279,6 +279,16 @@ export const api = {
       request('/bootstrap'),
   },
 
+  orchestrate: (data: { prompt: string; workingDir?: string }): Promise<{
+    session: Session
+    prompt: string
+    selectedAgentType: string
+  }> =>
+    request('/orchestrate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   capabilities: {
     get: (): Promise<Capabilities> =>
       request('/capabilities'),

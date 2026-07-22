@@ -97,6 +97,7 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/settings", handleSettings)
 	mux.HandleFunc("/api/bootstrap", handleBootstrap)
 	mux.HandleFunc("/api/launch", handleLaunch)
+	mux.HandleFunc("/api/orchestrate", handleOrchestrate)
 	mux.HandleFunc("/api/capabilities", handleCapabilities)
 	mux.HandleFunc("/api/extensions", handleExtensions)
 	mux.HandleFunc("/api/extensions/reload", handleExtensionsReload)
@@ -346,7 +347,11 @@ func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var all []AgentTypeInfo
+	settings, _ := store.LoadSettings()
 	for _, def := range agents.BuiltinAgentDefs() {
+		if agents.IsOrchestratorAgent(def.ID) {
+			def = agents.OrchestratorDefinition(settings)
+		}
 		all = append(all, agentTypeInfoFromDef(def, true))
 	}
 
@@ -457,7 +462,7 @@ func harnessAvailable(def model.ADLDefinition) bool {
 // findADLDef looks up an ADL definition by id from builtins and user-defined definitions.
 // It also handles legacy Session.AgentType strings (harness names, old display names, "adl:id").
 func findADLDef(agentType string) (model.ADLDefinition, bool) {
-	return agents.LookupDefinition(agentType)
+	return resolveAgentDefinition(agentType)
 }
 
 func validateSessionConnector(s model.Session) error {
@@ -827,6 +832,13 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		if patch.DefaultAgentType != "" {
 			current.DefaultAgentType = patch.DefaultAgentType
+		}
+		if patch.DefaultHarness != "" {
+			if !agents.HarnessAvailable(patch.DefaultHarness) {
+				http.Error(w, fmt.Sprintf("harness %q is not available on this system", patch.DefaultHarness), http.StatusBadRequest)
+				return
+			}
+			current.DefaultHarness = patch.DefaultHarness
 		}
 		if patch.LastAgentType != "" {
 			current.LastAgentType = patch.LastAgentType

@@ -16,6 +16,7 @@ import (
 type Settings struct {
 	Theme                string   `json:"theme"`                            // "light" | "dark"
 	DefaultAgentType     string   `json:"defaultAgentType,omitempty"`       // default agent for new sessions on launch
+	DefaultHarness       string   `json:"defaultHarness,omitempty"`         // harness for internal agents (e.g. api/anthropic, claude-code)
 	LastAgentType        string   `json:"lastAgentType,omitempty"`          // last agent picked in new-session dialog
 	LastSessionID        string   `json:"lastSessionId,omitempty"`          // last selected session in UI
 	SidebarOpen          *bool    `json:"sidebarOpen,omitempty"`            // desktop sidebar expanded state
