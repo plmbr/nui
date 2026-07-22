@@ -1,27 +1,62 @@
 ---
-layout: page
+layout: docs
 title: Documentation
-subtitle: On-site CLI reference plus links to the repo docs.
+subtitle: Developer guides, extension API reference, CLI, and harness protocols.
 permalink: /docs/
 ---
 
-## CLI reference
+nui is a self-hosted web UI for interactive AI agent sessions. This site hosts the **developer documentation** — everything you need to build extensions, custom harnesses, and ADL agents.
 
-The full command reference lives on this site:
+## Quick links
 
-**[CLI reference →]({{ '/cli/' | relative_url }})**
+| Topic | Description |
+|-------|-------------|
+| [Developer guide]({{ '/docs/developers/' | relative_url }}) | Build from source, architecture, REST API, contributing |
+| [ADL]({{ '/docs/adl/' | relative_url }}) | Agent Definition Language — YAML schema for custom agents |
+| [Harness protocols]({{ '/docs/harness-protocols/' | relative_url }}) | HTTP/SSE, stdio JSON-RPC, and TCP harness wire formats |
+| [Extension API]({{ '/docs/extensions/' | relative_url }}) | Full reference for extension manifests, SDKs, and examples |
+| [CLI reference]({{ '/cli/' | relative_url }}) | `nui server`, extensions, skills, memory, evals, schedules |
 
-Covers `nui server`, headless runs, agent management, **agent evaluation**, schedules, extensions, skills, memory, MCP servers, and the ADL `evals:` schema.
+## Extension API (start here for extension authors)
 
-## Repository docs
+Extensions add harnesses, MCP servers, skills, rules, agents, mention providers, HITL channels, storage backends, and deployers to nui. They install into `~/.nui/extensions/<name>/` and are discovered at server start.
 
-Deeper technical docs are maintained alongside the code in the [main repository](https://github.com/plmbr/nui):
+```bash
+nui extension add ./my-extension
+nui extension add https://github.com/example/my-extension.git
+nui extension list
+nui extension remove my-extension
+```
 
-- [README](https://github.com/plmbr/nui/blob/main/README.md) — install and quick start
-- [Developer guide](https://github.com/plmbr/nui/blob/main/DEVELOPERS.md) — build from source, API reference, contributing
-- [Product & technical spec](https://github.com/plmbr/nui/blob/main/dev/dev.md) — architecture and roadmap
-- [Extension API](https://github.com/plmbr/nui/blob/main/dev/extension-api.md) — extension manifest, HITL, deployers
-- [Harness protocols](https://github.com/plmbr/nui/blob/main/dev/harness-design.md) — custom harness HTTP/SSE and JSON-RPC
-- [ADL](https://github.com/plmbr/nui/blob/main/dev/adl/design.md) — Agent Definition Language schema
-- [ADL examples](https://github.com/plmbr/nui/tree/main/dev/adl/examples/) — sample agent definitions
-- [Harness examples](https://github.com/plmbr/nui/tree/main/dev/harness-examples/) — Python and TypeScript reference harnesses
+**Recommended reading order:**
+
+1. [Getting started]({{ '/docs/extensions/getting-started/' | relative_url }}) — install the corp-pack example, directory layout
+2. [Manifest]({{ '/docs/extensions/manifest/' | relative_url }}) — `extension.yaml` schema and contribution types
+3. [Harnesses]({{ '/docs/extensions/harnesses/' | relative_url }}) — stdio, TCP, and HTTP extension harnesses
+4. [MCP, skills & rules]({{ '/docs/extensions/mcp-skills-rules/' | relative_url }}) — custom tools, catalog lists, ADL refs
+5. [Programmatic SDK]({{ '/docs/extensions/programmatic/' | relative_url }}) — Python, TypeScript, and Go `NuiExtension` packages
+
+Shipped examples in the [main repository](https://github.com/plmbr/nui/tree/main/dev/extension-examples/):
+
+| Example | What it demonstrates |
+|---------|---------------------|
+| `corp-pack` | Harnesses, custom MCP tools, skills, rules, catalog, agents, mentions |
+| `hitl-demo` | HITL channels, REST bridge, `ask_user` from tools |
+| `storage-demo` | Session history and memory persistence handlers |
+| `docker-deployer` | Agent deployer that builds Docker images |
+| `programmatic-echo` | Programmatic Python extension (no static contribution files) |
+
+## Features overview
+
+Product-oriented feature pages (less technical depth):
+
+- [Built-in agents]({{ '/features/agents/' | relative_url }})
+- [ADL agents]({{ '/features/adl/' | relative_url }})
+- [Extensions]({{ '/features/extensions/' | relative_url }})
+- [MCP integration]({{ '/features/mcp/' | relative_url }})
+- [Sandboxing]({{ '/features/sandbox/' | relative_url }})
+- [Headless & scheduled runs]({{ '/features/headless/' | relative_url }})
+
+## Source repository
+
+Implementation details and the latest markdown sources also live in the [plmbr/nui](https://github.com/plmbr/nui) repository under `dev/` and `DEVELOPERS.md`. This site is the canonical **on-site** developer reference.

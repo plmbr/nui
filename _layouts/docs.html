@@ -1,0 +1,20 @@
+---
+layout: default
+---
+
+<article class="docs">
+  <div class="container docs__inner">
+    {% include docs-nav.html %}
+
+    <div class="docs__content">
+      <header class="page__header">
+        <h1 class="page__title">{{ page.title | escape }}</h1>
+        {% if page.subtitle %}<p class="page__lede">{{ page.subtitle | escape }}</p>{% endif %}
+      </header>
+
+      <div class="page__body">
+        {{ content }}
+      </div>
+    </div>
+  </div>
+</article>

@@ -1,0 +1,25 @@
+<nav class="docs-nav" aria-label="Documentation">
+  <p class="docs-nav__heading">Documentation</p>
+  <ul class="docs-nav__list">
+    <li><a href="{{ '/docs/' | relative_url }}"{% if page.url == '/docs/' %} aria-current="page"{% endif %}>Overview</a></li>
+    <li><a href="{{ '/docs/developers/' | relative_url }}"{% if page.url == '/docs/developers/' %} aria-current="page"{% endif %}>Developer guide</a></li>
+    <li><a href="{{ '/docs/adl/' | relative_url }}"{% if page.url == '/docs/adl/' %} aria-current="page"{% endif %}>ADL</a></li>
+    <li><a href="{{ '/docs/harness-protocols/' | relative_url }}"{% if page.url == '/docs/harness-protocols/' %} aria-current="page"{% endif %}>Harness protocols</a></li>
+  </ul>
+
+  <p class="docs-nav__heading">Extension API</p>
+  <ul class="docs-nav__list">
+    <li><a href="{{ '/docs/extensions/' | relative_url }}"{% if page.url == '/docs/extensions/' %} aria-current="page"{% endif %}>Overview</a></li>
+    <li><a href="{{ '/docs/extensions/getting-started/' | relative_url }}"{% if page.url == '/docs/extensions/getting-started/' %} aria-current="page"{% endif %}>Getting started</a></li>
+    <li><a href="{{ '/docs/extensions/manifest/' | relative_url }}"{% if page.url == '/docs/extensions/manifest/' %} aria-current="page"{% endif %}>Manifest</a></li>
+    <li><a href="{{ '/docs/extensions/harnesses/' | relative_url }}"{% if page.url == '/docs/extensions/harnesses/' %} aria-current="page"{% endif %}>Harnesses</a></li>
+    <li><a href="{{ '/docs/extensions/mcp-skills-rules/' | relative_url }}"{% if page.url == '/docs/extensions/mcp-skills-rules/' %} aria-current="page"{% endif %}>MCP, skills &amp; rules</a></li>
+    <li><a href="{{ '/docs/extensions/mentions/' | relative_url }}"{% if page.url == '/docs/extensions/mentions/' %} aria-current="page"{% endif %}>Mention providers</a></li>
+    <li><a href="{{ '/docs/extensions/hitl/' | relative_url }}"{% if page.url == '/docs/extensions/hitl/' %} aria-current="page"{% endif %}>HITL</a></li>
+    <li><a href="{{ '/docs/extensions/storage/' | relative_url }}"{% if page.url == '/docs/extensions/storage/' %} aria-current="page"{% endif %}>Storage handlers</a></li>
+    <li><a href="{{ '/docs/extensions/deployers/' | relative_url }}"{% if page.url == '/docs/extensions/deployers/' %} aria-current="page"{% endif %}>Agent deployers</a></li>
+    <li><a href="{{ '/docs/extensions/programmatic/' | relative_url }}"{% if page.url == '/docs/extensions/programmatic/' %} aria-current="page"{% endif %}>Programmatic SDK</a></li>
+    <li><a href="{{ '/docs/extensions/catalog/' | relative_url }}"{% if page.url == '/docs/extensions/catalog/' %} aria-current="page"{% endif %}>Dynamic catalog</a></li>
+    <li><a href="{{ '/docs/extensions/rest-api/' | relative_url }}"{% if page.url == '/docs/extensions/rest-api/' %} aria-current="page"{% endif %}>REST API</a></li>
+  </ul>
+</nav>

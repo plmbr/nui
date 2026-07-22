@@ -7,11 +7,14 @@ permalink: /features/extensions/
 
 Extensions add capabilities to nui via a manifest (`extension.yaml`) and contribution list files. Installed extensions live in `~/.nui/extensions/<name>/`.
 
+**Full developer reference:** [Extension API documentation]({{ '/docs/extensions/' | relative_url }}) — manifest schema, harness SDK, HITL, storage, deployers, and worked examples.
+
 ## Install
 
 ```bash
 nui extension add ./my-extension
 nui extension add https://github.com/example/my-extension.git
+nui extension list
 nui extension remove my-extension
 ```
 
@@ -22,9 +25,14 @@ Manage installed extensions from **Settings → Extensions**, or disable individ
 | Contribution | Description |
 |---|---|
 | `harnesses` | stdio, TCP, or HTTP harness agents |
-| `mcpServers` | MCP server definitions injected into harnesses |
-| `skills` | Skill files available to agents |
+| `aiAssets.mcpServers` | Custom command-tool MCP servers |
+| `aiAssets.skills` / `rules` | Bundled skills and instruction files |
+| `catalog` | Discoverable MCP servers and skills |
 | `agents` | ADL agent definitions |
+| `mentionProviders` | `@`-mention autocomplete sources |
+| `hitlChannels` | Human-in-the-loop delivery channels |
+| `storage` | Session history and memory backends |
+| `agentDeployers` | Deploy user agents to remote platforms |
 
 ## Harness transports
 
@@ -38,9 +46,18 @@ Extension harnesses wire through three transports:
 
 ADL agents reference extension harnesses as `harness.type: ext:<extension>/<harness-id>`.
 
-## Framework
+## Get started
 
-Extension authors can use the Python harness SDK:
+1. [Getting started with extensions]({{ '/docs/extensions/getting-started/' | relative_url }}) — install corp-pack and run your first extension agent
+2. [Manifest reference]({{ '/docs/extensions/manifest/' | relative_url }}) — complete `extension.yaml` schema
+3. [Programmatic SDK]({{ '/docs/extensions/programmatic/' | relative_url }}) — Python, TypeScript, and Go packages
 
-- [`harness-sdk/nui_agent_stdio.py`](https://github.com/plmbr/nui/blob/main/harness-sdk/nui_agent_stdio.py) — stdio harness framework
-- [`dev/extension-api.md`](https://github.com/plmbr/nui/blob/main/dev/extension-api.md) — manifest schema and contribution format
+## Examples in the repository
+
+| Example | Demonstrates |
+|---------|--------------|
+| [corp-pack](https://github.com/plmbr/nui/tree/main/dev/extension-examples/corp-pack/) | Harnesses, MCP tools, skills, rules, mentions |
+| [hitl-demo](https://github.com/plmbr/nui/tree/main/dev/extension-examples/hitl-demo/) | HITL channels and REST bridge |
+| [storage-demo](https://github.com/plmbr/nui/tree/main/dev/extension-examples/storage-demo/) | Custom persistence |
+| [docker-deployer](https://github.com/plmbr/nui/tree/main/dev/extension-examples/docker-deployer/) | Agent deployer |
+| [programmatic-echo](https://github.com/plmbr/nui/tree/main/dev/extension-examples/programmatic-echo/) | Python `NuiExtension` package |
