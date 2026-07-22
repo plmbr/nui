@@ -21,11 +21,11 @@ irm https://nui.plmbr.dev/install.ps1 | iex
 Install a specific version:
 
 ```sh
-NUI_VERSION=v0.1.0 curl -fsSL https://nui.plmbr.dev/install.sh | sh
+NUI_VERSION=v0.3.0 curl -fsSL https://nui.plmbr.dev/install.sh | sh
 ```
 
 ```powershell
-$env:NUI_VERSION = "v0.1.0"; irm https://nui.plmbr.dev/install.ps1 | iex
+$env:NUI_VERSION = "v0.3.0"; irm https://nui.plmbr.dev/install.ps1 | iex
 ```
 
 **Manual install:** download the archive for your platform from [GitHub Releases](https://github.com/plmbr/nui/releases), extract the `nui` binary (or `nui.exe` on Windows), and place it on your `PATH`.
@@ -45,19 +45,19 @@ Open [http://localhost:8080](http://localhost:8080), pick an agent, and start ch
 Launch with a specific agent and prompt:
 
 ```sh
-nui server --agent-type "Claude Code" --prompt "Review the README" --open
+nui server --agent-type claude-code --prompt "Review the README" --open
 ```
 
 ## Prerequisites
 
 Install the agent CLI you want to use and make sure it is on your `PATH`:
 
-| Agent | CLI command |
+| Agent (ADL id) | CLI command |
 |---|---|
-| Claude Code | `claude` |
-| pi | `pi` |
-| codex | `codex` |
-| opencode | `opencode` |
+| `claude-code` | `claude` |
+| `pi` | `pi` |
+| `codex` | `codex` |
+| `opencode` | `opencode` |
 
 **API agents** (no CLI required) use provider API keys instead:
 
@@ -95,6 +95,7 @@ nui agent add ./my-agent.yaml  # install custom agent
 nui agent eval run -a my-agent  # run ADL eval cases against a running server
 nui extension add|list|remove  # manage extensions
 nui skills add|list|remove  # manage skills catalog
+nui memory list|show|edit  # persistent memory files
 nui schedule list|add|enable|disable|delete|run-now  # recurring runs
 ```
 
@@ -103,12 +104,13 @@ nui schedule list|add|enable|disable|delete|run-now  # recurring runs
 | Flag | Short | Description |
 |---|---|---|
 | `--open` | | Open the web UI in your browser with a new session |
-| `--agent-type` | `-a` | Agent to use (e.g. `Claude Code`, `pi`, `codex`) |
+| `--agent-type` | `-a` | ADL agent id to launch (e.g. `claude-code`, `pi`, `anthropic`) |
 | `--prompt` | `-m` | Initial prompt sent automatically |
 | `--hide-input` | | Hide the chat input (use with `--prompt`) |
 | `--working-dir` | `-w` | Working directory for the session |
 | `--theme` | | UI theme: `light` or `dark` |
-| `--default-agent` | | Default agent for new sessions |
+| `--default-agent` | | Default ADL agent id for new sessions (saved to `~/.nui/settings.json`) |
+| `--default-harness` | | Default harness for internal agents (e.g. `api/anthropic`, `claude-code`; saved to settings) |
 
 ### Headless runs
 
@@ -127,14 +129,14 @@ Set `NUI_URL` or pass `--url` if the server is not on `http://127.0.0.1:8080`. U
 
 **CLI agents** (require the corresponding binary on `PATH`):
 
-| Name | Description |
+| ADL id | Description |
 |---|---|
-| Claude Code | Anthropic's Claude Code CLI |
-| pi | pi agent CLI |
-| codex | OpenAI Codex CLI |
-| opencode | OpenCode CLI |
+| `claude-code` | Anthropic's Claude Code CLI |
+| `pi` | pi agent CLI |
+| `codex` | OpenAI Codex CLI |
+| `opencode` | OpenCode CLI |
 
-**API agents** (in-process LLM calls; selectable under **Built-in → API** in the New Session dialog):
+**API agents** (in-process LLM calls; selectable under **Built-in → API** in the New Session panel):
 
 | Name | Description |
 |---|---|
@@ -154,7 +156,7 @@ Install your own agent definitions (ADL YAML) to `~/.nui/agents/`:
 nui agent add ./my-agent.yaml
 ```
 
-Custom agents appear under **Installed agents** in the New Session dialog. They can run in Docker, dev containers, remote servers, or sandboxes. See the [ADL examples](dev/adl/examples/) and [harness examples](dev/harness-examples/) for templates.
+Custom agents appear under **Installed agents** in the New Session panel. They can run in Docker, dev containers, remote servers, or sandboxes. See the [ADL examples](dev/adl/examples/) and [harness examples](dev/harness-examples/) for templates.
 
 ## Extensions
 

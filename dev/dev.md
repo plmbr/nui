@@ -48,7 +48,7 @@ flowchart TB
 
 ### Key design decisions
 
-1. **Every session is an ADL agent.** Even the four built-in CLI harnesses are compiled-in ADL definitions (`builtinAgentDefs` in `api.go`). Selecting "Claude Code" in the UI stores `agentType: "claude-code"` (the ADL `id`), which resolves to `harness.type: claude-code`.
+1. **Every session is an ADL agent.** Even the four built-in CLI harnesses are compiled-in ADL definitions (`builtinAgentDefs` in `internal/agents/builtins.go`). Selecting "Claude Code" in the UI stores `agentType: "claude-code"` (the ADL `id`), which resolves to `harness.type: claude-code`. CLI flags such as `--agent-type` and `nui run -a` expect the ADL id (e.g. `claude-code`), not the display name.
 
 2. **Chat uses AG-UI, not raw SSE.** The UI (`useSessionChat.ts`) streams via `POST /api/sessions/:id/ag-ui` using the [AG-UI protocol](https://github.com/ag-ui-protocol/ag-ui). Tool calls, images, and MCP app frames are translated from agent `Event` types in `agui.go`. The legacy `POST /chat` endpoint still exists but the UI does not use it.
 
@@ -60,7 +60,7 @@ flowchart TB
 
 4. **Docker/remote via custom ADL.** There is no built-in "Docker" or "Remote" picker in the UI. Users copy an ADL template from `dev/harness-examples/` into `~/.nui/agents/` (e.g. `docker-echo.yaml`), then select it under **Installed agents**. nui validates the connector on session create.
 
-5. **CLI launch + UI preferences.** `nui server -a <agent-id> --prompt --open` starts the HTTP server first, then creates a session via the same logic as `POST /api/launch` (shared with the warm-attach path when the server is already running). Session creation saves `lastAgentType` / `lastSessionId` to `settings.json` and exposes the prompt once via `GET /api/bootstrap`. `nui server --open` (without `-a`) also creates a fresh session with the default agent. With `--open`, nui opens the browser to `/sessions/<id>` after the session is ready. If no sessions exist at startup and no launch flags were passed, nui auto-creates one with the default agent when the UI loads. Sidebar state and last-selected session/agent are also persisted in `settings.json`.
+5. **CLI launch + UI preferences.** `nui server -a <agent-id> --prompt --open` starts the HTTP server first, then creates a session via the same logic as `POST /api/launch` (shared with the warm-attach path when the server is already running). Use ADL ids for `-a` (e.g. `claude-code`). Session creation saves `lastAgentType` / `lastSessionId` to `settings.json` and exposes the prompt once via `GET /api/bootstrap`. `nui server --open` (without `-a`) also creates a fresh session with the default agent. With `--open`, nui opens the browser to `/sessions/<id>` after the session is ready. If no sessions exist at startup and no launch flags were passed, nui auto-creates one with the default agent when the UI loads. Sidebar state, `defaultAgentType`, `defaultHarness`, and last-selected session/agent are also persisted in `settings.json`.
 
 ---
 
@@ -153,7 +153,7 @@ Interactive AG-UI chat does not yet support mid-stream offset replay. A disconne
 | Store | Format | Location | Status |
 |---|---|---|---|
 | Sessions + agent session IDs + UI messages | JSON | `~/.nui/data.json` | Done |
-| Settings | JSON | `~/.nui/settings.json` | Done (`theme`, `lastAgentType`, `lastSessionId`, `sidebarOpen`, `disabledExtensions`) |
+| Settings | JSON | `~/.nui/settings.json` | Done (`theme`, `defaultAgentType`, `defaultHarness`, `lastAgentType`, `lastSessionId`, `sidebarOpen`, `disabledExtensions`, memory toggles) |
 | ADL definitions | YAML | `~/.nui/agents/*.yaml` | Done |
 | Run event log | JSONL | `~/.nui/runs/<runID>.jsonl` | Done |
 | Schedules | JSON | `~/.nui/schedules.json` | Done |
@@ -225,7 +225,7 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 - [x] HTTP/SSE docker + remote connectors
 - [x] Builtin sandbox Docker images (`docker/`, port 8090)
 - [x] CLI session launch (`nui server --agent-type --prompt --working-dir`)
-- [x] UI preferences (`lastAgentType`, `lastSessionId`, `sidebarOpen`)
+- [x] UI preferences (`defaultAgentType`, `defaultHarness`, `lastAgentType`, `lastSessionId`, `sidebarOpen`)
 - [x] Bubblewrap sandbox for all four CLI harnesses (Linux)
 - [x] User ADL in `~/.nui/agents/*.yaml`
 - [x] Docker/remote reachability check on session create

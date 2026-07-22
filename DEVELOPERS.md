@@ -145,7 +145,7 @@ Full reference: [`dev/dev.md`](dev/dev.md#api-surface).
 
 ### Built-in agents
 
-Nine built-in agent types: four CLI harnesses and five API harnesses. Select them under **Built-in** in the New Session dialog (CLI and API tabs).
+Ten built-in agent types: four CLI harnesses, five API harnesses, and the `nui` master agent. Select them under **Built-in** in the New Session panel (CLI and API tabs).
 
 **CLI harnesses:**
 
@@ -170,7 +170,7 @@ Definitions live in `internal/agents/api_builtins.go`. Availability is checked v
 
 ### Installed agents
 
-ADL YAML from `~/.nui/agents/*.yaml`, extensions, and other non-built-in agent types. Select them under **Installed agents** in the New Session dialog. Example templates for `docker`, `devcontainer`, and `remote` harness types live under [`dev/harness-examples/`](dev/harness-examples/); general ADL samples live in [`dev/adl/examples/`](dev/adl/examples/).
+ADL YAML from `~/.nui/agents/*.yaml`, extensions, and other non-built-in agent types. Select them under **Installed agents** in the New Session panel. Example templates for `docker`, `devcontainer`, and `remote` harness types live under [`dev/harness-examples/`](dev/harness-examples/); general ADL samples live in [`dev/adl/examples/`](dev/adl/examples/).
 
 Use custom ADL for `docker`, `devcontainer`, and `remote` harness types, sandbox variants (`bubblewrap`, `docker`), and multi-step workflows.
 

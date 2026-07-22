@@ -20,7 +20,7 @@ Run the Go server separately (`go run . server` from repo root). Vite proxies AP
 | `src/App.tsx` | Session list + layout |
 | `src/hooks/useSessionChat.ts` | AG-UI client (`@ag-ui/client`); primary chat transport |
 | `src/components/ChatPanel.tsx` | Message rendering, tool calls, images |
-| `src/components/NewSessionDialog.tsx` | Builtin harness picker + custom ADL agents |
+| `src/components/NewSessionPanel.tsx` | Builtin harness picker + custom ADL agents |
 | `src/api.ts` | REST client |
 | `src/types.ts` | TypeScript types mirroring Go models |
 

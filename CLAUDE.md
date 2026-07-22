@@ -11,7 +11,7 @@ go test . ./cmd/... ./internal/...  # run tests (avoids ui/node_modules)
 ./scripts/test-all.sh               # Go + Vitest + Playwright E2E
 go run . server             # build + run server on :8080
 go run . server --port 3000 # custom port (use this for development)
-go run . server -a "Claude Code" -m "Review README" -w . --open --hide-input
+go run . server -a claude-code -m "Review README" -w . --open --hide-input
 ```
 
 ### Frontend (run from `ui/`)
@@ -140,7 +140,7 @@ SSE `data:` events support `text`, `done`, `error`, and tool-call/image event ty
 | File | Contents |
 |---|---|
 | `~/.nui/data.json` | `sessions`, `agentSessions` (nui session ID → agent session ID), `sessionMessages` (UI chat text) |
-| `~/.nui/settings.json` | `theme`, `lastAgentType`, `lastSessionId`, `sidebarOpen` |
+| `~/.nui/settings.json` | `theme`, `defaultAgentType`, `defaultHarness`, `lastAgentType`, `lastSessionId`, `sidebarOpen`, `disabledExtensions` |
 | `~/.nui/agents/*.yaml` | User ADL definitions; loaded on every `GET /api/agent-types` |
 | `~/.nui/extensions/<name>/` | Backend extensions (`extension.yaml` + contribution list files); see `dev/extension-api.md` |
 | `~/.nui/connections/*.json` | Harness TCP/HTTP handshake files (`host`, `port`, `session_id`, `pid`) |
@@ -172,7 +172,7 @@ Registered in `internal/server/api.go` and `agui.go`:
 - `App.tsx` — session list + selection; restores `lastSessionId`, `sidebarOpen`, and CLI bootstrap prompt
 - `useSessionChat.ts` — AG-UI client (`@ag-ui/client`); handles text, tool calls, images, MCP app frames
 - `ChatPanel.tsx` / `ConversationPanel.tsx` — chat UI
-- `NewSessionDialog.tsx` — builtin harness pills + custom ADL agent cards
+- `NewSessionPanel.tsx` — builtin harness picker + custom ADL agent cards
 - `api.ts` — REST client
 - `types.ts` — TypeScript mirrors of Go model structs
 

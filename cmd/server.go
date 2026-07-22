@@ -70,7 +70,7 @@ func init() {
 	serverCmd.Flags().BoolVar(&noBrowser, "no-browser", false, "Do not open a browser (headless daemon mode)")
 	serverCmd.Flags().BoolVar(&hideInput, "hide-input", false, "Hide the chat input (for one-off runs with --prompt)")
 	serverCmd.Flags().StringVar(&theme, "theme", "", "UI theme: light or dark (saved to ~/.nui/settings.json)")
-	serverCmd.Flags().StringVar(&defaultAgentType, "default-agent", "", "Default agent type for new sessions (ADL id or name; saved to ~/.nui/settings.json)")
+	serverCmd.Flags().StringVar(&defaultAgentType, "default-agent", "", "Default ADL agent id for new sessions (saved to ~/.nui/settings.json)")
 	serverCmd.Flags().StringVar(&defaultHarness, "default-harness", "", "Default harness for internal agents (e.g. api/anthropic, claude-code; saved to ~/.nui/settings.json)")
 	rootCmd.AddCommand(serverCmd)
 }
