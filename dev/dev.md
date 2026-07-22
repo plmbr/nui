@@ -243,7 +243,7 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 - [x] `nui skills add|list|remove` CLI
 - [x] `nui memory list|show|edit` CLI
 - [x] Persistent memory (`~/.nui/memory/`) with UI toggles and agent write path
-- [x] `nui extension add|remove` CLI
+- [x] `nui extension add|list|remove` CLI
 - [x] ADL `aiAssets.mcpServers` → session harness config
 
 ### Phase 4 — Scheduled runs ✅

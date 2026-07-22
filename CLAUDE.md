@@ -61,7 +61,7 @@ In development, Vite (`:5173`) proxies `/api` to the Go server.
 
 | Package | Role |
 |---|---|
-| `cmd/` | Cobra CLI (`nui server`, `nui extension add|remove`, `nui skills add|list|remove`) |
+| `cmd/` | Cobra CLI (`nui server`, `nui extension add|list|remove`, `nui skills add|list|remove`) |
 | `internal/server/` | HTTP mux, REST handlers, AG-UI streaming (`agui.go`), MCP tool UI (`mcp_manager.go`) |
 | `internal/model/` | `Session`, `ChatMessage`, ADL structs |
 | `internal/store/` | Persistence: `data.json`, `settings.json`, ADL YAML in `agents/`, user plugins in `~/.nui/extensions/`, agent history loaders |

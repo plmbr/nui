@@ -30,7 +30,8 @@ nui extension add dev/extension-examples/storage-demo  # persistence demo
 
 ```sh
 nui extension add <url-or-path>     # install from git URL, directory, or .zip
-nui extension remove <ext-id>     # remove by extension name (manifest id)
+nui extension list                  # list installed extensions
+nui extension remove <ext-id>       # remove by extension name (manifest id)
 ```
 
 **Sources:**

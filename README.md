@@ -93,7 +93,7 @@ nui run -a claude-code -m "Review README" --wait  # headless run
 nui agent list      # list agent types (requires nui server)
 nui agent add ./my-agent.yaml  # install custom agent
 nui agent eval run -a my-agent  # run ADL eval cases against a running server
-nui extension add   # install extension from git URL, directory, or zip
+nui extension add|list|remove  # manage extensions
 nui skills add|list|remove  # manage skills catalog
 nui schedule list|add|enable|disable|delete|run-now  # recurring runs
 ```
@@ -163,6 +163,7 @@ Extensions add harnesses, MCP servers, skills, and agents. Install from a local 
 ```sh
 nui extension add ./my-extension
 nui extension add https://github.com/example/my-extension.git
+nui extension list
 nui extension remove my-extension
 ```
 
