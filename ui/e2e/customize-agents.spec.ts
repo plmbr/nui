@@ -10,9 +10,10 @@ test('agents tab supports creating a docker harness agent', async ({ page }) => 
   await page.getByRole('button', { name: 'New agent' }).click()
   await expect(page.locator('.agent-form')).toBeVisible()
 
-  const harnessSelect = page.locator('.agent-form').getByText('Harness type').locator('..').getByRole('combobox')
+  const harnessSelect = page.locator('.agent-form').getByRole('button', { name: 'Claude Code' })
   await harnessSelect.click()
-  await page.getByRole('option', { name: 'Docker (HTTP/SSE container)' }).click()
+  await page.getByPlaceholder('Search harnesses…').fill('docker')
+  await page.getByRole('option', { name: 'Docker (HTTP/SSE container)' }).click({ force: true })
 
   await page.getByLabel('Container image').fill('nui-echo-agent')
   await page.getByLabel('Container port').fill('9090')

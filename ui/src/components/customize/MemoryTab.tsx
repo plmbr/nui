@@ -197,10 +197,6 @@ export function MemoryTab() {
     }
   }
 
-  if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading memory…</p>
-  }
-
   const selectableAgents = selectableAgentTypes(agentTypes)
   const filteredAgents = useMemo(
     () =>
@@ -209,6 +205,10 @@ export function MemoryTab() {
       ),
     [selectableAgents, agentSearchQuery],
   )
+
+  if (loading) {
+    return <p className="text-sm text-muted-foreground">Loading memory…</p>
+  }
   const agentEntries: MemoryAgentEntry[] = summary?.agents ?? []
   const agentMemoryById = new Map(agentEntries.map((entry) => [entry.agentId, entry]))
   const userPath = memoryPath('user')
