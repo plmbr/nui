@@ -62,6 +62,17 @@ func TestLooksLikeTextToolJSON(t *testing.T) {
 	}
 }
 
+func TestExtractTextToolCalls_namespacedTools(t *testing.T) {
+	content := `Sure! {"name": "ask_user", "parameters": {"title": "Math", "questions": [{"question": "What is 2+2?", "options": [{"label": "4"}]}]}}`
+	cleaned, calls := extractTextToolCalls(content, []string{"nui-hitl__ask_user", "nui-viz__show_visualization"})
+	if cleaned != "Sure!" {
+		t.Fatalf("cleaned = %q, want %q", cleaned, "Sure!")
+	}
+	if len(calls) != 1 || calls[0].Function.Name != "nui-hitl__ask_user" {
+		t.Fatalf("calls = %+v", calls)
+	}
+}
+
 func TestExtractTextToolCalls_embeddedAskUserJSON(t *testing.T) {
 	content := `Sure! {"name": "ask_user", "parameters": {"message": "What is 2+2?"}}`
 	cleaned, calls := extractTextToolCalls(content, []string{"ask_user"})

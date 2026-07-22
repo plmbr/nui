@@ -8,6 +8,7 @@ import (
 
 	"nui/internal/llm"
 	"github.com/google/uuid"
+	"nui/internal/mcpclient"
 	"nui/internal/viz"
 )
 
@@ -28,7 +29,7 @@ func toolNameAllowed(name string, available []string) bool {
 		return false
 	}
 	for _, candidate := range available {
-		if candidate == name || viz.BareToolName(candidate) == viz.BareToolName(name) {
+		if candidate == name || mcpclient.BareToolName(candidate) == mcpclient.BareToolName(name) {
 			return true
 		}
 	}
@@ -140,7 +141,7 @@ func resolveTextToolName(name string, availableTools []string) string {
 		if candidate == name {
 			return candidate
 		}
-		if viz.BareToolName(candidate) == viz.BareToolName(name) {
+		if mcpclient.BareToolName(candidate) == mcpclient.BareToolName(name) {
 			return candidate
 		}
 	}

@@ -4,6 +4,7 @@ package agent
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"nui/internal/llm"
@@ -130,6 +131,46 @@ func TestStreamCompletion_nativeAskUserBlockedOnOllama(t *testing.T) {
 	for ev := range events {
 		if ev.Type == EventText {
 			t.Fatalf("unexpected text event: %q", ev.Content)
+		}
+	}
+}
+
+func TestStreamCompletion_textToolJSONWithNamespacedTools(t *testing.T) {
+	badJSON := `{"name":"ask_user","parameters":{"title":"Math calculation","questions":[{"question":"What is 2+2?","options":[{"label":"4","description":"Correct"},{"label":"5","description":"Incorrect"}]}]}}`
+	provider := &mockStreamProvider{
+		chunks: []llm.ChatCompletionChunk{{
+			Choices: []llm.ChunkChoice{{
+				Delta: llm.ChunkDelta{Content: "Sure! " + badJSON},
+			}},
+		}},
+	}
+	agent := &APIHarnessAgent{Harness: model.ADLHarness{Type: "api", Provider: "ollama"}}
+	events := make(chan Event, 4)
+	assistant, text, err := agent.streamCompletion(
+		context.Background(),
+		provider,
+		"test",
+		nil,
+		[]llm.Tool{
+			{Type: "function", Function: llm.Function{Name: "nui-hitl__ask_user"}},
+			{Type: "function", Function: llm.Function{Name: "nui-viz__show_visualization"}},
+		},
+		"what is 2+2",
+		events,
+	)
+	close(events)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(assistant.ToolCalls) != 0 {
+		t.Fatalf("tool calls = %#v", assistant.ToolCalls)
+	}
+	if text != "Sure!" {
+		t.Fatalf("text = %q, want cleaned prose without raw tool JSON", text)
+	}
+	for ev := range events {
+		if ev.Type == EventText && strings.Contains(ev.Content, `"name"`) {
+			t.Fatalf("leaked raw tool JSON in event: %q", ev.Content)
 		}
 	}
 }
