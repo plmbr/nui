@@ -10,10 +10,10 @@ import (
 
 func TestAccumulateToolCallArgs_incremental(t *testing.T) {
 	current := ""
-	for _, chunk := range []string{`{"query": `, `"employee`, ` count"}`} {
+	for _, chunk := range []string{`{"message": `, `"hello`, ` world"}`} {
 		current = accumulateToolCallArgs(current, chunk)
 	}
-	if current != `{"query": "employee count"}` {
+	if current != `{"message": "hello world"}` {
 		t.Fatalf("incremental = %q", current)
 	}
 }
@@ -21,14 +21,14 @@ func TestAccumulateToolCallArgs_incremental(t *testing.T) {
 func TestAccumulateToolCallArgs_cumulative(t *testing.T) {
 	current := ""
 	chunks := []string{
-		`{"query": "empl`,
-		`{"query": "employee`,
-		`{"query": "employee count"}`,
+		`{"message": "hel`,
+		`{"message": "hello`,
+		`{"message": "hello world"}`,
 	}
 	for _, chunk := range chunks {
 		current = accumulateToolCallArgs(current, chunk)
 	}
-	if current != `{"query": "employee count"}` {
+	if current != `{"message": "hello world"}` {
 		t.Fatalf("cumulative = %q", current)
 	}
 }

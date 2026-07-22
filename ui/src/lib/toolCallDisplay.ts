@@ -63,7 +63,9 @@ export function isMcpToolName(toolName: string | undefined): boolean {
   if (!toolName) return false
   if (toolName.startsWith('mcp__')) return true
   const slash = toolName.indexOf('/')
-  return slash > 0 && !toolName.includes(' ')
+  if (slash > 0 && !toolName.includes(' ')) return true
+  const sep = toolName.indexOf('__')
+  return sep > 0 && sep < toolName.length - 2 && !toolName.startsWith('mcp__')
 }
 
 export function parseToolName(toolName: string | undefined): ToolNameParts {
@@ -95,6 +97,19 @@ export function parseToolName(toolName: string | undefined): ToolNameParts {
     const slash = toolName.indexOf('/')
     const server = toolName.slice(0, slash)
     const bare = toolName.slice(slash + 1)
+    if (server && bare) {
+      return {
+        integration: formatIntegrationName(server),
+        bare,
+        mcpServer: server,
+      }
+    }
+  }
+
+  if (toolName.includes('__') && !toolName.startsWith('mcp__')) {
+    const sep = toolName.indexOf('__')
+    const server = toolName.slice(0, sep)
+    const bare = toolName.slice(sep + 2)
     if (server && bare) {
       return {
         integration: formatIntegrationName(server),

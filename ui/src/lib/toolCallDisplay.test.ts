@@ -12,13 +12,14 @@ import {
 
 describe('toolCallDisplay', () => {
   it('parses integration prefixes from tool names', () => {
-    expect(parseToolName('user-data-analytics:run_sql_query')).toEqual({
-      integration: 'Data Analytics',
-      bare: 'run_sql_query',
+    expect(parseToolName('user-acme-tasks:create_item')).toEqual({
+      integration: 'Acme Tasks',
+      bare: 'create_item',
     })
     expect(parseToolName('server__WebSearch')).toEqual({
       integration: 'Server',
       bare: 'WebSearch',
+      mcpServer: 'server',
     })
   })
 
@@ -37,19 +38,26 @@ describe('toolCallDisplay', () => {
     expect(isMcpToolName('github/list_pull_requests')).toBe(true)
     expect(isMcpToolName('Read')).toBe(false)
     expect(formatMcpServerLabel('mcp__github__list_pull_requests')).toBe('Github')
+    expect(isMcpToolName('alpha-mcp__ping')).toBe(true)
+    expect(parseToolName('alpha-mcp__ping')).toEqual({
+      integration: 'Alpha Mcp',
+      bare: 'ping',
+      mcpServer: 'alpha-mcp',
+    })
+    expect(formatMcpServerLabel('alpha-mcp__ping')).toBe('Alpha Mcp')
   })
 
   it('formats friendly tool names', () => {
     expect(formatToolDisplayName('WebSearch')).toBe('Search the web')
-    expect(formatToolDisplayName('run_sql_query')).toBe('Run sql query')
+    expect(formatToolDisplayName('create_item')).toBe('Create item')
   })
 
   it('builds group summaries', () => {
     const parts = [
-      { type: 'tool' as const, id: '1', toolName: 'user-data-analytics:run_sql_query' },
-      { type: 'tool' as const, id: '2', toolName: 'user-data-analytics:get_results' },
+      { type: 'tool' as const, id: '1', toolName: 'user-acme-tasks:create_item' },
+      { type: 'tool' as const, id: '2', toolName: 'user-acme-tasks:complete_item' },
     ]
-    expect(buildToolGroupSummary(parts)).toBe('Used Data Analytics integration · 2 tools')
+    expect(buildToolGroupSummary(parts)).toBe('Used Acme Tasks integration · 2 tools')
   })
 
   it('builds MCP group summaries with server names', () => {

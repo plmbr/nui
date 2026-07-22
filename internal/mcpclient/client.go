@@ -122,15 +122,18 @@ func (c *Client) ConnectServers(ctx context.Context, servers []model.ADLMCPServe
 	}
 
 	bareCounts := map[string]int{}
+	serverSet := map[string]struct{}{}
 	for _, t := range listed {
 		bareCounts[t.bareName]++
+		serverSet[t.server] = struct{}{}
 	}
+	multiServer := len(serverSet) > 1
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, t := range listed {
 		collision := bareCounts[t.bareName] > 1
-		displayName := QualifiedToolName(t.server, t.bareName, collision)
+		displayName := QualifiedToolName(t.server, t.bareName, multiServer || collision)
 		entry := toolEntry{
 			displayName: displayName,
 			bareName:    t.bareName,

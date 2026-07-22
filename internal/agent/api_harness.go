@@ -34,6 +34,7 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 
 	var mcpClient *mcpclient.Client
 	var tools []llm.Tool
+	var mcpTools []mcpclient.Tool
 	if !a.Harness.DisableTools {
 		if len(req.MCPServers) > 0 {
 			var failures []string
@@ -49,8 +50,13 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 			}
 		}
 		if mcpClient != nil {
-			tools = mcpToolsToLLM(mcpClient.Tools())
+			mcpTools = mcpClient.Tools()
+			tools = mcpToolsToLLM(mcpTools)
 		}
+	}
+
+	if catalog := mcpToolCatalogSystemPrompt(mcpTools); catalog != "" {
+		req.SystemPrompt = appendSystemPromptBlock(req.SystemPrompt, catalog)
 	}
 
 	messages := buildAPIMessages(req)
