@@ -239,6 +239,12 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 			return deps, orchErr
 		}
 		deps.MCPServers = append(deps.MCPServers, servers...)
+		var err error
+		deps.MCPServers, err = appendNuiAgentMCP(deps.MCPServers, model.ADLAgentID(def))
+		if err != nil {
+			return deps, err
+		}
+		deps.Skills = skills.WithBuiltins(deps.Skills)
 		deps.MCPServers = mcpoauth.ResolveServers(deps.MCPServers)
 		return deps, nil
 	}

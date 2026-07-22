@@ -62,6 +62,49 @@ func TestExpandHarnessDeps_apiDisableToolsOmitsBuiltinMCP(t *testing.T) {
 	}
 }
 
+func TestExpandHarnessDeps_orchestratorIncludesCreateAgentSkillAndNuiAgentMCP(t *testing.T) {
+	expanded, err := ExpandHarnessDeps(HarnessDeps{}, nil, "nui-session", model.ADLDefinition{
+		ID:      "nui",
+		Harness: model.ADLHarness{Type: "api", Provider: "anthropic"},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundCreateAgent := false
+	for _, skill := range expanded.Skills {
+		if skill.Name == "create-agent" {
+			foundCreateAgent = true
+			break
+		}
+	}
+	if !foundCreateAgent {
+		t.Fatalf("skills = %+v, want create-agent", expanded.Skills)
+	}
+	foundOrchestrator := false
+	foundAgent := false
+	for _, srv := range expanded.MCPServers {
+		switch srv.Name {
+		case nuiOrchestratorMCPName:
+			foundOrchestrator = true
+		case nuiAgentMCPName:
+			foundAgent = true
+		}
+	}
+	if !foundOrchestrator {
+		t.Fatal("expected nui-orchestrator MCP")
+	}
+	if !foundAgent {
+		t.Fatal("expected nui-agent MCP for save_agent")
+	}
+	prompt := assembleAPISystemPrompt(expanded)
+	if !strings.Contains(prompt, "create-agent") {
+		t.Fatalf("prompt missing create-agent skill: %q", prompt)
+	}
+	if !strings.Contains(prompt, "save_agent") {
+		t.Fatal("expected save_agent instructions in prompt")
+	}
+}
+
 func TestExpandHarnessDeps_apiIncludesNuiAgentMCP(t *testing.T) {
 	deps := HarnessDeps{}
 	expanded, err := ExpandHarnessDeps(deps, nil, "api-session", model.ADLDefinition{

@@ -129,6 +129,16 @@ func RememberSkill() model.ADLSkill {
 	}
 }
 
+const CreateAgentSkillName = "create-agent"
+
+// CreateAgentSkill returns the compiled-in create-agent skill reference.
+func CreateAgentSkill() model.ADLSkill {
+	return model.ADLSkill{
+		Name: CreateAgentSkillName,
+		Ref:  BuiltinRefPrefix + CreateAgentSkillName,
+	}
+}
+
 // ResolveBuiltin materializes a compiled-in skill into the catalog cache.
 func ResolveBuiltin(name string) (string, error) {
 	name = strings.TrimSpace(name)

@@ -7,6 +7,7 @@ import (
 
 	"nui/internal/hitl"
 	"nui/internal/model"
+	"nui/internal/skills"
 	"nui/internal/store"
 )
 
@@ -20,8 +21,17 @@ const nuiSystemPrompt = `You are nui, the master agent for this workspace. You h
 
 When the user's request clearly fits a specific agent, call list_agents, pick the best match, then call launch_session with agent_type and the user's prompt.
 When the request is vague, exploratory (e.g. "what can you do"), or you are unsure which agent fits, answer helpfully in chat and ask clarifying questions instead of guessing.
+When the user wants to create or save a new agent definition, follow the create-agent skill (/create-agent) and call save_agent. Do not call launch_session for agent creation — the user stays in a nui session.
 
 In an ongoing session you can keep helping directly or delegate to another agent via launch_session when the user picks a direction.`
+
+// LauncherPromptAppendix is appended for one-shot home launcher orchestration runs.
+const LauncherPromptAppendix = `## Home launcher
+
+You are handling a one-shot message from the nui home launcher.
+
+- To **create or save** an agent definition: use the create-agent skill and save_agent. Do **not** call launch_session afterward — the user should open a nui chat session.
+- Call **launch_session** only when the user wants to **run a task now** with an existing agent (not when they are only defining a new agent).`
 
 var nuiPromptSuggestions = []model.ADLPromptSuggestion{
 	{
@@ -50,11 +60,14 @@ func IsOrchestratorAgent(id string) bool {
 // orchestratorAgentDef returns the base nui master agent ADL definition.
 func orchestratorAgentDef() model.ADLDefinition {
 	return model.ADLDefinition{
-		ID:              NuiAgentID,
-		Name:            "nui",
-		Description:     "The master agent — routes tasks to specialists or helps you explore what nui can do",
-		Tags:            []string{"builtin", "nui"},
-		Harness:         model.ADLHarness{Type: "api", Provider: "anthropic", Model: "claude-sonnet-4-20250514"},
+		ID:          NuiAgentID,
+		Name:        "nui",
+		Description: "The master agent — routes tasks to specialists or helps you explore what nui can do",
+		Tags:        []string{"builtin", "nui"},
+		Harness:     model.ADLHarness{Type: "api", Provider: "anthropic", Model: "claude-sonnet-4-20250514"},
+		AIAssets: model.ADLAIAssets{
+			Skills: []model.ADLSkill{skills.CreateAgentSkill()},
+		},
 		SystemPrompt:      nuiSystemPrompt,
 		PromptSuggestions: nuiPromptSuggestions,
 		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelnuiUI}},

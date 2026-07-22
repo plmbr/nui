@@ -13,7 +13,9 @@ import (
 
 	"nui/internal/agent"
 	"nui/internal/agents"
+	"nui/internal/extensions"
 	"nui/internal/model"
+	"nui/internal/skills"
 	"nui/internal/store"
 
 	"github.com/google/uuid"
@@ -84,13 +86,13 @@ func runOrchestrator(ctx context.Context, prompt, workingDir string) (orchestrat
 	}
 	def := agents.OrchestratorDefinition(settings)
 
-	mcpServers, err := agent.NuiOrchestratorMCPServers(defaultnuiAPIURL())
-	if err != nil {
-		return orchestrateRunResult{}, fmt.Errorf("orchestrator mcp: %w", err)
-	}
-
 	ephemeralID := agent.EphemeralProjectID("orchestrate-" + uuid.NewString())
 	defer extensionManager.Stop(ephemeralID)
+
+	systemPrompt, mcpServers, err := launcherOrchestratorHarness(def, workingDir, ephemeralID)
+	if err != nil {
+		return orchestrateRunResult{}, fmt.Errorf("orchestrator harness: %w", err)
+	}
 
 	adlAg := agent.NewADLAgent(def, ephemeralID, extensionManager)
 	runReq := agent.RunRequest{
@@ -98,7 +100,7 @@ func runOrchestrator(ctx context.Context, prompt, workingDir string) (orchestrat
 		RunID:        uuid.NewString(),
 		WorkingDir:   workingDir,
 		Message:      prompt,
-		SystemPrompt: def.SystemPrompt,
+		SystemPrompt: systemPrompt,
 		MCPServers:   mcpServers,
 	}
 
@@ -110,11 +112,16 @@ func runOrchestrator(ctx context.Context, prompt, workingDir string) (orchestrat
 	}()
 
 	var launchResult orchestrateRunResult
+	var savedAgent bool
 	for ev := range events {
 		if ev.Type != agent.EventToolCallResult {
 			continue
 		}
-		if !strings.Contains(ev.ToolName, "launch_session") {
+		if orchestratorSavedAgent(ev) {
+			savedAgent = true
+			continue
+		}
+		if savedAgent || !strings.Contains(ev.ToolName, "launch_session") {
 			continue
 		}
 		if parsed, ok := parseLaunchSessionToolResult(ev.Content); ok {
@@ -125,7 +132,7 @@ func runOrchestrator(ctx context.Context, prompt, workingDir string) (orchestrat
 		return orchestrateRunResult{}, fmt.Errorf("orchestrator run: %w", err)
 	}
 
-	if launchResult.Session.ID == "" {
+	if savedAgent || launchResult.Session.ID == "" {
 		s, createErr := createOrchestratorSession(workingDir, settings)
 		if createErr != nil {
 			return orchestrateRunResult{}, fmt.Errorf("orchestrator fallback: %w", createErr)
@@ -152,6 +159,37 @@ func createOrchestratorSession(workingDir string, settings store.Settings) (mode
 	}
 	saveSessionPreferences(agents.OrchestratorAgentID, s.ID, settings)
 	return s, nil
+}
+
+func launcherOrchestratorHarness(def model.ADLDefinition, workingDir, sessionID string) (string, []model.ADLMCPServer, error) {
+	deps, err := agent.ExpandHarnessDeps(
+		agent.HarnessDeps{WorkingDir: workingDir, SystemPrompt: def.SystemPrompt},
+		extensions.Default,
+		sessionID,
+		def,
+		nil,
+	)
+	if err != nil {
+		return "", nil, err
+	}
+	var prompt string
+	if def.Harness.Type == "api" {
+		prompt = agent.APISystemPromptFromDeps(deps)
+	} else {
+		prompt = deps.SystemPrompt
+		if appendix := skills.PromptAppendix(skills.Context{WorkingDir: workingDir}, deps.Skills); appendix != "" {
+			prompt = strings.TrimSpace(prompt + "\n\n" + appendix)
+		}
+	}
+	prompt = strings.TrimSpace(prompt + "\n\n" + agents.LauncherPromptAppendix)
+	return prompt, deps.MCPServers, nil
+}
+
+func orchestratorSavedAgent(ev agent.Event) bool {
+	if ev.Type != agent.EventToolCallResult {
+		return false
+	}
+	return strings.Contains(strings.ToLower(ev.ToolName), "save_agent")
 }
 
 func parseLaunchSessionToolResult(content string) (orchestrateRunResult, bool) {

@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"nui/internal/agent"
 	"nui/internal/agents"
 )
 
@@ -55,6 +56,18 @@ func TestLookupOrchestrator(t *testing.T) {
 	}
 	if def.ID != agents.OrchestratorAgentID {
 		t.Fatalf("id = %q", def.ID)
+	}
+}
+
+func TestOrchestratorSavedAgent(t *testing.T) {
+	if !orchestratorSavedAgent(agent.Event{Type: agent.EventToolCallResult, ToolName: "save_agent"}) {
+		t.Fatal("expected save_agent tool result")
+	}
+	if !orchestratorSavedAgent(agent.Event{Type: agent.EventToolCallResult, ToolName: "mcp__nui-agent__save_agent"}) {
+		t.Fatal("expected namespaced save_agent tool result")
+	}
+	if orchestratorSavedAgent(agent.Event{Type: agent.EventToolCallResult, ToolName: "launch_session"}) {
+		t.Fatal("launch_session should not count as save_agent")
 	}
 }
 
