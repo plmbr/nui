@@ -299,7 +299,9 @@ export default function App() {
     )?.id ?? null
   }, [selected, sessions, agentTypes])
   const promptMode = selectedAgent?.promptMode ?? 'user'
-  const effectiveHideInput = hideInput || promptMode === 'auto'
+  const effectiveHideInput =
+    hideInput ||
+    (promptMode === 'auto' && selectedAgent?.hitlMode !== 'interactive')
   const sessionListGroup =
     sessionListGroupId != null
       ? findOrCreateSessionGroup(sessionListGroupId, sessions, agentTypes)
