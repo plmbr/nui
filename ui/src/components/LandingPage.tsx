@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react'
 import { Loader2, Plus, Settings } from 'lucide-react'
-import { NuiLogo } from '@/components/NuiLogo'
+import { LandingTitle } from '@/components/LandingTitle'
 import { PlumeriaFlower } from '@/components/PlumeriaFlower'
 import { PlumeriaRandomBackdrop } from '@/components/PlumeriaBackdrop'
 import { Button } from '@/components/ui/button'
@@ -45,9 +45,7 @@ export function LandingPage({ onLaunchWithPrompt, onNewSession, onCustomize }: P
     <div className="landing-page">
       <PlumeriaRandomBackdrop count={6} opacityVariant="landing" layoutKey={layoutKey} />
       <div className="landing-page__content">
-        <h1 className="landing-page__title" aria-label="nui">
-          <NuiLogo decorative />
-        </h1>
+        <LandingTitle />
 
         <div className="landing-page__prompt">
           <textarea
