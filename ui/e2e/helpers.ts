@@ -4,7 +4,7 @@ import { expect, test, type Page } from '@playwright/test'
 
 export async function waitForAppReady(page: Page) {
   await page.goto('/launch')
-  await page.getByRole('heading', { name: 'nui' }).waitFor()
+  await page.getByRole('textbox', { name: 'Launch prompt' }).waitFor({ state: 'visible' })
 }
 
 export async function openNewSession(page: Page) {

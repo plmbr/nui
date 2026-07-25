@@ -27,10 +27,10 @@ export function LandingTitle() {
   }, [])
 
   const showLogo = phase === 'logo'
-  const ariaLabel = showLogo ? 'nui' : phase === 'but' ? 'but' : 'tiny'
+  const ariaLabel = phase === 'but' ? 'but' : 'tiny'
 
   return (
-    <h1 className="landing-page__title" aria-label={ariaLabel}>
+    <h1 className="landing-page__title" aria-label={showLogo ? undefined : ariaLabel}>
       <div className={cn('landing-page__title-stage', showLogo && 'landing-page__title-stage--logo')}>
         <span className="landing-page__title-words" aria-hidden={showLogo}>
           {phase === 'tiny' && (
@@ -45,7 +45,7 @@ export function LandingTitle() {
           )}
         </span>
         <span className="landing-page__title-logo" aria-hidden={!showLogo}>
-          <NuiLogo decorative />
+          <NuiLogo decorative={!showLogo} />
         </span>
       </div>
     </h1>
