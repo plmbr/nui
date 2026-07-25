@@ -10,6 +10,8 @@ test('agents tab supports simplified eval authoring', async ({ page }) => {
   await page.getByRole('button', { name: 'New agent' }).click()
   await expect(page.locator('.agent-form')).toBeVisible()
 
+  await page.locator('.max-w-md').getByRole('textbox').fill('e2e-eval-agent.yaml')
+
   const form = page.locator('.agent-form')
   await form.getByRole('textbox', { name: 'ID' }).fill('e2e-eval-agent')
   await form.getByRole('textbox', { name: 'Name' }).fill('E2E Eval Agent')
@@ -29,6 +31,8 @@ test('agents tab supports creating a docker harness agent', async ({ page }) => 
   await page.getByRole('button', { name: 'Agents' }).click()
   await page.getByRole('button', { name: 'New agent' }).click()
   await expect(page.locator('.agent-form')).toBeVisible()
+
+  await page.locator('.max-w-md').getByRole('textbox').fill('e2e-docker-agent.yaml')
 
   const harnessSelect = page.locator('.agent-form').getByRole('button', { name: 'Claude Code' })
   await harnessSelect.click()
