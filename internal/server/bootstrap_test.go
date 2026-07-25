@@ -103,8 +103,14 @@ func TestNeedsCLILaunch(t *testing.T) {
 	if needsCLILaunch(StartOptions{}) {
 		t.Fatal("expected false for empty options")
 	}
-	if !needsCLILaunch(StartOptions{Open: true}) {
-		t.Fatal("expected true when --open is set")
+	if needsCLILaunch(StartOptions{Open: true}) {
+		t.Fatal("expected false when only --open is set")
+	}
+	if !needsCLIOpen(StartOptions{Open: true}) {
+		t.Fatal("expected true when only --open is set")
+	}
+	if needsCLIOpen(StartOptions{Open: true, AgentType: "claude-code"}) {
+		t.Fatal("expected false when --open is combined with agent type")
 	}
 	if !needsCLILaunch(StartOptions{AgentType: "claude-code"}) {
 		t.Fatal("expected true when agent type is set")

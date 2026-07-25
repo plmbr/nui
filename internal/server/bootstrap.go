@@ -22,6 +22,9 @@ import (
 	"github.com/google/uuid"
 )
 
+// LaunchPath is the home launcher route in the web UI.
+const LaunchPath = "/launch"
+
 // StartOptions configures optional CLI-driven session bootstrap on server start.
 type StartOptions struct {
 	AgentType        string
@@ -226,7 +229,12 @@ func handleLaunch(w http.ResponseWriter, r *http.Request) {
 
 // needsCLILaunch reports whether CLI flags request a session launch on server start.
 func needsCLILaunch(opts StartOptions) bool {
-	return strings.TrimSpace(opts.AgentType) != "" || strings.TrimSpace(opts.Prompt) != "" || opts.Open
+	return strings.TrimSpace(opts.AgentType) != "" || strings.TrimSpace(opts.Prompt) != ""
+}
+
+// needsCLIOpen reports whether CLI flags request opening the browser without a session launch.
+func needsCLIOpen(opts StartOptions) bool {
+	return opts.Open && !needsCLILaunch(opts)
 }
 
 // runCLILaunch creates a session after the HTTP server is listening, matching POST /api/launch.
@@ -254,6 +262,14 @@ func runCLILaunch(port int, opts StartOptions) {
 		if err := browser.Open(sessionURL); err != nil {
 			fmt.Fprintf(os.Stderr, "warn: open browser: %v\n", err)
 		}
+	}
+}
+
+func runCLIOpen(port int) {
+	baseURL := fmt.Sprintf("http://localhost:%d", port)
+	waitForHealth(baseURL)
+	if err := browser.Open(baseURL + LaunchPath); err != nil {
+		fmt.Fprintf(os.Stderr, "warn: open browser: %v\n", err)
 	}
 }
 

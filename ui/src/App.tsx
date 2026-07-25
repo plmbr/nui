@@ -53,6 +53,7 @@ export default function App() {
   const [schedulesOpen, setSchedulesOpen] = useState(false)
   const [newSessionOpen, setNewSessionOpen] = useState(false)
   const [landingOpen, setLandingOpen] = useState(false)
+  const [launchFocusToken, setLaunchFocusToken] = useState(0)
   const [sessionListGroupId, setSessionListGroupId] = useState<string | null>(null)
   const [appReady, setAppReady] = useState(false)
   const initializedRef = useRef(false)
@@ -146,6 +147,7 @@ export default function App() {
       const openCreateSession = isCreateSessionPath()
       const openLaunch = isLaunchPath()
       const openSessionList = agentGroupIdFromPath()
+      let shouldFocusLaunch = openLaunch
       if (openCustomize) {
         setCustomizeOpen(true)
       }
@@ -178,6 +180,7 @@ export default function App() {
         } else if (!nextId && !openCustomize && !openSchedules && !openNewSession && !openCreateSession && !openLaunch && !openSessionList) {
           navigateToLaunch(true)
           setLandingOpen(true)
+          shouldFocusLaunch = true
         }
       }
 
@@ -192,6 +195,9 @@ export default function App() {
       }
 
       setAppReady(true)
+      if (shouldFocusLaunch) {
+        setLaunchFocusToken((token) => token + 1)
+      }
     }
 
     void init()
@@ -212,6 +218,7 @@ export default function App() {
         setSchedulesOpen(false)
         setNewSessionOpen(false)
         setSessionListGroupId(null)
+        setLaunchFocusToken((token) => token + 1)
         return
       }
 
@@ -342,6 +349,7 @@ export default function App() {
     setSessionListGroupId(null)
     setLandingOpen(true)
     navigateToLaunch()
+    setLaunchFocusToken((token) => token + 1)
   }, [])
 
   const handleCloseCustomize = useCallback(() => {
@@ -537,6 +545,8 @@ export default function App() {
           <main className="flex min-h-0 flex-1 overflow-hidden">
             {landingOpen ? (
               <LandingPage
+                active={landingOpen}
+                focusToken={launchFocusToken}
                 onLaunchWithPrompt={handleLaunchWithPrompt}
                 onNewSession={handleOpenNewSession}
                 onCustomize={handleOpenCustomize}

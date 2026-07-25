@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useCallback, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { Loader2, Plus, Settings } from 'lucide-react'
 import { LandingTitle } from '@/components/LandingTitle'
 import { PlumeriaFlower } from '@/components/PlumeriaFlower'
@@ -8,12 +8,15 @@ import { PlumeriaRandomBackdrop } from '@/components/PlumeriaBackdrop'
 import { Button } from '@/components/ui/button'
 
 interface Props {
+  active: boolean
+  focusToken?: number
   onLaunchWithPrompt: (prompt: string) => Promise<void>
   onNewSession: () => void
   onCustomize: () => void
 }
 
-export function LandingPage({ onLaunchWithPrompt, onNewSession, onCustomize }: Props) {
+export function LandingPage({ active, focusToken = 0, onLaunchWithPrompt, onNewSession, onCustomize }: Props) {
+  const promptRef = useRef<HTMLTextAreaElement>(null)
   const [layoutKey] = useState(() => Date.now())
   const [prompt, setPrompt] = useState('')
   const [loading, setLoading] = useState(false)
@@ -34,6 +37,26 @@ export function LandingPage({ onLaunchWithPrompt, onNewSession, onCustomize }: P
     }
   }, [loading, onLaunchWithPrompt, prompt])
 
+  useLayoutEffect(() => {
+    if (!active) return
+
+    let cancelled = false
+    const focusPrompt = () => {
+      if (!cancelled) {
+        promptRef.current?.focus({ preventScroll: true })
+      }
+    }
+
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(focusPrompt)
+    })
+
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(frame)
+    }
+  }, [active, focusToken])
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -49,6 +72,7 @@ export function LandingPage({ onLaunchWithPrompt, onNewSession, onCustomize }: P
 
         <div className="landing-page__prompt">
           <textarea
+            ref={promptRef}
             className="landing-page__prompt-input"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -71,7 +95,7 @@ export function LandingPage({ onLaunchWithPrompt, onNewSession, onCustomize }: P
             ) : (
               <>
                 <PlumeriaFlower size={18} className="landing-page__prompt-send-flower" />
-                <span className="landing-page__prompt-send-label">Imua</span>
+                <span className="landing-page__prompt-send-label">imua</span>
               </>
             )}
           </button>

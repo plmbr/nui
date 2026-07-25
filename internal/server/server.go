@@ -90,6 +90,8 @@ func Start(port int, uiFiles fs.FS, opts StartOptions) error {
 
 	if needsCLILaunch(opts) {
 		go runCLILaunch(port, opts)
+	} else if needsCLIOpen(opts) {
+		go runCLIOpen(port)
 	}
 
 	quit := make(chan os.Signal, 1)
