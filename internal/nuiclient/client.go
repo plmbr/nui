@@ -140,6 +140,14 @@ func (c *Client) ListAgents(ctx context.Context) ([]AgentType, error) {
 	return out, nil
 }
 
+func (c *Client) ListOrchestratorAgents(ctx context.Context) ([]map[string]any, error) {
+	var out []map[string]any
+	if err := c.getJSON(ctx, "/api/orchestrator/routable-agents", &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *Client) GetSettings(ctx context.Context) (Settings, error) {
 	var out Settings
 	if err := c.getJSON(ctx, "/api/settings", &out); err != nil {

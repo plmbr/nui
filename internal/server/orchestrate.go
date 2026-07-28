@@ -80,6 +80,12 @@ type orchestrateRunResult struct {
 }
 
 func runOrchestrator(ctx context.Context, prompt, workingDir string) (orchestrateRunResult, error) {
+	if direct, ok, err := tryDirectOrchestratorLaunch(prompt, workingDir); err != nil {
+		return orchestrateRunResult{}, err
+	} else if ok {
+		return direct, nil
+	}
+
 	settings, err := store.LoadSettings()
 	if err != nil {
 		settings = store.Settings{Theme: "light"}
@@ -121,7 +127,7 @@ func runOrchestrator(ctx context.Context, prompt, workingDir string) (orchestrat
 			savedAgent = true
 			continue
 		}
-		if savedAgent || !strings.Contains(ev.ToolName, "launch_session") {
+		if savedAgent || !orchestratorLaunchSessionTool(ev) {
 			continue
 		}
 		if parsed, ok := parseLaunchSessionToolResult(ev.Content); ok {
@@ -192,9 +198,17 @@ func orchestratorSavedAgent(ev agent.Event) bool {
 	return strings.Contains(strings.ToLower(ev.ToolName), "save_agent")
 }
 
+func orchestratorLaunchSessionTool(ev agent.Event) bool {
+	if ev.Type != agent.EventToolCallResult {
+		return false
+	}
+	name := strings.ToLower(ev.ToolName)
+	return strings.Contains(name, "launch_session")
+}
+
 func parseLaunchSessionToolResult(content string) (orchestrateRunResult, bool) {
 	content = strings.TrimSpace(content)
-	if content == "" {
+	if content == "" || strings.HasPrefix(strings.ToLower(content), "error:") {
 		return orchestrateRunResult{}, false
 	}
 	var payload struct {

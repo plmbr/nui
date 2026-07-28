@@ -41,5 +41,36 @@ func mcpToolCatalogSystemPrompt(tools []mcpclient.Tool) string {
 		}
 		b.WriteString("\n")
 	}
+	if routing := orchestratorRoutingInstructions(byServer); routing != "" {
+		b.WriteString(routing)
+		b.WriteString("\n")
+	}
 	return strings.TrimSpace(b.String())
+}
+
+func orchestratorRoutingInstructions(byServer map[string][]string) string {
+	tools, ok := byServer["nui-orchestrator"]
+	if !ok {
+		return ""
+	}
+	var listTool, launchTool string
+	for _, name := range tools {
+		bare := mcpclient.BareToolName(name)
+		switch bare {
+		case "list_agents":
+			listTool = name
+		case "launch_session":
+			launchTool = name
+		}
+	}
+	if listTool == "" || launchTool == "" {
+		return ""
+	}
+	return strings.TrimSpace(fmt.Sprintf(`### Routing (nui master agent)
+
+To delegate the user to a specialized agent, call these tools in order:
+1. %s — discover available agent types
+2. %s — create a session with agent_type (from step 1) and the user's prompt
+
+Do not guess agent ids; always list agents first.`, listTool, launchTool))
 }

@@ -71,6 +71,25 @@ func TestOrchestratorSavedAgent(t *testing.T) {
 	}
 }
 
+func TestOrchestratorLaunchSessionTool(t *testing.T) {
+	if !orchestratorLaunchSessionTool(agent.Event{Type: agent.EventToolCallResult, ToolName: "launch_session"}) {
+		t.Fatal("expected bare launch_session")
+	}
+	if !orchestratorLaunchSessionTool(agent.Event{Type: agent.EventToolCallResult, ToolName: "nui-orchestrator__launch_session"}) {
+		t.Fatal("expected qualified launch_session")
+	}
+	if orchestratorLaunchSessionTool(agent.Event{Type: agent.EventToolCallResult, ToolName: "list_agents"}) {
+		t.Fatal("list_agents should not match")
+	}
+}
+
+func TestParseLaunchSessionToolResult_rejectsErrorContent(t *testing.T) {
+	_, ok := parseLaunchSessionToolResult(`error: unknown agent id "alpha-agent"`)
+	if ok {
+		t.Fatal("expected error content to be rejected")
+	}
+}
+
 func TestParseLaunchSessionToolResult(t *testing.T) {
 	raw := `{
 		"session": {"id":"s1","name":"Test","agentType":"anthropic","workingDir":"/tmp","createdAt":"2026-01-01T00:00:00Z"},

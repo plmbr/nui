@@ -5,9 +5,11 @@ package mcpserver
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"nui/internal/agents"
+	"nui/internal/model"
 	"nui/internal/nuiclient"
 )
 
@@ -31,41 +33,25 @@ func registerOrchestratorTools(server *mcp.Server, client *nuiclient.Client) {
 		Description: "List discoverable nui agent types available for new sessions",
 		InputSchema: emptyObjectSchema(),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		all, err := client.ListAgents(ctx)
+		out, err := client.ListOrchestratorAgents(ctx)
 		if err != nil {
 			return toolError(err)
-		}
-		var out []map[string]any
-		for _, a := range all {
-			if !a.Available || a.PromptMode == "auto" {
-				continue
-			}
-			if !agents.IsOrchestratorRoutingTarget(a.ID) {
-				continue
-			}
-			out = append(out, map[string]any{
-				"id":          a.ID,
-				"label":       a.Label,
-				"description": a.Description,
-				"harness":     a.Harness,
-				"tags":        a.Tags,
-			})
 		}
 		return toolJSON(out)
 	})
 
 	server.AddTool(&mcp.Tool{
 		Name:        "launch_session",
-		Description: "Create a new nui session with the chosen agent and user prompt",
+		Description: "Create a new nui session with the chosen agent and user prompt. Prompt is optional for promptMode=auto agents (uses defaultPrompt when omitted).",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"agent_type":  map[string]any{"type": "string", "description": "Agent id from list_agents"},
-				"prompt":      map[string]any{"type": "string", "description": "User prompt to run in the new session"},
+				"prompt":      map[string]any{"type": "string", "description": "User prompt to run in the new session (optional for promptMode=auto agents)"},
 				"working_dir": map[string]any{"type": "string", "description": "Working directory (optional)"},
 				"name":        map[string]any{"type": "string", "description": "Optional session name"},
 			},
-			"required": []string{"agent_type", "prompt"},
+			"required": []string{"agent_type"},
 		},
 	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := parseArgs(req)
@@ -73,9 +59,6 @@ func registerOrchestratorTools(server *mcp.Server, client *nuiclient.Client) {
 		prompt := stringArg(args, "prompt")
 		if agentType == "" {
 			return toolError(fmt.Errorf("agent_type is required"))
-		}
-		if prompt == "" {
-			return toolError(fmt.Errorf("prompt is required"))
 		}
 		if !agents.IsOrchestratorRoutingTarget(agentType) {
 			return toolError(fmt.Errorf("agent %q cannot be used as an orchestrator routing target", agentType))
@@ -90,7 +73,7 @@ func registerOrchestratorTools(server *mcp.Server, client *nuiclient.Client) {
 			if a.ID != agentType {
 				continue
 			}
-			if !a.Available || a.PromptMode == "auto" {
+			if !a.Available {
 				return toolError(fmt.Errorf("agent %q is not available for launcher sessions", agentType))
 			}
 			found = &a
@@ -98,6 +81,16 @@ func registerOrchestratorTools(server *mcp.Server, client *nuiclient.Client) {
 		}
 		if found == nil {
 			return toolError(fmt.Errorf("unknown agent id %q", agentType))
+		}
+		if strings.TrimSpace(prompt) == "" {
+			if found.PromptMode == model.ADLPromptModeAuto {
+				prompt = model.ResolveADLLaunchPrompt(model.ADLDefinition{
+					PromptMode:    found.PromptMode,
+					DefaultPrompt: found.DefaultPrompt,
+				}, "")
+			} else {
+				return toolError(fmt.Errorf("prompt is required"))
+			}
 		}
 		workingDir := defaultWorkingDir(stringArg(args, "working_dir"))
 		if workingDir == "" {

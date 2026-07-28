@@ -98,6 +98,7 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/bootstrap", handleBootstrap)
 	mux.HandleFunc("/api/launch", handleLaunch)
 	mux.HandleFunc("/api/orchestrate", handleOrchestrate)
+	mux.HandleFunc("/api/orchestrator/routable-agents", handleOrchestratorRoutableAgents)
 	mux.HandleFunc("/api/capabilities", handleCapabilities)
 	mux.HandleFunc("/api/extensions", handleExtensions)
 	mux.HandleFunc("/api/extensions/reload", handleExtensionsReload)
@@ -345,40 +346,15 @@ func handleAgentTypes(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	writeJSON(w, http.StatusOK, listAgentTypes())
+}
 
-	var all []AgentTypeInfo
-	settings, _ := store.LoadSettings()
-	for _, def := range agents.BuiltinAgentDefs() {
-		if agents.IsOrchestratorAgent(def.ID) {
-			def = agents.OrchestratorDefinition(settings)
-		}
-		all = append(all, agentTypeInfoFromDef(def, true))
+func handleOrchestratorRoutableAgents(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
 	}
-
-	userDefs, err := store.LoadADLDefinitions()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "warn: load ADL definitions: %v\n", err)
-	}
-	for _, def := range userDefs {
-		all = append(all, agentTypeInfoFromDef(def, false))
-	}
-
-	if extensions.Default != nil {
-		for _, def := range extensions.Default.AllAgents() {
-			info := agentTypeInfoFromDef(def, false)
-			info.Source = "extension"
-			all = append(all, info)
-		}
-		for _, def := range extensions.Default.HarnessOnlyAgentTypes() {
-			info := agentTypeInfoFromDef(def, false)
-			info.Source = "extension"
-			info.Harness = "extension"
-			info.Available = true
-			all = append(all, info)
-		}
-	}
-
-	writeJSON(w, http.StatusOK, all)
+	writeJSON(w, http.StatusOK, orchestratorAgentEntries(listAgentTypes()))
 }
 
 func agentTypeInfoFromDef(def model.ADLDefinition, builtin bool) AgentTypeInfo {
@@ -413,6 +389,72 @@ func agentTypeInfoFromDef(def model.ADLDefinition, builtin bool) AgentTypeInfo {
 	info.SupportsHarnessPermissions = agent.HarnessSupportsUserScope(def.Harness.Type)
 	info.ToolApprovalPolicy, info.ToolApprovalTools = hitl.EffectiveToolApprovals(def, nil)
 	return info
+}
+
+func enrichExtensionAgentInfo(info *AgentTypeInfo) {
+	if info == nil || extensions.Default == nil {
+		return
+	}
+	extName, _, ok := extensions.ParseExtRef(info.ID)
+	if !ok {
+		return
+	}
+	ext, ok := extensions.Default.Get(extName)
+	if !ok {
+		return
+	}
+	displayName := strings.TrimSpace(ext.Manifest.DisplayName)
+	if displayName == "" {
+		displayName = strings.TrimSpace(ext.Manifest.Name)
+	}
+	if displayName == "" {
+		return
+	}
+	info.Tags = appendUniqueTag(info.Tags, extensionDisplayTag(displayName))
+}
+
+func extensionDisplayTag(displayName string) string {
+	displayName = strings.ToLower(displayName)
+	displayName = strings.NewReplacer("&", " ", "'", "", ".", " ").Replace(displayName)
+	parts := strings.Fields(displayName)
+	return strings.Join(parts, "-")
+}
+
+func appendUniqueTag(tags []string, tag string) []string {
+	tag = strings.TrimSpace(tag)
+	if tag == "" {
+		return tags
+	}
+	for _, existing := range tags {
+		if strings.EqualFold(existing, tag) {
+			return tags
+		}
+	}
+	return append(tags, tag)
+}
+
+func orchestratorAgentEntries(all []AgentTypeInfo) []map[string]any {
+	candidates := orchestratorListableAgents(all)
+	out := make([]map[string]any, 0, len(candidates))
+	for _, a := range candidates {
+		entry := map[string]any{
+			"id":          a.ID,
+			"label":       a.Label,
+			"description": a.Description,
+			"harness":     a.Harness,
+			"tags":        a.Tags,
+			"source":      a.Source,
+			"launchable":  true,
+		}
+		if a.PromptMode != "" {
+			entry["promptMode"] = a.PromptMode
+		}
+		if a.DefaultPrompt != "" {
+			entry["defaultPrompt"] = a.DefaultPrompt
+		}
+		out = append(out, entry)
+	}
+	return out
 }
 
 func skillNamesFromADL(def model.ADLDefinition) []string {
