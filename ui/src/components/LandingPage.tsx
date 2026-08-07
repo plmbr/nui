@@ -87,15 +87,15 @@ export function LandingPage({ active, focusToken = 0, onLaunchWithPrompt, onNewS
             className="landing-page__prompt-send"
             onClick={() => void submit()}
             disabled={!prompt.trim() || loading}
-            aria-label="Imua — send prompt"
-            title="Imua — forward, send your task"
+            aria-label="Submit prompt"
+            title="Submit prompt"
           >
             {loading ? (
               <Loader2 className="size-4 animate-spin" aria-hidden />
             ) : (
               <>
                 <PlumeriaFlower size={18} className="landing-page__prompt-send-flower" />
-                <span className="landing-page__prompt-send-label">imua</span>
+                <span className="landing-page__prompt-send-label">Submit</span>
               </>
             )}
           </button>

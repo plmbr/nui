@@ -12,7 +12,7 @@ test('health endpoint responds', async ({ request }) => {
 test('launch page loads with prompt input and actions', async ({ page }) => {
   await waitForAppReady(page)
   await expect(page.getByRole('textbox', { name: 'Launch prompt' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Imua — send prompt' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Submit prompt' })).toBeVisible()
   await expect(page.getByRole('main').getByRole('button', { name: 'New Session' })).toBeVisible()
   await expect(page.getByRole('main').getByRole('button', { name: 'Customize' })).toBeVisible()
 })
