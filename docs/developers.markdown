@@ -153,6 +153,6 @@ cd ui && npm run lint && npm run build && npm test
 
 ## Releasing
 
-1. Bump `VERSION` on `main` (currently `0.3.0`)
-2. Tag: `git tag v0.3.0 && git push origin v0.3.0`
+1. Bump `VERSION` on `main` (currently `0.4.0-alpha`)
+2. Tag: `git tag v0.4.0-alpha && git push origin v0.4.0-alpha`
 3. Create a GitHub Release — the workflow builds Linux and macOS binaries

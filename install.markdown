@@ -27,11 +27,11 @@ irm https://nui.plmbr.dev/install.ps1 | iex
 Install a specific version:
 
 ```bash
-NUI_VERSION=v0.3.0 curl -fsSL https://nui.plmbr.dev/install.sh | sh
+NUI_VERSION=v0.4.0-alpha curl -fsSL https://nui.plmbr.dev/install.sh | sh
 ```
 
 ```powershell
-$env:NUI_VERSION = "v0.3.0"; irm https://nui.plmbr.dev/install.ps1 | iex
+$env:NUI_VERSION = "v0.4.0-alpha"; irm https://nui.plmbr.dev/install.ps1 | iex
 ```
 
 ## Manual install
