@@ -27,7 +27,12 @@ import {
 } from '@/lib/subagentTrace'
 import { visualizationFromArgs, visualizationFromToolResult, visualizationHTMLReady } from '@/lib/visualization'
 import { prepareVisualizationHtml } from '@/lib/prepareVisualizationHtml'
-import { parseOpenSessionCustomValue, type OpenSessionEvent } from '@/lib/openSession'
+import {
+  isLaunchSessionToolName,
+  parseLaunchSessionToolResult,
+  parseOpenSessionCustomValue,
+  type OpenSessionEvent,
+} from '@/lib/openSession'
 
 type StopFn = () => void | Promise<void>
 
@@ -70,6 +75,8 @@ const aguiFinishedRuns = new Map<string, Set<string>>()
 const globalListeners = new Set<() => void>()
 const progressListeners = new Set<() => void>()
 const openSessionListeners = new Set<(event: OpenSessionEvent) => void>()
+/** Dedupe CUSTOM open_session + TOOL_CALL_RESULT for the same launch. */
+const notifiedOpenSessions = new Set<string>()
 let runningSnapshot = ''
 let progressSnapshot = ''
 
@@ -80,10 +87,28 @@ export function subscribeOpenSession(listener: (event: OpenSessionEvent) => void
   return () => openSessionListeners.delete(listener)
 }
 
+function openSessionDedupeKey(event: OpenSessionEvent): string {
+  return `${event.sourceSessionId}:${event.toolCallId ?? ''}:${event.sessionId}`
+}
+
 function notifyOpenSession(event: OpenSessionEvent) {
+  const key = openSessionDedupeKey(event)
+  if (notifiedOpenSessions.has(key)) return
+  notifiedOpenSessions.add(key)
+  // Keep the set bounded for long-lived UI sessions.
+  if (notifiedOpenSessions.size > 200) {
+    const first = notifiedOpenSessions.values().next().value
+    if (first) notifiedOpenSessions.delete(first)
+  }
   for (const listener of openSessionListeners) {
     listener(event)
   }
+}
+
+function toolNameForCall(entry: SessionEntry, assistantMsgId: string, partId: string): string | undefined {
+  const msg = entry.messages.find((m) => m.id === assistantMsgId)
+  const part = msg?.parts?.find((p) => p.type === 'tool' && p.id === partId)
+  return part?.type === 'tool' ? part.toolName : undefined
 }
 
 function createSessionAgent(sessionId: string): HttpAgent {
@@ -881,6 +906,7 @@ function startSend(sessionId: string, text: string) {
         }
         const partId = current.pendingTools[e.toolCallId]
         if (!partId) return
+        const toolName = toolNameForCall(current, assistantMsgId, partId)
         const vizFromResult = visualizationFromToolResult(result)
         setEntry(sessionId, (ent) => ({
           messages: ent.messages.map((m) => {
@@ -899,6 +925,12 @@ function startSend(sessionId: string, text: string) {
             }
           }),
         }))
+        // Claude Code wraps MCP results in content-block arrays, so the server may not
+        // emit CUSTOM open_session. Detect launch_session here and hand off the UI.
+        if (isLaunchSessionToolName(toolName)) {
+          const open = parseLaunchSessionToolResult(e.content, sessionId, e.toolCallId)
+          if (open) notifyOpenSession(open)
+        }
       } else if (event.type === EventType.CUSTOM) {
         const e = event as { name?: string; value?: Record<string, unknown> }
         if (!e.value) return

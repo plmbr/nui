@@ -91,10 +91,72 @@ describe('sessionChatStore', () => {
     lastSubscriber!.next!({
       type: 'CUSTOM',
       name: 'open_session',
-      value: { sessionId: 'target-1', prompt: 'do the work' },
+      value: { sessionId: 'target-1', prompt: 'do the work', toolCallId: 'tc-custom' },
     })
 
     expect(seen).toEqual([{ sessionId: 'target-1', prompt: 'do the work' }])
+    unsub()
+  })
+
+  it('notifies open_session from launch_session TOOL_CALL_RESULT (Claude-wrapped)', () => {
+    const seen: Array<{ sessionId: string; prompt?: string }> = []
+    const unsub = subscribeOpenSession((event) => {
+      seen.push({ sessionId: event.sessionId, prompt: event.prompt })
+    })
+
+    sendMessage('sess-launch', 'delegate this')
+    expect(lastSubscriber?.next).toBeTypeOf('function')
+
+    lastSubscriber!.next!({
+      type: 'TOOL_CALL_START',
+      toolCallId: 'tc-launch',
+      toolCallName: 'mcp__nui-orchestrator__launch_session',
+    })
+    lastSubscriber!.next!({
+      type: 'TOOL_CALL_RESULT',
+      toolCallId: 'tc-launch',
+      content: JSON.stringify([
+        {
+          type: 'text',
+          text: JSON.stringify({
+            session: { id: 'target-claude', agentType: 'claude-code' },
+            prompt: 'summarize the repo',
+          }),
+        },
+      ]),
+    })
+
+    expect(seen).toEqual([{ sessionId: 'target-claude', prompt: 'summarize the repo' }])
+    unsub()
+  })
+
+  it('dedupes CUSTOM open_session and TOOL_CALL_RESULT for the same launch', () => {
+    const seen: Array<{ sessionId: string }> = []
+    const unsub = subscribeOpenSession((event) => {
+      seen.push({ sessionId: event.sessionId })
+    })
+
+    sendMessage('sess-launch', 'delegate this')
+    lastSubscriber!.next!({
+      type: 'TOOL_CALL_START',
+      toolCallId: 'tc-dup',
+      toolCallName: 'launch_session',
+    })
+    lastSubscriber!.next!({
+      type: 'TOOL_CALL_RESULT',
+      toolCallId: 'tc-dup',
+      content: JSON.stringify({
+        session: { id: 'target-dup' },
+        prompt: 'go',
+      }),
+    })
+    lastSubscriber!.next!({
+      type: 'CUSTOM',
+      name: 'open_session',
+      value: { sessionId: 'target-dup', prompt: 'go', toolCallId: 'tc-dup' },
+    })
+
+    expect(seen).toEqual([{ sessionId: 'target-dup' }])
     unsub()
   })
 })

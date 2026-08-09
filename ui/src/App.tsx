@@ -212,19 +212,18 @@ export default function App() {
 
   useEffect(() => {
     return subscribeOpenSession((event) => {
-      void (async () => {
-        await loadSessions()
-        setCustomizeOpen(false)
-        setSchedulesOpen(false)
-        setNewSessionOpen(false)
-        setLandingOpen(false)
-        setSessionListGroupId(null)
-        setSelectedId(event.sessionId)
-        setInitialPrompt(event.prompt)
-        setHideInput(false)
-        navigateToSession(event.sessionId)
-        api.settings.update({ lastSessionId: event.sessionId }).catch(() => {})
-      })()
+      // Switch immediately so the chat panel mounts even if session list refresh lags.
+      setCustomizeOpen(false)
+      setSchedulesOpen(false)
+      setNewSessionOpen(false)
+      setLandingOpen(false)
+      setSessionListGroupId(null)
+      setSelectedId(event.sessionId)
+      setInitialPrompt(event.prompt)
+      setHideInput(false)
+      navigateToSession(event.sessionId)
+      api.settings.update({ lastSessionId: event.sessionId }).catch(() => {})
+      void loadSessions()
     })
   }, [loadSessions])
 
