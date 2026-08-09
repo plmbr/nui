@@ -146,6 +146,27 @@ func (s *persistedStore) listRequests(filter ListFilter) []Request {
 	return out
 }
 
+// deleteBySession removes all requests and responses for a session.
+func (s *persistedStore) deleteBySession(sessionID string) error {
+	if sessionID == "" {
+		return nil
+	}
+	s.mu.Lock()
+	removed := 0
+	for id, r := range s.requests {
+		if r != nil && r.SessionID == sessionID {
+			delete(s.requests, id)
+			delete(s.responses, id)
+			removed++
+		}
+	}
+	s.mu.Unlock()
+	if removed == 0 {
+		return nil
+	}
+	return s.save()
+}
+
 func isPendingStatus(status string) bool {
 	return status == StatusPending || status == StatusDelivered
 }

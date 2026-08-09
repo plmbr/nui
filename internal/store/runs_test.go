@@ -39,3 +39,26 @@ func TestRunLogPath(t *testing.T) {
 		t.Fatalf("path = %q", path)
 	}
 }
+
+func TestRemoveRunLog(t *testing.T) {
+	dir := t.TempDir()
+	SetRunsDirOverride(dir)
+	t.Cleanup(func() { SetRunsDirOverride("") })
+
+	path, err := RunLogPath("run-rm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("{}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := RemoveRunLog("run-rm"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("expected log removed, stat err = %v", err)
+	}
+	if err := RemoveRunLog("run-rm"); err != nil {
+		t.Fatalf("removing missing log: %v", err)
+	}
+}

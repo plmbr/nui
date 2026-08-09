@@ -42,3 +42,18 @@ func RunLogPath(runID string) (string, error) {
 	}
 	return filepath.Join(dir, runID+".jsonl"), nil
 }
+
+// RemoveRunLog deletes ~/.nui/runs/<runID>.jsonl if it exists.
+func RemoveRunLog(runID string) error {
+	if runID == "" {
+		return nil
+	}
+	path, err := RunLogPath(runID)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}

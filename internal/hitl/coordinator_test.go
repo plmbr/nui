@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -142,5 +143,50 @@ func TestCoordinatorCancel(t *testing.T) {
 	}
 	if got.Status != StatusCancelled {
 		t.Fatalf("status = %q", got.Status)
+	}
+}
+
+func TestCoordinatorDeleteSession(t *testing.T) {
+	withTempHome(t)
+	c := NewCoordinator(nil)
+	keep, err := c.Create(context.Background(), CreateInput{
+		SessionID: "sess-keep",
+		Payload:   map[string]any{"message": "keep"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	drop, err := c.Create(context.Background(), CreateInput{
+		SessionID: "sess-drop",
+		Payload:   map[string]any{"message": "drop"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Respond(context.Background(), drop.RequestID, RespondInput{
+		Answers: map[string]any{"ok": true},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := c.DeleteSession("sess-drop"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Get(context.Background(), drop.RequestID); err != ErrNotFound {
+		t.Fatalf("deleted request err = %v", err)
+	}
+	if _, err := c.Get(context.Background(), keep.RequestID); err != nil {
+		t.Fatalf("kept request err = %v", err)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(os.Getenv("HOME"), ".nui", "hitl-requests.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "sess-drop") {
+		t.Fatalf("disk still contains deleted session: %s", raw)
+	}
+	if !strings.Contains(string(raw), "sess-keep") {
+		t.Fatalf("disk missing kept session: %s", raw)
 	}
 }

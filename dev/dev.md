@@ -154,13 +154,19 @@ Interactive AG-UI chat does not yet support mid-stream offset replay. A disconne
 
 | Store | Format | Location | Status |
 |---|---|---|---|
-| Sessions + agent session IDs + UI messages | JSON | `~/.nui/data.json` | Done |
-| Settings | JSON | `~/.nui/settings.json` | Done (`theme`, `defaultAgentType`, `defaultHarness`, `lastAgentType`, `lastSessionId`, `sidebarOpen`, `disabledExtensions`, memory toggles) |
-| ADL definitions | YAML | `~/.nui/agents/*.yaml` | Done |
-| Run event log | JSONL | `~/.nui/runs/<runID>.jsonl` | Done |
+| Sessions + agent session IDs + UI messages | JSON | `~/.nui/data.json` | Done — rows removed on session delete |
+| Settings | JSON | `~/.nui/settings.json` | Done (`theme`, `defaultAgentType`, `defaultHarness`, `lastAgentType`, `lastSessionId`, `sidebarOpen`, `disabledExtensions`, memory toggles); `lastSessionId` cleared when that session is deleted |
+| Per-session harness config | dir | `~/.nui/sessions/<session-id>/` | Done — removed on session delete |
+| Isolated workspaces | dir | `~/.nui/workspaces/<session-id>/` | Done — removed on session delete |
+| Chat uploads | files | `$TMPDIR/nui-uploads/<session-id>/` | Done — removed on session delete |
+| Run event log | JSONL | `~/.nui/runs/<runID>.jsonl` | Done — removed when owning session is deleted |
+| HITL requests | JSON | `~/.nui/hitl-requests.json` | Done — session entries removed on session delete |
 | Schedules | JSON | `~/.nui/schedules.json` | Done |
-| Claude Code sessions | JSONL | `~/.claude/projects/<dirHash>/` | External |
-| pi / codex / opencode sessions | varies | Harness-specific paths | External |
+| Persistent memory | markdown | `~/.nui/memory/` | Done (not session-scoped) |
+| ADL definitions | YAML | `~/.nui/agents/*.yaml` | Done |
+| OpenCode Docker data | dir | `~/.nui/opencode-sessions/` | Shared mount for docker sandbox |
+| Claude Code sessions | JSONL | `~/.claude/projects/<dirHash>/` | External — deleted with nui session when agent session id known |
+| pi / codex / opencode sessions | varies | Harness-specific paths | External — deleted with nui session when agent session id known |
 
 Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examples/docker/docker-echo.yaml`, `dev/harness-examples/remote/remote-echo.yaml`, `dev/harness-examples/docker/opencode-docker.yaml`.
 

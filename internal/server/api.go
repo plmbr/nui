@@ -621,7 +621,15 @@ func purgeSessionFromMemory(id string) bool {
 }
 
 func cleanupDeletedSession(id string, info sessionDeleteInfo) {
-	extensionManager.Stop(id)
+	purgeSessionRuns(id)
+	if hitlCoord := coordinator(); hitlCoord != nil {
+		if err := hitlCoord.DeleteSession(id); err != nil {
+			fmt.Fprintf(os.Stderr, "warn: remove hitl requests: %v\n", err)
+		}
+	}
+	if extensionManager != nil {
+		extensionManager.Stop(id)
+	}
 	if err := store.RemoveSessionConfigDir(id); err != nil {
 		fmt.Fprintf(os.Stderr, "warn: remove session config dir: %v\n", err)
 	}
@@ -631,6 +639,7 @@ func cleanupDeletedSession(id string, info sessionDeleteInfo) {
 	if err := store.RemoveSessionUploads(id); err != nil {
 		fmt.Fprintf(os.Stderr, "warn: remove session uploads: %v\n", err)
 	}
+	clearLastSessionIDIfMatch(id)
 	session := model.Session{AgentType: info.agentType, WorkingDir: info.workingDir}
 	if sessionUsesExtensionStorage(session) {
 		deleteExtensionSession(id, session, info.workingDir, info.agentSessionID)
@@ -652,6 +661,20 @@ func cleanupDeletedSession(id string, info sessionDeleteInfo) {
 	}
 	if delErr != nil {
 		fmt.Fprintf(os.Stderr, "warn: delete session file: %v\n", delErr)
+	}
+}
+
+func clearLastSessionIDIfMatch(sessionID string) {
+	if sessionID == "" {
+		return
+	}
+	settings, err := store.LoadSettings()
+	if err != nil || settings.LastSessionID != sessionID {
+		return
+	}
+	settings.LastSessionID = ""
+	if err := store.SaveSettings(settings); err != nil {
+		fmt.Fprintf(os.Stderr, "warn: clear lastSessionId: %v\n", err)
 	}
 }
 

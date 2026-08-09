@@ -4,12 +4,17 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"nui/internal/agent"
+	"nui/internal/hitl"
 	"nui/internal/model"
 	"nui/internal/store"
 )
@@ -138,6 +143,92 @@ func TestHandleBulkDeleteSessions(t *testing.T) {
 	}
 	if len(result["deleted"]) != 2 {
 		t.Fatalf("deleted = %v", result["deleted"])
+	}
+}
+
+func TestCleanupDeletedSessionRemovesSideStorage(t *testing.T) {
+	setupTestServerEnv(t)
+	resetRunState()
+	runsDir := t.TempDir()
+	store.SetRunsDirOverride(runsDir)
+	t.Cleanup(func() { store.SetRunsDirOverride("") })
+
+	sessionID := "sess-cleanup"
+	seedSession(sessionID, "Cleanup", testStubAgentType, t.TempDir())
+
+	if _, err := store.SessionConfigDir(sessionID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.EnsureSessionWorkspace(sessionID); err != nil {
+		t.Fatal(err)
+	}
+	uploadDir, err := store.SessionUploadsDir(sessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(uploadDir, "note.txt"), []byte("hi"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	createRunRecord(sessionID, "run-cleanup", "msg")
+	if err := appendRunEvent("run-cleanup", 1, agent.Event{Type: agent.EventText, Content: "x"}); err != nil {
+		t.Fatal(err)
+	}
+
+	hitlReq, err := coordinator().Create(context.Background(), hitl.CreateInput{
+		SessionID: sessionID,
+		Payload:   map[string]any{"message": "approve?"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	settings, err := store.LoadSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings.LastSessionID = sessionID
+	if err := store.SaveSettings(settings); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/sessions/"+sessionID, nil)
+	rec := httptest.NewRecorder()
+	handleSession(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("delete status = %d, body: %s", rec.Code, rec.Body.String())
+	}
+
+	configPath := filepath.Join(os.Getenv("HOME"), ".nui", "sessions", sessionID)
+	if _, err := os.Stat(configPath); !os.IsNotExist(err) {
+		t.Fatalf("session config still present: %v", err)
+	}
+	workspacePath := filepath.Join(os.Getenv("HOME"), ".nui", "workspaces", sessionID)
+	if _, err := os.Stat(workspacePath); !os.IsNotExist(err) {
+		t.Fatalf("workspace still present: %v", err)
+	}
+	if _, err := os.Stat(uploadDir); !os.IsNotExist(err) {
+		t.Fatalf("uploads still present: %v", err)
+	}
+	runPath, err := store.RunLogPath("run-cleanup")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(runPath); !os.IsNotExist(err) {
+		t.Fatalf("run log still present: %v", err)
+	}
+	if _, ok := getRunRecord("run-cleanup"); ok {
+		t.Fatal("in-memory run record should be gone")
+	}
+	if _, err := coordinator().Get(context.Background(), hitlReq.RequestID); err != hitl.ErrNotFound {
+		t.Fatalf("hitl request err = %v", err)
+	}
+	settings, err = store.LoadSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.LastSessionID != "" {
+		t.Fatalf("lastSessionId = %q, want empty", settings.LastSessionID)
 	}
 }
 

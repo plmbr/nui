@@ -142,10 +142,18 @@ SSE `data:` events support `text`, `done`, `error`, and tool-call/image event ty
 |---|---|
 | `~/.nui/data.json` | `sessions`, `agentSessions` (nui session ID → agent session ID), `sessionMessages` (UI chat text) |
 | `~/.nui/settings.json` | `theme`, `defaultAgentType`, `defaultHarness`, `lastAgentType`, `lastSessionId`, `sidebarOpen`, `disabledExtensions` |
+| `~/.nui/sessions/<session-id>/` | Per-session harness config (MCP, skills, system prompt, `.devcontainer/`); removed on session delete |
+| `~/.nui/workspaces/<session-id>/` | Isolated working dir when ADL does not request user `workingDirInput`; removed on session delete |
+| `$TMPDIR/nui-uploads/<session-id>/` | Pasted/dropped chat attachments; removed on session delete |
+| `~/.nui/runs/<runID>.jsonl` | Durable run event logs (AG-UI + headless); removed when the owning session is deleted |
+| `~/.nui/hitl-requests.json` | HITL request/response envelopes; session entries removed on session delete |
+| `~/.nui/schedules.json` | Interval schedules (`lastSessionId` is a pointer only; not cleaned with sessions) |
+| `~/.nui/memory/` | Persistent user/agent memory markdown (not session-scoped) |
 | `~/.nui/agents/*.yaml` | User ADL definitions; loaded on every `GET /api/agent-types` |
 | `~/.nui/extensions/<name>/` | Backend extensions (`extension.yaml` + contribution list files); see `dev/extension-api.md` |
-| `~/.nui/connections/*.json` | Harness TCP/HTTP handshake files (`host`, `port`, `session_id`, `pid`) |
-| Agent history files | Claude: `~/.claude/projects/<dirHash>/<id>.jsonl`; pi/codex/opencode via respective `store/*_history.go` loaders |
+| `~/.nui/connections/*.json` | Harness TCP/HTTP handshake files (`host`, `port`, `session_id`, `pid`) — harness-scoped, not per-session |
+| `~/.nui/opencode-sessions/` | Shared OpenCode Docker data mount (`~/.local/share/opencode` in container) |
+| Agent history files | Claude: `~/.claude/projects/<dirHash>/<id>.jsonl`; pi/codex/opencode via respective `store/*_history.go` loaders; deleted with the nui session when an agent session id is known |
 
 UI loads persisted `sessionMessages` first on session select; falls back to agent history files if empty.
 

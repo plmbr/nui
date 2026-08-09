@@ -271,6 +271,36 @@ func (c *Coordinator) Cancel(_ context.Context, requestID, reason string) error 
 	return err
 }
 
+// DeleteSession removes all HITL requests/responses for a session and wakes waiters.
+func (c *Coordinator) DeleteSession(sessionID string) error {
+	if sessionID == "" {
+		return nil
+	}
+	reqs := c.store.listRequests(ListFilter{SessionID: sessionID})
+	c.mu.Lock()
+	for _, req := range reqs {
+		waiters := c.waiters[req.RequestID]
+		delete(c.waiters, req.RequestID)
+		cancelled := &Response{
+			SchemaVersion: SchemaVersion,
+			RequestID:     req.RequestID,
+			CorrelationID: req.CorrelationID,
+			Status:        StatusCancelled,
+			Answers:       map[string]any{"reason": "session deleted"},
+			RespondedAt:   time.Now().UTC().Format(time.RFC3339),
+			RespondedBy:   &RespondedBy{Channel: "system"},
+		}
+		for _, ch := range waiters {
+			select {
+			case ch <- cancelled:
+			default:
+			}
+		}
+	}
+	c.mu.Unlock()
+	return c.store.deleteBySession(sessionID)
+}
+
 func (c *Coordinator) expire(_ context.Context, requestID string) (*Response, error) {
 	in := RespondInput{
 		Status: StatusExpired,

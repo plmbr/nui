@@ -235,3 +235,34 @@ func isRunActive(runID string) bool {
 	rec, ok := getRunRecord(runID)
 	return ok && rec.Status == RunStatusRunning
 }
+
+// purgeSessionRuns cancels an in-flight run, drops in-memory run state, and
+// deletes ~/.nui/runs/<runId>.jsonl files for the session.
+func purgeSessionRuns(sessionID string) {
+	if sessionID == "" {
+		return
+	}
+	cancelActiveRun(sessionID, "")
+
+	runStoreMu.Lock()
+	ids := append([]string(nil), sessionRuns[sessionID]...)
+	delete(sessionRuns, sessionID)
+	var listenerSets []map[chan runLogEntry]struct{}
+	for _, runID := range ids {
+		delete(runRecords, runID)
+		if listeners := runListeners[runID]; len(listeners) > 0 {
+			listenerSets = append(listenerSets, listeners)
+		}
+		delete(runListeners, runID)
+	}
+	runStoreMu.Unlock()
+
+	for _, listeners := range listenerSets {
+		notifyRunListeners(listeners)
+	}
+	for _, runID := range ids {
+		if err := store.RemoveRunLog(runID); err != nil {
+			fmt.Fprintf(os.Stderr, "warn: remove run log %s: %v\n", runID, err)
+		}
+	}
+}
