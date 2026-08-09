@@ -19,7 +19,7 @@ var APIBuiltinOrder = []string{
 var apiBuiltinAgentDefs = []model.ADLDefinition{
 	{
 		ID:          "anthropic",
-		Name:        "Anthropic",
+		Name:        "Claude API",
 		Description: "Claude models via the Anthropic API",
 		Tags:        []string{"builtin", "api"},
 		Harness: model.ADLHarness{

@@ -107,7 +107,7 @@ describe('api agent-types', () => {
     mockFetch(() =>
       new Response(
         JSON.stringify([
-          { id: 'anthropic', label: 'Anthropic', harness: 'api', available: true, isBuiltin: true },
+          { id: 'anthropic', label: 'Claude API', harness: 'api', available: true, isBuiltin: true },
         ]),
         { status: 200, headers: { 'Content-Type': 'application/json' } },
       ),

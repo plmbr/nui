@@ -58,7 +58,7 @@ func TestAgentListWithMockServer(t *testing.T) {
 	})
 	mux.HandleFunc("/api/agent-types", func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode([]map[string]any{
-			{"id": "anthropic", "label": "Anthropic", "harness": "api", "available": true, "isBuiltin": true, "source": "builtin"},
+			{"id": "anthropic", "label": "Claude API", "harness": "api", "available": true, "isBuiltin": true, "source": "builtin"},
 			{"id": "claude-code", "label": "Claude Code", "harness": "claude-code", "available": true, "isBuiltin": true, "source": "builtin"},
 		})
 	})

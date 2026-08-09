@@ -77,7 +77,7 @@ func TestAgentTypeInfoFromDef_userAgentCLIHarnessUsesAvailability(t *testing.T) 
 func TestAgentTypeInfoFromDef_apiProvider(t *testing.T) {
 	def := model.ADLDefinition{
 		ID:      "anthropic",
-		Name:    "Anthropic",
+		Name:    "Claude API",
 		Harness: model.ADLHarness{Type: "api", Provider: "anthropic"},
 	}
 	info := agentTypeInfoFromDef(def, true)

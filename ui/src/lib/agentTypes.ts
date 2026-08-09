@@ -52,6 +52,21 @@ export function partitionBuiltinAgents(builtins: AgentType[]): {
   }
 }
 
+/**
+ * Built-in agents for the new-session picker: nui, then API, then CLI.
+ * Available agents come first; unavailable agents are listed at the end (same relative order).
+ */
+export function orderedBuiltinAgentsForPicker(types: AgentType[]): AgentType[] {
+  const all = types.filter((a) => a.isBuiltin)
+  const nui = all.find((a) => isNuiAgent(a))
+  const { api, cli } = partitionBuiltinAgents(all.filter((a) => !isNuiAgent(a)))
+  const ordered = [...(nui ? [nui] : []), ...api, ...cli]
+  return [
+    ...ordered.filter((a) => a.available),
+    ...ordered.filter((a) => !a.available),
+  ]
+}
+
 export function pickDefaultAgentTypeId(
   types: AgentType[],
   preferredId?: string | null,
@@ -86,17 +101,26 @@ export function agentSupportsHarnessPermissions(agent: AgentType | undefined): b
   return harnessSupportsPermissions(agent.harness)
 }
 
+/** Whether the new-session UI should offer the user-scope harness config toggle. */
+export function showUserScopeOption(agent: AgentType | undefined): boolean {
+  // nui is a launcher; session options do not apply to agents it launches.
+  if (!agent || isNuiAgent(agent)) return false
+  return harnessSupportsUserScope(agent.harness)
+}
+
 /** Whether the new-session UI should offer the tool-approvals toggle. */
 export function showToolApprovalsOption(agent: AgentType | undefined): boolean {
+  // nui is a launcher; session options do not apply to agents it launches.
+  if (!agent || isNuiAgent(agent)) return false
   if (!agentSupportsHarnessPermissions(agent)) return false
   // ADL toolApprovals.policy: all auto-approves every tool; no session override needed.
-  if (agent?.toolApprovalPolicy === 'all') return false
+  if (agent.toolApprovalPolicy === 'all') return false
   return true
 }
 
 /** Default user-scope checkbox state for a newly selected agent type. */
 export function defaultUserScopeHarnessConfig(agent: AgentType | undefined): boolean {
-  if (!agent || !harnessSupportsUserScope(agent.harness)) return false
+  if (!agent || !showUserScopeOption(agent)) return false
   return agent.isBuiltin
 }
 

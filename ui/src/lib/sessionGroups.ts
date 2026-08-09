@@ -4,10 +4,7 @@ import type { AgentType, Session } from '@/types'
 import { isNuiAgent, NUI_AGENT_ID } from '@/lib/agentTypes'
 
 export const BUILTIN_AGENTS_LABEL = 'Built-in agents'
-export const API_AGENTS_LABEL = 'API agents'
-export const CLI_AGENTS_LABEL = 'CLI agents'
 export const INSTALLED_AGENTS_LABEL = 'Installed agents'
-export const ORCHESTRATOR_AGENTS_LABEL = 'Orchestrator'
 
 /** Session sidebar group id for the nui master agent. */
 export const NUI_GROUP_ID = NUI_AGENT_ID

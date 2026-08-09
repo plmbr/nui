@@ -1,7 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Folder, Plus, Search, X } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Filter, Folder, Search, X } from 'lucide-react'
 import { HarnessIcon } from '@/components/HarnessIcon'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,15 +19,17 @@ import {
   filterAgentsByTags,
 } from '@/lib/agentTags'
 import {
-  partitionBuiltinAgents,
+  orderedBuiltinAgentsForPicker,
   pickDefaultAgentTypeId,
   selectableAgentTypes,
-  harnessSupportsUserScope,
   defaultUserScopeHarnessConfig,
+  showUserScopeOption,
   showToolApprovalsOption,
   isNuiAgent,
+  isApiBuiltinAgent,
+  isCliBuiltinAgent,
 } from '@/lib/agentTypes'
-import { BUILTIN_AGENTS_LABEL, API_AGENTS_LABEL, CLI_AGENTS_LABEL, INSTALLED_AGENTS_LABEL, ORCHESTRATOR_AGENTS_LABEL } from '@/lib/sessionGroups'
+import { BUILTIN_AGENTS_LABEL, INSTALLED_AGENTS_LABEL } from '@/lib/sessionGroups'
 import { TagFilterInput } from '@/components/TagFilterInput'
 import type { AgentType, CreateSessionRequest, ExtensionInfo, Session } from '@/types'
 
@@ -50,13 +52,37 @@ function agentMatchesSearch(agent: AgentType, query: string): boolean {
   return haystack.includes(query)
 }
 
-type AgentCategoryTab = 'builtin' | 'installed'
+const BUILTIN_TAG_CHIP_ORDER = ['nui', 'api', 'cli'] as const
+
+function builtinTagChipLabel(tag: string): string {
+  if (tag === 'api') return 'API'
+  if (tag === 'cli') return 'CLI'
+  return tag
+}
+
+function orderedBuiltinTagChips(tags: string[]): string[] {
+  const set = new Set(tags.filter((tag) => tag !== 'builtin'))
+  const ordered: string[] = []
+  for (const tag of BUILTIN_TAG_CHIP_ORDER) {
+    if (set.has(tag)) {
+      ordered.push(tag)
+      set.delete(tag)
+    }
+  }
+  for (const tag of [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))) {
+    ordered.push(tag)
+  }
+  return ordered
+}
+
+type AgentPane = 'builtin' | 'installed'
 
 export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorkingDir, onClose, onCreated }: Props) {
   const [workingDir, setWorkingDir] = useState(initialWorkingDir ?? '')
   const [selectedId, setSelectedId] = useState('')
   const [customSearch, setCustomSearch] = useState('')
-  const [agentTab, setAgentTab] = useState<AgentCategoryTab>('builtin')
+  const [agentPane, setAgentPane] = useState<AgentPane>('builtin')
+  const [builtinTag, setBuiltinTag] = useState<string | null>(null)
   const [selectedSourceKeys, setSelectedSourceKeys] = useState<Set<string>>(() => new Set())
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [extensions, setExtensions] = useState<ExtensionInfo[]>([])
@@ -69,20 +95,24 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   const [activeDirectoryIndex, setActiveDirectoryIndex] = useState(0)
   const suppressDirectoryLookupForValue = useRef<string | null>(null)
   const customAgentsScrollRef = useRef<HTMLDivElement>(null)
-  const initialTabSynced = useRef(false)
+  const initialPaneSynced = useRef(false)
 
   const builtins = useMemo(
-    () => selectableAgentTypes(agentTypes).filter((a) => a.isBuiltin && !isNuiAgent(a)),
+    () => agentTypes.filter((a) => a.isBuiltin && !isNuiAgent(a)),
     [agentTypes],
   )
-  const nuiAgent = useMemo(
-    () => selectableAgentTypes(agentTypes).find((a) => isNuiAgent(a)),
+  const orderedBuiltins = useMemo(
+    () => orderedBuiltinAgentsForPicker(agentTypes),
     [agentTypes],
   )
-  const { api: apiBuiltins, cli: cliBuiltins } = useMemo(
-    () => partitionBuiltinAgents(builtins),
-    [builtins],
+  const builtinTagChips = useMemo(
+    () => orderedBuiltinTagChips(collectAgentTags(orderedBuiltins)),
+    [orderedBuiltins],
   )
+  const filteredBuiltins = useMemo(() => {
+    if (!builtinTag) return orderedBuiltins
+    return filterAgentsByTags(orderedBuiltins, new Set([builtinTag]))
+  }, [orderedBuiltins, builtinTag])
   const userDefined = useMemo(
     () => sortCustomAgentsByName(
       selectableAgentTypes(agentTypes).filter((a) => !a.isBuiltin),
@@ -91,9 +121,11 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   )
 
   function selectAgent(id: string) {
+    const agent = agentTypes.find((a) => a.id === id)
+    if (!agent?.available) return
     setSelectedId(id)
-    if (userDefined.some((a) => a.id === id)) setAgentTab('installed')
-    else if (builtins.some((a) => a.id === id) || isNuiAgent(id)) setAgentTab('builtin')
+    if (userDefined.some((a) => a.id === id)) setAgentPane('installed')
+    else if (builtins.some((a) => a.id === id) || isNuiAgent(id)) setAgentPane('builtin')
   }
 
   useEffect(() => {
@@ -118,10 +150,10 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   }, [agentTypes, initialAgentTypeId, builtins, userDefined])
 
   useEffect(() => {
-    if (initialTabSynced.current || !selectedId) return
-    initialTabSynced.current = true
-    if (userDefined.some((a) => a.id === selectedId)) setAgentTab('installed')
-    else if (builtins.some((a) => a.id === selectedId) || isNuiAgent(selectedId)) setAgentTab('builtin')
+    if (initialPaneSynced.current || !selectedId) return
+    initialPaneSynced.current = true
+    if (userDefined.some((a) => a.id === selectedId)) setAgentPane('installed')
+    else if (builtins.some((a) => a.id === selectedId) || isNuiAgent(selectedId)) setAgentPane('builtin')
   }, [selectedId, userDefined, builtins])
 
   useEffect(() => {
@@ -170,12 +202,14 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
     setCustomSearch('')
     setSelectedSourceKeys(new Set())
     setSelectedTags([])
+    setBuiltinTag(null)
+    setAgentPane('builtin')
     setError('')
     setUserScopeHarnessConfig(false)
     setHarnessPermissionsEnabled(true)
     setDirectorySuggestions([])
     setDirectoryInputFocused(false)
-    initialTabSynced.current = false
+    initialPaneSynced.current = false
   }
 
   function handleClose() {
@@ -229,12 +263,12 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
     }
     setSelectedSourceKeys(new Set(allSourceKeys))
   }
-  const showBuiltinTab = builtins.length > 0
-  const showInstalledTab = userDefined.length > 0
-  const showAgentTabs = showBuiltinTab && showInstalledTab
+  const showBuiltinPane = orderedBuiltins.length > 0
+  const showInstalledBrowse = userDefined.length > 0
+  const showingInstalled = agentPane === 'installed' && showInstalledBrowse
   const directoryListOpen = directoryInputFocused && directorySuggestions.length > 0
-  const showUserScopeOption = selected ? harnessSupportsUserScope(selected.harness) : false
-  const showHarnessPermissionsOption = selected ? showToolApprovalsOption(selected) : false
+  const showUserScope = showUserScopeOption(selected)
+  const showHarnessPermissionsOption = showToolApprovalsOption(selected)
 
   useEffect(() => {
     const agent = agentTypes.find((a) => a.id === selectedId)
@@ -281,6 +315,10 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
       setError('Select an agent type.')
       return
     }
+    if (!selected?.available) {
+      setError('Selected agent is not available on this system.')
+      return
+    }
     setLoading(true)
     setError('')
     try {
@@ -317,87 +355,113 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
 
   return (
     <div className="customize-panel flex flex-1 min-h-0 flex-col overflow-hidden">
-      <div className="conversation-header justify-between">
-        <div className="flex items-center gap-2 min-w-0">
-          <Plus className="size-4 shrink-0 text-muted-foreground" />
-          <h1 className="text-sm font-semibold truncate">New Session</h1>
-        </div>
-        <Button variant="ghost" size="sm" onClick={handleClose} aria-label="Close new session panel">
-          <X className="size-4" />
-        </Button>
-      </div>
-
+      <h1 className="sr-only">New Session</h1>
       <form onSubmit={handleSubmit} className="flex flex-1 flex-col min-h-0">
         <div className="flex flex-1 flex-col min-h-0 overflow-hidden p-4 md:p-6">
           <div className="customize-tab-content mx-auto flex w-full min-h-0 flex-1 flex-col gap-5">
 
-            {(showBuiltinTab || showInstalledTab) && (
+            {(showBuiltinPane || showInstalledBrowse) && (
             <div className="flex min-h-0 flex-1 flex-col gap-3">
-              {showAgentTabs && (
-                <div className="new-session-tabs shrink-0" role="tablist" aria-label="Agent categories">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={agentTab === 'builtin'}
-                    className={cn('new-session-tab', agentTab === 'builtin' && 'new-session-tab--active')}
-                    onClick={() => setAgentTab('builtin')}
-                  >
-                    {BUILTIN_AGENTS_LABEL}
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={agentTab === 'installed'}
-                    className={cn('new-session-tab', agentTab === 'installed' && 'new-session-tab--active')}
-                    onClick={() => setAgentTab('installed')}
-                  >
-                    {INSTALLED_AGENTS_LABEL}
-                    <span className="text-muted-foreground font-normal">({userDefined.length})</span>
-                  </button>
-                </div>
-              )}
-
-              {showBuiltinTab && (!showAgentTabs || agentTab === 'builtin') && (
-                <div
-                  role={showAgentTabs ? 'tabpanel' : undefined}
-                  aria-label={BUILTIN_AGENTS_LABEL}
-                  className="min-h-0 flex-1 overflow-y-auto"
-                >
-                  <div className="flex flex-col gap-5">
-                    {nuiAgent && (
-                      <BuiltinAgentSection
-                        label={ORCHESTRATOR_AGENTS_LABEL}
-                        agents={[nuiAgent]}
-                        selectedId={selectedId}
-                        onSelect={selectAgent}
-                      />
-                    )}
-                    {apiBuiltins.length > 0 && (
-                      <BuiltinAgentSection
-                        label={API_AGENTS_LABEL}
-                        agents={apiBuiltins}
-                        selectedId={selectedId}
-                        onSelect={selectAgent}
-                      />
-                    )}
-                    {cliBuiltins.length > 0 && (
-                      <BuiltinAgentSection
-                        label={CLI_AGENTS_LABEL}
-                        agents={cliBuiltins}
-                        selectedId={selectedId}
-                        onSelect={selectAgent}
-                      />
+              {!showingInstalled && showBuiltinPane && (
+                <div className="flex min-h-0 flex-1 flex-col gap-3" aria-label="Built-in agents">
+                  {(builtinTagChips.length > 0 || showInstalledBrowse) && (
+                    <div className="flex items-center gap-3 shrink-0">
+                      {builtinTagChips.length > 0 && (
+                        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
+                          <Filter className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter built-in agents by tag">
+                            <button
+                              type="button"
+                              aria-pressed={builtinTag === null}
+                              onClick={() => setBuiltinTag(null)}
+                              className={cn(
+                                'rounded-md px-2.5 py-1 text-xs font-medium transition-colors border',
+                                builtinTag === null
+                                  ? 'border-primary bg-primary text-primary-foreground'
+                                  : 'border-border bg-background text-muted-foreground hover:bg-muted',
+                              )}
+                            >
+                              All
+                            </button>
+                            {builtinTagChips.map((tag) => {
+                              const active = builtinTag === tag
+                              return (
+                                <button
+                                  key={tag}
+                                  type="button"
+                                  aria-pressed={active}
+                                  onClick={() => setBuiltinTag(active ? null : tag)}
+                                  className={cn(
+                                    'rounded-md px-2.5 py-1 text-xs font-medium transition-colors border',
+                                    active
+                                      ? 'border-primary bg-primary text-primary-foreground'
+                                      : 'border-border bg-background text-muted-foreground hover:bg-muted',
+                                  )}
+                                >
+                                  {builtinTagChipLabel(tag)}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      {showInstalledBrowse && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="ml-auto shrink-0 gap-1 text-muted-foreground hover:text-foreground"
+                          onClick={() => setAgentPane('installed')}
+                        >
+                          <span>
+                            {INSTALLED_AGENTS_LABEL}
+                            <span className="font-normal"> ({userDefined.length})</span>
+                          </span>
+                          <ChevronRight className="size-4" />
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  <div className="min-h-0 flex-1 overflow-y-auto">
+                    {filteredBuiltins.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-2">No agents match this filter.</p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {filteredBuiltins.map((agent) => (
+                          <BuiltinAgentCard
+                            key={agent.id}
+                            agent={agent}
+                            selected={selectedId === agent.id}
+                            onSelect={() => selectAgent(agent.id)}
+                          />
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
               )}
 
-              {showInstalledTab && (!showAgentTabs || agentTab === 'installed') && (
+              {showingInstalled && (
                 <div
-                  role={showAgentTabs ? 'tabpanel' : undefined}
                   aria-label={INSTALLED_AGENTS_LABEL}
                   className="flex min-h-0 flex-1 flex-col gap-2"
                 >
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1.5 px-2"
+                      onClick={() => setAgentPane('builtin')}
+                    >
+                      <ArrowLeft className="size-4" />
+                      {BUILTIN_AGENTS_LABEL}
+                    </Button>
+                    <h2 className="text-sm font-medium truncate">
+                      {INSTALLED_AGENTS_LABEL}
+                      <span className="text-muted-foreground font-normal"> ({userDefined.length})</span>
+                    </h2>
+                  </div>
                   <div className="relative shrink-0">
                     <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
@@ -486,6 +550,23 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
                   </div>
                 </div>
               )}
+
+              {!showBuiltinPane && showInstalledBrowse && !showingInstalled && (
+                <div className="flex min-h-0 flex-1 flex-col gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-between shrink-0"
+                    onClick={() => setAgentPane('installed')}
+                  >
+                    <span>
+                      {INSTALLED_AGENTS_LABEL}
+                      <span className="text-muted-foreground font-normal"> ({userDefined.length})</span>
+                    </span>
+                    <ChevronRight className="size-4 text-muted-foreground" />
+                  </Button>
+                </div>
+              )}
             </div>
             )}
 
@@ -547,7 +628,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
               </div>
             )}
 
-            {showUserScopeOption && (
+            {showUserScope && (
               <div className="shrink-0 flex items-start gap-2">
                 <input
                   id="userScopeHarnessConfig"
@@ -609,7 +690,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
               <Button type="button" variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading || !selectedId}>
+              <Button type="submit" disabled={loading || !selectedId || !selected?.available}>
                 {loading ? 'Creating…' : 'Create Session'}
               </Button>
             </div>
@@ -620,33 +701,6 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   )
 }
 
-interface BuiltinAgentSectionProps {
-  label: string
-  agents: AgentType[]
-  selectedId: string
-  onSelect: (id: string) => void
-}
-
-function BuiltinAgentSection({ label, agents, selectedId, onSelect }: BuiltinAgentSectionProps) {
-  return (
-    <section className="space-y-2" aria-label={label}>
-      <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </h3>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {agents.map((agent) => (
-          <BuiltinAgentCard
-            key={agent.id}
-            agent={agent}
-            selected={selectedId === agent.id}
-            onSelect={() => onSelect(agent.id)}
-          />
-        ))}
-      </div>
-    </section>
-  )
-}
-
 interface BuiltinAgentCardProps {
   agent: AgentType
   selected: boolean
@@ -654,23 +708,48 @@ interface BuiltinAgentCardProps {
 }
 
 function BuiltinAgentCard({ agent, selected, onSelect }: BuiltinAgentCardProps) {
+  const unavailable = !agent.available
+  const kindLabel = isNuiAgent(agent)
+    ? null
+    : isApiBuiltinAgent(agent)
+      ? 'API'
+      : isCliBuiltinAgent(agent)
+        ? 'CLI'
+        : null
   return (
     <button
       type="button"
       onClick={onSelect}
+      disabled={unavailable}
       aria-pressed={selected}
+      aria-disabled={unavailable}
+      title={unavailable ? 'Not available on this system' : undefined}
       className={cn(
         'flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center transition-colors',
-        selected
+        unavailable && 'cursor-not-allowed opacity-45',
+        !unavailable && selected
           ? 'border-primary bg-primary/5 text-foreground'
-          : 'border-border bg-background hover:bg-muted/60',
+          : !unavailable && 'border-border bg-background hover:bg-muted/60',
+        unavailable && 'border-dashed border-border bg-background',
       )}
     >
       <HarnessIcon harness={agent.harness} provider={agent.provider} agentId={agent.id} size="xl" />
       <span className={cn(
         'text-xs leading-tight',
-        selected ? 'font-medium text-foreground' : 'text-muted-foreground',
+        selected && !unavailable ? 'font-medium text-foreground' : 'text-muted-foreground',
       )}>{agent.label}</span>
+      {(kindLabel || unavailable) && (
+        <span className="flex flex-wrap items-center justify-center gap-1">
+          {kindLabel && (
+            <span className="rounded-full border border-border/60 bg-muted/50 px-1.5 py-px text-[10px] font-medium leading-tight text-muted-foreground">
+              {kindLabel}
+            </span>
+          )}
+          {unavailable && (
+            <span className="text-[10px] leading-tight text-muted-foreground">Unavailable</span>
+          )}
+        </span>
+      )}
     </button>
   )
 }

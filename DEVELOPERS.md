@@ -160,7 +160,7 @@ Ten built-in agent types: four CLI harnesses, five API harnesses, and the `nui` 
 
 | Name | Provider | Default model | API key env |
 |---|---|---|---|
-| Anthropic | `anthropic` | `claude-sonnet-4-20250514` | `ANTHROPIC_API_KEY` |
+| Claude API | `anthropic` | `claude-sonnet-4-20250514` | `ANTHROPIC_API_KEY` |
 | OpenAI | `openai` | `gpt-4o-mini` | `OPENAI_API_KEY` |
 | Gemini | `gemini` | `gemini-2.5-flash` | `GEMINI_API_KEY` / `GOOGLE_API_KEY` |
 | OpenRouter | `openrouter` | `anthropic/claude-sonnet-4` | `OPENROUTER_API_KEY` |

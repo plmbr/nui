@@ -5,6 +5,7 @@ import { NuiLogo } from '@/components/NuiLogo'
 import { isNuiAgent } from '@/lib/agentTypes'
 import type { AgentType } from '@/types'
 import claudeCodeIcon from '@/assets/harness/claude-code.svg?url'
+import claudeCodeTextIcon from '@/assets/harness/claude-code-text.svg?url'
 import piLightIcon from '@/assets/harness/pi-light.svg?url'
 import piDarkIcon from '@/assets/harness/pi-dark.svg?url'
 import codexIcon from '@/assets/harness/codex.svg?url'
@@ -37,7 +38,7 @@ const HARNESS_ACCENTS: Partial<Record<IconKey, string>> = {
 }
 
 const BRAND_ICON_SRC: Partial<Record<IconKey, string | { light: string; dark: string }>> = {
-  'claude-code': claudeCodeIcon,
+  'claude-code': claudeCodeTextIcon,
   anthropic: claudeCodeIcon,
   pi: { light: piLightIcon, dark: piDarkIcon },
   codex: codexIcon,
@@ -47,6 +48,9 @@ const BRAND_ICON_SRC: Partial<Record<IconKey, string | { light: string; dark: st
   openrouter: openrouterIcon,
   ollama: { light: ollamaLightIcon, dark: ollamaDarkIcon },
 }
+
+/** Wide wordmark assets that need a non-square container on large tiles. */
+const WORDMARK_ICON_KEYS = new Set<IconKey>(['claude-code'])
 
 interface Props {
   harness: Harness
@@ -63,12 +67,29 @@ const SIZE = {
   xl: 'size-16',
 } as const
 
+const WORDMARK_SIZE = {
+  sm: 'h-7 w-14',
+  md: 'h-9 w-[4.5rem]',
+  lg: 'h-12 w-24',
+  xl: 'h-16 w-28',
+} as const
+
 const IMG_SIZE = {
   sm: 'size-4',
   md: 'size-5',
   lg: 'size-8',
   xl: 'size-11',
 } as const
+
+const WORDMARK_IMG_SIZE = {
+  sm: 'h-2.5 w-auto max-w-[1.5rem]',
+  md: 'h-3 w-auto max-w-[1.85rem]',
+  lg: 'h-3.5 w-auto max-w-[2.5rem]',
+  xl: 'h-6 w-auto max-w-[6.5rem]',
+} as const
+
+/** Only the large new-session grid uses a wide wordmark tile; list rows stay square. */
+const WORDMARK_WIDE_SIZES = new Set<keyof typeof SIZE>(['xl'])
 
 function resolveIconKey(harness: Harness, provider?: AgentType['provider'], agentId?: string): IconKey {
   if (harness === 'api') {
@@ -180,17 +201,22 @@ export function HarnessIcon({ harness, provider, agentId, className, size = 'md'
   const iconKey = resolveIconKey(harness, provider, agentId)
   const brandSrc = BRAND_ICON_SRC[iconKey]
   const accent = HARNESS_ACCENTS[iconKey] ?? 'var(--muted-foreground)'
+  const wordmark = WORDMARK_ICON_KEYS.has(iconKey)
+  const wideWordmark = wordmark && WORDMARK_WIDE_SIZES.has(size)
 
   if (brandSrc) {
     return (
       <span
         className={cn(
           'inline-flex shrink-0 items-center justify-center rounded-lg bg-muted/35',
-          SIZE[size],
+          wideWordmark ? WORDMARK_SIZE[size] : SIZE[size],
           className,
         )}
       >
-        <BrandIcon src={brandSrc} className={IMG_SIZE[size]} />
+        <BrandIcon
+          src={brandSrc}
+          className={wordmark ? WORDMARK_IMG_SIZE[size] : IMG_SIZE[size]}
+        />
       </span>
     )
   }

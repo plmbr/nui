@@ -3,8 +3,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   agentSupportsHarnessPermissions,
+  defaultUserScopeHarnessConfig,
+  orderedBuiltinAgentsForPicker,
   partitionBuiltinAgents,
   showToolApprovalsOption,
+  showUserScopeOption,
   selectableAgentTypes,
 } from '@/lib/agentTypes'
 import type { AgentType } from '@/types'
@@ -21,6 +24,14 @@ const autoApproveAgent: AgentType = {
   ...claudeAgent,
   id: 'auto-agent',
   toolApprovalPolicy: 'all',
+}
+
+const nuiAgent: AgentType = {
+  id: 'nui',
+  label: 'nui',
+  harness: 'claude-code',
+  available: true,
+  isBuiltin: true,
 }
 
 describe('agentTypes', () => {
@@ -43,15 +54,41 @@ describe('agentTypes', () => {
     expect(showToolApprovalsOption(undefined)).toBe(false)
   })
 
+  it('hides user-scope and tool approval toggles for the nui orchestrator', () => {
+    expect(showUserScopeOption(nuiAgent)).toBe(false)
+    expect(showToolApprovalsOption(nuiAgent)).toBe(false)
+    expect(defaultUserScopeHarnessConfig(nuiAgent)).toBe(false)
+    expect(showUserScopeOption({ ...nuiAgent, id: 'nui-orchestrator' })).toBe(false)
+    expect(showUserScopeOption(claudeAgent)).toBe(true)
+    expect(defaultUserScopeHarnessConfig(claudeAgent)).toBe(true)
+  })
+
   it('partitions built-in agents into API and CLI groups', () => {
     const agents: AgentType[] = [
       claudeAgent,
       { id: 'ollama', label: 'Ollama', harness: 'api', provider: 'ollama', available: true, isBuiltin: true },
-      { id: 'anthropic', label: 'Anthropic', harness: 'api', provider: 'anthropic', available: true, isBuiltin: true },
+      { id: 'anthropic', label: 'Claude API', harness: 'api', provider: 'anthropic', available: true, isBuiltin: true },
       { id: 'pi', label: 'Pi', harness: 'pi', available: true, isBuiltin: true },
     ]
     const { api, cli } = partitionBuiltinAgents(agents)
     expect(api.map((a) => a.id)).toEqual(['anthropic', 'ollama'])
     expect(cli.map((a) => a.id)).toEqual(['claude-code', 'pi'])
+  })
+
+  it('orders built-in picker agents with unavailable last', () => {
+    const agents: AgentType[] = [
+      { id: 'pi', label: 'Pi', harness: 'pi', available: false, isBuiltin: true },
+      { id: 'anthropic', label: 'Claude API', harness: 'api', provider: 'anthropic', available: true, isBuiltin: true },
+      nuiAgent,
+      { id: 'openai', label: 'OpenAI', harness: 'api', provider: 'openai', available: false, isBuiltin: true },
+      claudeAgent,
+    ]
+    expect(orderedBuiltinAgentsForPicker(agents).map((a) => a.id)).toEqual([
+      'nui',
+      'anthropic',
+      'claude-code',
+      'openai',
+      'pi',
+    ])
   })
 })

@@ -63,7 +63,7 @@ Install the agent CLI you want to use and make sure it is on your `PATH`:
 
 | Agent | API key environment variable |
 |---|---|
-| Anthropic | `ANTHROPIC_API_KEY` (or `ANTHROPIC_AUTH_TOKEN`) |
+| Claude API | `ANTHROPIC_API_KEY` (or `ANTHROPIC_AUTH_TOKEN`) |
 | OpenAI | `OPENAI_API_KEY` |
 | Gemini | `GEMINI_API_KEY` or `GOOGLE_API_KEY` |
 | OpenRouter | `OPENROUTER_API_KEY` |
@@ -136,11 +136,11 @@ Set `NUI_URL` or pass `--url` if the server is not on `http://127.0.0.1:8080`. U
 | `codex` | OpenAI Codex CLI |
 | `opencode` | OpenCode CLI |
 
-**API agents** (in-process LLM calls; selectable under **Built-in → API** in the New Session panel):
+**API agents** (in-process LLM calls; selectable under built-in agents in the New Session panel):
 
 | Name | Description |
 |---|---|
-| Anthropic | Claude models via the Anthropic API |
+| Claude API | Claude models via the Anthropic API |
 | OpenAI | GPT models via the OpenAI API |
 | Gemini | Google Gemini via the Gemini API |
 | OpenRouter | Multi-model routing via OpenRouter |

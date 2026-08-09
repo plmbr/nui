@@ -18,8 +18,6 @@ export function newSessionPanel(page: Page) {
   })
 }
 
-const AGENT_CATEGORY_TABS = [/Built-in agents/i, /Installed agents/i] as const
-
 export function defaultE2EAgentLabel(): RegExp {
   return echoAgentAvailable() ? /E2E Echo/i : /Claude Code/i
 }
@@ -30,26 +28,30 @@ export async function ensureAgentVisibleInNewSession(page: Page, agentLabel: str
   if (await agentButton.isVisible()) {
     return
   }
-  for (const tabName of AGENT_CATEGORY_TABS) {
-    await switchAgentCategoryTab(panel, tabName)
+
+  const installedButton = panel.getByRole('button', { name: /Installed agents/i })
+  if (await installedButton.isVisible()) {
+    await installedButton.click()
+    if (await agentButton.isVisible()) {
+      return
+    }
+  }
+
+  const backButton = panel.getByRole('button', { name: /Built-in agents/i })
+  if (await backButton.isVisible()) {
+    await backButton.click()
     if (await agentButton.isVisible()) {
       return
     }
   }
 }
 
-async function switchAgentCategoryTab(
-  panel: ReturnType<typeof newSessionPanel>,
-  tabName: (typeof AGENT_CATEGORY_TABS)[number],
-) {
-  const tab = panel.getByRole('tab', { name: tabName })
-  if (await tab.isVisible()) {
-    await tab.click()
-  }
-}
-
 export async function showBuiltinAgentsInNewSession(page: Page) {
-  await switchAgentCategoryTab(newSessionPanel(page), /Built-in agents/i)
+  const panel = newSessionPanel(page)
+  const backButton = panel.getByRole('button', { name: /Built-in agents/i })
+  if (await backButton.isVisible()) {
+    await backButton.click()
+  }
 }
 
 export async function selectAgentInNewSession(page: Page, agentLabel: string | RegExp) {
