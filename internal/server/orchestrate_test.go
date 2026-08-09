@@ -78,8 +78,14 @@ func TestOrchestratorLaunchSessionTool(t *testing.T) {
 	if !orchestratorLaunchSessionTool(agent.Event{Type: agent.EventToolCallResult, ToolName: "nui-orchestrator__launch_session"}) {
 		t.Fatal("expected qualified launch_session")
 	}
+	if !orchestratorLaunchSessionTool(agent.Event{Type: agent.EventToolCallResult, ToolName: "mcp__nui-orchestrator__launch_session"}) {
+		t.Fatal("expected mcp-prefixed launch_session")
+	}
 	if orchestratorLaunchSessionTool(agent.Event{Type: agent.EventToolCallResult, ToolName: "list_agents"}) {
 		t.Fatal("list_agents should not match")
+	}
+	if !isLaunchSessionToolName("launch_session") {
+		t.Fatal("expected isLaunchSessionToolName")
 	}
 }
 

@@ -14,6 +14,7 @@ import (
 	"nui/internal/agent"
 	"nui/internal/agents"
 	"nui/internal/extensions"
+	"nui/internal/mcpclient"
 	"nui/internal/model"
 	"nui/internal/skills"
 	"nui/internal/store"
@@ -195,15 +196,18 @@ func orchestratorSavedAgent(ev agent.Event) bool {
 	if ev.Type != agent.EventToolCallResult {
 		return false
 	}
-	return strings.Contains(strings.ToLower(ev.ToolName), "save_agent")
+	return strings.EqualFold(mcpclient.BareToolName(ev.ToolName), "save_agent")
+}
+
+func isLaunchSessionToolName(toolName string) bool {
+	return strings.EqualFold(mcpclient.BareToolName(toolName), "launch_session")
 }
 
 func orchestratorLaunchSessionTool(ev agent.Event) bool {
 	if ev.Type != agent.EventToolCallResult {
 		return false
 	}
-	name := strings.ToLower(ev.ToolName)
-	return strings.Contains(name, "launch_session")
+	return isLaunchSessionToolName(ev.ToolName)
 }
 
 func parseLaunchSessionToolResult(content string) (orchestrateRunResult, bool) {

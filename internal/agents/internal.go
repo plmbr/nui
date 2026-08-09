@@ -35,7 +35,7 @@ Always call the exact tool names available to you in this session.
 When the request is vague, exploratory (e.g. "what can you do"), or you are unsure which agent fits, answer helpfully in chat and ask clarifying questions instead of guessing.
 When the user wants to create or save a new agent definition, follow the create-agent skill (/create-agent) and call save_agent on the nui-agent MCP server. Do not call launch_session for agent creation — the user stays in a nui session.
 
-In an ongoing session you can keep helping directly or delegate to another agent via launch_session when the user picks a direction.`
+In an ongoing session you can keep helping directly or delegate to another agent via launch_session when the user picks a direction. When launch_session succeeds, the nui UI switches to the new session and runs the provided prompt.`
 
 // LauncherPromptAppendix is appended for one-shot home launcher orchestration runs.
 const LauncherPromptAppendix = `## Home launcher

@@ -287,6 +287,9 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 				"content":    ev.Content,
 				"role":       "tool",
 			}, ev.ParentToolCallID))
+			if ev.ParentToolCallID == "" {
+				emitOpenSessionEvent(reqCtx, w, flusher, acc, ev)
+			}
 		case agent.EventImage:
 			if ev.ImageData == "" {
 				continue
@@ -445,5 +448,39 @@ func emitVisualizationEvent(reqCtx context.Context, w http.ResponseWriter, flush
 			"html":       html,
 			"title":      title,
 		},
+	})
+}
+
+// emitOpenSessionEvent notifies the connected UI to jump to a session created by launch_session.
+func emitOpenSessionEvent(reqCtx context.Context, w http.ResponseWriter, flusher http.Flusher, acc *assistantPartAccumulator, ev agent.Event) {
+	toolName := ev.ToolName
+	if toolName == "" && ev.ToolCallID != "" {
+		if part := acc.toolPartForCall(ev.ToolCallID); part != nil {
+			toolName = part.ToolName
+		}
+	}
+	if !isLaunchSessionToolName(toolName) {
+		return
+	}
+	parsed, ok := parseLaunchSessionToolResult(ev.Content)
+	if !ok {
+		return
+	}
+	value := map[string]any{
+		"sessionId": parsed.Session.ID,
+	}
+	if parsed.Prompt != "" {
+		value["prompt"] = parsed.Prompt
+	}
+	if parsed.Session.AgentType != "" {
+		value["agentType"] = parsed.Session.AgentType
+	}
+	if ev.ToolCallID != "" {
+		value["toolCallId"] = ev.ToolCallID
+	}
+	writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
+		"type":  "CUSTOM",
+		"name":  "open_session",
+		"value": value,
 	})
 }

@@ -2,6 +2,13 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+type SubHandlers = {
+  next?: (e: unknown) => void
+  complete?: () => void
+}
+
+let lastSubscriber: SubHandlers | undefined
+
 vi.mock('@/api', () => ({
   api: {
     messages: {
@@ -28,12 +35,10 @@ vi.mock('@/api', () => ({
 vi.mock('@ag-ui/client', () => ({
   HttpAgent: class MockHttpAgent {
     run = vi.fn(() => ({
-      subscribe: vi.fn(
-        ({ complete }: { next?: (e: unknown) => void; complete?: () => void }) => {
-          complete?.()
-          return { unsubscribe: vi.fn() }
-        },
-      ),
+      subscribe: vi.fn((handlers: SubHandlers) => {
+        lastSubscriber = handlers
+        return { unsubscribe: vi.fn() }
+      }),
     }))
     constructor(_opts: unknown) {}
   },
@@ -45,11 +50,14 @@ import {
   ensureSessionChatLoaded,
   getSessionChatSnapshot,
   sendMessage,
+  subscribeOpenSession,
 } from '@/lib/sessionChatStore'
 
 describe('sessionChatStore', () => {
   beforeEach(() => {
     clearSessionChat('sess-1')
+    clearSessionChat('sess-launch')
+    lastSubscriber = undefined
     vi.clearAllMocks()
   })
 
@@ -69,5 +77,24 @@ describe('sessionChatStore', () => {
     const snap = getSessionChatSnapshot('sess-1')
     expect(snap.messages.some((m) => m.role === 'user' && m.content === 'test message')).toBe(true)
     expect(snap.messages.some((m) => m.role === 'assistant')).toBe(true)
+  })
+
+  it('notifies open_session listeners from CUSTOM events', () => {
+    const seen: Array<{ sessionId: string; prompt?: string }> = []
+    const unsub = subscribeOpenSession((event) => {
+      seen.push({ sessionId: event.sessionId, prompt: event.prompt })
+    })
+
+    sendMessage('sess-launch', 'delegate this')
+    expect(lastSubscriber?.next).toBeTypeOf('function')
+
+    lastSubscriber!.next!({
+      type: 'CUSTOM',
+      name: 'open_session',
+      value: { sessionId: 'target-1', prompt: 'do the work' },
+    })
+
+    expect(seen).toEqual([{ sessionId: 'target-1', prompt: 'do the work' }])
+    unsub()
   })
 })

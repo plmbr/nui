@@ -268,5 +268,77 @@ func TestHandleSessionAGUI_subAgentRoutedCustomEvent(t *testing.T) {
 	}
 }
 
+func TestHandleSessionAGUI_openSessionCustomEvent(t *testing.T) {
+	launchResult := `{
+		"session": {"id":"target-sess","name":"Delegated","agentType":"claude-code","workingDir":"/tmp","createdAt":"2026-01-01T00:00:00Z"},
+		"prompt": "fix the flaky test"
+	}`
+	mgr := setupTestServerEnv(t)
+	mgr.SetTestHarnessRun(func(_ context.Context, _ agent.RunRequest, events chan<- agent.Event) error {
+		events <- agent.Event{
+			Type:       agent.EventToolCallStart,
+			ToolCallID: "tc-launch",
+			ToolName:   "nui-orchestrator__launch_session",
+		}
+		events <- agent.Event{
+			Type:       agent.EventToolCallEnd,
+			ToolCallID: "tc-launch",
+			ToolName:   "nui-orchestrator__launch_session",
+		}
+		events <- agent.Event{
+			Type:       agent.EventToolCallResult,
+			ToolCallID: "tc-launch",
+			ToolName:   "nui-orchestrator__launch_session",
+			Content:    launchResult,
+		}
+		events <- agent.Event{Type: agent.EventDone, SessionID: "s1"}
+		return nil
+	})
+	seedSession("sess-launch", "Test", testStubAgentType, t.TempDir())
+
+	_, events := postAGUI(t, "sess-launch", "send this to claude")
+	var sawOpen bool
+	for _, ev := range events {
+		if ev.Type == "CUSTOM" && ev.Raw["name"] == "open_session" {
+			sawOpen = true
+			val, _ := ev.Raw["value"].(map[string]any)
+			if val["sessionId"] != "target-sess" {
+				t.Fatalf("sessionId = %v", val["sessionId"])
+			}
+			if val["prompt"] != "fix the flaky test" {
+				t.Fatalf("prompt = %v", val["prompt"])
+			}
+			if val["agentType"] != "claude-code" {
+				t.Fatalf("agentType = %v", val["agentType"])
+			}
+		}
+	}
+	if !sawOpen {
+		t.Fatalf("expected open_session custom event, got %+v", events)
+	}
+}
+
+func TestHandleSessionAGUI_openSessionIgnoresFailedLaunch(t *testing.T) {
+	mgr := setupTestServerEnv(t)
+	mgr.SetTestHarnessRun(func(_ context.Context, _ agent.RunRequest, events chan<- agent.Event) error {
+		events <- agent.Event{
+			Type:       agent.EventToolCallResult,
+			ToolCallID: "tc-launch",
+			ToolName:   "launch_session",
+			Content:    `error: unknown agent id "nope"`,
+		}
+		events <- agent.Event{Type: agent.EventDone, SessionID: "s1"}
+		return nil
+	})
+	seedSession("sess-launch-fail", "Test", testStubAgentType, t.TempDir())
+
+	_, events := postAGUI(t, "sess-launch-fail", "send to nope")
+	for _, ev := range events {
+		if ev.Type == "CUSTOM" && ev.Raw["name"] == "open_session" {
+			t.Fatalf("unexpected open_session event: %+v", ev.Raw)
+		}
+	}
+}
+
 // Ensure bytes helper compiles for concurrent test.
 var _ = bytes.NewReader

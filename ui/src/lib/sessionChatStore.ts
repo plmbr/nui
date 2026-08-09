@@ -27,6 +27,7 @@ import {
 } from '@/lib/subagentTrace'
 import { visualizationFromArgs, visualizationFromToolResult, visualizationHTMLReady } from '@/lib/visualization'
 import { prepareVisualizationHtml } from '@/lib/prepareVisualizationHtml'
+import { parseOpenSessionCustomValue, type OpenSessionEvent } from '@/lib/openSession'
 
 type StopFn = () => void | Promise<void>
 
@@ -68,8 +69,22 @@ const entries = new Map<string, SessionEntry>()
 const aguiFinishedRuns = new Map<string, Set<string>>()
 const globalListeners = new Set<() => void>()
 const progressListeners = new Set<() => void>()
+const openSessionListeners = new Set<(event: OpenSessionEvent) => void>()
 let runningSnapshot = ''
 let progressSnapshot = ''
+
+export type { OpenSessionEvent }
+
+export function subscribeOpenSession(listener: (event: OpenSessionEvent) => void): () => void {
+  openSessionListeners.add(listener)
+  return () => openSessionListeners.delete(listener)
+}
+
+function notifyOpenSession(event: OpenSessionEvent) {
+  for (const listener of openSessionListeners) {
+    listener(event)
+  }
+}
 
 function createSessionAgent(sessionId: string): HttpAgent {
   return new HttpAgent({
@@ -917,6 +932,11 @@ function startSend(sessionId: string, text: string) {
               m.id === assistantMsgId ? { ...m, routedAgentLabel: label } : m,
             ),
           }))
+          return
+        }
+        if (e.name === 'open_session') {
+          const open = parseOpenSessionCustomValue(e.value, sessionId)
+          if (open) notifyOpenSession(open)
           return
         }
         if (e.name === 'visualization') {

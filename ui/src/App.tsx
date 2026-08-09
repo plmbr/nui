@@ -17,7 +17,7 @@ import { SessionsListPanel } from '@/components/SessionsListPanel'
 import { ThemeProvider } from '@/contexts/theme'
 import { api } from '@/api'
 import { groupSessionsByAgentType, defaultAgentTypeForGroup, findOrCreateSessionGroup } from '@/lib/sessionGroups'
-import { clearSessionChat, probeActiveRuns } from '@/lib/sessionChatStore'
+import { clearSessionChat, probeActiveRuns, subscribeOpenSession } from '@/lib/sessionChatStore'
 import {
   agentFromNewSessionSearch,
   agentGroupIdFromPath,
@@ -209,6 +209,24 @@ export default function App() {
       void loadSessions()
     })
   }, [appReady, loadSessions])
+
+  useEffect(() => {
+    return subscribeOpenSession((event) => {
+      void (async () => {
+        await loadSessions()
+        setCustomizeOpen(false)
+        setSchedulesOpen(false)
+        setNewSessionOpen(false)
+        setLandingOpen(false)
+        setSessionListGroupId(null)
+        setSelectedId(event.sessionId)
+        setInitialPrompt(event.prompt)
+        setHideInput(false)
+        navigateToSession(event.sessionId)
+        api.settings.update({ lastSessionId: event.sessionId }).catch(() => {})
+      })()
+    })
+  }, [loadSessions])
 
   useEffect(() => {
     function onPopState() {
