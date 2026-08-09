@@ -30,6 +30,20 @@ func TestGetBuiltinAgentDifferentHarnessTypes(t *testing.T) {
 	}
 }
 
+func TestGetBuiltinAgentAllCLIHarnessTypes(t *testing.T) {
+	m := NewManager()
+	projectID := "proj-all-cli"
+	for _, typ := range []string{"claude-code", "pi", "codex", "opencode"} {
+		ag, err := m.getBuiltinAgent(projectID, typ, nil)
+		if err != nil {
+			t.Fatalf("%s: %v", typ, err)
+		}
+		if ag.Name() != typ {
+			t.Fatalf("%s Name() = %q", typ, ag.Name())
+		}
+	}
+}
+
 func TestGetBuiltinAgentSameHarnessTypeReuses(t *testing.T) {
 	m := NewManager()
 	projectID := "proj-reuse"

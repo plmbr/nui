@@ -61,6 +61,18 @@ func TestAppendClaudeUserScopeArgs(t *testing.T) {
 	}
 }
 
+func TestApplyCmdEnvOpenCodeSetsConfigFile(t *testing.T) {
+	cmd := exec.Command("true")
+	applyCmdEnv(cmd, "opencode", "/tmp/session-config", nil, false, "", "")
+	m := envMap(cmd.Env)
+	if m[envOpenCodeConfig] != "/tmp/session-config/"+opencodeConfigFile {
+		t.Fatalf("OPENCODE_CONFIG = %q", m[envOpenCodeConfig])
+	}
+	if m[envOpenCodeConfigDir] != "/tmp/session-config" {
+		t.Fatalf("OPENCODE_CONFIG_DIR = %q", m[envOpenCodeConfigDir])
+	}
+}
+
 func TestApplyCmdEnvUserScopeSkipsConfigDir(t *testing.T) {
 	cmd := exec.Command("true")
 	applyCmdEnv(cmd, "claude-code", "/tmp/session-config", nil, true, "", "")

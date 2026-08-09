@@ -40,7 +40,7 @@ func (opencodeHarnessProvisioner) provision(configDir string, deps HarnessDeps) 
 		"configFile":       opencodeConfigFile,
 		"instructionsFile": opencodeInstructionsFile,
 		"rulesDir":         "rules",
-		"configEnv":        envOpenCodeConfigDir,
+		"configEnv":        envOpenCodeConfig,
 	})
 }
 
@@ -54,10 +54,9 @@ func writeOpenCodeInstructions(configDir, systemPrompt string) error {
 }
 
 // opencodeUserConfigEntries are user-level OpenCode config entries that nui does not
-// generate. OPENCODE_CONFIG_DIR points at the session directory, so plugins and custom
-// agents would otherwise disappear for the session.
+// generate. OPENCODE_CONFIG points at the session opencode.json; OPENCODE_CONFIG_DIR is also
+// set to the session directory so plugins and custom agents remain discoverable.
 var opencodeUserConfigEntries = []string{
-	"auth.json",
 	"package.json",
 	"node_modules",
 	"plugin",
@@ -71,12 +70,19 @@ func linkOpenCodeConfigFromUser(configDir string) error {
 	if err != nil {
 		return err
 	}
-	return linkUserConfigEntries(srcDir, configDir, opencodeUserConfigEntries)
+	if err := linkUserConfigEntries(srcDir, configDir, opencodeUserConfigEntries); err != nil {
+		return err
+	}
+	// OpenCode stores credentials in the XDG data dir, not the config dir.
+	dataDir, err := userOpenCodeDataDir()
+	if err != nil {
+		return err
+	}
+	return linkFileIfMissing(filepath.Join(dataDir, "auth.json"), filepath.Join(configDir, "auth.json"))
 }
 
 // userOpenCodeConfig loads the user's global opencode config so session config generated
-// into an isolated OPENCODE_CONFIG_DIR keeps their provider and model settings. A config
-// that fails to parse (for example JSONC with comments) is skipped.
+// for OPENCODE_CONFIG keeps their provider and model settings.
 func userOpenCodeConfig() map[string]any {
 	srcDir, err := userOpenCodeConfigDir()
 	if err != nil {
@@ -87,14 +93,79 @@ func userOpenCodeConfig() map[string]any {
 		if err != nil {
 			continue
 		}
-		var cfg map[string]any
-		if err := json.Unmarshal(data, &cfg); err != nil {
+		cfg, err := parseOpenCodeJSONConfig(data)
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "[opencode] ignoring unparsable user config %s: %v\n", name, err)
 			continue
 		}
 		return cfg
 	}
 	return nil
+}
+
+func parseOpenCodeJSONConfig(data []byte) (map[string]any, error) {
+	var cfg map[string]any
+	if err := json.Unmarshal(data, &cfg); err == nil {
+		return cfg, nil
+	}
+	// opencode.jsonc commonly includes // and /* */ comments.
+	stripped := stripJSONC(data)
+	if err := json.Unmarshal(stripped, &cfg); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+// stripJSONC removes // line comments and /* block comments */ outside of strings.
+func stripJSONC(in []byte) []byte {
+	var out []byte
+	inString := false
+	escaped := false
+	for i := 0; i < len(in); i++ {
+		c := in[i]
+		if inString {
+			out = append(out, c)
+			if escaped {
+				escaped = false
+				continue
+			}
+			if c == '\\' {
+				escaped = true
+				continue
+			}
+			if c == '"' {
+				inString = false
+			}
+			continue
+		}
+		if c == '"' {
+			inString = true
+			out = append(out, c)
+			continue
+		}
+		if c == '/' && i+1 < len(in) {
+			switch in[i+1] {
+			case '/':
+				i += 2
+				for i < len(in) && in[i] != '\n' {
+					i++
+				}
+				if i < len(in) {
+					out = append(out, '\n')
+				}
+				continue
+			case '*':
+				i += 2
+				for i+1 < len(in) && !(in[i] == '*' && in[i+1] == '/') {
+					i++
+				}
+				i++ // consume '/'
+				continue
+			}
+		}
+		out = append(out, c)
+	}
+	return out
 }
 
 func writeOpenCodeConfig(configDir string, deps HarnessDeps, rulePaths []string) error {
@@ -131,10 +202,6 @@ func writeOpenCodeConfig(configDir string, deps HarnessDeps, rulePaths []string)
 
 	cfg := userOpenCodeConfig()
 	if len(cfg) == 0 {
-		if len(generated) == 0 {
-			_ = os.Remove(filepath.Join(configDir, opencodeConfigFile))
-			return nil
-		}
 		cfg = map[string]any{}
 	}
 	// User instructions are relative to their own config dir and would not resolve here.

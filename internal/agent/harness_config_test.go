@@ -336,8 +336,8 @@ func TestHarnessConfigEnvVar(t *testing.T) {
 	if harnessConfigEnvVar("pi") != envPiCodingAgentDir {
 		t.Fatal("pi env")
 	}
-	if harnessConfigEnvVar("opencode") != envOpenCodeConfigDir {
-		t.Fatal("opencode env")
+	if harnessConfigEnvVar("opencode") != "" {
+		t.Fatal("opencode uses OPENCODE_CONFIG file path via applyCmdEnv, not a single dir env")
 	}
 	if harnessConfigEnvVar("docker") != "" {
 		t.Fatal("docker should have no env")
@@ -363,6 +363,17 @@ func TestDockerSessionConfigArgs(t *testing.T) {
 	}
 	if dockerSessionConfigArgs("claude-code", "", false) != nil {
 		t.Fatal("empty session dir should produce no args")
+	}
+
+	ocArgs := dockerSessionConfigArgs("opencode", "/tmp/session", false)
+	if len(ocArgs) != 6 {
+		t.Fatalf("opencode args = %v", ocArgs)
+	}
+	if ocArgs[2] != "-e" || ocArgs[3] != envOpenCodeConfig+"="+dockerSessionConfigMount+"/"+opencodeConfigFile {
+		t.Fatalf("opencode OPENCODE_CONFIG: %v", ocArgs)
+	}
+	if ocArgs[4] != "-e" || ocArgs[5] != envOpenCodeConfigDir+"="+dockerSessionConfigMount {
+		t.Fatalf("opencode OPENCODE_CONFIG_DIR: %v", ocArgs)
 	}
 
 	userScopeArgs := dockerSessionConfigArgs("claude-code", "/tmp/session", true)
@@ -478,12 +489,20 @@ func TestProvisionOpenCodeHarnessConfigMergesUserConfig(t *testing.T) {
 	t.Setenv("HOME", home)
 	userConfigDir := filepath.Join(home, ".config", "opencode")
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	t.Setenv("XDG_DATA_HOME", filepath.Join(home, ".local", "share"))
 
 	if err := os.MkdirAll(filepath.Join(userConfigDir, "node_modules"), 0755); err != nil {
 		t.Fatal(err)
 	}
 	userCfg := `{"model":"example/example-model","instructions":["./AGENTS.md"]}`
 	if err := os.WriteFile(filepath.Join(userConfigDir, opencodeConfigFile), []byte(userCfg), 0644); err != nil {
+		t.Fatal(err)
+	}
+	dataDir := filepath.Join(home, ".local", "share", "opencode")
+	if err := os.MkdirAll(dataDir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dataDir, "auth.json"), []byte(`{"anthropic":{"type":"api","key":"sk-test"}}`), 0600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -493,6 +512,10 @@ func TestProvisionOpenCodeHarnessConfigMergesUserConfig(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if _, err := os.Lstat(filepath.Join(configDir, "auth.json")); err != nil {
+		t.Fatalf("expected auth.json symlink from data dir: %v", err)
 	}
 
 	data, err := os.ReadFile(filepath.Join(configDir, opencodeConfigFile))
@@ -515,6 +538,48 @@ func TestProvisionOpenCodeHarnessConfigMergesUserConfig(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(configDir, "node_modules")); err != nil {
 		t.Fatalf("user node_modules not linked: %v", err)
+	}
+}
+
+func TestParseOpenCodeJSONConfigJSONC(t *testing.T) {
+	raw := []byte(`{
+  // preferred model
+  "model": "anthropic/claude-sonnet-4-6",
+  /* providers */
+  "provider": {"anthropic": {"options": {"baseURL": "http://example"}}}
+}`)
+	cfg, err := parseOpenCodeJSONConfig(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg["model"] != "anthropic/claude-sonnet-4-6" {
+		t.Fatalf("model = %v", cfg["model"])
+	}
+	provider, ok := cfg["provider"].(map[string]any)
+	if !ok || provider["anthropic"] == nil {
+		t.Fatalf("provider = %v", cfg["provider"])
+	}
+}
+
+func TestUserOpenCodeConfigReadsJSONC(t *testing.T) {
+	tmp := t.TempDir()
+	home := filepath.Join(tmp, "home")
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	dir := filepath.Join(home, ".config", "opencode")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	raw := `{
+  // comment
+  "model": "openai/gpt-4o-mini"
+}`
+	if err := os.WriteFile(filepath.Join(dir, "opencode.jsonc"), []byte(raw), 0644); err != nil {
+		t.Fatal(err)
+	}
+	cfg := userOpenCodeConfig()
+	if cfg["model"] != "openai/gpt-4o-mini" {
+		t.Fatalf("cfg = %v", cfg)
 	}
 }
 
@@ -818,5 +883,100 @@ func TestHarnessDepsFromADLMergesStepAIAssets(t *testing.T) {
 	}
 	if !names["global-mcp"] || !names["step-mcp"] {
 		t.Fatalf("mcp names = %v", names)
+	}
+}
+
+func TestWriteClaudeMCPConfigPreservesExistingKeys(t *testing.T) {
+	tmp := t.TempDir()
+	cfgPath := filepath.Join(tmp, ".claude.json")
+	seed := map[string]any{
+		"theme": "dark",
+		"mcpServers": map[string]any{
+			"stale": map[string]any{"url": "http://old.example"},
+		},
+		"userSettings": map[string]any{"foo": "bar"},
+	}
+	raw, err := json.MarshalIndent(seed, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfgPath, raw, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := writeClaudeMCPConfig(tmp, []model.ADLMCPServer{
+		{Name: "docs", URL: "http://localhost:3040", Type: "http"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	if cfg["theme"] != "dark" {
+		t.Fatalf("theme wiped: %v", cfg["theme"])
+	}
+	userSettings, _ := cfg["userSettings"].(map[string]any)
+	if userSettings["foo"] != "bar" {
+		t.Fatalf("userSettings wiped: %v", cfg["userSettings"])
+	}
+	mcp, _ := cfg["mcpServers"].(map[string]any)
+	if _, ok := mcp["stale"]; ok {
+		t.Fatal("stale mcp server should be replaced")
+	}
+	docs, _ := mcp["docs"].(map[string]any)
+	if docs["url"] != "http://localhost:3040" {
+		t.Fatalf("docs mcp = %v", docs)
+	}
+}
+
+func TestWriteClaudeMCPConfigEmptyDoesNotDeleteFile(t *testing.T) {
+	tmp := t.TempDir()
+	cfgPath := filepath.Join(tmp, ".claude.json")
+	seed := map[string]any{
+		"numStartups": float64(3),
+		"mcpServers": map[string]any{
+			"docs": map[string]any{"url": "http://localhost:3040"},
+		},
+	}
+	raw, err := json.MarshalIndent(seed, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfgPath, raw, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := writeClaudeMCPConfig(tmp, nil); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatalf("expected .claude.json to remain: %v", err)
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := cfg["mcpServers"]; ok {
+		t.Fatalf("mcpServers should be cleared: %v", cfg["mcpServers"])
+	}
+	if cfg["numStartups"] != float64(3) {
+		t.Fatalf("numStartups wiped: %v", cfg["numStartups"])
+	}
+}
+
+func TestWriteClaudeMCPConfigEmptyNoFileIsNoop(t *testing.T) {
+	tmp := t.TempDir()
+	if err := writeClaudeMCPConfig(tmp, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(tmp, ".claude.json")); !os.IsNotExist(err) {
+		t.Fatalf("expected no .claude.json, err=%v", err)
 	}
 }

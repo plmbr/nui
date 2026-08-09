@@ -19,10 +19,11 @@ import (
 )
 
 const (
-	envClaudeConfigDir    = "CLAUDE_CONFIG_DIR"
-	envCodexHome          = "CODEX_HOME"
-	envOpenCodeConfigDir  = "OPENCODE_CONFIG_DIR"
-	envPiCodingAgentDir   = "PI_CODING_AGENT_DIR"
+	envClaudeConfigDir   = "CLAUDE_CONFIG_DIR"
+	envCodexHome         = "CODEX_HOME"
+	envOpenCodeConfig    = "OPENCODE_CONFIG"     // path to opencode.json / opencode.jsonc
+	envOpenCodeConfigDir = "OPENCODE_CONFIG_DIR" // agents/commands/plugins directory
+	envPiCodingAgentDir  = "PI_CODING_AGENT_DIR"
 )
 
 // HarnessDeps are ADL-derived files nui materializes into a session config directory.
@@ -55,14 +56,14 @@ var harnessProvisioners = map[string]harnessProvisioner{
 
 // harnessConfigEnvVar returns the environment variable that redirects harness config
 // to a session directory (empty when the harness type has no known config dir env).
+// OpenCode is handled separately in applyCmdEnv because it needs OPENCODE_CONFIG (file)
+// plus OPENCODE_CONFIG_DIR (plugins/agents).
 func harnessConfigEnvVar(harnessType string) string {
 	switch normalizeHarnessType(harnessType) {
 	case "claude-code":
 		return envClaudeConfigDir
 	case "codex":
 		return envCodexHome
-	case "opencode":
-		return envOpenCodeConfigDir
 	case "pi":
 		return envPiCodingAgentDir
 	default:
@@ -90,6 +91,14 @@ func dockerSessionConfigArgs(harnessType, sessionConfigDir string, userScope boo
 	}
 	args := []string{"-v", sessionConfigDir + ":" + dockerSessionConfigMount}
 	if userScope {
+		return args
+	}
+	if normalizeHarnessType(harnessType) == "opencode" {
+		mount := dockerSessionConfigMount
+		args = append(args,
+			"-e", envOpenCodeConfig+"="+mount+"/"+opencodeConfigFile,
+			"-e", envOpenCodeConfigDir+"="+mount,
+		)
 		return args
 	}
 	if envKey := harnessConfigEnvVar(harnessType); envKey != "" {
@@ -394,7 +403,12 @@ func applyCmdEnv(cmd *exec.Cmd, harnessType, sessionConfigDir string, adlEnv map
 	if !userScope {
 		bindDir := harnessConfigBindDir(harnessType, sessionConfigDir)
 		if bindDir != "" {
-			if envKey := harnessConfigEnvVar(harnessType); envKey != "" {
+			if normalizeHarnessType(harnessType) == "opencode" {
+				// OpenCode reads the config *file* via OPENCODE_CONFIG. OPENCODE_CONFIG_DIR is
+				// only for agents/commands/plugins (like a .opencode directory), not opencode.json.
+				overrides[envOpenCodeConfig] = filepath.Join(bindDir, opencodeConfigFile)
+				overrides[envOpenCodeConfigDir] = bindDir
+			} else if envKey := harnessConfigEnvVar(harnessType); envKey != "" {
 				overrides[envKey] = bindDir
 			}
 		}

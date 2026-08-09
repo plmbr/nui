@@ -174,7 +174,10 @@ func TestResolveAPIKeyFromEnvMap(t *testing.T) {
 }
 
 func TestResolveAPIModelEnvOverride(t *testing.T) {
+	t.Setenv("ANTHROPIC_BASE_URL", "")
 	t.Setenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
+	t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "")
+	t.Setenv("CLAUDE_MODEL", "")
 	h := model.ADLHarness{Type: "api", Provider: "anthropic", Model: "claude-sonnet-4-20250514"}
 	got := resolveAPIModel(RunRequest{Model: h.Model}, h)
 	if got != "claude-sonnet-4-6" {
@@ -183,7 +186,10 @@ func TestResolveAPIModelEnvOverride(t *testing.T) {
 }
 
 func TestResolveAPIModelAgentConfig(t *testing.T) {
+	t.Setenv("ANTHROPIC_BASE_URL", "")
 	t.Setenv("ANTHROPIC_MODEL", "")
+	t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "")
+	t.Setenv("CLAUDE_MODEL", "")
 	h := model.ADLHarness{Type: "api", Provider: "anthropic", Model: "default-model"}
 	got := resolveAPIModel(RunRequest{
 		Model:       h.Model,
@@ -195,11 +201,26 @@ func TestResolveAPIModelAgentConfig(t *testing.T) {
 }
 
 func TestResolveAPIModelHarnessDefault(t *testing.T) {
+	t.Setenv("ANTHROPIC_BASE_URL", "")
 	t.Setenv("ANTHROPIC_MODEL", "")
+	t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "")
+	t.Setenv("CLAUDE_MODEL", "")
 	h := model.ADLHarness{Type: "api", Provider: "anthropic", Model: "harness-default"}
 	got := resolveAPIModel(RunRequest{Model: h.Model}, h)
 	if got != "harness-default" {
 		t.Fatalf("model = %q", got)
+	}
+}
+
+func TestResolveAPIModelCustomGatewayPrefersFallback(t *testing.T) {
+	t.Setenv("ANTHROPIC_BASE_URL", "http://gateway.example:9123")
+	t.Setenv("ANTHROPIC_MODEL", "")
+	t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "")
+	t.Setenv("CLAUDE_MODEL", "")
+	h := model.ADLHarness{Type: "api", Provider: "anthropic", Model: anthropicBuiltinDefaultModel}
+	got := resolveAPIModel(RunRequest{Model: h.Model}, h)
+	if got != "claude-sonnet-4-6" {
+		t.Fatalf("model = %q, want first gateway fallback", got)
 	}
 }
 

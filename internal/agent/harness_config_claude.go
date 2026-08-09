@@ -80,10 +80,6 @@ func writeClaudeSystemPrompt(configDir, systemPrompt string) error {
 
 func writeClaudeMCPConfig(configDir string, servers []model.ADLMCPServer) error {
 	cfgPath := filepath.Join(configDir, ".claude.json")
-	if len(servers) == 0 {
-		_ = os.Remove(cfgPath)
-		return nil
-	}
 
 	mcpServers := make(map[string]map[string]any, len(servers))
 	for _, srv := range servers {
@@ -97,16 +93,54 @@ func writeClaudeMCPConfig(configDir string, servers []model.ADLMCPServer) error 
 		}
 		mcpServers[name] = entry
 	}
+
+	// Claude Code treats CLAUDE_CONFIG_DIR/.claude.json as its primary config and
+	// writes session state into it. Merge mcpServers instead of replacing/deleting
+	// the whole file so re-provisioning a turn does not wipe Claude's config.
+	cfg, err := readClaudeJSONConfig(cfgPath)
+	if err != nil {
+		return err
+	}
 	if len(mcpServers) == 0 {
-		_ = os.Remove(cfgPath)
-		return nil
+		if cfg == nil {
+			return nil
+		}
+		delete(cfg, "mcpServers")
+		if len(cfg) == 0 {
+			// Keep an empty object so Claude still finds a config file.
+			cfg = map[string]any{}
+		}
+	} else {
+		if cfg == nil {
+			cfg = map[string]any{}
+		}
+		cfg["mcpServers"] = mcpServers
 	}
 
-	data, err := json.MarshalIndent(map[string]any{"mcpServers": mcpServers}, "", "  ")
+	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return err
 	}
 	return os.WriteFile(cfgPath, data, 0644)
+}
+
+func readClaudeJSONConfig(path string) (map[string]any, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		// Corrupt/non-JSON config: start fresh rather than blocking provision.
+		return map[string]any{}, nil
+	}
+	if cfg == nil {
+		cfg = map[string]any{}
+	}
+	return cfg, nil
 }
 
 func adlMCPServerToClaude(srv model.ADLMCPServer) (map[string]any, error) {

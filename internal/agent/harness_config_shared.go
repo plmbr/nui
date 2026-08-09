@@ -87,6 +87,19 @@ func userOpenCodeConfigDir() (string, error) {
 	return filepath.Join(home, ".config", "opencode"), nil
 }
 
+// userOpenCodeDataDir is the OpenCode XDG data directory (~/.local/share/opencode),
+// where auth.json and the local DB live.
+func userOpenCodeDataDir() (string, error) {
+	if xdg := strings.TrimSpace(os.Getenv("XDG_DATA_HOME")); xdg != "" {
+		return filepath.Join(xdg, "opencode"), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".local", "share", "opencode"), nil
+}
+
 // seedsUserConfig reports whether the harness reads the session config dir from the host
 // filesystem. Container sandboxes mount the dir into an image with its own filesystem,
 // where symlinks into the user's home would dangle.
