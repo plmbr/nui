@@ -57,6 +57,7 @@ type ADLDefinition struct {
 	Tags         []string       `yaml:"tags"         json:"tags,omitempty"`
 	Version      string         `yaml:"version"      json:"version,omitempty"`
 	Harness      ADLHarness     `yaml:"harness"      json:"harness"`
+	AllowedHarnesses []string   `yaml:"allowedHarnesses" json:"allowedHarnesses,omitempty"` // optional CLI whitelist; omit = any CLI harness when default is CLI
 	SystemPrompt string         `yaml:"systemPrompt" json:"systemPrompt,omitempty"`
 	Skill        string         `yaml:"skill"        json:"skill,omitempty"`
 	AIAssets     ADLAIAssets    `yaml:"aiAssets"     json:"aiAssets,omitempty"`

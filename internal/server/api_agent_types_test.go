@@ -5,6 +5,7 @@ package server
 import (
 	"testing"
 
+	"nui/internal/agent"
 	"nui/internal/agents"
 	"nui/internal/devcontainer"
 	"nui/internal/model"
@@ -104,6 +105,62 @@ func TestAgentTypeInfoFromDef_promptSuggestions(t *testing.T) {
 	}
 	if info.PromptSuggestions[0].Title != "Review" || info.PromptSuggestions[0].Prompt != "Review the code." {
 		t.Fatalf("PromptSuggestions[0] = %+v", info.PromptSuggestions[0])
+	}
+}
+
+func TestAgentTypeInfoFromDef_builtinCLIHarnessPinned(t *testing.T) {
+	def := agents.BuiltinAgentDefs()[0] // claude-code
+	if def.ID != "claude-code" {
+		for _, d := range agents.BuiltinAgentDefs() {
+			if d.ID == "claude-code" {
+				def = d
+				break
+			}
+		}
+	}
+	info := agentTypeInfoFromDef(def, true)
+	if len(info.AllowedHarnesses) > 1 {
+		t.Fatalf("builtin AllowedHarnesses = %v, want at most the matching harness", info.AllowedHarnesses)
+	}
+	if len(info.AllowedHarnesses) == 1 && info.AllowedHarnesses[0] != "claude-code" {
+		t.Fatalf("AllowedHarnesses = %v", info.AllowedHarnesses)
+	}
+}
+
+func TestAgentTypeInfoFromDef_allowedHarnesses(t *testing.T) {
+	def := model.ADLDefinition{
+		ID:               "portable",
+		Name:             "Portable",
+		Harness:          model.ADLHarness{Type: "claude-code"},
+		AllowedHarnesses: []string{"pi", "codex"},
+	}
+	info := agentTypeInfoFromDef(def, false)
+	// Filtered by availability; default is always first in Normalize when present.
+	if len(info.AllowedHarnesses) == 0 {
+		t.Fatal("expected at least the available harnesses from allowlist")
+	}
+	for _, h := range info.AllowedHarnesses {
+		probe := def
+		probe.Harness.Type = h
+		if !harnessAvailable(probe) {
+			t.Fatalf("AllowedHarnesses includes unavailable %q", h)
+		}
+	}
+}
+
+func TestAgentTypeInfoFromDef_allowedHarnessesOmittedExpandsCLI(t *testing.T) {
+	def := model.ADLDefinition{
+		ID:      "open-cli",
+		Name:    "Open CLI",
+		Harness: model.ADLHarness{Type: "claude-code"},
+	}
+	info := agentTypeInfoFromDef(def, false)
+	if len(info.AllowedHarnesses) < 1 {
+		t.Fatal("omitted allowlist should expose available CLI harnesses")
+	}
+	if info.AllowedHarnesses[0] != "claude-code" && agent.CLIAvailable("claude-code") {
+		// default should be first when available
+		t.Fatalf("first = %q, want claude-code when available", info.AllowedHarnesses[0])
 	}
 }
 

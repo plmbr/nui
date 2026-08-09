@@ -15,6 +15,9 @@ func ValidateADLDefinition(def ADLDefinition) error {
 	if err := validateHarness(def.Harness, "harness"); err != nil {
 		return err
 	}
+	if err := validateAllowedHarnesses(def); err != nil {
+		return err
+	}
 	if err := ValidateADLSkills(def.AIAssets.Skills); err != nil {
 		return fmt.Errorf("aiAssets.skills: %w", err)
 	}
@@ -144,6 +147,105 @@ func validateHarness(h ADLHarness, path string) error {
 	}
 	if p := strings.TrimSpace(h.Permissions); p != "" && p != "interactive" && p != "bypass" {
 		return fmt.Errorf("%s.permissions: unknown value %q", path, p)
+	}
+	return nil
+}
+
+// CLIHarnessTypes are harness types allowed in allowedHarnesses (v1).
+var CLIHarnessTypes = []string{"claude-code", "pi", "codex", "opencode"}
+
+// IsCLIHarnessType reports whether t is a CLI subprocess harness.
+func IsCLIHarnessType(t string) bool {
+	switch strings.TrimSpace(t) {
+	case "claude-code", "pi", "codex", "opencode":
+		return true
+	default:
+		return false
+	}
+}
+
+// NormalizeAllowedHarnesses returns the effective CLI harness allowlist for session override.
+//
+//   - Omitted/empty and harness.type is a CLI harness → all CLIHarnessTypes (default first).
+//   - Omitted/empty and harness.type is non-CLI → nil (no CLI session override).
+//   - Explicit list → cleaned whitelist that always includes the default harness type.
+func NormalizeAllowedHarnesses(def ADLDefinition) []string {
+	defaultType := strings.TrimSpace(def.Harness.Type)
+	if defaultType == "" {
+		defaultType = "claude-code"
+	}
+	seen := map[string]bool{}
+	var out []string
+	add := func(t string) {
+		t = strings.TrimSpace(t)
+		if t == "" || seen[t] {
+			return
+		}
+		seen[t] = true
+		out = append(out, t)
+	}
+
+	if len(def.AllowedHarnesses) == 0 {
+		if !IsCLIHarnessType(defaultType) {
+			return nil
+		}
+		add(defaultType)
+		for _, t := range CLIHarnessTypes {
+			add(t)
+		}
+		return out
+	}
+
+	add(defaultType)
+	for _, t := range def.AllowedHarnesses {
+		add(t)
+	}
+	return out
+}
+
+// HarnessOverrideAllowed reports whether override may be used for this def.
+// Empty override is always allowed (means use default).
+func HarnessOverrideAllowed(def ADLDefinition, override string) bool {
+	override = strings.TrimSpace(override)
+	if override == "" {
+		return true
+	}
+	allowed := NormalizeAllowedHarnesses(def)
+	if len(allowed) == 0 {
+		return false
+	}
+	for _, t := range allowed {
+		if t == override {
+			return true
+		}
+	}
+	return false
+}
+
+func validateAllowedHarnesses(def ADLDefinition) error {
+	if len(def.AllowedHarnesses) == 0 {
+		return nil
+	}
+	defaultType := strings.TrimSpace(def.Harness.Type)
+	if defaultType == "" {
+		defaultType = "claude-code"
+	}
+	if !IsCLIHarnessType(defaultType) {
+		return fmt.Errorf("allowedHarnesses requires harness.type to be a CLI harness (claude-code, pi, codex, opencode); got %q", defaultType)
+	}
+	seen := map[string]bool{}
+	for i, raw := range def.AllowedHarnesses {
+		t := strings.TrimSpace(raw)
+		if t == "" {
+			return fmt.Errorf("allowedHarnesses[%d]: harness type is required", i)
+		}
+		if !IsCLIHarnessType(t) {
+			return fmt.Errorf("allowedHarnesses[%d]: %q is not a CLI harness (only claude-code, pi, codex, opencode)", i, t)
+		}
+		if seen[t] {
+			return fmt.Errorf("allowedHarnesses: duplicate %q", t)
+		}
+		seen[t] = true
 	}
 	return nil
 }

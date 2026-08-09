@@ -30,6 +30,7 @@ func attachToRunningServer(ctx context.Context, port int, opts server.StartOptio
 			WorkingDir: opts.WorkingDir,
 			Prompt:     opts.Prompt,
 			HideInput:  opts.HideInput,
+			Harness:    opts.Harness,
 		})
 		if err != nil {
 			return err

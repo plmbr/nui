@@ -141,7 +141,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 
 	var ag agent.Agent
 	var skipTopLevelHarnessSession bool
-	if def, found := findADLDef(session.AgentType); found {
+	if def, found := resolveSessionADLDef(session); found {
 		ag = agent.NewADLAgent(def, session.ID, extensionManager)
 		skipTopLevelHarnessSession = model.SkipsHarnessSessionPersistence(def)
 	} else {
@@ -177,7 +177,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 			UserScopeHarness: agent.UserScopeHarnessConfig(session.AgentConfig),
 			AgentConfig:      session.AgentConfig,
 		}
-		if def, ok := findADLDef(session.AgentType); ok {
+		if def, ok := resolveSessionADLDef(session); ok {
 			runReq.HarnessPermissions = hitl.EffectivePermissions(def, session.AgentConfig)
 			runReq.ToolApprovalPolicy, runReq.ToolApprovalTools = hitl.EffectiveToolApprovals(def, session.AgentConfig)
 			wireOrchestratorRunRequest(&runReq, sessionID, def)

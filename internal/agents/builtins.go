@@ -26,6 +26,7 @@ var builtinPromptSuggestions = []model.ADLPromptSuggestion{
 }
 
 // builtinAgentDefs are the compiled-in ADL definitions shipped with nui.
+// Each CLI builtin is pinned to its matching harness (allowedHarnesses singleton).
 var builtinAgentDefs = []model.ADLDefinition{
 	{
 		ID:                "claude-code",
@@ -33,6 +34,7 @@ var builtinAgentDefs = []model.ADLDefinition{
 		Description:       "Claude Code running as a local subprocess",
 		Tags:              []string{"builtin", "cli"},
 		Harness:           model.ADLHarness{Type: "claude-code", Sandbox: "none", Permissions: hitl.PermissionsBypass},
+		AllowedHarnesses:  []string{"claude-code"},
 		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelnuiUI}},
 		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
@@ -43,6 +45,7 @@ var builtinAgentDefs = []model.ADLDefinition{
 		Description:       "Pi running as a local subprocess",
 		Tags:              []string{"builtin", "cli"},
 		Harness:           model.ADLHarness{Type: "pi", Sandbox: "none"},
+		AllowedHarnesses:  []string{"pi"},
 		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelnuiUI}},
 		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
@@ -53,6 +56,7 @@ var builtinAgentDefs = []model.ADLDefinition{
 		Description:       "Codex running as a local subprocess",
 		Tags:              []string{"builtin", "cli"},
 		Harness:           model.ADLHarness{Type: "codex", Sandbox: "none", Permissions: hitl.PermissionsBypass},
+		AllowedHarnesses:  []string{"codex"},
 		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelnuiUI}},
 		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
@@ -63,6 +67,7 @@ var builtinAgentDefs = []model.ADLDefinition{
 		Description:       "OpenCode running as a local subprocess",
 		Tags:              []string{"builtin", "cli"},
 		Harness:           model.ADLHarness{Type: "opencode", Sandbox: "none"},
+		AllowedHarnesses:  []string{"opencode"},
 		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelnuiUI}},
 		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,

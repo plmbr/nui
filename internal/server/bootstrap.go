@@ -30,6 +30,7 @@ type StartOptions struct {
 	AgentType        string
 	Prompt           string
 	WorkingDir       string
+	Harness          string // optional CLI harness override for the launched session
 	Open             bool // open the UI in the system default browser
 	HideInput        bool // hide the chat input in the UI (one-off runs)
 	Theme            string // "light" | "dark"; persisted to settings when set
@@ -127,6 +128,7 @@ type launchRequest struct {
 	WorkingDir string
 	Prompt     string
 	HideInput  bool
+	Harness    string
 }
 
 type launchResult struct {
@@ -161,7 +163,12 @@ func launchSessionFromRequest(req launchRequest) (launchResult, error) {
 		}
 	}
 
-	s, err := createSession("", workingDir, model.ADLAgentID(def), nil)
+	var agentConfig map[string]any
+	if harness := strings.TrimSpace(req.Harness); harness != "" {
+		agentConfig = agents.SetHarnessTypeOverride(nil, harness)
+	}
+
+	s, err := createSession("", workingDir, model.ADLAgentID(def), agentConfig)
 	if err != nil {
 		return launchResult{}, err
 	}
@@ -197,6 +204,7 @@ func handleLaunch(w http.ResponseWriter, r *http.Request) {
 		WorkingDir string `json:"workingDir,omitempty"`
 		Prompt     string `json:"prompt,omitempty"`
 		HideInput  bool   `json:"hideInput,omitempty"`
+		Harness    string `json:"harness,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
@@ -208,6 +216,7 @@ func handleLaunch(w http.ResponseWriter, r *http.Request) {
 		WorkingDir: req.WorkingDir,
 		Prompt:     req.Prompt,
 		HideInput:  req.HideInput,
+		Harness:    req.Harness,
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "no available agent type") {
@@ -247,6 +256,7 @@ func runCLILaunch(port int, opts StartOptions) {
 		WorkingDir: opts.WorkingDir,
 		Prompt:     opts.Prompt,
 		HideInput:  opts.HideInput,
+		Harness:    opts.Harness,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "launch: %v\n", err)
@@ -423,6 +433,14 @@ func createSessionEx(opts sessionCreateOpts) (model.Session, error) {
 	if !ok {
 		return model.Session{}, fmt.Errorf("unknown agent type: %s", agentType)
 	}
+	override := agents.HarnessTypeFromConfig(agentConfig)
+	if err := agents.ValidateHarnessOverrideAvailable(def, override); err != nil {
+		return model.Session{}, err
+	}
+	effectiveDef, err := agents.ApplyHarnessOverride(def, override)
+	if err != nil {
+		return model.Session{}, err
+	}
 	if strings.TrimSpace(name) == "" {
 		name = PendingSessionTitle
 	}
@@ -450,7 +468,7 @@ func createSessionEx(opts sessionCreateOpts) (model.Session, error) {
 		return model.Session{}, err
 	}
 
-	if err := agent.PrepareSessionHarnessConfig(sessionID, def, extensions.Default, agentConfig); err != nil {
+	if err := agent.PrepareSessionHarnessConfig(sessionID, effectiveDef, extensions.Default, agentConfig); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: provision session harness config: %v\n", err)
 	}
 

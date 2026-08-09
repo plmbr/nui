@@ -18,6 +18,7 @@ var (
 	runAgentType  string
 	runMessage    string
 	runWorkingDir string
+	runHarness    string
 	runURL        string
 	runWait       bool
 	runSpawn      bool
@@ -74,6 +75,7 @@ func runCommand(cmd *cobra.Command, args []string) error {
 			sess, err := client.CreateSession(ctx, nuiclient.CreateSessionRequest{
 				AgentType:  agentType,
 				WorkingDir: wd,
+				AgentConfig: nuiclient.AgentConfigHarnessOverride(runHarness),
 			})
 			if err != nil {
 				return err
@@ -129,6 +131,7 @@ func registerRunFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&runAgentType, "agent-type", "a", "", "ADL agent id for a new session (default: settings defaultAgentType)")
 	cmd.Flags().StringVarP(&runMessage, "message", "m", "", "Prompt message (optional for promptMode:auto agents)")
 	cmd.Flags().StringVarP(&runWorkingDir, "working-dir", "w", "", "Working directory for a new session")
+	cmd.Flags().StringVar(&runHarness, "harness", "", "CLI harness override (must be allowed by the agent; omit allowedHarnesses to allow any CLI harness)")
 	cmd.Flags().StringVar(&runURL, "url", "", "nui server base URL (default NUI_URL or http://127.0.0.1:8080)")
 	cmd.Flags().StringVar(&runSessionID, "session-id", "", "Existing session id (skips session create)")
 	cmd.Flags().BoolVar(&runWait, "wait", true, "Wait for the run to finish and stream text to stdout")

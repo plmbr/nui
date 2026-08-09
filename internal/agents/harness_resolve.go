@@ -12,7 +12,7 @@ import (
 )
 
 // CLIHarnessTypes are built-in CLI harness references for defaultHarness settings.
-var CLIHarnessTypes = []string{"claude-code", "pi", "codex", "opencode"}
+var CLIHarnessTypes = model.CLIHarnessTypes
 
 // HarnessRefForDef returns the settings value for an agent's harness (e.g. api/anthropic, claude-code).
 func HarnessRefForDef(def model.ADLDefinition) string {

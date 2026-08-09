@@ -24,10 +24,10 @@ import {
   selectableAgentTypes,
   defaultUserScopeHarnessConfig,
   showUserScopeOption,
-  showToolApprovalsOption,
   isNuiAgent,
   isApiBuiltinAgent,
   isCliBuiltinAgent,
+  harnessSupportsPermissions,
 } from '@/lib/agentTypes'
 import { BUILTIN_AGENTS_LABEL, INSTALLED_AGENTS_LABEL } from '@/lib/sessionGroups'
 import { TagFilterInput } from '@/components/TagFilterInput'
@@ -90,6 +90,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   const [error, setError] = useState('')
   const [userScopeHarnessConfig, setUserScopeHarnessConfig] = useState(false)
   const [harnessPermissionsEnabled, setHarnessPermissionsEnabled] = useState(true)
+  const [harnessOverride, setHarnessOverride] = useState('')
   const [directorySuggestions, setDirectorySuggestions] = useState<string[]>([])
   const [directoryInputFocused, setDirectoryInputFocused] = useState(false)
   const [activeDirectoryIndex, setActiveDirectoryIndex] = useState(0)
@@ -203,6 +204,7 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
     setError('')
     setUserScopeHarnessConfig(false)
     setHarnessPermissionsEnabled(true)
+    setHarnessOverride('')
     setDirectorySuggestions([])
     setDirectoryInputFocused(false)
     initialPaneSynced.current = false
@@ -214,6 +216,12 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   }
 
   const selected = agentTypes.find((a) => a.id === selectedId)
+  const allowedHarnesses = selected?.allowedHarnesses ?? []
+  const showHarnessPicker = !isNuiAgent(selected) && allowedHarnesses.length > 1
+  const effectiveHarness = (harnessOverride || selected?.harness || '') as AgentType['harness']
+  const selectedForOptions = selected
+    ? { ...selected, harness: effectiveHarness || selected.harness }
+    : undefined
   const customSourceOptions = useMemo(
     () => buildCustomAgentSourceOptions(userDefined, extensions),
     [userDefined, extensions],
@@ -263,13 +271,29 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   const showInstalledBrowse = userDefined.length > 0
   const showingInstalled = agentPane === 'installed' && showInstalledBrowse
   const directoryListOpen = directoryInputFocused && directorySuggestions.length > 0
-  const showUserScope = showUserScopeOption(selected)
-  const showHarnessPermissionsOption = showToolApprovalsOption(selected)
+  const showUserScope = showUserScopeOption(selectedForOptions)
+  const showHarnessPermissionsOption = Boolean(
+    selectedForOptions
+      && !isNuiAgent(selectedForOptions)
+      && harnessSupportsPermissions(effectiveHarness || selectedForOptions.harness)
+      && selectedForOptions.toolApprovalPolicy !== 'all',
+  )
 
   useEffect(() => {
     const agent = agentTypes.find((a) => a.id === selectedId)
-    setUserScopeHarnessConfig(defaultUserScopeHarnessConfig(agent))
+    const allowed = agent?.allowedHarnesses ?? []
+    const nextHarness = allowed.length > 1 ? (agent?.harness ?? '') : ''
+    setHarnessOverride(nextHarness)
+    const forOptions = agent
+      ? { ...agent, harness: (nextHarness || agent.harness) as AgentType['harness'] }
+      : undefined
+    setUserScopeHarnessConfig(defaultUserScopeHarnessConfig(forOptions))
   }, [selectedId, agentTypes])
+
+  useEffect(() => {
+    if (!selectedForOptions) return
+    setUserScopeHarnessConfig(defaultUserScopeHarnessConfig(selectedForOptions))
+  }, [harnessOverride]) // eslint-disable-line react-hooks/exhaustive-deps -- sync checkbox when override harness changes
 
   useLayoutEffect(() => {
     if (!selectedId) return
@@ -325,6 +349,9 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
         req.workingDir = workingDir.trim()
       }
       const agentConfig: NonNullable<CreateSessionRequest['agentConfig']> = {}
+      if (showHarnessPicker && harnessOverride && harnessOverride !== selected.harness) {
+        agentConfig.harnessType = harnessOverride
+      }
       if (userScopeHarnessConfig) {
         agentConfig.userScopeHarnessConfig = true
       }
@@ -623,6 +650,28 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {showHarnessPicker && (
+              <div className="shrink-0 space-y-2">
+                <Label htmlFor="harnessOverride">Harness</Label>
+                <select
+                  id="harnessOverride"
+                  value={harnessOverride || selected?.harness || ''}
+                  onChange={(e) => setHarnessOverride(e.target.value)}
+                  className="flex h-9 w-full max-w-md rounded-lg border border-input bg-transparent px-3 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  {allowedHarnesses.map((h) => (
+                    <option key={h} value={h}>
+                      {harnessLabel(h)}
+                      {h === selected?.harness ? ' (default)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground leading-snug">
+                  Choose which CLI runtime to use for this session. Default is {selected?.harness}.
+                </p>
               </div>
             )}
 

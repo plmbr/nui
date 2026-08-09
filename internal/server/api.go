@@ -47,6 +47,7 @@ type AgentTypeInfo struct {
 	Skills            []string                   `json:"skills,omitempty"`
 	WorkingDirInput   bool                       `json:"workingDirInput,omitempty"` // true = user picks working dir at session create
 	Tags              []string                   `json:"tags,omitempty"`
+	AllowedHarnesses  []string                   `json:"allowedHarnesses,omitempty"` // effective CLI allowlist (all CLI types when omitted on a CLI agent)
 	IsBuiltin     bool   `json:"isBuiltin"`
 	Source        string `json:"source,omitempty"` // builtin | user | extension
 	Available     bool   `json:"available"` // false when the required CLI is not installed
@@ -370,6 +371,7 @@ func agentTypeInfoFromDef(def model.ADLDefinition, builtin bool) AgentTypeInfo {
 		Skills:            skillNamesFromADL(def),
 		WorkingDirInput:   model.IsADLWorkingDirInput(def),
 		Tags:              def.Tags,
+		AllowedHarnesses:  effectiveAllowedHarnesses(def),
 		IsBuiltin:         builtin,
 		Available:         harnessAvailable(def),
 	}
@@ -501,14 +503,47 @@ func harnessAvailable(def model.ADLDefinition) bool {
 	}
 }
 
+// effectiveAllowedHarnesses returns the session-override allowlist, filtered to
+// harnesses that are available on this system. Always includes the default when it is available.
+func effectiveAllowedHarnesses(def model.ADLDefinition) []string {
+	raw := model.NormalizeAllowedHarnesses(def)
+	if len(raw) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(raw))
+	for _, t := range raw {
+		probe := def
+		probe.Harness.Type = t
+		if harnessAvailable(probe) {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
 // findADLDef looks up an ADL definition by id from builtins and user-defined definitions.
 // It also handles legacy Session.AgentType strings (harness names, old display names, "adl:id").
 func findADLDef(agentType string) (model.ADLDefinition, bool) {
 	return resolveAgentDefinition(agentType)
 }
 
+// resolveSessionADLDef returns the session's ADL definition with harness.type overridden
+// from agentConfig.harnessType when allowed.
+func resolveSessionADLDef(session model.Session) (model.ADLDefinition, bool) {
+	def, ok := findADLDef(session.AgentType)
+	if !ok {
+		return model.ADLDefinition{}, false
+	}
+	effective, err := agents.ApplySessionHarnessOverride(def, session.AgentConfig)
+	if err != nil {
+		// Fall back to authored default if stored override is stale/invalid.
+		return def, true
+	}
+	return effective, true
+}
+
 func validateSessionConnector(s model.Session) error {
-	if def, ok := findADLDef(s.AgentType); ok {
+	if def, ok := resolveSessionADLDef(s); ok {
 		if !harnessAvailable(def) {
 			return fmt.Errorf("%s harness is not available on this system", def.Harness.Type)
 		}

@@ -88,10 +88,16 @@ func orchestratorAgentDef() model.ADLDefinition {
 }
 
 // OrchestratorDefinition returns the nui agent def with harness resolved from settings.
+// Session harness override is disabled: the app defaultHarness setting is the sole selector.
 func OrchestratorDefinition(settings store.Settings) model.ADLDefinition {
 	def := orchestratorAgentDef()
 	if h, _, err := ResolveDefaultHarness(settings); err == nil {
 		def.Harness = h
+	}
+	if t := strings.TrimSpace(def.Harness.Type); model.IsCLIHarnessType(t) {
+		def.AllowedHarnesses = []string{t}
+	} else {
+		def.AllowedHarnesses = nil
 	}
 	return def
 }

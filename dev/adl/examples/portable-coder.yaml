@@ -1,0 +1,23 @@
+adl: "1.0"
+
+# Restrict which CLI harnesses may run this agent at session create.
+# Omitted allowedHarnesses would allow any CLI harness (claude-code, pi, codex, opencode).
+
+id: portable-coder
+name: Portable Coder
+description: Code agent restricted to claude-code and pi.
+tags: [example, coding, portable]
+version: 0.1.0
+
+harness:
+  type: claude-code
+  model: claude-sonnet-4-6
+  sandbox: none
+
+allowedHarnesses:
+  - claude-code
+  - pi
+
+systemPrompt: |
+  You are a careful coding assistant. Prefer small, reviewable changes.
+  Explain what you changed and why in a short summary.

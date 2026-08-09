@@ -211,9 +211,19 @@ func (c *Client) ListSessions(ctx context.Context) ([]Session, error) {
 }
 
 type CreateSessionRequest struct {
-	Name       string `json:"name"`
-	AgentType  string `json:"agentType"`
-	WorkingDir string `json:"workingDir,omitempty"`
+	Name        string         `json:"name"`
+	AgentType   string         `json:"agentType"`
+	WorkingDir  string         `json:"workingDir,omitempty"`
+	AgentConfig map[string]any `json:"agentConfig,omitempty"`
+}
+
+// AgentConfigHarnessOverride builds agentConfig with an optional harness.type override.
+func AgentConfigHarnessOverride(harnessType string) map[string]any {
+	harnessType = strings.TrimSpace(harnessType)
+	if harnessType == "" {
+		return nil
+	}
+	return map[string]any{"harnessType": harnessType}
 }
 
 func (c *Client) CreateSession(ctx context.Context, req CreateSessionRequest) (Session, error) {
@@ -233,6 +243,7 @@ type LaunchRequest struct {
 	WorkingDir string `json:"workingDir,omitempty"`
 	Prompt     string `json:"prompt,omitempty"`
 	HideInput  bool   `json:"hideInput,omitempty"`
+	Harness    string `json:"harness,omitempty"`
 }
 
 func (c *Client) Launch(ctx context.Context, req LaunchRequest) (Session, error) {

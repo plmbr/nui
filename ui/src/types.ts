@@ -14,12 +14,13 @@ export interface Session {
 
 export interface CreateSessionRequest {
   name?: string
-  workingDir: string
+  workingDir?: string
   agentType: string
   agentConfig?: {
     userScopeHarnessConfig?: boolean
     hitlMode?: 'interactive' | 'off' | 'auto'
     harnessPermissions?: 'interactive' | 'bypass'
+    harnessType?: string
     [key: string]: unknown
   }
 }
@@ -75,6 +76,7 @@ export interface AgentType {
   supportsHarnessPermissions?: boolean
   toolApprovalPolicy?: 'default' | 'all' | 'allowlist' | 'denylist'
   toolApprovalTools?: string[]
+  allowedHarnesses?: string[]
   isBuiltin: boolean
   source?: 'builtin' | 'user' | 'extension'
   tags?: string[]

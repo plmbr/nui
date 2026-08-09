@@ -43,7 +43,7 @@ func maybeGenerateSessionTitle(sessionID string) {
 		return
 	}
 
-	def, hasDef := findADLDef(session.AgentType)
+	def, hasDef := resolveSessionADLDef(session)
 	if !hasDef || !shouldAutoTitle(session, def, msgs) {
 		return
 	}

@@ -25,7 +25,7 @@ type resolvedRunAgent struct {
 }
 
 func resolveRunAgent(session model.Session, workingDir string) (resolvedRunAgent, error) {
-	if def, found := findADLDef(session.AgentType); found {
+	if def, found := resolveSessionADLDef(session); found {
 		return resolvedRunAgent{
 			Agent:                       agent.NewADLAgent(def, session.ID, extensionManager),
 			SkipsTopLevelHarnessSession: model.SkipsHarnessSessionPersistence(def),
@@ -175,7 +175,7 @@ func executeRun(ctx context.Context, opts executeRunOptions) executeRunResult {
 			UserScopeHarness: agent.UserScopeHarnessConfig(opts.Session.AgentConfig),
 			AgentConfig:      opts.Session.AgentConfig,
 		}
-		if def, ok := findADLDef(opts.Session.AgentType); ok {
+		if def, ok := resolveSessionADLDef(opts.Session); ok {
 			runReq.HarnessPermissions = hitl.EffectivePermissions(def, opts.Session.AgentConfig)
 			runReq.ToolApprovalPolicy, runReq.ToolApprovalTools = hitl.EffectiveToolApprovals(def, opts.Session.AgentConfig)
 			wireOrchestratorRunRequest(&runReq, opts.Session.ID, def)

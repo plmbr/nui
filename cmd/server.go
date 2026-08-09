@@ -21,6 +21,7 @@ var (
 	agentType        string
 	prompt           string
 	workingDir       string
+	harnessOverride  string
 	openBrowser      bool
 	noBrowser        bool
 	hideInput        bool
@@ -39,6 +40,7 @@ var serverCmd = &cobra.Command{
 			AgentType:        agentType,
 			Prompt:           prompt,
 			WorkingDir:       workingDir,
+			Harness:          harnessOverride,
 			Open:             openBrowser && !noBrowser,
 			HideInput:        hideInput,
 			Theme:            theme,
@@ -66,6 +68,7 @@ func init() {
 	serverCmd.Flags().StringVarP(&agentType, "agent-type", "a", "", "Agent id to launch (creates a new session on startup)")
 	serverCmd.Flags().StringVarP(&prompt, "prompt", "m", "", "Initial prompt to run in the new session")
 	serverCmd.Flags().StringVarP(&workingDir, "working-dir", "w", "", "Working directory for the new session (defaults to current directory)")
+	serverCmd.Flags().StringVar(&harnessOverride, "harness", "", "CLI harness override for the launched session (must be allowed by the agent)")
 	serverCmd.Flags().BoolVar(&openBrowser, "open", false, "Open the web UI in the system default browser")
 	serverCmd.Flags().BoolVar(&noBrowser, "no-browser", false, "Do not open a browser (headless daemon mode)")
 	serverCmd.Flags().BoolVar(&hideInput, "hide-input", false, "Hide the chat input (for one-off runs with --prompt)")
