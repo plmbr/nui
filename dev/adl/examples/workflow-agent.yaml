@@ -15,5 +15,5 @@ steps:
   - name: fix
     harness:
       type: claude-code
+    dependsOn: [review]
     systemPrompt: Apply fixes for the issues found in the review step.
-    input: "{{steps.review.output}}"

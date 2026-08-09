@@ -2,7 +2,7 @@
 
 ADL is the YAML format nui uses to define agents. Install agent files to `~/.nui/agents/` or ship them via extensions.
 
-**Canonical specification:** [github.com/plmbr/ADL](https://github.com/plmbr/ADL) — full [design.md](https://github.com/plmbr/ADL/blob/main/design.md), [JSON Schema](https://github.com/plmbr/ADL/blob/main/schema/adl.schema.json), and [examples](https://github.com/plmbr/ADL/tree/main/examples). With a sibling checkout, see `../adl/`.
+**Canonical specification:** [github.com/plmbr/ADL](https://github.com/plmbr/ADL) — full [design.md](https://github.com/plmbr/ADL/blob/main/design.md), [JSON Schema](https://github.com/plmbr/ADL/blob/main/schema/adl.schema.json), and [examples](https://github.com/plmbr/ADL/tree/main/examples). With a sibling checkout, see `../ADL/`.
 
 The notes below are a nui-focused summary. When in doubt, prefer the ADL repo.
 
@@ -14,7 +14,9 @@ The notes below are a nui-focused summary. When in doubt, prefer the ADL repo.
 | `id` | yes | Stable agent identifier (used in sessions and CLI) |
 | `name` | yes | Display name in the UI |
 | `description` | no | Short description |
+| `tags` | no | Labels for filtering in the new-session UI |
 | `harness` | yes | How the agent runs (see below) |
+| `allowedHarnesses` | no | CLI harness whitelist for session/CLI override; omit = any CLI harness when default is CLI |
 | `systemPrompt` | no | System prompt for single-step agents |
 | `promptMode` | no | `user` (default) or `auto` (for scheduled agents) |
 | `defaultPrompt` | no | Prompt used in `auto` mode |
@@ -31,7 +33,7 @@ The notes below are a nui-focused summary. When in doubt, prefer the ADL repo.
 | `harness.type` | Description |
 |---|---|
 | `claude-code`, `pi`, `codex`, `opencode` | Host subprocess (optional `sandbox`: `none`, `bubblewrap`, `docker`) |
-| `api` | In-process LLM API (`provider`, `model`, `baseURL`, `apiKeyEnv`) |
+| `api` | In-process LLM API (`provider`, `model`, `baseUrl`, `apiKeyEnv`, `disableTools`) |
 | `docker` | HTTP/SSE container (`image`, `containerPort`) |
 | `devcontainer` | nui-managed dev container (`innerHarness`: CLI type above) |
 | `remote` | Pre-running HTTP/SSE server (`host`, `port`) |

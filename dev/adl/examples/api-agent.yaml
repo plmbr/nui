@@ -1,7 +1,12 @@
 adl: "1.0"
+
+# In-process LLM API harness (no CLI subprocess).
+# Credentials come from the host env (e.g. ANTHROPIC_API_KEY).
+
 id: my-anthropic-agent
 name: My Anthropic Agent
 description: Claude via the Anthropic API harness.
+tags: [example, api]
 version: 0.1.0
 
 harness:

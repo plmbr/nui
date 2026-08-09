@@ -2,6 +2,7 @@ adl: "1.0"
 
 # Restrict which CLI harnesses may run this agent at session create.
 # Omitted allowedHarnesses would allow any CLI harness (claude-code, pi, codex, opencode).
+# A single-entry list pins the agent (e.g. allowedHarnesses: [claude-code]).
 
 id: portable-coder
 name: Portable Coder
