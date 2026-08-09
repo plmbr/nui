@@ -251,14 +251,14 @@ Run the full suite locally:
 ## Releasing
 
 1. Bump [`VERSION`](VERSION) on `main` to match the upcoming tag (without the `v` prefix).
-2. Tag and push: `git tag v0.3.0 && git push origin v0.3.0`
-3. Create a GitHub Release for the tag (`gh release create v0.3.0 --generate-notes`).
+2. Tag and push: `git tag v0.4.0-alpha && git push origin v0.4.0-alpha`
+3. Create a GitHub Release for the tag (`gh release create v0.4.0-alpha --generate-notes`).
 4. The release workflow builds Linux and macOS binaries (amd64 + arm64) and attaches them to the release.
 
 Build release archives locally:
 
 ```sh
-./scripts/build-release.sh v0.3.0
+./scripts/build-release.sh v0.4.0-alpha
 ```
 
 Artifacts land in `dist/` as `nui_<tag>_<os>_<arch>.tar.gz` (or `.zip` on Windows) plus `checksums.txt`.

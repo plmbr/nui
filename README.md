@@ -21,11 +21,11 @@ irm https://nui.plmbr.dev/install.ps1 | iex
 Install a specific version:
 
 ```sh
-NUI_VERSION=v0.3.0 curl -fsSL https://nui.plmbr.dev/install.sh | sh
+NUI_VERSION=v0.4.0-alpha curl -fsSL https://nui.plmbr.dev/install.sh | sh
 ```
 
 ```powershell
-$env:NUI_VERSION = "v0.3.0"; irm https://nui.plmbr.dev/install.ps1 | iex
+$env:NUI_VERSION = "v0.4.0-alpha"; irm https://nui.plmbr.dev/install.ps1 | iex
 ```
 
 **Manual install:** download the archive for your platform from [GitHub Releases](https://github.com/plmbr/nui/releases), extract the `nui` binary (or `nui.exe` on Windows), and place it on your `PATH`.
