@@ -10,9 +10,10 @@ description: A self-hosted web UI for interactive AI agent sessions. Run agents 
       <p class="hero__eyebrow">Self-hosted agent UI</p>
       <h1 class="hero__headline">One interface for every agent.</h1>
       <p class="hero__sub">
-        nui is a web UI for interactive AI agent sessions. Run Claude Code, pi, codex,
-        and opencode on your machine, in Docker, or on a remote server — with sessions,
-        extensions, MCP, and custom ADL agents in one place.
+        nui is a web UI for interactive AI agent sessions. Ask the home launcher to route
+        work, or run Claude Code, pi, codex, opencode, and API agents on your machine,
+        in Docker, or on a remote server — with sessions, extensions, MCP, and custom ADL
+        agents in one place.
       </p>
       <div class="hero__cta">
         <a class="btn btn--primary" href="#install">Install</a>
@@ -33,6 +34,7 @@ description: A self-hosted web UI for interactive AI agent sessions. Run agents 
   <div class="container">
     <p class="providers__label">Built-in agents</p>
     <div class="providers__row" aria-label="Supported agent harnesses">
+      <span>nui</span>
       <span>Claude&nbsp;Code</span>
       <span>pi</span>
       <span>codex</span>
@@ -40,6 +42,7 @@ description: A self-hosted web UI for interactive AI agent sessions. Run agents 
       <span>Anthropic&nbsp;API</span>
       <span>OpenAI</span>
       <span>Gemini</span>
+      <span>OpenRouter</span>
       <span>Ollama</span>
     </div>
   </div>
@@ -51,9 +54,10 @@ description: A self-hosted web UI for interactive AI agent sessions. Run agents 
       <p class="stripe__eyebrow">Sessions</p>
       <h2 class="stripe__title">Chat, switch, and resume — without leaving the browser.</h2>
       <p class="stripe__body">
-        Start a session with any built-in or installed agent. Send prompts, attach files,
-        and use <code>@</code> mentions for context. Switch between past sessions from the
-        sidebar, rename or delete as needed. Preferences persist across reloads.
+        Type a task on the home screen and the <code>nui</code> master agent routes it to
+        the right specialist — or open a session with any built-in or installed agent.
+        Send prompts, attach files, and use <code>@</code> mentions for context. Switch
+        between past sessions from the sidebar; preferences persist across reloads.
       </p>
       <a class="stripe__link" href="{{ '/features/' | relative_url }}">Explore features →</a>
     </div>
@@ -102,7 +106,7 @@ systemPrompt: |
       <p class="stripe__body">
         Run <code>nui mcp</code> to expose agent tools to external MCP clients. nui also
         injects built-in MCP servers into harnesses for human-in-the-loop prompts,
-        inline visualizations, and agent memory.
+        inline visualizations, agent memory, and home-launcher routing.
       </p>
       <a class="stripe__link" href="{{ '/features/mcp/' | relative_url }}">MCP integration →</a>
     </div>

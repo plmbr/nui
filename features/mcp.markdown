@@ -36,6 +36,11 @@ nui injects these MCP servers into agent harnesses when configured:
 | `nui-hitl` | `nui hitl-mcp` | Human-in-the-loop prompts (`ask_user`, approvals) |
 | `nui-viz` | `nui viz-mcp` | Inline chart/visualization rendering in chat |
 | `nui-agent` | `nui agent-mcp` | Save ADL agents (`save_agent`) and update memory (`update_memory`) |
+| `nui-orchestrator` | `nui orchestrator-mcp` | Launcher routing (`list_agents`, `launch_session`) for the `nui` master agent |
+
+## Remote MCP OAuth
+
+In **Settings → MCP servers**, remote HTTP MCP servers can authenticate with OAuth. nui exposes `/api/mcp-oauth/*` for start, callback, status, and disconnect; register the shown redirect URI with your OAuth provider.
 
 ## Extension MCP servers
 

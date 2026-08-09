@@ -7,7 +7,7 @@ permalink: /about/
 
 nui is a self-hosted web UI for interactive AI agent sessions. Run agents locally in your terminal, in Docker, or on a remote server — all from one interface.
 
-Built-in agents cover Claude Code, pi, codex, opencode, and in-process API providers (Anthropic, OpenAI, Gemini, OpenRouter, Ollama). Custom agents are defined in YAML with the Agent Definition Language and can run in sandboxes, Docker containers, dev containers, or on remote servers.
+Built-in agents cover the `nui` master/launcher agent, Claude Code, pi, codex, opencode, and in-process API providers (Anthropic, OpenAI, Gemini, OpenRouter, Ollama). Custom agents are defined in YAML with the Agent Definition Language and can run in sandboxes, Docker containers, dev containers, or on remote servers.
 
 Extensions add harnesses, MCP servers, skills, and agents. nui itself can be exposed as an MCP server to Cursor, Claude Desktop, and other MCP hosts.
 

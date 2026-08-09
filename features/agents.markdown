@@ -1,11 +1,19 @@
 ---
 layout: page
 title: Built-in agents
-subtitle: CLI subprocesses and in-process API agents — all selectable from the New Session panel.
+subtitle: Master launcher, CLI subprocesses, and in-process API agents — all selectable from the New Session panel.
 permalink: /features/agents/
 ---
 
-nui ships with built-in agents for the most common coding-agent CLIs and API providers. Each session resolves to an ADL definition; single-step agents dispatch directly to the harness.
+nui ships with built-in agents for the home launcher, common coding-agent CLIs, and API providers. Each session resolves to an ADL definition; single-step agents dispatch directly to the harness.
+
+## Master agent
+
+| Agent | ADL id | Role |
+|---|---|---|
+| nui | `nui` | Home launcher / router. Uses `nui-orchestrator` MCP tools (`list_agents`, `launch_session`) to open specialist sessions, and can create agents via the create-agent skill. Legacy id: `nui-orchestrator`. |
+
+The home screen calls `POST /api/orchestrate`. The master's harness comes from Settings → **Default harness** (defaults to Anthropic API).
 
 ## CLI agents
 
@@ -22,13 +30,13 @@ Persistent sessions are maintained per harness — Claude Code, pi, codex, and o
 
 API agents run in-process without a CLI binary:
 
-| Agent | Provider |
-|---|---|
-| Anthropic | Claude models via the Anthropic API |
-| OpenAI | GPT models via the OpenAI API |
-| Gemini | Google Gemini via the Gemini API |
-| OpenRouter | Multi-model routing via OpenRouter |
-| Ollama | Local models via Ollama |
+| ADL id | Name | Provider |
+|---|---|---|
+| `anthropic` | Claude API | Claude models via the Anthropic API |
+| `openai` | OpenAI | GPT models via the OpenAI API |
+| `gemini` | Gemini | Google Gemini via the Gemini API |
+| `openrouter` | OpenRouter | Multi-model routing via OpenRouter |
+| `ollama` | Ollama | Local models via Ollama |
 
 See the [harness design doc](https://github.com/plmbr/nui/blob/main/dev/harness-design.md) for API harness configuration and environment variables.
 

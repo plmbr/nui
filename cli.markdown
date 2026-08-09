@@ -156,7 +156,7 @@ Expose nui to external MCP hosts or run built-in MCP servers injected into harne
 | `nui hitl-mcp` | Human-in-the-loop prompts (`ask_user`, approvals) |
 | `nui viz-mcp` | Inline chart/visualization rendering |
 | `nui agent-mcp` | Save ADL agents and update memory |
-| `nui orchestrator-mcp` | Orchestrator launcher routing |
+| `nui orchestrator-mcp` | `nui` master agent routing (`list_agents`, `launch_session`) |
 
 See [MCP integration]({{ '/features/mcp/' | relative_url }}) for config examples.
 

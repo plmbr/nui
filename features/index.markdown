@@ -8,7 +8,7 @@ permalink: /features/
 <div class="feature-grid">
   <a class="card" href="{{ '/features/agents/' | relative_url }}">
     <h3 class="card__title">Built-in agents</h3>
-    <p class="card__body">Claude Code, pi, codex, opencode, and in-process API agents — Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.</p>
+    <p class="card__body">The <code>nui</code> master agent (home launcher), Claude Code, pi, codex, opencode, and in-process API agents — Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.</p>
   </a>
   <a class="card" href="{{ '/features/adl/' | relative_url }}">
     <h3 class="card__title">ADL agents</h3>
@@ -20,7 +20,7 @@ permalink: /features/
   </a>
   <a class="card" href="{{ '/features/mcp/' | relative_url }}">
     <h3 class="card__title">MCP integration</h3>
-    <p class="card__body">Expose nui to external MCP hosts. Built-in HITL, visualization, and agent-memory servers for harnesses.</p>
+    <p class="card__body">Expose nui to external MCP hosts. Built-in HITL, visualization, agent-memory, and orchestrator servers for harnesses — plus OAuth for remote MCP.</p>
   </a>
   <a class="card" href="{{ '/features/sandbox/' | relative_url }}">
     <h3 class="card__title">Sandboxing</h3>

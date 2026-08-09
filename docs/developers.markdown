@@ -7,7 +7,7 @@ permalink: /docs/developers/
 
 ## Prerequisites
 
-- Go 1.22+
+- Go 1.26+
 - Node.js 18+
 - Agent CLIs on `PATH` as needed: `claude`, `pi`, `codex`, `opencode`
 - Docker (optional) — for `sandbox: docker`, custom docker-harness ADL agents, and devcontainer harnesses
@@ -90,7 +90,7 @@ flowchart TB
   HTTP --> Docker & Remote
 ```
 
-**Session flow:** every session has an `agentType` that resolves to an ADL definition (built-in or `~/.nui/agents/*.yaml`). `ADLAgent` runs the harness — single-step for simple agents, multi-step DAG for workflows. The UI streams chat over the [AG-UI protocol](https://github.com/ag-ui-protocol/ag-ui) at `POST /api/sessions/:id/ag-ui`.
+**Session flow:** every session has an `agentType` that resolves to an ADL definition (built-in or `~/.nui/agents/*.yaml`). `ADLAgent` runs the harness — single-step for simple agents, multi-step DAG for workflows. The UI streams chat over the [AG-UI protocol](https://github.com/ag-ui-protocol/ag-ui) at `POST /api/sessions/:id/ag-ui`. The home launcher uses `POST /api/orchestrate` with the built-in `nui` master agent.
 
 ## REST API (selected)
 
@@ -101,15 +101,20 @@ flowchart TB
 | `GET/PATCH/DELETE /api/sessions/:id` | Get / rename / delete |
 | `GET/PUT /api/sessions/:id/messages` | Persisted UI messages |
 | `POST /api/sessions/:id/ag-ui` | **Primary chat endpoint** (AG-UI protocol) |
+| `POST /api/orchestrate` | Home-launcher orchestration (`nui` master agent) |
+| `GET /api/orchestrator/routable-agents` | Agents eligible for launcher delegation |
 | `GET /api/agent-types` | Builtin + user + extension ADL types |
 | `GET/PUT /api/settings` | User preferences |
 | `GET /api/extensions` | Installed extensions and contribution ids |
 | `POST /api/extensions/reload` | Rescan `~/.nui/extensions/` |
+| `GET /api/memory` | Memory summary |
+| `GET/PUT /api/mcp-servers` | User MCP server config |
+| `POST/GET/DELETE /api/mcp-oauth/*` | Remote MCP OAuth flows |
 | `GET /api/hitl-channels` | HITL delivery channels |
 | `POST /api/hitl/requests` | Create HITL request |
 | `GET /api/capabilities` | bwrap availability |
 
-See [Extension REST API]({{ '/docs/extensions/rest-api/' | relative_url }}) for extension-specific endpoints.
+Full tables live in [DEVELOPERS.md](https://github.com/plmbr/nui/blob/main/DEVELOPERS.md) and [dev/dev.md](https://github.com/plmbr/nui/blob/main/dev/dev.md) on `main`. See [Extension REST API]({{ '/docs/extensions/rest-api/' | relative_url }}) for extension-specific endpoints.
 
 ## Persistence
 
@@ -148,6 +153,6 @@ cd ui && npm run lint && npm run build && npm test
 
 ## Releasing
 
-1. Bump `VERSION` on `main`
-2. Tag: `git tag v0.2.0 && git push origin v0.2.0`
+1. Bump `VERSION` on `main` (currently `0.3.0`)
+2. Tag: `git tag v0.3.0 && git push origin v0.3.0`
 3. Create a GitHub Release — the workflow builds Linux and macOS binaries

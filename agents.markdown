@@ -1,9 +1,15 @@
 ---
 layout: page
 title: Agents
-subtitle: Built-in CLI and API agents — pick one per session, or install custom ADL definitions.
+subtitle: Built-in master, CLI, and API agents — pick one per session, or install custom ADL definitions.
 permalink: /agents/
 ---
+
+## Master agent
+
+| Agent (ADL id) | Description |
+|---|---|
+| `nui` | Master agent used by the home launcher. Routes tasks to specialists via the `nui-orchestrator` MCP (`list_agents`, `launch_session`), or helps create and save new ADL agents. Legacy id alias: `nui-orchestrator`. |
 
 ## CLI agents
 
@@ -20,13 +26,13 @@ These require the corresponding binary on your `PATH`:
 
 In-process LLM calls — no CLI required. Select under **Built-in → API** in the New Session panel:
 
-| Name | API key environment variable |
-|---|---|
-| Anthropic | `ANTHROPIC_API_KEY` (or `ANTHROPIC_AUTH_TOKEN`) |
-| OpenAI | `OPENAI_API_KEY` |
-| Gemini | `GEMINI_API_KEY` or `GOOGLE_API_KEY` |
-| OpenRouter | `OPENROUTER_API_KEY` |
-| Ollama | none (local; optional `OLLAMA_HOST`) |
+| ADL id | Name | API key environment variable |
+|---|---|---|
+| `anthropic` | Claude API | `ANTHROPIC_API_KEY` (or `ANTHROPIC_AUTH_TOKEN`) |
+| `openai` | OpenAI | `OPENAI_API_KEY` |
+| `gemini` | Gemini | `GEMINI_API_KEY` or `GOOGLE_API_KEY` |
+| `openrouter` | OpenRouter | `OPENROUTER_API_KEY` |
+| `ollama` | Ollama | none (local; optional `OLLAMA_HOST`) |
 
 ## Custom agents
 
@@ -45,7 +51,9 @@ See [ADL agents](/features/adl/) for the schema and [harness examples](https://g
 | Harness | Lifecycle |
 |---|---|
 | `claude-code`, `pi`, `codex`, `opencode` | Go-managed subprocesses on the host or in Docker |
+| `api` | In-process LLM calls (Anthropic, OpenAI, Gemini, OpenRouter, Ollama) |
 | `docker` | nui runs a container, health-checks, and tears it down on delete |
+| `devcontainer` | Dev Container CLI–managed environment with an inner CLI harness |
 | `remote` | Connect to a pre-running HTTP/SSE agent at `host:port` |
 | `ext:<extension>/<harness-id>` | Extension-contributed stdio, TCP, or HTTP harnesses |
 
