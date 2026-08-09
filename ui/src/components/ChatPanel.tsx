@@ -163,6 +163,7 @@ export function ChatPanel({
   const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
   const scrollPendingRef = useRef(false)
   const anchoredUserMsgIdRef = useRef<string | null>(null)
+  const prevHitlIdsRef = useRef('')
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const initialPromptSentRef = useRef(false)
 
@@ -171,6 +172,7 @@ export function ChatPanel({
   }, [attachments])
 
   useEffect(() => {
+    prevHitlIdsRef.current = ''
     return () => {
       for (const attachment of attachmentsRef.current) {
         if (attachment.previewUrl.startsWith('blob:')) {
@@ -391,26 +393,37 @@ export function ChatPanel({
   useLayoutEffect(() => {
     const container = messagesContainerRef.current
     const spacer = scrollSpacerRef.current
-    if (!container || !spacer) return
+    const hitlKey = pendingHitlRequests.map((req) => req.requestId).join(',')
+    if (!hitlKey) {
+      prevHitlIdsRef.current = ''
+    }
+    const hitlAppeared = hitlKey.length > 0 && hitlKey !== prevHitlIdsRef.current
 
-    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')
-    if (!lastUserMsg) return
+    if (container && spacer) {
+      const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')
+      const anchorEl = lastUserMsg ? messageRefs.current.get(lastUserMsg.id) : undefined
 
-    const anchorEl = messageRefs.current.get(lastUserMsg.id)
-    if (!anchorEl) return
-
-    if (scrollPendingRef.current) {
-      updateScrollSpacer(container, anchorEl, spacer)
-      scrollPendingRef.current = false
-      anchoredUserMsgIdRef.current = lastUserMsg.id
-      scrollMessageToTop(container, anchorEl)
-      return
+      if (anchorEl && lastUserMsg) {
+        if (scrollPendingRef.current) {
+          updateScrollSpacer(container, anchorEl, spacer)
+          scrollPendingRef.current = false
+          anchoredUserMsgIdRef.current = lastUserMsg.id
+          scrollMessageToTop(container, anchorEl)
+        } else if (anchoredUserMsgIdRef.current === lastUserMsg.id) {
+          updateScrollSpacer(container, anchorEl, spacer)
+        }
+      }
     }
 
-    if (anchoredUserMsgIdRef.current !== lastUserMsg.id) return
-
-    updateScrollSpacer(container, anchorEl, spacer)
-  }, [messages, isRunning])
+    // Wait until messages are rendered so the HITL card is in the scrollable list.
+    if (hitlAppeared && container && messages.length > 0) {
+      prevHitlIdsRef.current = hitlKey
+      container.scrollTo({
+        top: Math.max(0, container.scrollHeight - container.clientHeight),
+        behavior: 'auto',
+      })
+    }
+  }, [messages, isRunning, pendingHitlRequests])
 
   const submit = () => {
     const text = input.trim()
