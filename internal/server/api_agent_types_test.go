@@ -3,6 +3,8 @@
 package server
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"nui/internal/agent"
@@ -10,6 +12,22 @@ import (
 	"nui/internal/devcontainer"
 	"nui/internal/model"
 )
+
+func writeFakeCLI(t *testing.T, dir, name string) {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// withOnlyFakeCLIs sets PATH to dir only and clears NUI_CODEX_PATH so LookPath
+// cannot find host agent CLIs or the Codex.app fallback.
+func withOnlyFakeCLIs(t *testing.T, dir string) {
+	t.Helper()
+	t.Setenv("PATH", dir)
+	t.Setenv("NUI_CODEX_PATH", filepath.Join(dir, "codex-missing"))
+}
 
 func TestHarnessAvailable_builtinCLIHarnesses(t *testing.T) {
 	builtins := []model.ADLDefinition{
@@ -135,16 +153,56 @@ func TestAgentTypeInfoFromDef_allowedHarnesses(t *testing.T) {
 		AllowedHarnesses: []string{"pi", "codex"},
 	}
 	info := agentTypeInfoFromDef(def, false)
-	// Filtered by availability; default is always first in Normalize when present.
-	if len(info.AllowedHarnesses) == 0 {
-		t.Fatal("expected at least the available harnesses from allowlist")
+	raw := model.NormalizeAllowedHarnesses(def)
+	wantSet := map[string]bool{}
+	for _, h := range raw {
+		probe := def
+		probe.Harness.Type = h
+		if harnessAvailable(probe) {
+			wantSet[h] = true
+		}
+	}
+	if len(info.AllowedHarnesses) != len(wantSet) {
+		t.Fatalf("AllowedHarnesses = %v, want available subset of %v", info.AllowedHarnesses, raw)
 	}
 	for _, h := range info.AllowedHarnesses {
+		if !wantSet[h] {
+			t.Fatalf("AllowedHarnesses includes unexpected %q", h)
+		}
 		probe := def
 		probe.Harness.Type = h
 		if !harnessAvailable(probe) {
 			t.Fatalf("AllowedHarnesses includes unavailable %q", h)
 		}
+	}
+}
+
+func TestAgentTypeInfoFromDef_allowedHarnessesFiltersToFakeCLIs(t *testing.T) {
+	dir := t.TempDir()
+	writeFakeCLI(t, dir, "pi")
+	writeFakeCLI(t, dir, "codex")
+	withOnlyFakeCLIs(t, dir)
+	t.Setenv("NUI_CODEX_PATH", filepath.Join(dir, "codex"))
+
+	def := model.ADLDefinition{
+		ID:               "portable",
+		Name:             "Portable",
+		Harness:          model.ADLHarness{Type: "claude-code"},
+		AllowedHarnesses: []string{"pi", "codex"},
+	}
+	info := agentTypeInfoFromDef(def, false)
+	if len(info.AllowedHarnesses) < 2 {
+		t.Fatalf("AllowedHarnesses = %v, want pi and codex from fakes", info.AllowedHarnesses)
+	}
+	found := map[string]bool{}
+	for _, h := range info.AllowedHarnesses {
+		found[h] = true
+	}
+	if !found["pi"] || !found["codex"] {
+		t.Fatalf("AllowedHarnesses = %v, want to include pi and codex", info.AllowedHarnesses)
+	}
+	if found["claude-code"] {
+		t.Fatalf("claude-code should be unavailable with isolated PATH, got %v", info.AllowedHarnesses)
 	}
 }
 
@@ -155,12 +213,38 @@ func TestAgentTypeInfoFromDef_allowedHarnessesOmittedExpandsCLI(t *testing.T) {
 		Harness: model.ADLHarness{Type: "claude-code"},
 	}
 	info := agentTypeInfoFromDef(def, false)
-	if len(info.AllowedHarnesses) < 1 {
-		t.Fatal("omitted allowlist should expose available CLI harnesses")
+	raw := model.NormalizeAllowedHarnesses(def)
+	if len(raw) != len(model.CLIHarnessTypes) {
+		t.Fatalf("NormalizeAllowedHarnesses = %v, want all CLI types", raw)
 	}
-	if info.AllowedHarnesses[0] != "claude-code" && agent.CLIAvailable("claude-code") {
-		// default should be first when available
-		t.Fatalf("first = %q, want claude-code when available", info.AllowedHarnesses[0])
+	for _, h := range info.AllowedHarnesses {
+		probe := def
+		probe.Harness.Type = h
+		if !harnessAvailable(probe) {
+			t.Fatalf("AllowedHarnesses includes unavailable %q", h)
+		}
+	}
+	if agent.CLIAvailable("claude-code") {
+		if len(info.AllowedHarnesses) < 1 || info.AllowedHarnesses[0] != "claude-code" {
+			t.Fatalf("first = %v, want claude-code when available", info.AllowedHarnesses)
+		}
+	}
+	for _, h := range raw {
+		probe := def
+		probe.Harness.Type = h
+		if !harnessAvailable(probe) {
+			continue
+		}
+		found := false
+		for _, got := range info.AllowedHarnesses {
+			if got == h {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("missing available harness %q in %v", h, info.AllowedHarnesses)
+		}
 	}
 }
 
