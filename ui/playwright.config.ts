@@ -26,8 +26,8 @@ export default defineConfig({
   webServer: {
     command: '../scripts/e2e-server.sh',
     url: `${baseURL}/health`,
-    // Integration tests seed ~/.nui; never attach to an unrelated local server.
-    reuseExistingServer: !process.env.CI && process.env.E2E_AGENT !== 'integration',
+    // Echo/integration/ollama seed agents or mocks; never attach to an unrelated local server.
+    reuseExistingServer: !process.env.CI && !process.env.E2E_AGENT,
     timeout: 120_000,
   },
 })

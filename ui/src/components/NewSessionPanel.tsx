@@ -718,6 +718,7 @@ function BuiltinAgentCard({ agent, selected, onSelect }: BuiltinAgentCardProps) 
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
+      aria-label={agent.label}
       className={cn(
         'flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center transition-colors',
         selected
@@ -729,9 +730,9 @@ function BuiltinAgentCard({ agent, selected, onSelect }: BuiltinAgentCardProps) 
       <span className={cn(
         'text-xs leading-tight',
         selected ? 'font-medium text-foreground' : 'text-muted-foreground',
-      )}>{agent.label}</span>
+      )} aria-hidden="true">{agent.label}</span>
       {kindLabel && (
-        <span className="rounded-full border border-border/60 bg-muted/50 px-1.5 py-px text-[10px] font-medium leading-tight text-muted-foreground">
+        <span aria-hidden="true" className="rounded-full border border-border/60 bg-muted/50 px-1.5 py-px text-[10px] font-medium leading-tight text-muted-foreground">
           {kindLabel}
         </span>
       )}

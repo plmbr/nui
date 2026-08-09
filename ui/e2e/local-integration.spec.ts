@@ -86,7 +86,7 @@ skills:
   test('tool calling surfaces HITL prompt and accepts an answer', async ({ page }) => {
     test.setTimeout(120_000)
     await waitForAppReady(page)
-    await createSessionWithAgent(page, /^Ollama$/i)
+    await createSessionWithAgent(page, /Ollama/i)
     await sendChatMessage(page, 'which do you prefer: is 2+2 equal to 4 or 5?')
 
     const prompt = page.locator('.hitl-prompt')

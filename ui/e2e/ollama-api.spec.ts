@@ -16,7 +16,7 @@ test('ollama api does not leak raw tool JSON into chat', async ({ page }) => {
   test.skip(!ollamaAgentAvailable(), 'set E2E_AGENT=ollama to run ollama api tests')
 
   await waitForAppReady(page)
-  await createSessionWithAgent(page, /^Ollama$/i)
+  await createSessionWithAgent(page, /Ollama/i)
   await sendChatMessage(page, 'what is 2+2')
 
   const last = assistantMessages(page).last()
@@ -30,7 +30,7 @@ test('ollama api answers capability questions without blank visualization', asyn
   test.skip(!ollamaAgentAvailable(), 'set E2E_AGENT=ollama to run ollama api tests')
 
   await waitForAppReady(page)
-  await createSessionWithAgent(page, /^Ollama$/i)
+  await createSessionWithAgent(page, /Ollama/i)
   await sendChatMessage(page, 'what can you do')
 
   const last = assistantMessages(page).last()
@@ -47,7 +47,7 @@ test('ollama api answers factual questions as text not visualization', async ({ 
   test.skip(!ollamaAgentAvailable(), 'set E2E_AGENT=ollama to run ollama api tests')
 
   await waitForAppReady(page)
-  await createSessionWithAgent(page, /^Ollama$/i)
+  await createSessionWithAgent(page, /Ollama/i)
   await sendChatMessage(page, 'What is the capital of France')
 
   const last = assistantMessages(page).last()
@@ -61,7 +61,7 @@ test('ollama api responds to the current message, not the previous one', async (
   test.skip(!ollamaAgentAvailable(), 'set E2E_AGENT=ollama to run ollama api tests')
 
   await waitForAppReady(page)
-  await createSessionWithAgent(page, /^Ollama$/i)
+  await createSessionWithAgent(page, /Ollama/i)
   await sendChatMessage(page, 'what is 2+2')
   await expect(assistantMessages(page).last()).toBeVisible({ timeout: 45_000 })
 
