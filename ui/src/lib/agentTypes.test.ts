@@ -6,6 +6,7 @@ import {
   defaultUserScopeHarnessConfig,
   orderedBuiltinAgentsForPicker,
   partitionBuiltinAgents,
+  pickNewSessionAgentTypeId,
   showToolApprovalsOption,
   showUserScopeOption,
   selectableAgentTypes,
@@ -75,7 +76,7 @@ describe('agentTypes', () => {
     expect(cli.map((a) => a.id)).toEqual(['claude-code', 'pi'])
   })
 
-  it('orders built-in picker agents with unavailable last', () => {
+  it('orders built-in picker agents and hides unavailable', () => {
     const agents: AgentType[] = [
       { id: 'pi', label: 'Pi', harness: 'pi', available: false, isBuiltin: true },
       { id: 'anthropic', label: 'Claude API', harness: 'api', provider: 'anthropic', available: true, isBuiltin: true },
@@ -87,8 +88,17 @@ describe('agentTypes', () => {
       'nui',
       'anthropic',
       'claude-code',
-      'openai',
-      'pi',
     ])
+  })
+
+  it('defaults new session agent to nui unless an explicit id is provided', () => {
+    const agents: AgentType[] = [
+      claudeAgent,
+      nuiAgent,
+      { id: 'custom', label: 'Custom', harness: 'claude-code', available: true, isBuiltin: false },
+    ]
+    expect(pickNewSessionAgentTypeId(agents)).toBe('nui')
+    expect(pickNewSessionAgentTypeId(agents, 'custom')).toBe('custom')
+    expect(pickNewSessionAgentTypeId(agents, 'missing')).toBe('nui')
   })
 })

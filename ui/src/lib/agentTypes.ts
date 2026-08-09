@@ -54,17 +54,13 @@ export function partitionBuiltinAgents(builtins: AgentType[]): {
 
 /**
  * Built-in agents for the new-session picker: nui, then API, then CLI.
- * Available agents come first; unavailable agents are listed at the end (same relative order).
+ * Unavailable agents are omitted.
  */
 export function orderedBuiltinAgentsForPicker(types: AgentType[]): AgentType[] {
-  const all = types.filter((a) => a.isBuiltin)
+  const all = types.filter((a) => a.isBuiltin && a.available)
   const nui = all.find((a) => isNuiAgent(a))
   const { api, cli } = partitionBuiltinAgents(all.filter((a) => !isNuiAgent(a)))
-  const ordered = [...(nui ? [nui] : []), ...api, ...cli]
-  return [
-    ...ordered.filter((a) => a.available),
-    ...ordered.filter((a) => !a.available),
-  ]
+  return [...(nui ? [nui] : []), ...api, ...cli]
 }
 
 export function pickDefaultAgentTypeId(
@@ -83,6 +79,20 @@ export function pickDefaultAgentTypeId(
   }
   const builtin = selectable.find((t) => t.isBuiltin && !isNuiAgent(t))
   return builtin?.id ?? selectable[0]?.id ?? ''
+}
+
+/** Default agent for the new-session UI: explicit id, else nui, else first available. */
+export function pickNewSessionAgentTypeId(
+  types: AgentType[],
+  initialId?: string | null,
+): string {
+  const selectable = selectableAgentTypes(types)
+  if (initialId) {
+    const match = selectable.find((t) => t.id === initialId)
+    if (match) return match.id
+  }
+  const nui = selectable.find((t) => isNuiAgent(t))
+  return nui?.id ?? pickDefaultAgentTypeId(types)
 }
 
 /** Harnesses that can load user/project settings via native CLI flags. */

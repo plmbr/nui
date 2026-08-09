@@ -28,7 +28,6 @@ var apiBuiltinAgentDefs = []model.ADLDefinition{
 			Model:    "claude-sonnet-4-20250514",
 		},
 		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelnuiUI}},
-		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
 	},
 	{
@@ -42,7 +41,6 @@ var apiBuiltinAgentDefs = []model.ADLDefinition{
 			Model:    "gpt-4o-mini",
 		},
 		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelnuiUI}},
-		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
 	},
 	{
@@ -56,7 +54,6 @@ var apiBuiltinAgentDefs = []model.ADLDefinition{
 			Model:    "gemini-2.5-flash",
 		},
 		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelnuiUI}},
-		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
 	},
 	{
@@ -72,7 +69,6 @@ var apiBuiltinAgentDefs = []model.ADLDefinition{
 			APIKeyEnv: "OPENROUTER_API_KEY",
 		},
 		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelnuiUI}},
-		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
 	},
 	{
@@ -85,7 +81,6 @@ var apiBuiltinAgentDefs = []model.ADLDefinition{
 			Provider: "ollama",
 		},
 		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelnuiUI}},
-		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
 	},
 }

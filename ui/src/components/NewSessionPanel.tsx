@@ -20,7 +20,7 @@ import {
 } from '@/lib/agentTags'
 import {
   orderedBuiltinAgentsForPicker,
-  pickDefaultAgentTypeId,
+  pickNewSessionAgentTypeId,
   selectableAgentTypes,
   defaultUserScopeHarnessConfig,
   showUserScopeOption,
@@ -137,24 +137,20 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
       selectAgent(initialAgentTypeId)
       return
     }
-    api.settings.get()
-      .then((settings) => {
-        setSelectedId((current) => {
-          if (current && selectable.some((t) => t.id === current)) return current
-          return pickDefaultAgentTypeId(agentTypes, settings.lastAgentType)
-        })
-      })
-      .catch(() => {
-        setSelectedId((current) => current || pickDefaultAgentTypeId(agentTypes))
-      })
+
+    setSelectedId((current) => {
+      if (current && selectable.some((t) => t.id === current)) return current
+      // Plain /sessions/new always defaults to nui (built-in tab).
+      return pickNewSessionAgentTypeId(agentTypes)
+    })
   }, [agentTypes, initialAgentTypeId, builtins, userDefined])
 
   useEffect(() => {
     if (initialPaneSynced.current || !selectedId) return
     initialPaneSynced.current = true
     if (userDefined.some((a) => a.id === selectedId)) setAgentPane('installed')
-    else if (builtins.some((a) => a.id === selectedId) || isNuiAgent(selectedId)) setAgentPane('builtin')
-  }, [selectedId, userDefined, builtins])
+    else setAgentPane('builtin')
+  }, [selectedId, userDefined])
 
   useEffect(() => {
     api.extensions.list()
@@ -323,8 +319,10 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
     setError('')
     try {
       const req: CreateSessionRequest = {
-        workingDir: workingDir.trim(),
         agentType: selectedId,
+      }
+      if (selected?.workingDirInput) {
+        req.workingDir = workingDir.trim()
       }
       const agentConfig: NonNullable<CreateSessionRequest['agentConfig']> = {}
       if (userScopeHarnessConfig) {
@@ -708,7 +706,6 @@ interface BuiltinAgentCardProps {
 }
 
 function BuiltinAgentCard({ agent, selected, onSelect }: BuiltinAgentCardProps) {
-  const unavailable = !agent.available
   const kindLabel = isNuiAgent(agent)
     ? null
     : isApiBuiltinAgent(agent)
@@ -720,34 +717,22 @@ function BuiltinAgentCard({ agent, selected, onSelect }: BuiltinAgentCardProps) 
     <button
       type="button"
       onClick={onSelect}
-      disabled={unavailable}
       aria-pressed={selected}
-      aria-disabled={unavailable}
-      title={unavailable ? 'Not available on this system' : undefined}
       className={cn(
         'flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center transition-colors',
-        unavailable && 'cursor-not-allowed opacity-45',
-        !unavailable && selected
+        selected
           ? 'border-primary bg-primary/5 text-foreground'
-          : !unavailable && 'border-border bg-background hover:bg-muted/60',
-        unavailable && 'border-dashed border-border bg-background',
+          : 'border-border bg-background hover:bg-muted/60',
       )}
     >
       <HarnessIcon harness={agent.harness} provider={agent.provider} agentId={agent.id} size="xl" />
       <span className={cn(
         'text-xs leading-tight',
-        selected && !unavailable ? 'font-medium text-foreground' : 'text-muted-foreground',
+        selected ? 'font-medium text-foreground' : 'text-muted-foreground',
       )}>{agent.label}</span>
-      {(kindLabel || unavailable) && (
-        <span className="flex flex-wrap items-center justify-center gap-1">
-          {kindLabel && (
-            <span className="rounded-full border border-border/60 bg-muted/50 px-1.5 py-px text-[10px] font-medium leading-tight text-muted-foreground">
-              {kindLabel}
-            </span>
-          )}
-          {unavailable && (
-            <span className="text-[10px] leading-tight text-muted-foreground">Unavailable</span>
-          )}
+      {kindLabel && (
+        <span className="rounded-full border border-border/60 bg-muted/50 px-1.5 py-px text-[10px] font-medium leading-tight text-muted-foreground">
+          {kindLabel}
         </span>
       )}
     </button>

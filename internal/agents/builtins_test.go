@@ -91,3 +91,18 @@ func TestCLIHarnessTypesMatchBuiltinDefs(t *testing.T) {
 		}
 	}
 }
+
+func TestAPIBuiltinAgentsOmitWorkingDirInput(t *testing.T) {
+	for _, def := range apiBuiltinAgentDefs {
+		if def.WorkingDirInput {
+			t.Fatalf("%s should not request working directory input (API agents use isolated workspaces)", def.ID)
+		}
+		if def.Harness.Type != "api" {
+			t.Fatalf("%s harness type = %q, want api", def.ID, def.Harness.Type)
+		}
+	}
+	nui := orchestratorAgentDef()
+	if nui.WorkingDirInput {
+		t.Fatal("nui should not request working directory input")
+	}
+}

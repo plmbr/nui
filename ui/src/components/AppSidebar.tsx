@@ -463,12 +463,13 @@ export function AppSidebar({
         onWidthCommit={onSidebarWidthCommit}
       />
       <SidebarHeader className="sidebar-actions shrink-0 px-3 py-2">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           <Button
-            size="sm"
+            size="xs"
+            variant="ghost"
             className={cn(
-              'sidebar-header__btn-primary w-auto gap-2 border-0 shadow-none md:min-h-8 min-h-11 min-w-11 md:min-w-0',
-              newSessionOpen && 'ring-1 ring-primary/60',
+              'sidebar-header__action w-auto gap-1.5 text-muted-foreground hover:text-foreground md:h-7 h-9 min-w-9 md:min-w-0',
+              newSessionOpen && 'bg-muted text-foreground ring-1 ring-border',
             )}
             onClick={() => {
               onOpenNewSession()
@@ -477,15 +478,15 @@ export function AppSidebar({
             aria-pressed={newSessionOpen}
             aria-label="New Session"
           >
-            <Plus className="size-4 shrink-0" />
+            <Plus className="size-3.5 shrink-0" />
             <span className="hidden md:inline">New Session</span>
           </Button>
           <Button
-            size="sm"
-            variant="outline"
+            size="xs"
+            variant="ghost"
             className={cn(
-              'w-auto gap-2 bg-background/40 md:min-h-8 min-h-11 min-w-11 md:min-w-0',
-              schedulesPanelOpen && 'ring-1 ring-primary/40 bg-primary/10',
+              'sidebar-header__action w-auto gap-1.5 text-muted-foreground hover:text-foreground md:h-7 h-9 min-w-9 md:min-w-0',
+              schedulesPanelOpen && 'bg-muted text-foreground ring-1 ring-border',
             )}
             onClick={() => {
               onOpenSchedules()
@@ -494,7 +495,7 @@ export function AppSidebar({
             aria-pressed={schedulesPanelOpen}
             aria-label="Schedule"
           >
-            <CalendarClock className="size-4 shrink-0" />
+            <CalendarClock className="size-3.5 shrink-0" />
             <span className="hidden md:inline">Schedule</span>
           </Button>
           <Button
