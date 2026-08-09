@@ -99,7 +99,7 @@ func finishRunRecord(runID string, status RunStatus, output, errMsg string) {
 	rec.FinishedAt = time.Now().UTC().Format(time.RFC3339)
 	sessionID := rec.SessionID
 	finishedAt := rec.FinishedAt
-	listeners := runListeners[runID]
+	listeners := snapshotRunListeners(runListeners[runID])
 	runStoreMu.Unlock()
 	updateSessionLastRunAt(sessionID, finishedAt)
 	notifyRunListeners(listeners)
@@ -143,8 +143,19 @@ func sessionHasRunningRun(sessionID string) bool {
 // runFinishedSentinel wakes SSE subscribers after finishRunRecord updates status.
 var runFinishedSentinel = runLogEntry{Seq: -1}
 
-func notifyRunListeners(listeners map[chan runLogEntry]struct{}) {
+func snapshotRunListeners(listeners map[chan runLogEntry]struct{}) []chan runLogEntry {
+	if len(listeners) == 0 {
+		return nil
+	}
+	out := make([]chan runLogEntry, 0, len(listeners))
 	for ch := range listeners {
+		out = append(out, ch)
+	}
+	return out
+}
+
+func notifyRunListeners(listeners []chan runLogEntry) {
+	for _, ch := range listeners {
 		select {
 		case ch <- runFinishedSentinel:
 		default:
@@ -172,9 +183,9 @@ func appendRunEvent(runID string, seq int, ev agent.Event) error {
 	}
 
 	runStoreMu.RLock()
-	listeners := runListeners[runID]
+	listeners := snapshotRunListeners(runListeners[runID])
 	runStoreMu.RUnlock()
-	for ch := range listeners {
+	for _, ch := range listeners {
 		select {
 		case ch <- entry:
 		default:
@@ -226,7 +237,7 @@ func subscribeRunEvents(runID string) (chan runLogEntry, func()) {
 			delete(runListeners, runID)
 		}
 		runStoreMu.Unlock()
-		close(ch)
+		// Leave ch open: notifyRunListeners may still hold a snapshot and send.
 	}
 	return ch, unsub
 }
@@ -247,19 +258,15 @@ func purgeSessionRuns(sessionID string) {
 	runStoreMu.Lock()
 	ids := append([]string(nil), sessionRuns[sessionID]...)
 	delete(sessionRuns, sessionID)
-	var listenerSets []map[chan runLogEntry]struct{}
+	var listeners []chan runLogEntry
 	for _, runID := range ids {
 		delete(runRecords, runID)
-		if listeners := runListeners[runID]; len(listeners) > 0 {
-			listenerSets = append(listenerSets, listeners)
-		}
+		listeners = append(listeners, snapshotRunListeners(runListeners[runID])...)
 		delete(runListeners, runID)
 	}
 	runStoreMu.Unlock()
 
-	for _, listeners := range listenerSets {
-		notifyRunListeners(listeners)
-	}
+	notifyRunListeners(listeners)
 	for _, runID := range ids {
 		if err := store.RemoveRunLog(runID); err != nil {
 			fmt.Fprintf(os.Stderr, "warn: remove run log %s: %v\n", runID, err)
