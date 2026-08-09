@@ -42,7 +42,7 @@ Install your own agent definitions (ADL YAML) to `~/.nui/agents/`:
 nui agent add ./my-agent.yaml
 ```
 
-Custom agents appear under **Installed agents** in the New Session panel. They can run in Docker, dev containers, remote servers, or sandboxes.
+Custom agents appear under **Installed agents** in the New Session panel. They can run in Docker, dev containers, remote servers, or sandboxes. For CLI-based custom agents, `allowedHarnesses` controls which CLI harnesses may be selected at session create (UI picker or `--harness`).
 
 See [ADL agents](/features/adl/) for the schema and [harness examples](https://github.com/plmbr/nui/tree/main/dev/harness-examples) for templates.
 

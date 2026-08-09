@@ -26,6 +26,8 @@ The home screen calls `POST /api/orchestrate`. The master's harness comes from S
 
 Persistent sessions are maintained per harness — Claude Code, pi, codex, and opencode each keep their own session state across turns.
 
+Built-in CLI agents are **pinned** to their matching harness. Custom CLI agents can allow a subset (or all) of CLI harnesses via ADL `allowedHarnesses`; the New Session panel then offers a harness picker, and CLI accepts `--harness`.
+
 ## API agents
 
 API agents run in-process without a CLI binary:

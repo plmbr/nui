@@ -73,6 +73,7 @@ These flags apply to `nui server` when starting the web UI with a pre-created se
 |---|---|---|
 | `--open` | | Open the web UI in your browser with a new session |
 | `--agent-type` | `-a` | ADL agent id (e.g. `claude-code`, `pi`, `codex`) |
+| `--harness` | | CLI harness override for the launched session (must be allowed by the agent) |
 | `--prompt` | `-m` | Initial prompt sent automatically |
 | `--hide-input` | | Hide the chat input (use with `--prompt`) |
 | `--working-dir` | `-w` | Working directory for the session |

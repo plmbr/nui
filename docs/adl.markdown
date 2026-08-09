@@ -49,6 +49,37 @@ harness:
 
 Set `ANTHROPIC_API_KEY` (and optionally `ANTHROPIC_BASE_URL`) in the environment.
 
+## Session harness override (`allowedHarnesses`)
+
+Top-level `harness` is always the **default** runtime. For CLI agents, the New Session panel and CLI may swap `harness.type` among compatible CLI runtimes:
+
+```yaml
+adl: "1.0"
+id: portable-coder
+name: Portable Coder
+harness:
+  type: claude-code
+  model: claude-sonnet-4-6
+
+allowedHarnesses:
+  - claude-code
+  - pi
+```
+
+| Rule | Behavior |
+|---|---|
+| Omitted | Any CLI harness (`claude-code`, `pi`, `codex`, `opencode`) is allowed when `harness.type` is itself a CLI harness |
+| Present | Whitelist — override may only be a listed entry (use a single entry to pin) |
+| Built-in CLI agents | Pinned to their matching harness (singleton list) |
+| Non-CLI defaults (`api`, `docker`, `remote`, `devcontainer`, `ext:…`) | No CLI session override |
+
+Override replaces `harness.type` only; other harness fields (`model`, `env`, `permissions`, sandbox) stay from the authored block. Per-step `steps[].harness` is never overridden.
+
+```bash
+nui run -a portable-coder --harness pi -m "Review README"
+nui server -a portable-coder --harness pi --open
+```
+
 ### Extension harness example
 
 ```yaml

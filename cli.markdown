@@ -16,6 +16,7 @@ nui server                    # listen on :8080
 nui server --port 3000        # custom port
 nui server --open             # open browser with a new session
 nui server -a claude-code -m "Review README" -w . --open
+nui server -a portable-coder --harness pi --open
 ```
 
 | Flag | Short | Description |
@@ -24,6 +25,7 @@ nui server -a claude-code -m "Review README" -w . --open
 | `--open` | | Open the web UI in the system default browser |
 | `--no-browser` | | Do not open a browser (daemon mode) |
 | `--agent-type` | `-a` | ADL agent id for a session created on startup (e.g. `claude-code`, `anthropic`) |
+| `--harness` | | CLI harness override for the launched session (must be allowed by the agent; see `allowedHarnesses`) |
 | `--prompt` | `-m` | Initial prompt for the new session |
 | `--working-dir` | `-w` | Working directory for the new session |
 | `--hide-input` | | Hide the chat input (use with `--prompt`) |
@@ -40,6 +42,7 @@ Run an agent without opening the browser. `nui run` and `nui agent run` are equi
 ```bash
 nui run -m "Review README" -w .
 nui run -a claude-code -m "Review README" -w . --wait
+nui run -a portable-coder --harness pi -m "Review README" -w . --wait
 nui run -m "Summarize changes" -w . --spawn --wait
 nui run --session-id <id> -m "Follow up" --wait
 ```
@@ -47,6 +50,7 @@ nui run --session-id <id> -m "Follow up" --wait
 | Flag | Short | Description |
 |---|---|---|
 | `--agent-type` | `-a` | ADL agent id for a new session (default: settings `defaultAgentType`) |
+| `--harness` | | CLI harness override (must be allowed by the agent; omit `allowedHarnesses` to allow any CLI harness) |
 | `--message` | `-m` | Prompt message |
 | `--working-dir` | `-w` | Working directory for a new session |
 | `--session-id` | | Existing session id (skips session create) |

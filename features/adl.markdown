@@ -106,6 +106,24 @@ ADL agents can use any harness type:
 | `remote` | Pre-running HTTP/SSE agent at `host:port` |
 | `ext:<extension>/<harness-id>` | Extension-contributed harness |
 
+## Session harness override
+
+For CLI agents, set `allowedHarnesses` to control which harnesses can run the agent at session create. Omit the field to allow any CLI harness; use a single entry to pin. The New Session panel shows a harness picker when more than one option is allowed; CLI uses `--harness`.
+
+```yaml
+harness:
+  type: claude-code
+allowedHarnesses:
+  - claude-code
+  - pi
+```
+
+```bash
+nui run -a portable-coder --harness pi -m "Review README"
+```
+
+See [ADL docs — Session harness override]({{ '/docs/adl/#session-harness-override-allowedharnesses' | relative_url }}).
+
 ## Further reading
 
 - [CLI reference — Agent evaluation]({{ '/cli/#agent-evaluation-schema' | relative_url }}) — eval schema and flags
