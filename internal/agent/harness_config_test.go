@@ -418,6 +418,106 @@ func TestProvisionOpenCodeHarnessConfigSkills(t *testing.T) {
 	}
 }
 
+func TestProvisionPiHarnessConfigLinksUserConfig(t *testing.T) {
+	tmp := t.TempDir()
+	home := filepath.Join(tmp, "home")
+	t.Setenv("HOME", home)
+
+	userAgentDir := filepath.Join(home, ".pi", "agent")
+	if err := os.MkdirAll(filepath.Join(userAgentDir, "npm"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		"settings.json":     `{"defaultProvider":"example","defaultModel":"example-model"}`,
+		"models.json":       `{"providers":{"example":{"baseUrl":"http://localhost:9999"}}}`,
+		"auth.json":         `{"example":{"apiKey":"secret"}}`,
+		"models-extra.json": `{"providers":{}}`,
+		"mcp.json":          `{"mcpServers":{"user-only":{}}}`,
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(userAgentDir, name), []byte(content), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	configDir, err := ProvisionHarnessConfig("pi-user-config", "pi", HarnessDeps{
+		MCPServers: []model.ADLMCPServer{{Name: "local", Command: "echo", Args: []string{"mcp"}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	agentDir := piAgentConfigDir(configDir)
+
+	for _, name := range []string{"settings.json", "models.json", "auth.json", "models-extra.json", "npm", "sessions"} {
+		if _, err := os.Stat(filepath.Join(agentDir, name)); err != nil {
+			t.Fatalf("missing linked %s: %v", name, err)
+		}
+	}
+
+	settings, err := os.ReadFile(filepath.Join(agentDir, "settings.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(settings), "example-model") {
+		t.Fatalf("settings.json = %q", string(settings))
+	}
+
+	// nui generates mcp.json from the ADL, so the user file must not be linked over it.
+	mcp, err := os.ReadFile(filepath.Join(agentDir, "mcp.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(mcp), "user-only") {
+		t.Fatalf("generated mcp.json overwritten by user config: %q", string(mcp))
+	}
+}
+
+func TestProvisionOpenCodeHarnessConfigMergesUserConfig(t *testing.T) {
+	tmp := t.TempDir()
+	home := filepath.Join(tmp, "home")
+	t.Setenv("HOME", home)
+	userConfigDir := filepath.Join(home, ".config", "opencode")
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+
+	if err := os.MkdirAll(filepath.Join(userConfigDir, "node_modules"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	userCfg := `{"model":"example/example-model","instructions":["./AGENTS.md"]}`
+	if err := os.WriteFile(filepath.Join(userConfigDir, opencodeConfigFile), []byte(userCfg), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	configDir, err := ProvisionHarnessConfig("opencode-user-config", "opencode", HarnessDeps{
+		SystemPrompt: "OpenCode instructions.",
+		MCPServers:   []model.ADLMCPServer{{Name: "remote", URL: "http://localhost:9090/mcp", Type: "http"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(configDir, opencodeConfigFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	if cfg["model"] != "example/example-model" {
+		t.Fatalf("user model setting dropped: %v", cfg)
+	}
+	if mcp, ok := cfg["mcp"].(map[string]any); !ok || mcp["remote"] == nil {
+		t.Fatalf("generated mcp config missing: %v", cfg)
+	}
+	instructions, ok := cfg["instructions"].([]any)
+	if !ok || len(instructions) != 1 || instructions[0] != "./"+opencodeInstructionsFile {
+		t.Fatalf("instructions = %v, want only the generated file", cfg["instructions"])
+	}
+	if _, err := os.Stat(filepath.Join(configDir, "node_modules")); err != nil {
+		t.Fatalf("user node_modules not linked: %v", err)
+	}
+}
+
 func TestProvisionHarnessConfigMCPEnvAndHeaders(t *testing.T) {
 	tmp := t.TempDir()
 	t.Setenv("HOME", filepath.Join(tmp, "home"))

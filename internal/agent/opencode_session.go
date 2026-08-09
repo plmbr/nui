@@ -9,58 +9,28 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"regexp"
 	"sync"
-	"time"
 )
 
 type persistentOpenCodeSession struct {
 	mu sync.Mutex
 
-	server     *exec.Cmd
-	baseURL    string
-	workingDir string
-	model      string
-	sandbox    string
-	useBwrap   bool
-	configDir  string
-	sessionID  string
+	sessionID string
 }
-
-var opencodeServeURLPattern = regexp.MustCompile(`(?i)listening on (https?://[^\s]+)`)
 
 func (s *persistentOpenCodeSession) runTurn(ctx context.Context, agent *OpenCodeAgent, req RunRequest, events chan<- Event) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	if err := s.ensureServer(ctx, agent, req); err != nil {
-		return "", err
-	}
 
 	sessionID := s.sessionID
 	if sessionID == "" {
 		sessionID = req.SessionID
 	}
 
-	args := []string{"run", "--format", "json", "--attach", s.baseURL}
-	if sessionID != "" {
-		args = append(args, "--session", sessionID)
-	}
-	wd := req.WorkingDir
-	if wd == "" {
-		if cwd, err := os.Getwd(); err == nil {
-			wd = cwd
-		}
-	}
-	if wd != "" {
-		args = append(args, "--dir", wd)
-	}
-	if req.Model != "" {
-		args = append(args, "-m", req.Model)
-	}
-	args = append(args, req.Message)
+	args := buildOpenCodeRunArgs(req, sessionID)
 
 	bin := agent.binaryPath()
+	wd := openCodeWorkingDir(req.WorkingDir)
 	bindDir := harnessConfigBindDir("opencode", req.ConfigDir)
 	var cmd *exec.Cmd
 	if agent.useBwrap() {
@@ -136,105 +106,36 @@ func (s *persistentOpenCodeSession) runTurn(ctx context.Context, agent *OpenCode
 	return latestSessionID, waitErr
 }
 
-func (s *persistentOpenCodeSession) ensureServer(ctx context.Context, agent *OpenCodeAgent, req RunRequest) error {
-	wd := req.WorkingDir
-	if wd == "" {
-		if cwd, err := os.Getwd(); err == nil {
-			wd = cwd
-		}
+// buildOpenCodeRunArgs constructs CLI args for a single turn. OpenCode's --attach mode does
+// not stream JSON events to stdout, so nui runs `opencode run --format json` directly and
+// resumes with --session on later turns.
+func buildOpenCodeRunArgs(req RunRequest, sessionID string) []string {
+	args := []string{"run", "--format", "json"}
+	if sessionID != "" {
+		args = append(args, "--session", sessionID)
 	}
-	if s.server != nil && processAlive(s.server) && s.baseURL != "" &&
-		s.workingDir == wd && s.model == req.Model &&
-		s.sandbox == agent.Sandbox &&
-		s.useBwrap == agent.useBwrap() &&
-		s.configDir == req.ConfigDir {
-		return nil
+	if wd := openCodeWorkingDir(req.WorkingDir); wd != "" {
+		args = append(args, "--dir", wd)
 	}
-
-	s.stopLocked()
-	serveArgs := []string{"serve", "--port", "0", "--hostname", "127.0.0.1"}
-	bin := agent.binaryPath()
-	bindDir := harnessConfigBindDir("opencode", req.ConfigDir)
-	var cmd *exec.Cmd
-	if agent.useBwrap() {
-		bwrap := GetBwrapStatus()
-		if !bwrap.Available {
-			return fmt.Errorf("bubblewrap sandbox requested but not available: %s", bwrap.Error)
-		}
-		wrappedBin, wrappedArgs := WrapWithBwrap(bwrap.Path, bin, serveArgs, wd, ".local/share/opencode", bindDir)
-		cmd = exec.CommandContext(ctx, wrappedBin, wrappedArgs...)
-	} else if agent.useDevcontainer() {
-		cmd = dockerExecCommand(ctx, agent.DevcontainerContainerID, bin, serveArgs)
-	} else {
-		cmd = exec.CommandContext(ctx, bin, serveArgs...)
-		if wd != "" {
-			cmd.Dir = wd
-		}
+	if req.Model != "" {
+		args = append(args, "-m", req.Model)
 	}
-	applyCmdEnv(cmd, "opencode", req.ConfigDir, req.Env, req.UserScopeHarness, req.NuiSessionID, req.RunID)
-
-	cmd.Stdin = nil
-
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("opencode serve start: %w", err)
-	}
-
-	s.server = cmd
-	s.workingDir = wd
-	s.model = req.Model
-	s.sandbox = agent.Sandbox
-	s.useBwrap = agent.useBwrap()
-	s.configDir = req.ConfigDir
-
-	urlCh := make(chan string, 1)
-	go func() {
-		scanner := bufio.NewScanner(stderr)
-		for scanner.Scan() {
-			line := scanner.Text()
-			fmt.Fprintf(os.Stderr, "[opencode serve] %s\n", line)
-			if match := opencodeServeURLPattern.FindStringSubmatch(line); len(match) > 1 {
-				urlCh <- trimTrailingSlash(match[1])
-				return
-			}
-		}
-	}()
-
-	select {
-	case baseURL := <-urlCh:
-		s.baseURL = baseURL
-		return nil
-	case <-time.After(15 * time.Second):
-		s.stopLocked()
-		return fmt.Errorf("opencode serve failed to start")
-	case <-ctx.Done():
-		s.stopLocked()
-		return ctx.Err()
-	}
+	args = append(args, req.Message)
+	return args
 }
 
-func trimTrailingSlash(s string) string {
-	for len(s) > 0 && s[len(s)-1] == '/' {
-		s = s[:len(s)-1]
+func openCodeWorkingDir(workingDir string) string {
+	if workingDir != "" {
+		return workingDir
 	}
-	return s
+	if cwd, err := os.Getwd(); err == nil {
+		return cwd
+	}
+	return ""
 }
 
 func (s *persistentOpenCodeSession) stop() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.stopLocked()
-}
-
-func (s *persistentOpenCodeSession) stopLocked() {
-	if s.server != nil && s.server.Process != nil && s.server.ProcessState == nil {
-		s.server.Process.Kill()
-		_, _ = s.server.Process.Wait()
-	}
-	s.server = nil
-	s.baseURL = ""
-	s.workingDir = ""
+	s.sessionID = ""
 }

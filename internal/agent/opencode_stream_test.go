@@ -49,3 +49,19 @@ func TestOpenCodeStreamParserToolUse(t *testing.T) {
 		t.Fatalf("start=%v args=%v end=%v", start, args, end)
 	}
 }
+
+func TestOpenCodeStreamParserError(t *testing.T) {
+	parser := newOpenCodeStreamParser()
+	events := make(chan Event, 2)
+	line := []byte(`{"type":"error","sessionID":"ses_1","error":{"name":"APIError","data":{"message":"Not Found"}}}`)
+	parser.handleLine(line, events)
+	close(events)
+
+	var got Event
+	for ev := range events {
+		got = ev
+	}
+	if got.Type != EventError || got.Error != "Not Found" {
+		t.Fatalf("event = %+v", got)
+	}
+}

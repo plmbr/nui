@@ -33,12 +33,57 @@ func (piHarnessProvisioner) provision(sessionConfigDir string, deps HarnessDeps)
 	if _, err := installHarnessRules("pi", sessionConfigDir, deps.ResolvedRules); err != nil {
 		return fmt.Errorf("install rules: %w", err)
 	}
+	if deps.seedsUserConfig() {
+		if err := linkPiConfigFromUser(agentDir); err != nil {
+			return fmt.Errorf("link user config: %w", err)
+		}
+	}
 	return writeHarnessManifest(sessionConfigDir, "pi", deps, map[string]any{
 		"agentDir":         agentDir,
 		"systemPromptFile": piSystemPromptFile,
 		"rulesDir":         filepath.Join(piAgentSubdir, "rules"),
 		"configEnv":        envPiCodingAgentDir,
 	})
+}
+
+// piUserConfigEntries are user-level Pi files that carry credentials, provider endpoints,
+// model catalogs, and installed packages. Without them an isolated PI_CODING_AGENT_DIR has
+// no configured provider and Pi rejects every prompt with "No API key found".
+var piUserConfigEntries = []string{
+	"auth.json",
+	"settings.json",
+	"models.json",
+	"keybindings.json",
+	"npm",
+	"bin",
+	"sessions",
+}
+
+// linkPiConfigFromUser seeds an isolated Pi agent dir from ~/.pi/agent. The sessions
+// directory is linked rather than copied because store.LoadPiHistory reads transcripts
+// from the user-level path.
+func linkPiConfigFromUser(agentDir string) error {
+	srcDir, err := userPiAgentDir()
+	if err != nil {
+		return err
+	}
+	same, err := sameDir(srcDir, agentDir)
+	if err != nil || same {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(srcDir, "sessions"), 0700); err != nil {
+		return err
+	}
+
+	names := append([]string(nil), piUserConfigEntries...)
+	matches, err := filepath.Glob(filepath.Join(srcDir, "models-*.json"))
+	if err != nil {
+		return err
+	}
+	for _, match := range matches {
+		names = append(names, filepath.Base(match))
+	}
+	return linkUserConfigEntries(srcDir, agentDir, names)
 }
 
 func writePiSystemPrompt(agentDir, systemPrompt string) error {

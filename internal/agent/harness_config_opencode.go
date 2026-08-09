@@ -31,6 +31,11 @@ func (opencodeHarnessProvisioner) provision(configDir string, deps HarnessDeps) 
 	if err := installHarnessSkills("opencode", configDir, deps.WorkingDir, deps.Skills); err != nil {
 		return fmt.Errorf("install skills: %w", err)
 	}
+	if deps.seedsUserConfig() {
+		if err := linkOpenCodeConfigFromUser(configDir); err != nil {
+			return fmt.Errorf("link user config: %w", err)
+		}
+	}
 	return writeHarnessManifest(configDir, "opencode", deps, map[string]any{
 		"configFile":       opencodeConfigFile,
 		"instructionsFile": opencodeInstructionsFile,
@@ -48,10 +53,52 @@ func writeOpenCodeInstructions(configDir, systemPrompt string) error {
 	return os.WriteFile(path, []byte(strings.TrimSpace(systemPrompt)+"\n"), 0644)
 }
 
-func writeOpenCodeConfig(configDir string, deps HarnessDeps, rulePaths []string) error {
-	cfg := map[string]any{
-		"$schema": "https://opencode.ai/config.json",
+// opencodeUserConfigEntries are user-level OpenCode config entries that nui does not
+// generate. OPENCODE_CONFIG_DIR points at the session directory, so plugins and custom
+// agents would otherwise disappear for the session.
+var opencodeUserConfigEntries = []string{
+	"auth.json",
+	"package.json",
+	"node_modules",
+	"plugin",
+	"agent",
+	"command",
+	"themes",
+}
+
+func linkOpenCodeConfigFromUser(configDir string) error {
+	srcDir, err := userOpenCodeConfigDir()
+	if err != nil {
+		return err
 	}
+	return linkUserConfigEntries(srcDir, configDir, opencodeUserConfigEntries)
+}
+
+// userOpenCodeConfig loads the user's global opencode config so session config generated
+// into an isolated OPENCODE_CONFIG_DIR keeps their provider and model settings. A config
+// that fails to parse (for example JSONC with comments) is skipped.
+func userOpenCodeConfig() map[string]any {
+	srcDir, err := userOpenCodeConfigDir()
+	if err != nil {
+		return nil
+	}
+	for _, name := range []string{opencodeConfigFile, "opencode.jsonc"} {
+		data, err := os.ReadFile(filepath.Join(srcDir, name))
+		if err != nil {
+			continue
+		}
+		var cfg map[string]any
+		if err := json.Unmarshal(data, &cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "[opencode] ignoring unparsable user config %s: %v\n", name, err)
+			continue
+		}
+		return cfg
+	}
+	return nil
+}
+
+func writeOpenCodeConfig(configDir string, deps HarnessDeps, rulePaths []string) error {
+	generated := map[string]any{}
 
 	var instructions []string
 	if strings.TrimSpace(deps.SystemPrompt) != "" {
@@ -61,7 +108,7 @@ func writeOpenCodeConfig(configDir string, deps HarnessDeps, rulePaths []string)
 		instructions = append(instructions, "./"+p)
 	}
 	if len(instructions) > 0 {
-		cfg["instructions"] = instructions
+		generated["instructions"] = instructions
 	}
 
 	if len(deps.MCPServers) > 0 {
@@ -78,15 +125,24 @@ func writeOpenCodeConfig(configDir string, deps HarnessDeps, rulePaths []string)
 			mcp[name] = entry
 		}
 		if len(mcp) > 0 {
-			cfg["mcp"] = mcp
+			generated["mcp"] = mcp
 		}
 	}
 
-	if len(cfg) == 1 { // only $schema
-		cfgPath := filepath.Join(configDir, opencodeConfigFile)
-		_ = os.Remove(cfgPath)
-		return nil
+	cfg := userOpenCodeConfig()
+	if len(cfg) == 0 {
+		if len(generated) == 0 {
+			_ = os.Remove(filepath.Join(configDir, opencodeConfigFile))
+			return nil
+		}
+		cfg = map[string]any{}
 	}
+	// User instructions are relative to their own config dir and would not resolve here.
+	delete(cfg, "instructions")
+	for k, v := range generated {
+		cfg[k] = v
+	}
+	cfg["$schema"] = "https://opencode.ai/config.json"
 
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {

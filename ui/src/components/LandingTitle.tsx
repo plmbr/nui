@@ -17,8 +17,8 @@ export function LandingTitle() {
   useEffect(() => {
     if (prefersReducedMotion()) return
 
-    const showBut = window.setTimeout(() => setPhase('but'), 800)
-    const showLogo = window.setTimeout(() => setPhase('logo'), 1800)
+    const showBut = window.setTimeout(() => setPhase('but'), 1200)
+    const showLogo = window.setTimeout(() => setPhase('logo'), 2400)
 
     return () => {
       window.clearTimeout(showBut)

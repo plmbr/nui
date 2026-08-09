@@ -33,6 +33,7 @@ type HarnessDeps struct {
 	Rules                   []model.ADLRule
 	ResolvedRules           []ResolvedRule
 	WorkingDir              string
+	Sandbox                 string
 	UserScope               bool
 	ToolApprovalPolicy      string
 	ToolApprovalTools       []string
@@ -200,6 +201,7 @@ func PrepareSessionHarnessConfig(sessionID string, def model.ADLDefinition, reg 
 	if harnessType == "" {
 		harnessType = "claude-code"
 	}
+	deps.Sandbox = def.Harness.Sandbox
 	_, err = ProvisionHarnessConfig(sessionID, harnessType, deps)
 	return err
 }

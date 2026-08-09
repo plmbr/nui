@@ -128,6 +128,7 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 		}
 	}
 	deps.UserScope = req.UserScopeHarness
+	deps.Sandbox = harness.Sandbox
 	configDir, err := ProvisionHarnessConfig(a.projectID, harness.Type, deps)
 	if err != nil {
 		return fmt.Errorf("provision harness config: %w", err)

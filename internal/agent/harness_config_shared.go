@@ -65,6 +65,69 @@ func userClaudeConfigDir() (string, error) {
 	return filepath.Join(home, ".claude"), nil
 }
 
+// userPiAgentDir is the default Pi agent directory (~/.pi/agent), the value
+// PI_CODING_AGENT_DIR normally points at.
+func userPiAgentDir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".pi", "agent"), nil
+}
+
+// userOpenCodeConfigDir is the default OpenCode config directory, honoring XDG_CONFIG_HOME.
+func userOpenCodeConfigDir() (string, error) {
+	if xdg := strings.TrimSpace(os.Getenv("XDG_CONFIG_HOME")); xdg != "" {
+		return filepath.Join(xdg, "opencode"), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".config", "opencode"), nil
+}
+
+// seedsUserConfig reports whether the harness reads the session config dir from the host
+// filesystem. Container sandboxes mount the dir into an image with its own filesystem,
+// where symlinks into the user's home would dangle.
+func (d HarnessDeps) seedsUserConfig() bool {
+	switch normalizeSandbox(d.Sandbox) {
+	case "docker", sandboxDevcontainer:
+		return false
+	default:
+		return true
+	}
+}
+
+// linkUserConfigEntries symlinks named entries from a harness's user config directory into
+// an isolated session config directory, so redirecting the harness config env var does not
+// hide credentials, provider settings, or installed plugins. Entries nui already generated
+// are left untouched.
+func linkUserConfigEntries(srcDir, dstDir string, names []string) error {
+	same, err := sameDir(srcDir, dstDir)
+	if err != nil || same {
+		return err
+	}
+	for _, name := range names {
+		if err := linkFileIfMissing(filepath.Join(srcDir, name), filepath.Join(dstDir, name)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func sameDir(a, b string) (bool, error) {
+	absA, err := filepath.Abs(a)
+	if err != nil {
+		return false, err
+	}
+	absB, err := filepath.Abs(b)
+	if err != nil {
+		return false, err
+	}
+	return absA == absB, nil
+}
+
 // linkFileIfMissing creates a symlink at dst pointing to src when src exists and dst is absent.
 func linkFileIfMissing(src, dst string) error {
 	if _, err := os.Stat(src); err != nil {

@@ -41,6 +41,28 @@ func (p *openCodeStreamParser) handleLine(line []byte, events chan<- Event) {
 		return
 	}
 
+	if obj.Type == "error" {
+		var errObj struct {
+			Error struct {
+				Name string `json:"name"`
+				Data struct {
+					Message string `json:"message"`
+				} `json:"data"`
+			} `json:"error"`
+		}
+		if json.Unmarshal(line, &errObj) == nil {
+			msg := errObj.Error.Data.Message
+			if msg == "" {
+				msg = errObj.Error.Name
+			}
+			if msg == "" {
+				msg = "opencode error"
+			}
+			events <- Event{Type: EventError, Error: msg}
+		}
+		return
+	}
+
 	if obj.Type == "text" && obj.Part.Type == "text" && obj.Part.Text != "" {
 		events <- Event{Type: EventText, Content: obj.Part.Text}
 		return
