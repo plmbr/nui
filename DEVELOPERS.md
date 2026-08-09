@@ -49,7 +49,7 @@ flowchart TB
 
 ## Prerequisites
 
-- Go 1.22+
+- Go 1.26+
 - Node.js 18+
 - Agent CLIs on `PATH` as needed: `claude`, `pi`, `codex`, `opencode`
 - Docker (optional) — for `sandbox: docker`, custom docker-harness ADL agents, and devcontainer harnesses
@@ -60,7 +60,7 @@ flowchart TB
 ```
 nui/
 ├── main.go, embed.go          # entrypoint; embeds ui/dist
-├── cmd/                       # cobra CLI (`nui server`, `nui extension`, `nui skills`)
+├── cmd/                       # cobra CLI (`nui server`, `nui run`, `nui agent`, `nui extension`, MCP servers, …)
 ├── internal/
 │   ├── model/                 # Session, ChatMessage, ADL structs
 │   ├── agent/                 # Agent interface, harness implementations, ADL executor
@@ -127,11 +127,17 @@ Full reference: [`dev/dev.md`](dev/dev.md#api-surface).
 | `GET/PUT /api/settings` | User preferences (theme, last agent/session, sidebar, disabled extensions) |
 | `GET /api/bootstrap` | One-shot CLI bootstrap state (`sessionId`, `initialPrompt`) |
 | `POST /api/launch` | Create session + optional initial prompt |
+| `POST /api/orchestrate` | Home-launcher orchestration (`nui` master agent routes or launches) |
+| `GET /api/orchestrator/routable-agents` | Agents the `nui` master can delegate to |
 | `GET /api/capabilities` | Sandbox capabilities (bwrap availability) |
 | `GET /api/extensions` | Installed extensions |
 | `POST /api/extensions/reload` | Rescan extensions |
 | `GET/PUT /api/mcp-servers` | User MCP server config |
+| `POST/GET/DELETE /api/mcp-oauth/*` | Remote MCP OAuth (start, callback, flow, complete, status, redirect-uri, disconnect) |
 | `GET/DELETE /api/skills[/:name]` | Skill catalog |
+| `GET /api/memory` | Memory summary (user + agent files) |
+| `GET/PUT /api/memory/user` | User memory markdown |
+| `GET/PUT/DELETE /api/memory/agents/:id` | Per-agent memory markdown |
 | `GET/POST/PUT/DELETE /api/agents[/:file]` | User ADL agent CRUD |
 | `POST /api/agents/:id/deploy` | Deploy agent via extension deployer |
 | `GET /api/agent-deployers` | List deployers |
@@ -145,7 +151,13 @@ Full reference: [`dev/dev.md`](dev/dev.md#api-surface).
 
 ### Built-in agents
 
-Ten built-in agent types: four CLI harnesses, five API harnesses, and the `nui` master agent. Select them under **Built-in** in the New Session panel (CLI and API tabs).
+Ten built-in agent types: four CLI harnesses, five API harnesses, and the `nui` master agent. Select them under **Built-in** in the New Session panel (CLI and API tabs). The home launcher uses `nui` via `POST /api/orchestrate`.
+
+**Master agent:**
+
+| Name | ADL id | Role |
+|---|---|---|
+| nui | `nui` | Routes tasks to specialists (`nui-orchestrator` MCP: `list_agents`, `launch_session`) and can create agents (`create-agent` skill + `nui-agent` MCP). Legacy id alias: `nui-orchestrator`. Harness comes from settings `defaultHarness` (defaults to Anthropic API). |
 
 **CLI harnesses:**
 
@@ -158,13 +170,13 @@ Ten built-in agent types: four CLI harnesses, five API harnesses, and the `nui` 
 
 **API harnesses** (`harness.type: api` — in-process via `internal/llm/`):
 
-| Name | Provider | Default model | API key env |
-|---|---|---|---|
-| Claude API | `anthropic` | `claude-sonnet-4-20250514` | `ANTHROPIC_API_KEY` |
-| OpenAI | `openai` | `gpt-4o-mini` | `OPENAI_API_KEY` |
-| Gemini | `gemini` | `gemini-2.5-flash` | `GEMINI_API_KEY` / `GOOGLE_API_KEY` |
-| OpenRouter | `openrouter` | `anthropic/claude-sonnet-4` | `OPENROUTER_API_KEY` |
-| Ollama | `ollama` | (none) | none (`OLLAMA_HOST` optional) |
+| Name | ADL id | Provider | Default model | API key env |
+|---|---|---|---|---|
+| Claude API | `anthropic` | `anthropic` | `claude-sonnet-4-20250514` | `ANTHROPIC_API_KEY` |
+| OpenAI | `openai` | `openai` | `gpt-4o-mini` | `OPENAI_API_KEY` |
+| Gemini | `gemini` | `gemini` | `gemini-2.5-flash` | `GEMINI_API_KEY` / `GOOGLE_API_KEY` |
+| OpenRouter | `openrouter` | `openrouter` | `anthropic/claude-sonnet-4` | `OPENROUTER_API_KEY` |
+| Ollama | `ollama` | `ollama` | (none) | none (`OLLAMA_HOST` optional) |
 
 Definitions live in `internal/agents/api_builtins.go`. Availability is checked via `APIHarnessAvailable()` in `internal/agent/api_availability.go`. See [harness-design.md](dev/harness-design.md) §4 for ADL fields (`provider`, `model`, `baseURL`, `apiKeyEnv`).
 
@@ -208,8 +220,9 @@ Or via HTTP: `POST /api/agents/:id/evals/run`. Implementation: `internal/eval/ru
 | `nui-hitl` | `nui hitl-mcp` | `ask_user`, approval flows |
 | `nui-viz` | `nui viz-mcp` | `show_visualization` (inline charts in chat) |
 | `nui-agent` | `nui agent-mcp` | `save_agent`, `update_memory` |
+| `nui-orchestrator` | `nui orchestrator-mcp` | `list_agents`, `launch_session` (injected for the `nui` master agent) |
 
-Source: `internal/mcpserver/`. Harness config injects these when HITL, visualization, or memory features are enabled (`internal/agent/harness_config*.go`).
+Source: `internal/mcpserver/`. Harness config injects these when HITL, visualization, memory, or orchestrator features are enabled (`internal/agent/harness_config*.go`, `harness_internal.go`).
 
 ### Known limitations
 
@@ -238,25 +251,29 @@ Run the full suite locally:
 ## Releasing
 
 1. Bump [`VERSION`](VERSION) on `main` to match the upcoming tag (without the `v` prefix).
-2. Tag and push: `git tag v0.2.0 && git push origin v0.2.0`
-3. Create a GitHub Release for the tag (`gh release create v0.2.0 --generate-notes`).
+2. Tag and push: `git tag v0.3.0 && git push origin v0.3.0`
+3. Create a GitHub Release for the tag (`gh release create v0.3.0 --generate-notes`).
 4. The release workflow builds Linux and macOS binaries (amd64 + arm64) and attaches them to the release.
 
 Build release archives locally:
 
 ```sh
-./scripts/build-release.sh v0.2.0
+./scripts/build-release.sh v0.3.0
 ```
 
 Artifacts land in `dist/` as `nui_<tag>_<os>_<arch>.tar.gz` (or `.zip` on Windows) plus `checksums.txt`.
 
-### Serving the install script
+### Serving the website and install script
 
-The installers live at [`install/install.sh`](install/install.sh) (Unix) and [`install/install.ps1`](install/install.ps1) (Windows). To serve them at `https://nui.plmbr.dev/`:
+The product site and installers live on the **`gh-pages`** branch (Jekyll). GitHub Pages should serve that branch at `https://nui.plmbr.dev/`.
 
-1. Enable **GitHub Pages** for this repository (source: `main` branch, `/install` folder).
-2. Add a DNS `CNAME` record: `nui.plmbr.dev` → `<user>.github.io` (the [`install/CNAME`](install/CNAME) file is already in the repo).
-3. Verify: `curl -fsSL https://nui.plmbr.dev/install.sh | head`
+Tracked installers also exist under [`install/`](install/) on `main` (`install.sh`, `install.ps1`, `CNAME`) as a fallback. Keep installer content in sync between `gh-pages` and `main/install/` when changing download URLs or version defaults.
+
+To update the site:
+
+1. Edit markdown under the `gh-pages` branch (or a worktree).
+2. Push to `origin/gh-pages`.
+3. Verify: `curl -fsSL https://nui.plmbr.dev/install.sh | head` and spot-check `/cli/`, `/agents/`, `/docs/`.
 
 ### Future macOS codesigning
 

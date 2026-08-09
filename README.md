@@ -76,10 +76,11 @@ Install the agent CLI you want to use and make sure it is on your `PATH`:
 
 ## Using the UI
 
-1. **New session** — choose a built-in or installed agent and a working directory.
-2. **Chat** — send prompts, attach files, and use `@` mentions for context.
-3. **Sessions** — switch between past sessions from the sidebar; rename or delete as needed.
-4. **Settings** — toggle light/dark theme, manage extensions, and configure MCP servers.
+1. **Home launcher** — type a task on the home screen; the built-in `nui` master agent routes it to the best specialist (or helps you create one).
+2. **New session** — choose a built-in or installed agent and a working directory.
+3. **Chat** — send prompts, attach files, and use `@` mentions for context.
+4. **Sessions** — switch between past sessions from the sidebar; rename or delete as needed.
+5. **Settings** — toggle light/dark theme, manage extensions, and configure MCP servers (including OAuth for remote MCP).
 
 Preferences (theme, last agent, sidebar state) are saved to `~/.nui/settings.json` and restored on reload.
 
@@ -89,14 +90,16 @@ Preferences (theme, last agent, sidebar state) are saved to `~/.nui/settings.jso
 nui server              # start web server on :8080
 nui server --port 3000  # custom port
 nui server --open       # open browser with a new session
+nui server --no-browser # headless daemon (no browser)
 nui run -a claude-code -m "Review README" --wait  # headless run
-nui agent list      # list agent types (requires nui server)
-nui agent add ./my-agent.yaml  # install custom agent
+nui run -m "Summarize" --spawn --wait             # auto-start server if needed
+nui agent list|add|remove|deploy|deployers
 nui agent eval run -a my-agent  # run ADL eval cases against a running server
-nui extension add|list|remove  # manage extensions
+nui extension add|list|remove|create  # manage / scaffold extensions
 nui skills add|list|remove  # manage skills catalog
 nui memory list|show|edit  # persistent memory files
 nui schedule list|add|enable|disable|delete|run-now  # recurring runs
+nui harness-sdk reinstall  # copy Python SDK to ~/.nui/harness-sdk/
 ```
 
 ### Launch flags
@@ -104,7 +107,8 @@ nui schedule list|add|enable|disable|delete|run-now  # recurring runs
 | Flag | Short | Description |
 |---|---|---|
 | `--open` | | Open the web UI in your browser with a new session |
-| `--agent-type` | `-a` | ADL agent id to launch (e.g. `claude-code`, `pi`, `anthropic`) |
+| `--no-browser` | | Do not open a browser (daemon mode) |
+| `--agent-type` | `-a` | ADL agent id to launch (e.g. `claude-code`, `pi`, `anthropic`, `nui`) |
 | `--prompt` | `-m` | Initial prompt sent automatically |
 | `--hide-input` | | Hide the chat input (use with `--prompt`) |
 | `--working-dir` | `-w` | Working directory for the session |
@@ -127,6 +131,12 @@ Set `NUI_URL` or pass `--url` if the server is not on `http://127.0.0.1:8080`. U
 
 ### Built-in agents
 
+**Master agent** (home launcher / routing):
+
+| ADL id | Description |
+|---|---|
+| `nui` | Master agent — routes tasks to specialists via `nui-orchestrator` MCP (`list_agents`, `launch_session`), or helps create agents |
+
 **CLI agents** (require the corresponding binary on `PATH`):
 
 | ADL id | Description |
@@ -138,13 +148,13 @@ Set `NUI_URL` or pass `--url` if the server is not on `http://127.0.0.1:8080`. U
 
 **API agents** (in-process LLM calls; selectable under built-in agents in the New Session panel):
 
-| Name | Description |
-|---|---|
-| Claude API | Claude models via the Anthropic API |
-| OpenAI | GPT models via the OpenAI API |
-| Gemini | Google Gemini via the Gemini API |
-| OpenRouter | Multi-model routing via OpenRouter |
-| Ollama | Local models via Ollama |
+| ADL id | Name | Description |
+|---|---|---|
+| `anthropic` | Claude API | Claude models via the Anthropic API |
+| `openai` | OpenAI | GPT models via the OpenAI API |
+| `gemini` | Gemini | Google Gemini via the Gemini API |
+| `openrouter` | OpenRouter | Multi-model routing via OpenRouter |
+| `ollama` | Ollama | Local models via Ollama |
 
 See [harness design](dev/harness-design.md) for API harness configuration and env vars.
 
@@ -196,6 +206,7 @@ nui also injects built-in MCP servers into agent harnesses when configured:
 | `nui-hitl` | `nui hitl-mcp` | Human-in-the-loop prompts (`ask_user`, approvals) |
 | `nui-viz` | `nui viz-mcp` | Inline chart/visualization rendering in chat |
 | `nui-agent` | `nui agent-mcp` | Save ADL agents (`save_agent`) and update memory (`update_memory`) |
+| `nui-orchestrator` | `nui orchestrator-mcp` | Launcher routing (`list_agents`, `launch_session`) for the `nui` master agent |
 
 ## Known limitations
 

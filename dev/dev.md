@@ -48,7 +48,7 @@ flowchart TB
 
 ### Key design decisions
 
-1. **Every session is an ADL agent.** Even the four built-in CLI harnesses are compiled-in ADL definitions (`builtinAgentDefs` in `internal/agents/builtins.go`). Selecting "Claude Code" in the UI stores `agentType: "claude-code"` (the ADL `id`), which resolves to `harness.type: claude-code`. CLI flags such as `--agent-type` and `nui run -a` expect the ADL id (e.g. `claude-code`), not the display name.
+1. **Every session is an ADL agent.** Even the four built-in CLI harnesses are compiled-in ADL definitions (`builtinAgentDefs` in `internal/agents/builtins.go`). Selecting "Claude Code" in the UI stores `agentType: "claude-code"` (the ADL `id`), which resolves to `harness.type: claude-code`. CLI flags such as `--agent-type` and `nui run -a` expect the ADL id (e.g. `claude-code`), not the display name. Built-in types also include five API harnesses (`anthropic`, `openai`, `gemini`, `openrouter`, `ollama`) and the `nui` master agent.
 
 2. **Chat uses AG-UI, not raw SSE.** The UI (`useSessionChat.ts`) streams via `POST /api/sessions/:id/ag-ui` using the [AG-UI protocol](https://github.com/ag-ui-protocol/ag-ui). Tool calls, images, and MCP app frames are translated from agent `Event` types in `agui.go`. The legacy `POST /chat` endpoint still exists but the UI does not use it.
 
@@ -61,6 +61,8 @@ flowchart TB
 4. **Docker/remote via custom ADL.** There is no built-in "Docker" or "Remote" picker in the UI. Users copy an ADL template from `dev/harness-examples/` into `~/.nui/agents/` (e.g. `docker-echo.yaml`), then select it under **Installed agents**. nui validates the connector on session create.
 
 5. **CLI launch + UI preferences.** `nui server -a <agent-id> --prompt --open` starts the HTTP server first, then creates a session via the same logic as `POST /api/launch` (shared with the warm-attach path when the server is already running). Use ADL ids for `-a` (e.g. `claude-code`). Session creation saves `lastAgentType` / `lastSessionId` to `settings.json` and exposes the prompt once via `GET /api/bootstrap`. `nui server --open` (without `-a`) also creates a fresh session with the default agent. With `--open`, nui opens the browser to `/sessions/<id>` after the session is ready. If no sessions exist at startup and no launch flags were passed, nui auto-creates one with the default agent when the UI loads. Sidebar state, `defaultAgentType`, `defaultHarness`, and last-selected session/agent are also persisted in `settings.json`.
+
+6. **`nui` master agent (home launcher).** The home screen submits prompts to `POST /api/orchestrate`, which runs the built-in `nui` agent (legacy id `nui-orchestrator`). That agent uses the `nui-orchestrator` MCP tools (`list_agents`, `launch_session`) to open a specialist session, or the create-agent skill + `nui-agent` MCP to save a new ADL definition. Definition: `internal/agents/internal.go`.
 
 ---
 
@@ -191,10 +193,13 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 | `GET/PUT` | `/api/settings` | User preferences (partial PUT; includes memory toggles) |
 | `GET` | `/api/bootstrap` | One-shot CLI bootstrap (`sessionId`, `initialPrompt`) |
 | `POST` | `/api/launch` | Create session + optional initial prompt |
+| `POST` | `/api/orchestrate` | Home-launcher run via `nui` master agent |
+| `GET` | `/api/orchestrator/routable-agents` | Agents eligible for `launch_session` |
 | `GET` | `/api/capabilities` | Bwrap availability |
 | `GET` | `/api/extensions` | Installed extensions |
 | `POST` | `/api/extensions/reload` | Rescan extensions |
 | `GET/PUT` | `/api/mcp-servers` | User MCP server config |
+| `POST/GET/DELETE` | `/api/mcp-oauth/*` | Remote MCP OAuth flows (start, callback, flow, complete, status, redirect-uri, disconnect) |
 | `GET/DELETE` | `/api/skills[/:name]` | Skill catalog |
 | `GET` | `/api/memory` | Memory summary (user + agent files) |
 | `GET/PUT` | `/api/memory/user` | User memory markdown |
@@ -220,6 +225,7 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 
 ### Phase 1 — Interactive chat ✅
 - [x] Four builtin CLI harnesses (claude-code, pi, codex, opencode)
+- [x] Five builtin API harnesses (anthropic, openai, gemini, openrouter, ollama)
 - [x] Session CRUD + persistence (`data.json` including UI messages)
 - [x] AG-UI chat streaming with tool calls and images
 - [x] HTTP/SSE docker + remote connectors
@@ -243,8 +249,9 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 - [x] `nui skills add|list|remove` CLI
 - [x] `nui memory list|show|edit` CLI
 - [x] Persistent memory (`~/.nui/memory/`) with UI toggles and agent write path
-- [x] `nui extension add|list|remove` CLI
+- [x] `nui extension add|list|remove|create` CLI
 - [x] ADL `aiAssets.mcpServers` → session harness config
+- [x] Remote MCP OAuth in Settings (`/api/mcp-oauth/*`)
 
 ### Phase 4 — Scheduled runs ✅
 - [x] Interval schedules align to clock boundaries (e.g. `5m` at :00, :05, :10… UTC), not current time + interval
@@ -253,6 +260,12 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 - [x] REST API + `nui schedule` CLI
 - [x] Customize → Schedules UI
 - [x] Session sidebar: scheduled indicator + relative last-run time
+
+### Phase 5 — Master agent / launcher ✅
+- [x] Built-in `nui` master agent (legacy id `nui-orchestrator`)
+- [x] `nui orchestrator-mcp` (`list_agents`, `launch_session`)
+- [x] Home launcher via `POST /api/orchestrate`
+- [x] Create-agent skill on the launcher path
 
 ---
 
