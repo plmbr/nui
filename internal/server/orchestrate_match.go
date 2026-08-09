@@ -174,14 +174,18 @@ func agentMatchScore(prompt string, refs []string, agent AgentTypeInfo) int {
 		}
 		if tokenMatchesPrompt(lower, tok) {
 			score += 50
-		}
-		if strings.Contains(desc, tok) {
-			score += 20
+			// Reward name tokens that also appear in the description only when
+			// they are grounded in the prompt (avoids free boosts for unused
+			// suffixes like "short").
+			if strings.Contains(desc, tok) {
+				score += 20
+			}
 		}
 	}
 
 	score += distinctTokenMatchBonus(lower, nameTokens)
 	score += localIDPartMatchScore(lower, localID)
+	score -= unmatchedNameTokenPenalty(lower, nameTokens)
 
 	for _, word := range promptWords(lower) {
 		for _, tok := range searchTokens {
@@ -207,6 +211,22 @@ func agentMatchScore(prompt string, refs []string, agent AgentTypeInfo) int {
 		score += 120
 	}
 	return score
+}
+
+// unmatchedNameTokenPenalty prefers agents whose name is covered by the prompt
+// over near-duplicate variants with extra unmatched tokens (e.g. "…-short").
+func unmatchedNameTokenPenalty(prompt string, nameTokens []string) int {
+	penalty := 0
+	for _, tok := range nameTokens {
+		if len(tok) < 4 {
+			continue
+		}
+		if tokenMatchesPrompt(prompt, tok) {
+			continue
+		}
+		penalty += 40
+	}
+	return penalty
 }
 
 func tokenMatchesPrompt(prompt, tok string) bool {
