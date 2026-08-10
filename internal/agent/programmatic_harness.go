@@ -75,5 +75,8 @@ func programmaticHarnessExtras(req RunRequest, projectID string) map[string]any 
 	if req.Model != "" {
 		extra["model"] = req.Model
 	}
+	if len(req.Env) > 0 {
+		extra["env"] = req.Env
+	}
 	return extra
 }
