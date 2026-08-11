@@ -6,9 +6,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/media/logo.svg"
 OUT="$ROOT/desktop/build/appicon.png"
-TMP_SVG="$(mktemp -t nui-icon).svg"
-TMP_PNG="$(mktemp -t nui-icon).png"
-trap 'rm -f "$TMP_SVG" "$TMP_PNG"' EXIT
+# Portable mktemp: GNU (Linux CI) requires XXXXXX; macOS BSD accepts this form too.
+TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/nui-icon.XXXXXX")"
+TMP_SVG="$TMP_DIR/icon.svg"
+TMP_PNG="$TMP_DIR/icon.png"
+trap 'rm -rf "$TMP_DIR"' EXIT
 
 if [[ ! -f "$SRC" ]]; then
   echo "error: missing $SRC" >&2
