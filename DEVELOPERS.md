@@ -189,7 +189,7 @@ Ten built-in agent types: four CLI harnesses, five API harnesses, and the `nui` 
 | OpenRouter | `openrouter` | `openrouter` | `anthropic/claude-sonnet-4` | `OPENROUTER_API_KEY` |
 | Ollama | `ollama` | `ollama` | (none) | none (`OLLAMA_HOST` optional) |
 
-Definitions live in `internal/agents/api_builtins.go`. Availability is checked via `APIHarnessAvailable()` in `internal/agent/api_availability.go`. See [harness-design.md](dev/harness-design.md) §4 for ADL fields (`provider`, `model`, `baseURL`, `apiKeyEnv`).
+Definitions live in `internal/agents/api_builtins.go`. Availability is checked via `APIHarnessAvailable()` in `internal/agent/api_availability.go` (process env or `~/.nui/secrets.json` from Customize → Credentials). See [harness-design.md](dev/harness-design.md) §4 for ADL fields (`provider`, `model`, `baseURL`, `apiKeyEnv`).
 
 ### Installed agents
 

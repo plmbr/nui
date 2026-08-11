@@ -4,7 +4,6 @@ package agent
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"nui/internal/llm"
@@ -13,12 +12,7 @@ import (
 
 func resolveAPIKey(profile APIProviderProfile, env map[string]string) (string, error) {
 	for _, key := range profile.APIKeyEnvs {
-		if env != nil {
-			if v := strings.TrimSpace(env[key]); v != "" {
-				return v, nil
-			}
-		}
-		if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+		if v := lookupCredentialValue(key, env); v != "" {
 			return v, nil
 		}
 	}
@@ -41,12 +35,7 @@ func resolveAPIBaseURL(profile APIProviderProfile, h model.ADLHarness, env map[s
 	if profile.BaseURLEnv == "" {
 		return ""
 	}
-	if env != nil {
-		if v := strings.TrimSpace(env[profile.BaseURLEnv]); v != "" {
-			return v
-		}
-	}
-	return strings.TrimSpace(os.Getenv(profile.BaseURLEnv))
+	return lookupCredentialValue(profile.BaseURLEnv, env)
 }
 
 // NewLLMProvider constructs an LLM provider from harness ADL fields.

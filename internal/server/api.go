@@ -96,6 +96,7 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/agent-types", handleAgentTypes)
 	mux.HandleFunc("/api/directories", handleDirectories)
 	mux.HandleFunc("/api/settings", handleSettings)
+	mux.HandleFunc("/api/credentials", handleCredentials)
 	mux.HandleFunc("/api/bootstrap", handleBootstrap)
 	mux.HandleFunc("/api/launch", handleLaunch)
 	mux.HandleFunc("/api/orchestrate", handleOrchestrate)
