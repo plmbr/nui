@@ -106,7 +106,7 @@ Native window over the same local server — see [desktop/README.md](desktop/REA
 ./scripts/build-desktop.sh
 ```
 
-The CLI release path (`scripts/build-release.sh`, `CGO_ENABLED=0`) is unchanged; desktop builds are a separate CGO/Wails artifact.
+The CLI release path (`scripts/build-release.sh`, `CGO_ENABLED=0`) is unchanged; desktop builds are a separate CGO/Wails artifact that also **bundle** a CLI binary and install it to `~/.local/bin` (or `%LOCALAPPDATA%\nui`) on first GUI launch — see [desktop/README.md](desktop/README.md).
 
 ## API endpoints
 

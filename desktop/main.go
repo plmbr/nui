@@ -17,6 +17,10 @@ func main() {
 	// before the GUI / single-instance lock so MCP stdio works.
 	mcpMain()
 
+	// Bundle ships a CGO-free CLI; install to ~/.local/bin (or %LOCALAPPDATA%\nui)
+	// so external MCP hosts / shells find `nui` without a separate download.
+	ensureCLIInstalled()
+
 	app := NewApp()
 	// Start HTTP before the window: Darwin runs OnStartup concurrently with the
 	// first page load, so deferring server start there races and shows a blank error.

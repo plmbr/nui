@@ -36,6 +36,34 @@ Harnesses spawn built-in MCP servers via `os.Executable()` (`viz-mcp`,
 `agent-mcp`, `hitl-mcp`, `orchestrator-mcp`). The desktop binary handles those
 args on stdio before opening the GUI so MCP works without a separate `nui` CLI.
 
+### Bundled CLI (first-launch install)
+
+`build-desktop.sh` also builds a `CGO_ENABLED=0` `nui` CLI and stages it:
+
+- macOS: `nui.app/Contents/Resources/nui`
+- Windows / Linux: `nui.exe` / `nui` next to the desktop binary
+
+On GUI launch (after MCP dispatch), the app copies that binary into the same
+dirs as the public installers when missing or outdated:
+
+| OS | Install path |
+|---|---|
+| macOS / Linux | `~/.local/bin/nui` |
+| Windows | `%LOCALAPPDATA%\nui\nui.exe` |
+
+Override with `NUI_INSTALL_DIR`. State is recorded in `~/.nui/desktop-cli.json`.
+
+PATH setup:
+
+- Windows: adds the install dir to the user `Path` when absent
+- Unix: prepends the dir for the current process, and appends an idempotent
+  `# >>> nui-desktop-cli >>>` block to `~/.zprofile` (zsh) or
+  `~/.bash_profile` / `~/.profile` when the dir is not already on `PATH`
+
+Open a new terminal (or restart Cursor) after first launch so external MCP
+configs with `"command": "nui"` pick up the install. `wails dev` / `go run`
+without a staged sidecar is a no-op.
+
 ## Build
 
 ```sh
@@ -66,7 +94,8 @@ Output is under `desktop/build/bin/`. GitHub Actions builds desktop on darwin (a
 
 ## Notes
 
-- The CLI binary (`nui`) remains a separate `CGO_ENABLED=0` build from the repo
-  root. Desktop packaging does not replace it.
+- Desktop archives bundle a companion CLI for first-launch PATH install (see above).
+  Standalone CLI releases (`scripts/build-release.sh`) remain available for
+  curl/irm installs without the desktop app.
 - This directory is its own Go module (`nui/desktop`) with `replace nui => ../`
   so root `go test ./...` and static CLI releases stay free of Wails/CGO.

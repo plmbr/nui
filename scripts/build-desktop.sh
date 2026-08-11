@@ -71,8 +71,12 @@ echo "==> Generating app icon"
 
 echo "==> Building nui desktop (Wails)"
 build_args=(-skipbindings)
+CLI_GOOS=""
+CLI_GOARCH=""
 if [[ -n "$PLATFORM" ]]; then
   build_args+=(-platform "$PLATFORM")
+  CLI_GOOS="${PLATFORM%%/*}"
+  CLI_GOARCH="${PLATFORM##*/}"
 fi
 if [[ -n "$TAGS" ]]; then
   build_args+=(-tags "$TAGS")
@@ -83,6 +87,40 @@ fi
   wails build "${build_args[@]}"
 )
 
+# Bundle a CGO-free CLI next to the desktop app for first-launch PATH install.
+echo "==> Building bundled nui CLI"
+BIN_DIR="$DESKTOP/build/bin"
+CLI_NAME="nui"
+CLI_GOOS_EFF="${CLI_GOOS:-}"
+CLI_GOARCH_EFF="${CLI_GOARCH:-}"
+if [[ -z "$CLI_GOOS_EFF" ]]; then
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) CLI_NAME="nui.exe" ;;
+  esac
+elif [[ "$CLI_GOOS_EFF" == "windows" ]]; then
+  CLI_NAME="nui.exe"
+fi
+CLI_OUT="$BIN_DIR/$CLI_NAME"
+mkdir -p "$BIN_DIR"
+(
+  cd "$ROOT"
+  build_env=(CGO_ENABLED=0)
+  if [[ -n "$CLI_GOOS_EFF" ]]; then
+    build_env+=(GOOS="$CLI_GOOS_EFF" GOARCH="$CLI_GOARCH_EFF")
+  fi
+  env "${build_env[@]}" go build -trimpath -ldflags="-s -w" -o "$CLI_OUT" .
+)
+chmod +x "$CLI_OUT" 2>/dev/null || true
+
+# macOS: ship CLI inside the .app so the archive stays a single bundle.
+if [[ -d "$BIN_DIR/nui.app" ]]; then
+  RESOURCES="$BIN_DIR/nui.app/Contents/Resources"
+  mkdir -p "$RESOURCES"
+  cp "$CLI_OUT" "$RESOURCES/nui"
+  chmod +x "$RESOURCES/nui"
+  echo "    staged: $RESOURCES/nui"
+fi
+
 echo "==> Done"
-echo "    binary: $DESKTOP/build/bin/"
-ls -la "$DESKTOP/build/bin/" 2>/dev/null || true
+echo "    binary: $BIN_DIR/"
+ls -la "$BIN_DIR/" 2>/dev/null || true

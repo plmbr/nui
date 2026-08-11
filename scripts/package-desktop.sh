@@ -64,6 +64,10 @@ case "$OS" in
       ls -la "$BIN" >&2 || true
       exit 1
     fi
+    if [[ ! -f "$APP/Contents/Resources/nui" ]]; then
+      echo "error: missing bundled CLI $APP/Contents/Resources/nui (run build-desktop.sh)" >&2
+      exit 1
+    fi
     zip_paths "$DIST/${NAME}.zip" "$APP"
     ;;
   windows)
@@ -79,7 +83,14 @@ case "$OS" in
       ls -la "$BIN" >&2 || true
       exit 1
     fi
-    zip_paths "$DIST/${NAME}.zip" "$EXE"
+    CLI="$BIN/nui.exe"
+    # Prefer the dedicated CLI sidecar; never zip the desktop exe twice as "nui.exe".
+    if [[ ! -f "$CLI" || "$CLI" -ef "$EXE" ]]; then
+      echo "error: missing bundled CLI $BIN/nui.exe (run build-desktop.sh)" >&2
+      ls -la "$BIN" >&2 || true
+      exit 1
+    fi
+    zip_paths "$DIST/${NAME}.zip" "$EXE" "$CLI"
     ;;
   linux)
     BINFILE=""
@@ -94,9 +105,15 @@ case "$OS" in
       ls -la "$BIN" >&2 || true
       exit 1
     fi
+    CLI="$BIN/nui"
+    if [[ ! -f "$CLI" || "$CLI" -ef "$BINFILE" ]]; then
+      echo "error: missing bundled CLI $BIN/nui (run build-desktop.sh)" >&2
+      ls -la "$BIN" >&2 || true
+      exit 1
+    fi
     (
       cd "$BIN"
-      tar -czf "$DIST/${NAME}.tar.gz" "$(basename "$BINFILE")"
+      tar -czf "$DIST/${NAME}.tar.gz" "$(basename "$BINFILE")" "$(basename "$CLI")"
     )
     echo "wrote $DIST/${NAME}.tar.gz"
     ;;
