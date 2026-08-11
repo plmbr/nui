@@ -18,12 +18,12 @@ import (
 const (
 	sessionTitleSystemPrompt = "You generate short chat titles. Do not use tools. Reply with only the title text: a concise phrase of at most 6 words. No quotes, punctuation, markdown, or explanation."
 	// PendingSessionTitle is shown until the first message triggers auto-title.
-	PendingSessionTitle      = "New session"
-	maxTitlePromptUserChars  = 500
+	PendingSessionTitle       = "New session"
+	maxTitlePromptUserChars   = 500
 	maxTitlePromptAssistChars = 400
-	maxSessionTitleLen       = 80
-	fallbackTitleLen         = 60
-	titleGenerationTimeout   = 45 * time.Second
+	maxSessionTitleLen        = 80
+	fallbackTitleLen          = 60
+	titleGenerationTimeout    = 45 * time.Second
 )
 
 var titleGenerationInFlight sync.Map // sessionID -> struct{}
@@ -207,7 +207,7 @@ func generateSessionTitle(ctx context.Context, session model.Session, def model.
 
 	adlAg := agent.NewADLAgent(def, session.ID, extensionManager)
 	runReq := agent.RunRequest{
-		NuiSessionID:    session.ID,
+		NuiSessionID:     session.ID,
 		WorkingDir:       workingDir,
 		Message:          prompt,
 		SystemPrompt:     sessionTitleSystemPrompt,

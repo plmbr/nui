@@ -31,8 +31,8 @@ type StartOptions struct {
 	Prompt           string
 	WorkingDir       string
 	Harness          string // optional CLI harness override for the launched session
-	Open             bool // open the UI in the system default browser
-	HideInput        bool // hide the chat input in the UI (one-off runs)
+	Open             bool   // open the UI in the system default browser
+	HideInput        bool   // hide the chat input in the UI (one-off runs)
 	Theme            string // "light" | "dark"; persisted to settings when set
 	DefaultAgentType string // ADL agent id; persisted to settings when set
 	DefaultHarness   string // harness ref for internal agents; persisted to settings when set

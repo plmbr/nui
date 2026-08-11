@@ -17,11 +17,11 @@ import (
 type RunStatus string
 
 const (
-	RunStatusRunning        RunStatus = "running"
-	RunStatusAwaitingUser   RunStatus = "awaiting_user"
-	RunStatusCompleted      RunStatus = "completed"
-	RunStatusFailed    RunStatus = "failed"
-	RunStatusCancelled RunStatus = "cancelled"
+	RunStatusRunning      RunStatus = "running"
+	RunStatusAwaitingUser RunStatus = "awaiting_user"
+	RunStatusCompleted    RunStatus = "completed"
+	RunStatusFailed       RunStatus = "failed"
+	RunStatusCancelled    RunStatus = "cancelled"
 )
 
 type RunRecord struct {

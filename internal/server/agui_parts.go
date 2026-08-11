@@ -55,12 +55,12 @@ func (a *assistantPartAccumulator) applyEvent(ev agent.Event, mcpLookup func(str
 			a.subagents[ev.ParentToolCallID] = sub
 		}
 		sub.applyEvent(agent.Event{
-			Type:       ev.Type,
-			Content:    ev.Content,
-			ToolCallID: ev.ToolCallID,
-			ToolName:   ev.ToolName,
-			ToolArgs:   ev.ToolArgs,
-			ImageData:  ev.ImageData,
+			Type:           ev.Type,
+			Content:        ev.Content,
+			ToolCallID:     ev.ToolCallID,
+			ToolName:       ev.ToolName,
+			ToolArgs:       ev.ToolArgs,
+			ImageData:      ev.ImageData,
 			ImageMediaType: ev.ImageMediaType,
 		}, mcpLookup)
 		part.SubagentTrace = sub.parts

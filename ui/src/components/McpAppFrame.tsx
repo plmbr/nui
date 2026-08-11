@@ -2,6 +2,7 @@
 
 import { AppBridge, PostMessageTransport } from '@modelcontextprotocol/ext-apps/app-bridge'
 import { useEffect, useRef, useState } from 'react'
+import { serverOrigin } from '@/api'
 
 interface McpAppFrameProps {
   serverName: string
@@ -52,7 +53,7 @@ export function McpAppFrame({
   const toolInputSentRef = useRef(false)
   const toolResultSentRef = useRef(false)
 
-  const resourceUrl = `/mcp-resource?server=${encodeURIComponent(serverName)}&uri=${encodeURIComponent(resourceUri)}${
+  const resourceUrl = `${serverOrigin()}/mcp-resource?server=${encodeURIComponent(serverName)}&uri=${encodeURIComponent(resourceUri)}${
     sessionId ? `&sessionId=${encodeURIComponent(sessionId)}` : ''
   }`
   const bareToolName = toolName?.split('__').pop() ?? toolName ?? ''
@@ -73,7 +74,7 @@ export function McpAppFrame({
     bridgeRef.current = bridge
 
     bridge.oncalltool = async (params) => {
-      const res = await fetch('/mcp-call-tool', {
+      const res = await fetch(`${serverOrigin()}/mcp-call-tool`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

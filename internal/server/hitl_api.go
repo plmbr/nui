@@ -174,8 +174,8 @@ func handleHITLRespond(w http.ResponseWriter, r *http.Request, requestID string)
 func handleHITLCancel(w http.ResponseWriter, r *http.Request, requestID string) {
 	if err := coordinator().Cancel(r.Context(), requestID, "cancelled"); err != nil {
 		if errors.Is(err, hitl.ErrNotFound) {
-		 http.NotFound(w, r)
-		 return
+			http.NotFound(w, r)
+			return
 		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

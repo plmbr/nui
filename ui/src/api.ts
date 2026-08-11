@@ -32,10 +32,24 @@ export interface RunFinishedPayload {
   error?: string
 }
 
-const BASE = '/api'
+/** API prefix: `/api` in browser, absolute localhost URL in the Wails desktop shell. */
+export function apiBase(): string {
+  const configured = typeof window !== 'undefined' ? window.__NUI_API_BASE__ : undefined
+  if (typeof configured === 'string' && configured.trim()) {
+    return configured.replace(/\/$/, '')
+  }
+  return '/api'
+}
+
+/** Origin for non-/api routes (e.g. /mcp-call-tool). Empty string = same origin. */
+export function serverOrigin(): string {
+  const base = apiBase()
+  if (base === '/api') return ''
+  return base.replace(/\/api\/?$/, '')
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${apiBase()}${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...init,
   })
@@ -57,7 +71,7 @@ async function uploadSessionFile(
   const form = new FormData()
   const name = filename?.trim() || (file instanceof File ? file.name : 'upload')
   form.append('file', file, name)
-  const res = await fetch(`${BASE}/sessions/${sessionId}/uploads`, {
+  const res = await fetch(`${apiBase()}/sessions/${sessionId}/uploads`, {
     method: 'POST',
     body: form,
   })
@@ -118,7 +132,7 @@ export const api = {
       void (async () => {
         while (!controller.signal.aborted) {
           try {
-            const res = await fetch(`${BASE}/sessions/events`, { signal: controller.signal })
+            const res = await fetch(`${apiBase()}/sessions/events`, { signal: controller.signal })
             if (!res.ok || !res.body) {
               throw new Error(res.statusText || 'Failed to connect to session events')
             }
@@ -215,7 +229,7 @@ export const api = {
 
       void (async () => {
         try {
-          const res = await fetch(`${BASE}/sessions/${sessionId}/runs/${runId}/events`, {
+          const res = await fetch(`${apiBase()}/sessions/${sessionId}/runs/${runId}/events`, {
             signal: controller.signal,
             headers: lastEventId > 0 ? { 'Last-Event-ID': String(lastEventId) } : {},
           })

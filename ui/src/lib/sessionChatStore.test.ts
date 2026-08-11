@@ -10,6 +10,8 @@ type SubHandlers = {
 let lastSubscriber: SubHandlers | undefined
 
 vi.mock('@/api', () => ({
+  apiBase: () => '/api',
+  serverOrigin: () => '',
   api: {
     messages: {
       list: vi.fn().mockResolvedValue([]),

@@ -30,27 +30,27 @@ import (
 // AgentTypeInfo is the API shape returned by GET /api/agent-types.
 // ID equals the ADL definition id and is stored in Session.AgentType.
 type AgentTypeInfo struct {
-	ID            string `json:"id"`
-	Label         string `json:"label"`
-	Description   string `json:"description,omitempty"`
-	Harness       string `json:"harness"`           // claude-code | pi | codex | opencode | api | docker | remote
-	Provider      string `json:"provider,omitempty"` // harness type=api: anthropic | openai | gemini | ollama | openrouter
-	Sandbox       string `json:"sandbox,omitempty"` // none | bubblewrap | docker
-	PromptMode        string                     `json:"promptMode,omitempty"`        // user | auto
-	HitlMode          string                     `json:"hitlMode,omitempty"`          // interactive | auto | off
-	HarnessPermissions string                    `json:"harnessPermissions,omitempty"` // interactive | bypass
-	SupportsHarnessPermissions bool             `json:"supportsHarnessPermissions,omitempty"`
-	ToolApprovalPolicy         string           `json:"toolApprovalPolicy,omitempty"` // default | all | allowlist | denylist
-	ToolApprovalTools          []string         `json:"toolApprovalTools,omitempty"`
-	DefaultPrompt     string                     `json:"defaultPrompt,omitempty"`
-	PromptSuggestions []model.ADLPromptSuggestion `json:"promptSuggestions,omitempty"`
-	Skills            []string                   `json:"skills,omitempty"`
-	WorkingDirInput   bool                       `json:"workingDirInput,omitempty"` // true = user picks working dir at session create
-	Tags              []string                   `json:"tags,omitempty"`
-	AllowedHarnesses  []string                   `json:"allowedHarnesses,omitempty"` // effective CLI allowlist (all CLI types when omitted on a CLI agent)
-	IsBuiltin     bool   `json:"isBuiltin"`
-	Source        string `json:"source,omitempty"` // builtin | user | extension
-	Available     bool   `json:"available"` // false when the required CLI is not installed
+	ID                         string                      `json:"id"`
+	Label                      string                      `json:"label"`
+	Description                string                      `json:"description,omitempty"`
+	Harness                    string                      `json:"harness"`                      // claude-code | pi | codex | opencode | api | docker | remote
+	Provider                   string                      `json:"provider,omitempty"`           // harness type=api: anthropic | openai | gemini | ollama | openrouter
+	Sandbox                    string                      `json:"sandbox,omitempty"`            // none | bubblewrap | docker
+	PromptMode                 string                      `json:"promptMode,omitempty"`         // user | auto
+	HitlMode                   string                      `json:"hitlMode,omitempty"`           // interactive | auto | off
+	HarnessPermissions         string                      `json:"harnessPermissions,omitempty"` // interactive | bypass
+	SupportsHarnessPermissions bool                        `json:"supportsHarnessPermissions,omitempty"`
+	ToolApprovalPolicy         string                      `json:"toolApprovalPolicy,omitempty"` // default | all | allowlist | denylist
+	ToolApprovalTools          []string                    `json:"toolApprovalTools,omitempty"`
+	DefaultPrompt              string                      `json:"defaultPrompt,omitempty"`
+	PromptSuggestions          []model.ADLPromptSuggestion `json:"promptSuggestions,omitempty"`
+	Skills                     []string                    `json:"skills,omitempty"`
+	WorkingDirInput            bool                        `json:"workingDirInput,omitempty"` // true = user picks working dir at session create
+	Tags                       []string                    `json:"tags,omitempty"`
+	AllowedHarnesses           []string                    `json:"allowedHarnesses,omitempty"` // effective CLI allowlist (all CLI types when omitted on a CLI agent)
+	IsBuiltin                  bool                        `json:"isBuiltin"`
+	Source                     string                      `json:"source,omitempty"` // builtin | user | extension
+	Available                  bool                        `json:"available"`        // false when the required CLI is not installed
 }
 
 type SandboxCapabilities struct {

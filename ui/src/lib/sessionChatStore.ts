@@ -3,7 +3,7 @@
 import { HttpAgent } from '@ag-ui/client'
 import { EventType } from '@ag-ui/core'
 import { v4 as uuidv4 } from 'uuid'
-import { api, type AgentRunEvent } from '@/api'
+import { api, apiBase, type AgentRunEvent } from '@/api'
 import type { HitlRequest } from '@/types'
 import {
   dedupeChatMessages,
@@ -113,7 +113,7 @@ function toolNameForCall(entry: SessionEntry, assistantMsgId: string, partId: st
 
 function createSessionAgent(sessionId: string): HttpAgent {
   return new HttpAgent({
-    url: `/api/sessions/${sessionId}/ag-ui`,
+    url: `${apiBase()}/sessions/${sessionId}/ag-ui`,
     threadId: sessionId,
   })
 }

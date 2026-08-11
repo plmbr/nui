@@ -168,7 +168,7 @@ func executeRun(ctx context.Context, opts executeRunOptions) executeRunResult {
 	go func() {
 		defer close(events)
 		runReq := agent.RunRequest{
-			NuiSessionID:    opts.Session.ID,
+			NuiSessionID:     opts.Session.ID,
 			RunID:            opts.RunID,
 			WorkingDir:       workingDir,
 			Message:          resolved,

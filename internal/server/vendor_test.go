@@ -15,7 +15,7 @@ func TestVendorChartFileServed(t *testing.T) {
 	uiFiles := fstest.MapFS{
 		"vendor/chart.min.js": &fstest.MapFile{Data: []byte("/* chart */")},
 		"assets/index.js":     &fstest.MapFile{Data: []byte("console.log()")},
-		"index.html":            &fstest.MapFile{Data: []byte("<html></html>")},
+		"index.html":          &fstest.MapFile{Data: []byte("<html></html>")},
 	}
 
 	mux := http.NewServeMux()

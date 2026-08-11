@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	sessionChangeMu       sync.Mutex
+	sessionChangeMu        sync.Mutex
 	sessionChangeListeners = map[chan struct{}]struct{}{}
 )
 
