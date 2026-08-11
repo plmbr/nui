@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"nui/internal/agent"
 	"nui/internal/model"
 	"nui/internal/store"
 )
@@ -86,6 +87,26 @@ func TestApplyStartSettings_defaultAgent(t *testing.T) {
 	}
 	if settings.DefaultAgentType != "claude-code" {
 		t.Fatalf("defaultAgentType = %q, want claude-code", settings.DefaultAgentType)
+	}
+}
+
+func TestEnsureDefaultAgentType_prefersClaudeCodeOverOllama(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	id := ensureDefaultAgentType(&store.Settings{})
+	if id == "" {
+		t.Skip("no builtin agent available in test environment")
+	}
+	if agent.CLIAvailable("claude-code") && id != "claude-code" {
+		t.Fatalf("default agent = %q, want claude-code when claude CLI is installed", id)
+	}
+	settings, err := store.LoadSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.DefaultAgentType != id {
+		t.Fatalf("persisted defaultAgentType = %q, want %q", settings.DefaultAgentType, id)
 	}
 }
 

@@ -72,8 +72,13 @@ export function pickDefaultAgentTypeId(
     const preferred = selectable.find((t) => t.id === preferredId)
     if (preferred) return preferred.id
   }
-  const apiOrder = ['anthropic', 'openai', 'gemini', 'openrouter', 'ollama']
-  for (const id of apiOrder) {
+  // Prefer installed CLI agents (claude-code first) over API builtins so a
+  // keyless provider like Ollama is not chosen when Claude Code is available.
+  for (const id of CLI_BUILTIN_ORDER) {
+    const match = selectable.find((t) => t.id === id)
+    if (match) return match.id
+  }
+  for (const id of API_BUILTIN_ORDER) {
     const match = selectable.find((t) => t.id === id)
     if (match) return match.id
   }
@@ -163,5 +168,7 @@ export function pickDefaultHarnessRef(
     const preferred = selectable.find((h) => h.ref === preferredRef)
     if (preferred) return preferred.ref
   }
+  const cli = selectable.find((h) => h.group === 'CLI')
+  if (cli) return cli.ref
   return selectable[0]?.ref ?? ''
 }

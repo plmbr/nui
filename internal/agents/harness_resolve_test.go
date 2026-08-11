@@ -81,3 +81,23 @@ func TestPickDefaultHarnessRef_emptySettings(t *testing.T) {
 		t.Fatalf("picked unavailable ref %q", ref)
 	}
 }
+
+func TestEnsureDefaultHarness_prefersClaudeCode(t *testing.T) {
+	if !HarnessAvailable("claude-code") {
+		t.Skip("claude CLI not installed")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	ref := ensureDefaultHarness(&store.Settings{})
+	if ref != "claude-code" {
+		t.Fatalf("ensureDefaultHarness = %q, want claude-code", ref)
+	}
+	settings, err := store.LoadSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.DefaultHarness != "claude-code" {
+		t.Fatalf("persisted defaultHarness = %q, want claude-code", settings.DefaultHarness)
+	}
+}
