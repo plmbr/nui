@@ -24,7 +24,7 @@ description: A self-hosted web UI for interactive AI agent sessions. Run agents 
       <figure class="hero__media">
         <img src="{{ '/assets/images/hero/nui.png' | relative_url }}"
              alt="nui web UI showing a chat session with an AI agent."
-             width="1200" height="800" loading="eager" fetchpriority="high">
+             width="2227" height="1369" loading="eager" fetchpriority="high">
       </figure>
     </div>
   </div>

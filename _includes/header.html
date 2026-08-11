@@ -1,12 +1,7 @@
 <header class="site-header" role="banner">
   <div class="container site-header__inner">
     <a class="site-header__brand" href="{{ '/' | relative_url }}" aria-label="nui — home">
-      <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
-        <rect x="1" y="1" width="20" height="20" rx="5" fill="currentColor" />
-        <path d="M6.5 7.5h1.4l2.9 4V7.5H13v7.5h-1.4l-2.9-4v4H6.5V7.5z" fill="var(--bg)" />
-        <circle cx="16.5" cy="6.5" r="1.1" fill="var(--accent)" />
-      </svg>
-      <span>nui</span>
+      {% include nui-logo.html %}
     </a>
 
     <nav class="site-header__nav" aria-label="Primary">
