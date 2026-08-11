@@ -119,6 +119,18 @@ if [[ -d "$BIN_DIR/nui.app" ]]; then
   cp "$CLI_OUT" "$RESOURCES/nui"
   chmod +x "$RESOURCES/nui"
   echo "    staged: $RESOURCES/nui"
+
+  # Copying into Resources invalidates any signature Wails applied. Re-sign
+  # ad-hoc so Gatekeeper does not report the app as "damaged". Developer ID
+  # notarization (when available) still required to skip the malware prompt
+  # for downloads.
+  if command -v codesign >/dev/null 2>&1 && [[ "$(uname -s)" == "Darwin" ]]; then
+    echo "==> Ad-hoc codesigning nui.app"
+    xattr -cr "$BIN_DIR/nui.app" 2>/dev/null || true
+    codesign --force --sign - --timestamp=none "$RESOURCES/nui"
+    codesign --force --deep --sign - --timestamp=none "$BIN_DIR/nui.app"
+    codesign --verify --deep --strict "$BIN_DIR/nui.app" 2>&1 || true
+  fi
 fi
 
 echo "==> Done"

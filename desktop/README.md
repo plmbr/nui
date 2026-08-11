@@ -92,6 +92,17 @@ cd ../desktop && wails build
 
 Output is under `desktop/build/bin/`. GitHub Actions builds desktop on darwin (amd64/arm64), windows (amd64), and linux (amd64/arm64) in CI and on release.
 
+### macOS Gatekeeper
+
+Downloaded `nui.app` builds are ad-hoc signed (not notarized), so Gatekeeper may show “malware” / “damaged” until quarantine is cleared:
+
+```sh
+xattr -cr ~/Downloads/nui.app
+open ~/Downloads/nui.app
+```
+
+Developer ID signing + notarization is documented under “Future macOS codesigning” in [DEVELOPERS.md](../DEVELOPERS.md).
+
 ## Notes
 
 - Desktop archives bundle a companion CLI for first-launch PATH install (see above).

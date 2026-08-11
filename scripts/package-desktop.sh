@@ -36,6 +36,8 @@ zip_paths() {
   local out="$1"
   shift
   python3 - "$out" "$@" <<'PY'
+import os
+import stat
 import sys
 import zipfile
 from pathlib import Path
@@ -46,10 +48,21 @@ with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as zf:
     for path in paths:
         if path.is_dir():
             for f in sorted(path.rglob("*")):
-                if f.is_file():
-                    zf.write(f, f.relative_to(path.parent).as_posix())
+                if not f.is_file():
+                    continue
+                arcname = f.relative_to(path.parent).as_posix()
+                info = zipfile.ZipInfo.from_file(f, arcname)
+                mode = f.stat().st_mode
+                # Ensure Mach-O binaries stay executable after unzip on macOS.
+                if mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH):
+                    info.external_attr = (stat.S_IFREG | 0o755) << 16
+                zf.writestr(info, f.read_bytes(), compress_type=zipfile.ZIP_DEFLATED)
         elif path.is_file():
-            zf.write(path, path.name)
+            info = zipfile.ZipInfo.from_file(path, path.name)
+            mode = path.stat().st_mode
+            if mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH):
+                info.external_attr = (stat.S_IFREG | 0o755) << 16
+            zf.writestr(info, path.read_bytes(), compress_type=zipfile.ZIP_DEFLATED)
         else:
             raise SystemExit(f"missing path: {path}")
 print(f"wrote {out}")
@@ -68,7 +81,14 @@ case "$OS" in
       echo "error: missing bundled CLI $APP/Contents/Resources/nui (run build-desktop.sh)" >&2
       exit 1
     fi
-    zip_paths "$DIST/${NAME}.zip" "$APP"
+    # Prefer ditto on macOS: preserves exec bits + resource forks for .app zips.
+    if command -v ditto >/dev/null 2>&1; then
+      xattr -cr "$APP" 2>/dev/null || true
+      ditto -c -k --keepParent "$APP" "$DIST/${NAME}.zip"
+      echo "wrote $DIST/${NAME}.zip"
+    else
+      zip_paths "$DIST/${NAME}.zip" "$APP"
+    fi
     ;;
   windows)
     EXE=""
