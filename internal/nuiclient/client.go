@@ -187,7 +187,9 @@ func pickDefaultAgentTypeID(agents []AgentType, preferredID string) (string, err
 			}
 		}
 	}
-	for _, id := range []string{"anthropic", "openai", "gemini", "openrouter", "ollama"} {
+	// Prefer installed CLI agents (claude-code first) over API builtins so a
+	// keyless provider like Ollama is not chosen when Claude Code is available.
+	for _, id := range []string{"claude-code", "pi", "codex", "opencode", "anthropic", "openai", "gemini", "openrouter", "ollama"} {
 		for _, a := range selectable {
 			if a.ID == id {
 				return a.ID, nil

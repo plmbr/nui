@@ -36,3 +36,9 @@ coverage.out
 
 # Jekyll
 _site/
+
+# Wails desktop build output
+desktop/build/bin/
+desktop/build/darwin/
+desktop/build/windows/
+desktop/build/linux/

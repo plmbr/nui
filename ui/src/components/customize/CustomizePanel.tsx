@@ -4,6 +4,7 @@ import { Settings, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { GeneralTab } from '@/components/customize/GeneralTab'
+import { CredentialsTab } from '@/components/customize/CredentialsTab'
 import { ExtensionsTab } from '@/components/customize/ExtensionsTab'
 import { MCPServersTab } from '@/components/customize/MCPServersTab'
 import { SkillsTab } from '@/components/customize/SkillsTab'
@@ -12,6 +13,7 @@ import { AgentsTab } from '@/components/customize/AgentsTab'
 
 const TABS = [
   { id: 'general', label: 'General' },
+  { id: 'credentials', label: 'Credentials' },
   { id: 'extensions', label: 'Extensions' },
   { id: 'mcp', label: 'MCP servers' },
   { id: 'skills', label: 'Skills' },
@@ -59,6 +61,7 @@ export function CustomizePanel({ onClose, onAgentTypesChanged, tab, onTabChange 
 
         <div className="flex-1 overflow-y-auto p-4 md:p-6">
           {tab === 'general' && <GeneralTab />}
+          {tab === 'credentials' && <CredentialsTab onChanged={onAgentTypesChanged} />}
           {tab === 'extensions' && <ExtensionsTab onChanged={onAgentTypesChanged} />}
           {tab === 'mcp' && <MCPServersTab />}
           {tab === 'skills' && <SkillsTab />}

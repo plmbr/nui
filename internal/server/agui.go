@@ -170,7 +170,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 	go func() {
 		defer close(events)
 		runReq := agent.RunRequest{
-			NuiSessionID:    sessionID,
+			NuiSessionID:     sessionID,
 			RunID:            runID,
 			WorkingDir:       workingDir,
 			Message:          resolvedMessage,

@@ -31,8 +31,8 @@ type StartOptions struct {
 	Prompt           string
 	WorkingDir       string
 	Harness          string // optional CLI harness override for the launched session
-	Open             bool // open the UI in the system default browser
-	HideInput        bool // hide the chat input in the UI (one-off runs)
+	Open             bool   // open the UI in the system default browser
+	HideInput        bool   // hide the chat input in the UI (one-off runs)
 	Theme            string // "light" | "dark"; persisted to settings when set
 	DefaultAgentType string // ADL agent id; persisted to settings when set
 	DefaultHarness   string // harness ref for internal agents; persisted to settings when set
@@ -356,8 +356,24 @@ func firstAvailableAPIBuiltinID() string {
 	return ""
 }
 
+func firstAvailableCLIBuiltinID() string {
+	for _, harnessType := range agents.CLIHarnessTypes {
+		for _, def := range agents.BuiltinAgentDefs() {
+			if def.Harness.Type != harnessType {
+				continue
+			}
+			if harnessAvailable(def) {
+				return model.ADLAgentID(def)
+			}
+		}
+	}
+	return ""
+}
+
 // ensureDefaultAgentType resolves the configured default agent, persisting the
 // first available built-in when settings.json has no defaultAgentType yet.
+// Prefers installed CLI agents (claude-code first) over API builtins so a
+// keyless provider like Ollama is not chosen when Claude Code is available.
 func ensureDefaultAgentType(settings *store.Settings) string {
 	if settings.DefaultAgentType != "" {
 		if def, ok := findADLDef(settings.DefaultAgentType); ok {
@@ -367,20 +383,8 @@ func ensureDefaultAgentType(settings *store.Settings) string {
 		}
 	}
 
-	if id := firstAvailableAPIBuiltinID(); id != "" {
-		settings.DefaultAgentType = id
-		if err := store.SaveSettings(*settings); err != nil {
-			fmt.Fprintf(os.Stderr, "warn: save default agent type: %v\n", err)
-		}
-		return id
-	}
-
-	for _, def := range agents.BuiltinAgentDefs() {
-		id := model.ADLAgentID(def)
-		if def.Harness.Type == "api" {
-			continue
-		}
-		if !agent.CLIAvailable(def.Harness.Type) {
+	for _, id := range []string{firstAvailableCLIBuiltinID(), firstAvailableAPIBuiltinID()} {
+		if id == "" {
 			continue
 		}
 		settings.DefaultAgentType = id

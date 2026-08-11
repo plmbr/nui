@@ -15,7 +15,7 @@ export function NuiLogo({ className, decorative = false }: Props) {
 
   return (
     <svg
-      viewBox="100.06 -36.00 768.00 466.00"
+      viewBox="60 -40 850 520"
       className={cn('nui-logo', className)}
       role={decorative ? undefined : 'img'}
       aria-hidden={decorative ? true : undefined}

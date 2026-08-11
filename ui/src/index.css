@@ -584,6 +584,16 @@
     transition: box-shadow 120ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 
+  /* Wails desktop: hidden title bar + drag the header; keep controls clickable. */
+  html.nui-desktop .app-header {
+    --wails-draggable: drag;
+    padding-left: 5.25rem;
+  }
+
+  html.nui-desktop .app-header :is(a, button, input, textarea, select, label, [role='button'], [data-slot]) {
+    --wails-draggable: no-drag;
+  }
+
   .app-header__leading {
     @apply flex min-w-0 flex-1 items-center gap-1.5 md:gap-2;
   }

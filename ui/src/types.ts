@@ -181,6 +181,21 @@ export interface Settings {
   memoryAgentsEnabled?: Record<string, boolean>
 }
 
+export interface CredentialField {
+  key: string
+  label: string
+  description?: string
+  group: string
+  secret: boolean
+  value: string
+  fromEnv: boolean
+  configured: boolean
+}
+
+export interface Credentials {
+  fields: CredentialField[]
+}
+
 export type MemoryMode = 'auto' | 'manual' | 'disabled'
 
 export interface ExtensionInfo {

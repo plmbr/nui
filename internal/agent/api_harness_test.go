@@ -7,10 +7,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"nui/internal/llm"
 	"nui/internal/model"
+	"nui/internal/store"
 )
 
 func TestAPIHarnessAvailable(t *testing.T) {
@@ -22,6 +24,50 @@ func TestAPIHarnessAvailable(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "sk-test")
 	if !APIHarnessAvailable(h) {
 		t.Fatal("expected available with key")
+	}
+}
+
+func TestAPIHarnessAvailableFromSecrets(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".nui"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	h := model.ADLHarness{Type: "api", Provider: "anthropic"}
+	if APIHarnessAvailable(h) {
+		t.Fatal("expected unavailable without secrets")
+	}
+	if err := store.SaveSecrets(store.Secrets{Env: map[string]string{"ANTHROPIC_API_KEY": "sk-secret"}}); err != nil {
+		t.Fatal(err)
+	}
+	if !APIHarnessAvailable(h) {
+		t.Fatal("expected available via secrets")
+	}
+	key, err := resolveAPIKey(ResolveAPIProviderProfile(h), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if key != "sk-secret" {
+		t.Fatalf("key = %q", key)
+	}
+}
+
+func TestLookupCredentialValuePriority(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".nui"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveSecrets(store.Secrets{Env: map[string]string{"OPENAI_API_KEY": "from-secrets"}}); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("OPENAI_API_KEY", "from-env")
+	if got := lookupCredentialValue("OPENAI_API_KEY", nil); got != "from-env" {
+		t.Fatalf("env should win over secrets: %q", got)
+	}
+	if got := lookupCredentialValue("OPENAI_API_KEY", map[string]string{"OPENAI_API_KEY": "from-adl"}); got != "from-adl" {
+		t.Fatalf("adl env should win: %q", got)
 	}
 }
 

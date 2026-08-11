@@ -1,0 +1,23 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "nui",
+  "outputfilename": "nui-desktop",
+  "frontend:dir": "frontend",
+  "frontend:install": "",
+  "frontend:build": "",
+  "frontend:dev:watcher": "",
+  "frontend:dev:serverUrl": "",
+  "author": {
+    "name": "Mehmet Bektas",
+    "email": "mbektasgh@outlook.com"
+  },
+  "info": {
+    "companyName": "nui",
+    "productName": "nui",
+    "productVersion": "0.4.0",
+    "copyright": "Copyright (c) Mehmet Bektas",
+    "comments": "Self-hosted AI agent desktop UI"
+  },
+  "nsisType": "multiple",
+  "obfuscated": false
+}

@@ -27,7 +27,7 @@ npm run lint    # ESLint
 cd ui && npm run build && cd .. && go build -o nui_bin . && ./nui_bin server
 ```
 
-> `ui/dist` must exist before `go build` — it is embedded into the binary at compile time via `//go:embed ui/dist`.
+> `ui/dist` must exist before `go build` — it is embedded into the binary at compile time via `ui/embed.go` (`//go:embed all:dist`).
 
 ### Docker images (run from `docker/`)
 ```sh

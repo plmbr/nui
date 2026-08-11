@@ -59,20 +59,21 @@ flowchart TB
 
 ```
 nui/
-├── main.go, embed.go          # entrypoint; embeds ui/dist
+├── main.go, embed.go          # CLI entrypoint; embeds ui/dist via nui/ui
 ├── cmd/                       # cobra CLI (`nui server`, `nui run`, `nui agent`, `nui extension`, MCP servers, …)
 ├── internal/
 │   ├── model/                 # Session, ChatMessage, ADL structs
 │   ├── agent/                 # Agent interface, harness implementations, ADL executor
 │   ├── server/                # HTTP mux, REST + AG-UI streaming
 │   └── store/                 # JSON persistence (~/.nui/)
+├── desktop/                   # Wails v2 native shell (separate Go module; see desktop/README.md)
 ├── docker/                    # Builtin sandbox images (HTTP/SSE, port 8090)
 ├── harness-sdk/               # Python extension author SDK (see harness-sdk/README.md)
 ├── dev/
 │   ├── dev.md                 # product spec
 │   ├── harness-design.md      # custom harness protocols
 │   └── harness-examples/      # runnable docker/remote/TCP examples
-└── ui/                        # Vite + React frontend
+└── ui/                        # Vite + React frontend (+ embed.go for Go)
 ```
 
 ## Running in development
@@ -96,6 +97,16 @@ Production build:
 ```sh
 cd ui && npm run build && cd .. && go build -o nui_bin . && ./nui_bin server
 ```
+
+### Desktop (Wails)
+
+Native window over the same local server — see [desktop/README.md](desktop/README.md).
+
+```sh
+./scripts/build-desktop.sh
+```
+
+The CLI release path (`scripts/build-release.sh`, `CGO_ENABLED=0`) is unchanged; desktop builds are a separate CGO/Wails artifact that also **bundle** a CLI binary and install it to `~/.local/bin` (or `%LOCALAPPDATA%\nui`) on first GUI launch — see [desktop/README.md](desktop/README.md).
 
 ## API endpoints
 
@@ -178,7 +189,7 @@ Ten built-in agent types: four CLI harnesses, five API harnesses, and the `nui` 
 | OpenRouter | `openrouter` | `openrouter` | `anthropic/claude-sonnet-4` | `OPENROUTER_API_KEY` |
 | Ollama | `ollama` | `ollama` | (none) | none (`OLLAMA_HOST` optional) |
 
-Definitions live in `internal/agents/api_builtins.go`. Availability is checked via `APIHarnessAvailable()` in `internal/agent/api_availability.go`. See [harness-design.md](dev/harness-design.md) §4 for ADL fields (`provider`, `model`, `baseURL`, `apiKeyEnv`).
+Definitions live in `internal/agents/api_builtins.go`. Availability is checked via `APIHarnessAvailable()` in `internal/agent/api_availability.go` (process env or `~/.nui/secrets.json` from Customize → Credentials). See [harness-design.md](dev/harness-design.md) §4 for ADL fields (`provider`, `model`, `baseURL`, `apiKeyEnv`).
 
 ### Installed agents
 
@@ -241,6 +252,7 @@ CI runs on every pull request and push to `main`:
 - UI lint, build, and Vitest unit tests (with coverage artifacts)
 - Playwright end-to-end tests
 - Binary size budget check
+- Desktop (Wails) builds for darwin (amd64/arm64), windows (amd64), and linux (amd64/arm64)
 
 Run the full suite locally:
 
@@ -253,15 +265,23 @@ Run the full suite locally:
 1. Bump [`VERSION`](VERSION) on `main` to match the upcoming tag (without the `v` prefix).
 2. Tag and push: `git tag v0.4.0-alpha && git push origin v0.4.0-alpha`
 3. Create a GitHub Release for the tag (`gh release create v0.4.0-alpha --generate-notes`).
-4. The release workflow builds Linux and macOS binaries (amd64 + arm64) and attaches them to the release.
+4. The release workflow builds CLI archives (linux/darwin/windows × amd64/arm64) and desktop (Wails) packages, then attaches them to the release.
 
-Build release archives locally:
+Build CLI release archives locally:
 
 ```sh
 ./scripts/build-release.sh v0.4.0-alpha
 ```
 
-Artifacts land in `dist/` as `nui_<tag>_<os>_<arch>.tar.gz` (or `.zip` on Windows) plus `checksums.txt`.
+Build a desktop package for the current platform:
+
+```sh
+./scripts/build-desktop.sh
+./scripts/package-desktop.sh v0.4.0-alpha darwin arm64   # adjust os/arch
+```
+
+CLI artifacts land in `dist/` as `nui_<tag>_<os>_<arch>.tar.gz` (or `.zip` on Windows) plus `checksums.txt`.
+Desktop artifacts are `nui-desktop_<tag>_<os>_<arch>.zip` (darwin/windows) or `.tar.gz` (linux).
 
 ### Serving the website and install script
 

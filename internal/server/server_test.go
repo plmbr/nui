@@ -42,3 +42,23 @@ func TestHandleHealth(t *testing.T) {
 		t.Fatalf("body = %q", rec.Body.String())
 	}
 }
+
+func TestIsWailsOrigin(t *testing.T) {
+	tests := []struct {
+		origin string
+		want   bool
+	}{
+		{"", false},
+		{"http://localhost:8080", false},
+		{"null", true},
+		{"wails://wails", true},
+		{"wails://wails/", true},
+		{"http://wails.localhost", true},
+		{"https://example.com", false},
+	}
+	for _, tc := range tests {
+		if got := isWailsOrigin(tc.origin); got != tc.want {
+			t.Errorf("isWailsOrigin(%q) = %v, want %v", tc.origin, got, tc.want)
+		}
+	}
+}

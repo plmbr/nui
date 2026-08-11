@@ -24,8 +24,18 @@ func TestPickDefaultAgentTypeID(t *testing.T) {
 	apiAgents := []AgentType{
 		{ID: "claude-code", Available: true, IsBuiltin: true},
 		{ID: "anthropic", Available: true, IsBuiltin: true},
+		{ID: "ollama", Available: true, IsBuiltin: true},
 	}
 	id, err = pickDefaultAgentTypeID(apiAgents, "")
+	if err != nil || id != "claude-code" {
+		t.Fatalf("cli preference over api = %q, err = %v", id, err)
+	}
+
+	apiOnly := []AgentType{
+		{ID: "ollama", Available: true, IsBuiltin: true},
+		{ID: "anthropic", Available: true, IsBuiltin: true},
+	}
+	id, err = pickDefaultAgentTypeID(apiOnly, "")
 	if err != nil || id != "anthropic" {
 		t.Fatalf("api builtin preference = %q, err = %v", id, err)
 	}

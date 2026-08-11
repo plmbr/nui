@@ -6,6 +6,8 @@ import {
   defaultUserScopeHarnessConfig,
   orderedBuiltinAgentsForPicker,
   partitionBuiltinAgents,
+  pickDefaultAgentTypeId,
+  pickDefaultHarnessRef,
   pickNewSessionAgentTypeId,
   showToolApprovalsOption,
   showUserScopeOption,
@@ -100,5 +102,24 @@ describe('agentTypes', () => {
     expect(pickNewSessionAgentTypeId(agents)).toBe('nui')
     expect(pickNewSessionAgentTypeId(agents, 'custom')).toBe('custom')
     expect(pickNewSessionAgentTypeId(agents, 'missing')).toBe('nui')
+  })
+
+  it('prefers claude-code over api builtins when picking default agent', () => {
+    const agents: AgentType[] = [
+      { id: 'ollama', label: 'Ollama', harness: 'api', provider: 'ollama', available: true, isBuiltin: true },
+      { id: 'anthropic', label: 'Claude API', harness: 'api', provider: 'anthropic', available: true, isBuiltin: true },
+      claudeAgent,
+    ]
+    expect(pickDefaultAgentTypeId(agents)).toBe('claude-code')
+    expect(pickDefaultHarnessRef(agents)).toBe('claude-code')
+  })
+
+  it('falls back to api builtins when no cli agent is available', () => {
+    const agents: AgentType[] = [
+      { id: 'ollama', label: 'Ollama', harness: 'api', provider: 'ollama', available: true, isBuiltin: true },
+      { id: 'anthropic', label: 'Claude API', harness: 'api', provider: 'anthropic', available: true, isBuiltin: true },
+    ]
+    expect(pickDefaultAgentTypeId(agents)).toBe('anthropic')
+    expect(pickDefaultHarnessRef(agents)).toBe('api/anthropic')
   })
 })

@@ -136,11 +136,18 @@ func ResolveDefaultHarness(settings store.Settings) (model.ADLHarness, string, e
 	return h, ref, err
 }
 
-// ensureDefaultHarness picks and persists the first available harness when unset.
-func ensureDefaultHarness(settings *store.Settings) string {
-	if ref := strings.TrimSpace(settings.DefaultHarness); ref != "" && HarnessAvailable(ref) {
-		return ref
+// firstAvailableCLIHarnessRef returns the first installed CLI harness (claude-code preferred).
+func firstAvailableCLIHarnessRef() string {
+	for _, harnessType := range CLIHarnessTypes {
+		if HarnessAvailable(harnessType) {
+			return harnessType
+		}
 	}
+	return ""
+}
+
+// firstAvailableAPIHarnessRef returns the first available API builtin harness ref.
+func firstAvailableAPIHarnessRef() string {
 	for _, id := range APIBuiltinOrder {
 		for _, def := range BuiltinAgentDefs() {
 			if def.ID != id || def.Harness.Type != "api" {
@@ -148,19 +155,27 @@ func ensureDefaultHarness(settings *store.Settings) string {
 			}
 			ref := HarnessRefForDef(def)
 			if HarnessAvailable(ref) {
-				settings.DefaultHarness = ref
-				_ = store.SaveSettings(*settings)
 				return ref
 			}
 		}
 	}
-	for _, harnessType := range CLIHarnessTypes {
-		ref := harnessType
-		if HarnessAvailable(ref) {
-			settings.DefaultHarness = ref
-			_ = store.SaveSettings(*settings)
-			return ref
+	return ""
+}
+
+// ensureDefaultHarness picks and persists the first available harness when unset.
+// Prefers installed CLI harnesses (claude-code first) over API builtins so a
+// keyless provider like Ollama is not chosen when Claude Code is available.
+func ensureDefaultHarness(settings *store.Settings) string {
+	if ref := strings.TrimSpace(settings.DefaultHarness); ref != "" && HarnessAvailable(ref) {
+		return ref
+	}
+	for _, ref := range []string{firstAvailableCLIHarnessRef(), firstAvailableAPIHarnessRef()} {
+		if ref == "" {
+			continue
 		}
+		settings.DefaultHarness = ref
+		_ = store.SaveSettings(*settings)
+		return ref
 	}
 	return ""
 }
@@ -171,8 +186,8 @@ func PickDefaultHarnessRef(settings store.Settings) string {
 	if ref != "" && HarnessAvailable(ref) {
 		return ref
 	}
-	for _, item := range SelectableHarnessRefs() {
-		return item.Ref
+	if ref := firstAvailableCLIHarnessRef(); ref != "" {
+		return ref
 	}
-	return ""
+	return firstAvailableAPIHarnessRef()
 }

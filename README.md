@@ -197,6 +197,11 @@ Expose nui agents to MCP hosts (Cursor, Claude Desktop, etc.) by adding this to 
 }
 ```
 
+Install the CLI via [the install script](#install), a release archive, or by
+opening the **desktop app** once (it bundles `nui` and installs it to
+`~/.local/bin` / `%LOCALAPPDATA%\nui` on first launch). Restart the MCP host
+after install so it picks up PATH changes.
+
 Available tools: `list_agents`, `list_sessions`, `create_session`, `run_agent`, `get_run`, `get_run_events`, `stop_run`.
 
 nui also injects built-in MCP servers into agent harnesses when configured:
