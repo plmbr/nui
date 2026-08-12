@@ -455,7 +455,7 @@ export function AppSidebar({
   return (
     <Sidebar
       collapsible="offcanvas"
-      className="app-sidebar top-12 bottom-auto h-[calc(100svh-3rem)] max-h-[calc(100svh-3rem)]"
+      className="app-sidebar top-[var(--app-header-height)] bottom-auto h-[calc(100svh-var(--app-header-height))] max-h-[calc(100svh-var(--app-header-height))]"
     >
       <SidebarResizeHandle
         width={sidebarWidth}

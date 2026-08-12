@@ -58,7 +58,7 @@ import zlib
 
 src, dst = sys.argv[1], sys.argv[2]
 SIZE = 1024
-MARGIN = int(SIZE * 0.24)
+MARGIN = int(SIZE * 0.10)
 AA_PAD = 12  # keep soft fringe outside thresholded ink
 
 
@@ -230,8 +230,9 @@ nw = max(1, int(round(cw * scale)))
 nh = max(1, int(round(ch * scale)))
 logo = bilinear_resize(cropped, cw, ch, nw, nh)
 
+# Nudge up for optical centering (sparkles inflate the bbox above the letter bodies).
 x = (SIZE - nw) // 2
-y = (SIZE - nh) // 2
+y = (SIZE - nh) // 2 - int(SIZE * 0.06)
 
 canvas = bytearray(SIZE * SIZE * 4)
 for i in range(0, len(canvas), 4):

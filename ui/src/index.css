@@ -139,6 +139,9 @@
 
     --radius: 0.5rem;
 
+    /* App chrome — web default; desktop shortens to match native traffic lights. */
+    --app-header-height: 3rem;
+
     --text-ui: 0.875rem;
     --text-body: 1rem;
     --text-meta: 0.8125rem;
@@ -184,6 +187,11 @@
     --landing-title-word-from: #404040;
     --landing-title-word-to: #0a0a0a;
     --landing-title-word-gradient: linear-gradient(135deg, var(--landing-title-word-from), var(--landing-title-word-to));
+}
+
+/* Wails desktop: VS Code–like short title bar so traffic lights and header content share one centered row. */
+html.nui-desktop {
+  --app-header-height: 35px;
 }
 
 .dark {
@@ -384,6 +392,8 @@
       transform: translate(-50%, -50%);
       border-radius: 50%;
       pointer-events: none;
+      /* Soft vignette only — no backdrop-filter. WKWebView (Wails) clips
+         backdrop blur to the circle bounds, which reads as a hard disc. */
       background: radial-gradient(
         circle,
         color-mix(in oklch, var(--background) 97%, transparent) 0%,
@@ -393,8 +403,6 @@
         color-mix(in oklch, var(--background) 10%, transparent) 76%,
         transparent 84%
       );
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
     }
   }
 
@@ -576,7 +584,8 @@
 
   /* ─── App shell ──────────────────────────────────────────────── */
   .app-header {
-    @apply fixed top-0 left-0 right-0 z-50 flex h-12 shrink-0 items-center gap-2 border-b px-3 md:gap-3 md:px-4;
+    @apply fixed top-0 left-0 right-0 z-50 flex shrink-0 items-center gap-2 border-b px-3 md:gap-3 md:px-4;
+    height: calc(var(--app-header-height) + env(safe-area-inset-top, 0px));
     padding-top: env(safe-area-inset-top, 0px);
     background: color-mix(in srgb, var(--background) 80%, transparent);
     backdrop-filter: saturate(180%) blur(12px);
@@ -587,21 +596,20 @@
   /* Wails desktop: hidden title bar + drag the header; keep controls clickable. */
   html.nui-desktop .app-header {
     --wails-draggable: drag;
-    padding-left: 5.25rem;
+    padding-left: calc(5.25rem - 10px);
   }
 
   html.nui-desktop .app-header :is(a, button, input, textarea, select, label, [role='button'], [data-slot]) {
     --wails-draggable: no-drag;
   }
 
-  .app-header__leading {
-    @apply flex min-w-0 flex-1 items-center gap-1.5 md:gap-2;
+  html.nui-desktop .app-header .app-brand .nui-logo {
+    /* Mild sparkle compensation so letterforms sit on the traffic-light axis. */
+    transform: translateY(-1px);
   }
 
-  .app-header [data-slot="sidebar-trigger"],
-  .app-header .app-brand,
-  .app-header__breadcrumb {
-    transform: translateY(3px);
+  .app-header__leading {
+    @apply flex min-w-0 flex-1 items-center gap-1.5 md:gap-2;
   }
 
   .app-header [data-slot="sidebar-trigger"] {
@@ -617,7 +625,7 @@
   }
 
   .app-header__actions {
-    @apply ml-auto flex shrink-0 items-center gap-2;
+    @apply ml-auto flex shrink-0 items-center gap-1.5;
   }
 
   .app-header__version-group {
@@ -637,7 +645,7 @@
   }
 
   .app-header__theme-switch {
-    @apply size-9 rounded-lg border border-transparent bg-transparent text-muted-foreground;
+    @apply size-7 rounded-md border border-transparent bg-transparent text-muted-foreground;
 
     &:hover {
       @apply border-border bg-card text-foreground;
@@ -646,7 +654,7 @@
 
   .app-body {
     @apply relative z-[1] flex h-screen w-full overflow-hidden;
-    padding-top: calc(3rem + env(safe-area-inset-top, 0px));
+    padding-top: calc(var(--app-header-height) + env(safe-area-inset-top, 0px));
   }
 
   /* ─── Plumeria backdrop ─────────────────────────────────────── */
@@ -719,10 +727,10 @@
   }
 
   .app-sidebar [data-slot="sidebar-container"] {
-    top: 3rem;
+    top: var(--app-header-height);
     bottom: auto;
-    height: calc(100svh - 3rem);
-    max-height: calc(100svh - 3rem);
+    height: calc(100svh - var(--app-header-height));
+    max-height: calc(100svh - var(--app-header-height));
   }
 
   .app-sidebar [data-slot="sidebar-inner"] {
@@ -1079,6 +1087,7 @@
       transform: translate(-50%, -50%);
       border-radius: 50%;
       pointer-events: none;
+      /* Same as landing vignette: gradient fade only (no backdrop-filter). */
       background: radial-gradient(
         circle,
         color-mix(in oklch, var(--background) 88%, transparent) 0%,
@@ -1086,8 +1095,6 @@
         color-mix(in oklch, var(--background) 38%, transparent) 72%,
         transparent 80%
       );
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
     }
   }
 

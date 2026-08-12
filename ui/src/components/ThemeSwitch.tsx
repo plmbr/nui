@@ -12,7 +12,7 @@ export function ThemeSwitch() {
     <Button
       type="button"
       variant="ghost"
-      size="icon-lg"
+      size="icon-sm"
       aria-label={`Switch to ${nextTheme} theme`}
       title={`Switch to ${nextTheme} theme`}
       className="app-header__theme-switch"
