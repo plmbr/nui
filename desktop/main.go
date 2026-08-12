@@ -13,6 +13,10 @@ import (
 )
 
 func main() {
+	// Finder/Dock launches strip PATH; restore login-shell + common bins so
+	// builtin CLI agents (claude, pi, …) are detected and runnable.
+	ensureDesktopPATH()
+
 	// Harnesses spawn this binary as "nui-desktop viz-mcp" (etc.). Handle those
 	// before the GUI / single-instance lock so MCP stdio works.
 	mcpMain()

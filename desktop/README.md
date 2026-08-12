@@ -36,6 +36,12 @@ Harnesses spawn built-in MCP servers via `os.Executable()` (`viz-mcp`,
 `agent-mcp`, `hitl-mcp`, `orchestrator-mcp`). The desktop binary handles those
 args on stdio before opening the GUI so MCP works without a separate `nui` CLI.
 
+On macOS, Finder/Dock launches inherit a stripped `PATH`. At startup the app
+merges the login-shell `PATH` and common install dirs (`~/.local/bin`, Homebrew,
+nvm default, `~/.opencode/bin`, …) so builtin CLI agents (`claude`, `pi`,
+`codex`, `opencode`) are detected in the new-session picker and runnable from
+harnesses.
+
 ### Bundled CLI (first-launch install)
 
 `build-desktop.sh` also builds a `CGO_ENABLED=0` `nui` CLI and stages it:
