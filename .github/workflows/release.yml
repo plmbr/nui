@@ -73,7 +73,7 @@ jobs:
             arch: arm64
             tags: ""
           - label: darwin-amd64
-            runner: macos-13
+            runner: macos-15-intel
             platform: darwin/amd64
             os_name: darwin
             arch: amd64
