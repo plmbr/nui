@@ -8,9 +8,27 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build release binaries
-    runs-on: ubuntu-latest
+  build-cli:
+    name: CLI (${{ matrix.label }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Cross-compile linux/windows on Linux. Darwin must be built on macOS
+          # so codesign produces a signature current macOS accepts.
+          - label: linux-windows
+            runner: ubuntu-latest
+            targets: "linux/amd64 linux/arm64 windows/amd64 windows/arm64"
+          - label: darwin-arm64
+            runner: macos-latest
+            targets: "darwin/arm64"
+          - label: darwin-amd64
+            runner: macos-15-intel
+            targets: "darwin/amd64"
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,7 +60,44 @@ jobs:
           fi
 
       - name: Build release archives
+        env:
+          NUI_RELEASE_TARGETS: ${{ matrix.targets }}
         run: ./scripts/build-release.sh "${{ github.event.release.tag_name }}"
+
+      - name: Upload CLI artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-${{ matrix.label }}
+          path: |
+            dist/nui_${{ github.event.release.tag_name }}_*.tar.gz
+            dist/nui_${{ github.event.release.tag_name }}_*.zip
+          if-no-files-found: error
+
+  publish-cli:
+    name: Publish CLI release assets
+    needs: build-cli
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download CLI artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cli-*
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums.txt
+        run: |
+          set -euo pipefail
+          cd dist
+          shopt -s nullglob
+          files=(nui_*.tar.gz nui_*.zip)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "error: no CLI archives downloaded" >&2
+            exit 1
+          fi
+          sha256sum "${files[@]}" | sort -k2 >checksums.txt
+          ls -la
+          cat checksums.txt
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2

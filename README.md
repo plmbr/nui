@@ -30,10 +30,11 @@ $env:NUI_VERSION = "v0.4.0-alpha"; irm https://nui.plmbr.dev/install.ps1 | iex
 
 **Manual install:** download the archive for your platform from [GitHub Releases](https://github.com/plmbr/nui/releases), extract the `nui` binary (or `nui.exe` on Windows), and place it on your `PATH`.
 
-**macOS note:** release binaries and the desktop `.app` are currently **not** Developer ID–notarized. The CLI install script strips the download quarantine attribute automatically. If you install manually or download `nui.app`:
+**macOS note:** release binaries and the desktop `.app` are currently **not** Developer ID–notarized. The CLI install script strips quarantine and ad-hoc codesigns the binary automatically. If you install manually or download `nui.app`:
 
 ```sh
 xattr -cr /path/to/nui          # CLI binary
+codesign -s - -f /path/to/nui  # required if `nui` exits with "zsh: killed"
 xattr -cr /path/to/nui.app      # desktop app
 ```
 

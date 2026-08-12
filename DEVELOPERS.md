@@ -295,6 +295,6 @@ To update the site:
 2. Push to `origin/gh-pages`.
 3. Verify: `curl -fsSL https://nui.plmbr.dev/install.sh | head` and spot-check `/cli/`, `/agents/`, `/docs/`.
 
-### Future macOS codesigning
+### macOS codesigning (CLI)
 
-When an Apple Developer ID is available, add a `sign-macos` job to the release workflow with these GitHub secrets: `APPLE_CERTIFICATE_P12`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID`. Sign with hardened runtime, notarize via `notarytool`, and staple before uploading darwin assets.
+Darwin CLI archives are built on macOS runners (not Linux cross-compile) and ad-hoc signed in `scripts/build-release.sh`. The install script also re-signs on install so older Linux-cross builds still run. When an Apple Developer ID is available, add a `sign-macos` job with these GitHub secrets: `APPLE_CERTIFICATE_P12`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID`. Sign with hardened runtime, notarize via `notarytool`, and staple before uploading darwin assets.
