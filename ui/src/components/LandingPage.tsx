@@ -79,6 +79,9 @@ export function LandingPage({ active, focusToken = 0, onLaunchWithPrompt, onNewS
             onKeyDown={onKeyDown}
             placeholder="Aloha! Drop a task here — nui will route the mahi so you can kick back and enjoy the breeze."
             rows={4}
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
             disabled={loading}
             aria-label="Launch prompt"
           />

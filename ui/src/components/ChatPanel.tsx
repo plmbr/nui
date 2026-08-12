@@ -743,6 +743,9 @@ export function ChatPanel({
             onPaste={onPaste}
             placeholder="Message your agent… (/ for commands, @ to mention, paste or drop images and files)"
             rows={1}
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
             disabled={isRunning || uploadingCount > 0}
             aria-autocomplete={promptMenuOpen ? 'list' : undefined}
             aria-expanded={promptMenuOpen}

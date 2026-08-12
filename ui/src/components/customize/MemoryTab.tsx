@@ -262,6 +262,9 @@ export function MemoryTab() {
           value={userContent}
           onChange={(e) => setUserContent(e.target.value)}
           placeholder="Cross-agent preferences and durable facts…"
+          spellCheck={false}
+          autoCorrect="off"
+          autoCapitalize="off"
         />
         <div className="flex justify-end">
           <Button size="sm" disabled={saving === 'user-save'} onClick={() => void saveUserContent()}>
@@ -350,6 +353,9 @@ export function MemoryTab() {
             value={agentContent}
             onChange={(e) => setAgentContent(e.target.value)}
             placeholder="Agent-specific learned context…"
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
           />
           <div className="flex justify-end">
             <Button

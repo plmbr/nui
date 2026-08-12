@@ -205,6 +205,9 @@ export function HitlPromptCard({ sessionId, request }: Props) {
             disabled={submitting}
             placeholder="Your answer…"
             rows={3}
+            spellCheck={false}
+            autoCorrect="off"
+            autoCapitalize="off"
           />
         )}
       </div>
@@ -279,6 +282,9 @@ export function HitlPromptCard({ sessionId, request }: Props) {
           disabled={submitting}
           placeholder="Your answer…"
           rows={3}
+          spellCheck={false}
+          autoCorrect="off"
+          autoCapitalize="off"
         />
       )}
 
