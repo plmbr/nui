@@ -162,7 +162,7 @@ func (m *Manager) GetOpenCodeDocker(projectID, image, workingDir, sessionConfigD
 }
 
 // GetCodexDocker launches (or reuses) a Docker container running the codex HTTP agent.
-// Auth is forwarded via ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL from the host environment.
+	// Auth is forwarded via ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL from process env or ~/.nui/secrets.json.
 func (m *Manager) GetCodexDocker(projectID, image, workingDir, sessionConfigDir string, userScope bool) (Agent, error) {
 	if image == "" {
 		image = "nui-codex:latest"
@@ -639,13 +639,13 @@ func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, harnessType,
 		"-p", fmt.Sprintf("127.0.0.1::%d", builtinContainerPort),
 	}
 	for _, envKey := range []string{"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_BASE_URL", "OPENAI_API_KEY", "OPENAI_BASE_URL"} {
-		if val := os.Getenv(envKey); val != "" {
+		if val := lookupCredentialValue(envKey, nil); val != "" {
 			args = append(args, "-e", envKey+"="+val)
 		}
 	}
 	// If any base URL points to a loopback hostname, route it to the host machine.
 	for _, urlEnv := range []string{"ANTHROPIC_BASE_URL", "OPENAI_BASE_URL"} {
-		if extraHosts := loopbackAddHostArgs(os.Getenv(urlEnv)); len(extraHosts) > 0 {
+		if extraHosts := loopbackAddHostArgs(lookupCredentialValue(urlEnv, nil)); len(extraHosts) > 0 {
 			args = append(args, extraHosts...)
 		}
 	}

@@ -3,10 +3,13 @@
 package agent
 
 import (
+	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"nui/internal/model"
+	"nui/internal/store"
 )
 
 func TestMergeADLEnv(t *testing.T) {
@@ -64,6 +67,70 @@ func TestApplyCmdEnv(t *testing.T) {
 	}
 	if m["CLAUDE_CONFIG_DIR"] != "/tmp/session-config" {
 		t.Fatalf("CLAUDE_CONFIG_DIR = %q", m["CLAUDE_CONFIG_DIR"])
+	}
+}
+
+func TestEnvWithOverrides_injectsSecrets(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".nui"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	if err := store.SaveSecrets(store.Secrets{Env: map[string]string{
+		"ANTHROPIC_API_KEY": "sk-from-secrets",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+
+	got := envWithOverrides(map[string]string{"NUI_TEST_ENV_NEW": "added"})
+	m := envMap(got)
+	if m["ANTHROPIC_API_KEY"] != "sk-from-secrets" {
+		t.Fatalf("ANTHROPIC_API_KEY = %q, want secrets value", m["ANTHROPIC_API_KEY"])
+	}
+	if m["NUI_TEST_ENV_NEW"] != "added" {
+		t.Fatalf("override missing: %q", m["NUI_TEST_ENV_NEW"])
+	}
+}
+
+func TestEnvWithOverrides_processEnvWinsOverSecrets(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".nui"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveSecrets(store.Secrets{Env: map[string]string{
+		"ANTHROPIC_API_KEY": "sk-from-secrets",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ANTHROPIC_API_KEY", "sk-from-env")
+
+	got := envWithOverrides(nil)
+	m := envMap(got)
+	if m["ANTHROPIC_API_KEY"] != "sk-from-env" {
+		t.Fatalf("ANTHROPIC_API_KEY = %q, want process env", m["ANTHROPIC_API_KEY"])
+	}
+}
+
+func TestApplyCmdEnv_forwardsSecretsToClaude(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".nui"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ANTHROPIC_API_KEY", "")
+	if err := store.SaveSecrets(store.Secrets{Env: map[string]string{
+		"ANTHROPIC_API_KEY": "sk-claude-desktop",
+	}}); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command("true")
+	applyCmdEnv(cmd, "claude-code", "/tmp/session-config", nil, false, "sess-1", "run-1")
+	m := envMap(cmd.Env)
+	if m["ANTHROPIC_API_KEY"] != "sk-claude-desktop" {
+		t.Fatalf("ANTHROPIC_API_KEY = %q, want secrets forwarded to claude-code", m["ANTHROPIC_API_KEY"])
 	}
 }
 

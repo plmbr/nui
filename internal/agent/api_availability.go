@@ -36,7 +36,7 @@ func CredentialFieldSpecs() []CredentialFieldSpec {
 		{
 			Key:         "ANTHROPIC_API_KEY",
 			Label:       "Anthropic API key",
-			Description: "Used by the Claude API builtin (and Anthropic-compatible agents).",
+			Description: "Used by the Claude API builtin, Claude Code, and Anthropic-compatible agents.",
 			Group:       "Anthropic",
 			Secret:      true,
 		},
