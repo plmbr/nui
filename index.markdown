@@ -155,8 +155,9 @@ nui run -m "Summarize changes" -w . --spawn --wait
     <p class="eyebrow">First run</p>
     <h2>Install and try it in two minutes.</h2>
     <p class="lede">
-      nui ships as a single binary for Linux, macOS, and Windows. Install, start the
-      server, and open the UI.
+      Install the CLI with the one-liner below, or download the
+      <a href="{{ '/install/#install-the-desktop-app' | relative_url }}">desktop app</a>
+      from GitHub Releases (it bundles the CLI and installs it on first launch).
     </p>
 
     <p>
@@ -170,8 +171,8 @@ nui run -m "Summarize changes" -w . --spawn --wait
     </p>
 
     <ol class="steps">
-      <li><strong>Install.</strong> Run the curl one-liner above, or download a release binary from GitHub.</li>
-      <li><strong>Start the server.</strong> <code>nui server</code> listens on <code>:8080</code> by default.</li>
+      <li><strong>Install.</strong> Run the curl one-liner above, or grab the desktop package / CLI archive from GitHub Releases.</li>
+      <li><strong>Start.</strong> Run <code>nui server</code> (listens on <code>:8080</code>), or open the desktop app.</li>
       <li><strong>Open the UI.</strong> Pick an agent and a working directory. nui creates a session on first launch.</li>
       <li><strong>Chat.</strong> Send a prompt, attach files, or use <code>@</code> mentions for context.</li>
     </ol>

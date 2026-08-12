@@ -118,14 +118,24 @@ remove_macos_quarantine() {
   done
 }
 
+# Linux-cross-compiled darwin binaries can ship an invalid linker-signed adhoc
+# signature that macOS kills at launch (zsh: killed). Re-sign ad-hoc locally.
+adhoc_codesign_macos() {
+  [ "$platform_os" = "darwin" ] || return 0
+  command -v codesign >/dev/null 2>&1 || return 0
+  codesign --force --sign - --timestamp=none "$1"
+}
+
 install_binary() {
   src="$1"
   dest="$2"
   if [ "$platform_os" = "darwin" ]; then
     remove_macos_quarantine "$src"
+    adhoc_codesign_macos "$src"
     cp -X "$src" "$dest"
     chmod 755 "$dest"
     remove_macos_quarantine "$dest"
+    adhoc_codesign_macos "$dest"
   else
     install -m 755 "$src" "$dest"
   fi
