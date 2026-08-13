@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-// ParseGitHubURL parses a GitHub web or git remote URL into a clone URL,
-// repo-relative skill path, and ref (branch/tag/commit from tree/blob URLs).
+// ParseGitHubURL parses a GitHub or GitHub Enterprise web/git URL into a clone
+// URL, repo-relative skill path, and ref (branch/tag/commit from tree/blob URLs).
 // ok is false when the input is not a GitHub repository URL.
 func ParseGitHubURL(raw string) (cloneURL, repoPath, ref string, ok bool) {
 	raw = strings.TrimSpace(raw)
@@ -17,24 +17,28 @@ func ParseGitHubURL(raw string) (cloneURL, repoPath, ref string, ok bool) {
 		return "", "", "", false
 	}
 	if !strings.Contains(raw, "://") && !strings.HasPrefix(raw, "git@") {
-		if strings.HasPrefix(raw, "github.com/") || strings.HasPrefix(raw, "www.github.com/") {
-			raw = "https://" + strings.TrimPrefix(raw, "www.")
+		if host, rest, cutOK := strings.Cut(raw, "/"); cutOK && isGitHubHost(host) {
+			raw = "https://" + host + "/" + rest
 		}
 	}
 
-	if strings.HasPrefix(raw, "git@github.com:") {
-		rest := strings.TrimPrefix(raw, "git@github.com:")
-		rest = strings.TrimSuffix(rest, ".git")
-		parts := strings.SplitN(rest, "/", 2)
+	if strings.HasPrefix(raw, "git@") {
+		rest := strings.TrimPrefix(raw, "git@")
+		host, pathPart, cutOK := strings.Cut(rest, ":")
+		if !cutOK || !isGitHubHost(host) {
+			return "", "", "", false
+		}
+		pathPart = strings.TrimSuffix(pathPart, ".git")
+		parts := strings.SplitN(pathPart, "/", 2)
 		if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
 			return "", "", "", false
 		}
 		repo := strings.TrimSuffix(parts[1], ".git")
-		return "https://github.com/" + parts[0] + "/" + repo + ".git", "", "", true
+		return githubCloneURL(host, parts[0], repo), "", "", true
 	}
 
 	u, err := url.Parse(raw)
-	if err != nil || u.Hostname() != "github.com" {
+	if err != nil || !isGitHubHost(u.Hostname()) {
 		return "", "", "", false
 	}
 
@@ -44,7 +48,7 @@ func ParseGitHubURL(raw string) (cloneURL, repoPath, ref string, ok bool) {
 	}
 	owner := segments[0]
 	repo := strings.TrimSuffix(segments[1], ".git")
-	cloneURL = "https://github.com/" + owner + "/" + repo + ".git"
+	cloneURL = githubCloneURL(u.Hostname(), owner, repo)
 
 	if len(segments) >= 4 && (segments[2] == "tree" || segments[2] == "blob") {
 		ref = segments[3]
@@ -55,6 +59,17 @@ func ParseGitHubURL(raw string) (cloneURL, repoPath, ref string, ok bool) {
 	}
 
 	return cloneURL, "", "", true
+}
+
+func isGitHubHost(host string) bool {
+	host = strings.ToLower(strings.TrimSpace(host))
+	host = strings.TrimPrefix(host, "www.")
+	return host == "github.com" || strings.HasPrefix(host, "github.")
+}
+
+func githubCloneURL(host, owner, repo string) string {
+	host = strings.TrimPrefix(strings.ToLower(host), "www.")
+	return "https://" + host + "/" + owner + "/" + repo + ".git"
 }
 
 // IsGitRemote reports whether s looks like a git remote URL rather than a local path.
@@ -76,7 +91,7 @@ func IsGitRemote(s string) bool {
 		lower := strings.ToLower(s)
 		return strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://")
 	}
-	if strings.HasPrefix(s, "github.com/") || strings.HasPrefix(s, "www.github.com/") {
+	if host, rest, cutOK := strings.Cut(s, "/"); cutOK && rest != "" && isGitHubHost(host) {
 		return true
 	}
 	return false

@@ -49,6 +49,30 @@ func TestParseGitHubURL(t *testing.T) {
 			wantOK:    true,
 		},
 		{
+			in:        "https://github.example.com/example/agents/blob/main/watchdog.yaml",
+			wantClone: "https://github.example.com/example/agents.git",
+			wantPath:  "watchdog.yaml",
+			wantRef:   "main",
+			wantOK:    true,
+		},
+		{
+			in:        "https://github.example.com/example/agents.git",
+			wantClone: "https://github.example.com/example/agents.git",
+			wantOK:    true,
+		},
+		{
+			in:        "git@github.example.com:example/agents.git",
+			wantClone: "https://github.example.com/example/agents.git",
+			wantOK:    true,
+		},
+		{
+			in:        "github.example.com/example/agents/tree/main/agents",
+			wantClone: "https://github.example.com/example/agents.git",
+			wantPath:  "agents",
+			wantRef:   "main",
+			wantOK:    true,
+		},
+		{
 			in:     "./local/path",
 			wantOK: false,
 		},
@@ -103,6 +127,9 @@ func TestIsGitRemote(t *testing.T) {
 	}
 	if !IsGitRemote("git@github.com:example/repo.git") {
 		t.Fatal("expected ssh github URL to be git remote")
+	}
+	if !IsGitRemote("https://github.example.com/example/agents/blob/main/watchdog.yaml") {
+		t.Fatal("expected GitHub Enterprise blob URL to be git remote")
 	}
 	if IsGitRemote("./skills/foo") {
 		t.Fatal("expected local path not to be git remote")
