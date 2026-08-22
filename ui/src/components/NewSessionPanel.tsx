@@ -233,14 +233,17 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
   const allSourcesActive = selectedSourceKeys.size === 0
     || (allSourceKeys.length > 0 && allSourceKeys.every((key) => selectedSourceKeys.has(key)))
   const searchQuery = customSearch.trim().toLowerCase()
-  const availableTags = useMemo(() => collectAgentTags(userDefined), [userDefined])
+  const sourceFilteredCustom = useMemo(
+    () => filterCustomAgentsBySources(userDefined, selectedSourceKeys),
+    [userDefined, selectedSourceKeys],
+  )
+  const availableTags = useMemo(() => collectAgentTags(sourceFilteredCustom), [sourceFilteredCustom])
   const selectedTagSet = useMemo(() => new Set(selectedTags), [selectedTags])
   const filteredCustom = useMemo(() => {
-    const bySource = filterCustomAgentsBySources(userDefined, selectedSourceKeys)
-    const byTags = filterAgentsByTags(bySource, selectedTagSet)
+    const byTags = filterAgentsByTags(sourceFilteredCustom, selectedTagSet)
     if (!searchQuery) return byTags
     return byTags.filter((a) => agentMatchesSearch(a, searchQuery))
-  }, [searchQuery, userDefined, selectedSourceKeys, selectedTagSet])
+  }, [searchQuery, sourceFilteredCustom, selectedTagSet])
 
   useEffect(() => {
     const validKeys = new Set(customSourceOptions.map((option) => option.key))
@@ -249,6 +252,14 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
       return next.size === current.size ? current : next
     })
   }, [customSourceOptions])
+
+  useEffect(() => {
+    const allowed = new Set(availableTags)
+    setSelectedTags((current) => {
+      const next = current.filter((tag) => allowed.has(tag))
+      return next.length === current.length ? current : next
+    })
+  }, [availableTags])
 
   function toggleSourceFilter(sourceKey: string) {
     setSelectedSourceKeys((current) => {
