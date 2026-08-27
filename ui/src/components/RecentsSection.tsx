@@ -138,7 +138,7 @@ function RecentsColumn({
   onMore: () => void
   children: ReactNode
 }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
 
   return (
     <div className="recents-section__column">
