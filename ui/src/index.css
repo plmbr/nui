@@ -469,6 +469,7 @@ html.nui-desktop {
   .landing-page__title-word {
     display: block;
     text-align: center;
+    white-space: nowrap;
     margin-top: 0.2rem;
     background: var(--landing-title-word-gradient);
     -webkit-background-clip: text;

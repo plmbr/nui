@@ -11,7 +11,7 @@ const SLOGANS: readonly (readonly string[])[] = [
   ['dream'],
   ['win'],
   ['go'],
-  ['make it'],
+  ['make', 'it'],
   ['start'],
   ['grow'],
   ['build'],
