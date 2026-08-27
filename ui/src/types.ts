@@ -163,12 +163,21 @@ export interface ChatMessage {
   routedAgentLabel?: string
 }
 
+export interface RecentAgentEntry {
+  agentType: string
+  workingDir?: string
+  agentConfig?: CreateSessionRequest['agentConfig']
+  usedAt?: string
+}
+
 export interface Settings {
   theme: 'light' | 'dark'
   defaultAgentType?: string
   defaultHarness?: string
   lastAgentType?: string
   lastSessionId?: string
+  recentSessionIds?: string[]
+  recentAgents?: RecentAgentEntry[]
   sidebarOpen?: boolean
   sidebarWidth?: number
   disabledExtensions?: string[]

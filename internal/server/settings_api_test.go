@@ -75,6 +75,32 @@ func TestHandleSettings_invalidTheme(t *testing.T) {
 	}
 }
 
+func TestHandleSettings_recentsRoundTrip(t *testing.T) {
+	setupTestServerEnv(t)
+
+	putBody := `{
+		"recentSessionIds": ["s1", "s2"],
+		"recentAgents": [{"agentType":"claude-code","workingDir":"/tmp","usedAt":"2026-01-01T00:00:00Z"}]
+	}`
+	putReq := httptest.NewRequest(http.MethodPut, "/api/settings", strings.NewReader(putBody))
+	putRec := httptest.NewRecorder()
+	handleSettings(putRec, putReq)
+	if putRec.Code != http.StatusOK {
+		t.Fatalf("PUT status = %d body=%s", putRec.Code, putRec.Body.String())
+	}
+
+	saved, err := store.LoadSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(saved.RecentSessionIDs) != 2 || saved.RecentSessionIDs[0] != "s1" {
+		t.Fatalf("RecentSessionIDs = %+v", saved.RecentSessionIDs)
+	}
+	if len(saved.RecentAgents) != 1 || saved.RecentAgents[0].AgentType != "claude-code" {
+		t.Fatalf("RecentAgents = %+v", saved.RecentAgents)
+	}
+}
+
 func TestHandleSettings_methodNotAllowed(t *testing.T) {
 	req := httptest.NewRequest(http.MethodDelete, "/api/settings", nil)
 	rec := httptest.NewRecorder()

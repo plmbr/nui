@@ -154,7 +154,7 @@ func runOrchestrator(ctx context.Context, prompt, workingDir string) (orchestrat
 	if loadErr != nil {
 		settings = store.Settings{Theme: "light"}
 	}
-	saveSessionPreferences(launchResult.Session.AgentType, launchResult.Session.ID, settings)
+	saveSessionPreferences(launchResult.Session, settings)
 
 	return launchResult, nil
 }
@@ -164,7 +164,7 @@ func createOrchestratorSession(workingDir string, settings store.Settings) (mode
 	if err != nil {
 		return model.Session{}, err
 	}
-	saveSessionPreferences(agents.OrchestratorAgentID, s.ID, settings)
+	saveSessionPreferences(s, settings)
 	return s, nil
 }
 

@@ -676,6 +676,7 @@ func cleanupDeletedSession(id string, info sessionDeleteInfo) {
 		fmt.Fprintf(os.Stderr, "warn: remove session uploads: %v\n", err)
 	}
 	clearLastSessionIDIfMatch(id)
+	pruneRecentSessionID(id)
 	session := model.Session{AgentType: info.agentType, WorkingDir: info.workingDir}
 	if sessionUsesExtensionStorage(session) {
 		deleteExtensionSession(id, session, info.workingDir, info.agentSessionID)
@@ -911,6 +912,12 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "failed to load settings", http.StatusInternalServerError)
 			return
 		}
+		if migrated, changed := ensureRecentsMigrated(s); changed {
+			if err := store.SaveSettings(migrated); err != nil {
+				fmt.Fprintf(os.Stderr, "warn: save migrated recents: %v\n", err)
+			}
+			s = migrated
+		}
 		writeJSON(w, http.StatusOK, s)
 
 	case http.MethodPut:
@@ -962,6 +969,12 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		if patch.DisabledExtensions != nil {
 			current.DisabledExtensions = patch.DisabledExtensions
+		}
+		if patch.RecentSessionIDs != nil {
+			current.RecentSessionIDs = patch.RecentSessionIDs
+		}
+		if patch.RecentAgents != nil {
+			current.RecentAgents = patch.RecentAgents
 		}
 		if patch.MemoryUserMode != "" {
 			current.MemoryUserMode = patch.MemoryUserMode

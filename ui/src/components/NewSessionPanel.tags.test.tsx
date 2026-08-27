@@ -50,9 +50,13 @@ function renderPanel() {
   return render(
     <NewSessionPanel
       agentTypes={agentTypes}
-      initialAgentTypeId="local-writer"
+      sessions={[]}
       onClose={() => {}}
       onCreated={() => {}}
+      onCreateFromRecentAgent={async () => {}}
+      onOpenRecentSession={() => {}}
+      onRecentsChange={() => {}}
+      initialAgentTypeId="local-writer"
     />,
   )
 }

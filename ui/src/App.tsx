@@ -36,7 +36,8 @@ import {
   navigateToSessionList,
   sessionIdFromPath,
 } from '@/lib/appUrl'
-import type { Session, AgentType } from '@/types'
+import { buildCreateRequestFromRecent, touchRecentSessionIds } from '@/lib/recents'
+import type { RecentAgentEntry, Session, AgentType } from '@/types'
 import { resolveSidebarWidth } from '@/lib/sidebarWidth'
 import { sessionDisplayName } from '@/lib/sessionDisplay'
 
@@ -55,6 +56,8 @@ export default function App() {
   const [landingOpen, setLandingOpen] = useState(false)
   const [launchFocusToken, setLaunchFocusToken] = useState(0)
   const [sessionListGroupId, setSessionListGroupId] = useState<string | null>(null)
+  const [recentSessionIds, setRecentSessionIds] = useState<string[]>([])
+  const [recentAgents, setRecentAgents] = useState<RecentAgentEntry[]>([])
   const [appReady, setAppReady] = useState(false)
   const initializedRef = useRef(false)
   const sessionsRef = useRef(sessions)
@@ -95,6 +98,28 @@ export default function App() {
     void loadAgentTypes()
   }, [newSessionOpen, loadAgentTypes])
 
+  const refreshRecents = useCallback(async () => {
+    const settings = await api.settings.get().catch(() => ({ theme: 'light' as const }))
+    setRecentSessionIds(settings.recentSessionIds ?? [])
+    setRecentAgents(settings.recentAgents ?? [])
+  }, [])
+
+  const touchRecentSession = useCallback((sessionId: string) => {
+    setRecentSessionIds((current) => {
+      const next = touchRecentSessionIds(current, sessionId)
+      api.settings.update({ recentSessionIds: next }).catch(() => {})
+      return next
+    })
+  }, [])
+
+  const handleRecentsChange = useCallback((patch: {
+    recentSessionIds?: string[]
+    recentAgents?: RecentAgentEntry[]
+  }) => {
+    if (patch.recentSessionIds) setRecentSessionIds(patch.recentSessionIds)
+    if (patch.recentAgents) setRecentAgents(patch.recentAgents)
+  }, [])
+
   const createSessionFromUrl = useCallback(async (): Promise<string | null> => {
     try {
       const session = await api.sessions.createFromUrl({
@@ -112,12 +137,13 @@ export default function App() {
       setHideInput(false)
       navigateToSession(session.id, true)
       api.settings.update({ lastSessionId: session.id }).catch(() => {})
+      void refreshRecents()
       return session.id
     } catch {
       navigateToHome(true)
       return null
     }
-  }, [loadSessions])
+  }, [loadSessions, refreshRecents])
 
   useEffect(() => {
     if (initializedRef.current) return
@@ -140,6 +166,8 @@ export default function App() {
         setSidebarOpen(settings.sidebarOpen)
       }
       setSidebarWidth(resolveSidebarWidth(settings.sidebarWidth))
+      setRecentSessionIds(settings.recentSessionIds ?? [])
+      setRecentAgents(settings.recentAgents ?? [])
 
       const openCustomize = isCustomizePath()
       const openSchedules = isSchedulesPath()
@@ -223,9 +251,10 @@ export default function App() {
       setHideInput(false)
       navigateToSession(event.sessionId)
       api.settings.update({ lastSessionId: event.sessionId }).catch(() => {})
+      touchRecentSession(event.sessionId)
       void loadSessions()
     })
-  }, [loadSessions])
+  }, [loadSessions, touchRecentSession])
 
   useEffect(() => {
     function onPopState() {
@@ -290,11 +319,12 @@ export default function App() {
       setInitialPrompt(undefined)
       setHideInput(false)
       api.settings.update({ lastSessionId: id }).catch(() => {})
+      touchRecentSession(id)
     }
 
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
-  }, [createSessionFromUrl])
+  }, [createSessionFromUrl, touchRecentSession])
 
   const handleSelect = useCallback((id: string) => {
     setCustomizeOpen(false)
@@ -307,7 +337,8 @@ export default function App() {
     setHideInput(false)
     navigateToSession(id)
     api.settings.update({ lastSessionId: id }).catch(() => {})
-  }, [])
+    touchRecentSession(id)
+  }, [touchRecentSession])
 
   const handleSidebarOpenChange = useCallback((open: boolean) => {
     setSidebarOpen(open)
@@ -429,8 +460,21 @@ export default function App() {
 
   const handleSessionCreated = useCallback(async (session: Session) => {
     await loadSessions()
+    await refreshRecents()
     handleSelect(session.id)
-  }, [loadSessions, handleSelect])
+  }, [loadSessions, handleSelect, refreshRecents])
+
+  const handleCreateFromRecentAgent = useCallback(async (entry: RecentAgentEntry) => {
+    const session = await api.sessions.create(buildCreateRequestFromRecent(entry))
+    api.settings.update({ lastAgentType: entry.agentType }).catch(() => {})
+    await loadSessions()
+    await refreshRecents()
+    handleSelect(session.id)
+  }, [loadSessions, handleSelect, refreshRecents])
+
+  const handleOpenRecentSession = useCallback((sessionId: string) => {
+    handleSelect(sessionId)
+  }, [handleSelect])
 
   const handleLaunchWithPrompt = useCallback(async (prompt: string) => {
     const result = await api.orchestrate({ prompt })
@@ -445,7 +489,8 @@ export default function App() {
     setHideInput(false)
     navigateToSession(result.session.id)
     api.settings.update({ lastSessionId: result.session.id }).catch(() => {})
-  }, [loadSessions])
+    void refreshRecents()
+  }, [loadSessions, refreshRecents])
 
   const handleAgentTypesChanged = useCallback(() => {
     void loadAgentTypes()
@@ -564,9 +609,16 @@ export default function App() {
               <LandingPage
                 active={landingOpen}
                 focusToken={launchFocusToken}
+                sessions={sessions}
+                agentTypes={agentTypes}
+                recentSessionIds={recentSessionIds}
+                recentAgents={recentAgents}
                 onLaunchWithPrompt={handleLaunchWithPrompt}
                 onNewSession={handleOpenNewSession}
                 onCustomize={handleOpenCustomize}
+                onOpenSession={handleOpenRecentSession}
+                onCreateFromRecentAgent={handleCreateFromRecentAgent}
+                onRecentsChange={handleRecentsChange}
               />
             ) : schedulesOpen ? (
               <SchedulesPanel
@@ -583,10 +635,16 @@ export default function App() {
             ) : newSessionOpen ? (
               <NewSessionPanel
                 agentTypes={agentTypes}
+                sessions={sessions}
+                recentSessionIds={recentSessionIds}
+                recentAgents={recentAgents}
                 initialAgentTypeId={agentFromNewSessionSearch()}
                 initialWorkingDir={cwdFromNewSessionSearch()}
                 onClose={handleCloseNewSession}
                 onCreated={handleSessionCreated}
+                onCreateFromRecentAgent={handleCreateFromRecentAgent}
+                onOpenRecentSession={handleOpenRecentSession}
+                onRecentsChange={handleRecentsChange}
               />
             ) : sessionListGroup ? (
               <SessionsListPanel

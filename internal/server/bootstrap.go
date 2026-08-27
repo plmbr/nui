@@ -184,7 +184,7 @@ func launchSessionFromRequest(req launchRequest) (launchResult, error) {
 	if loadErr != nil {
 		settings = store.Settings{Theme: "light"}
 	}
-	saveSessionPreferences(model.ADLAgentID(def), s.ID, settings)
+	saveSessionPreferences(s, settings)
 
 	return launchResult{
 		Session:        s,
@@ -396,9 +396,10 @@ func ensureDefaultAgentType(settings *store.Settings) string {
 	return ""
 }
 
-func saveSessionPreferences(agentType, sessionID string, settings store.Settings) {
-	settings.LastAgentType = agentType
-	settings.LastSessionID = sessionID
+func saveSessionPreferences(s model.Session, settings store.Settings) {
+	settings.LastAgentType = s.AgentType
+	settings.LastSessionID = s.ID
+	settings = recordSessionRecents(s, settings)
 	if err := store.SaveSettings(settings); err != nil {
 		fmt.Fprintf(os.Stderr, "warn: save settings after session create: %v\n", err)
 	}
@@ -548,6 +549,6 @@ func handleNewSession(w http.ResponseWriter, r *http.Request) {
 	if loadErr != nil {
 		settings = store.Settings{Theme: "light"}
 	}
-	saveSessionPreferences(model.ADLAgentID(def), s.ID, settings)
+	saveSessionPreferences(s, settings)
 	writeJSON(w, http.StatusCreated, s)
 }

@@ -31,14 +31,21 @@ import {
 } from '@/lib/agentTypes'
 import { BUILTIN_AGENTS_LABEL, INSTALLED_AGENTS_LABEL } from '@/lib/sessionGroups'
 import { TagFilterInput } from '@/components/TagFilterInput'
-import type { AgentType, CreateSessionRequest, ExtensionInfo, Session } from '@/types'
+import { RecentsSection } from '@/components/RecentsSection'
+import type { AgentType, CreateSessionRequest, ExtensionInfo, RecentAgentEntry, Session } from '@/types'
 
 interface Props {
   agentTypes: AgentType[]
+  sessions: Session[]
+  recentSessionIds?: string[]
+  recentAgents?: RecentAgentEntry[]
   initialAgentTypeId?: string | null
   initialWorkingDir?: string | null
   onClose: () => void
   onCreated: (session: Session) => void
+  onCreateFromRecentAgent: (entry: RecentAgentEntry) => Promise<void>
+  onOpenRecentSession: (sessionId: string) => void
+  onRecentsChange: (patch: { recentSessionIds?: string[]; recentAgents?: RecentAgentEntry[] }) => void
 }
 
 function agentMatchesSearch(agent: AgentType, query: string): boolean {
@@ -77,7 +84,19 @@ function orderedBuiltinTagChips(tags: string[]): string[] {
 
 type AgentPane = 'builtin' | 'installed'
 
-export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorkingDir, onClose, onCreated }: Props) {
+export function NewSessionPanel({
+  agentTypes,
+  sessions,
+  recentSessionIds,
+  recentAgents,
+  initialAgentTypeId,
+  initialWorkingDir,
+  onClose,
+  onCreated,
+  onCreateFromRecentAgent,
+  onOpenRecentSession,
+  onRecentsChange,
+}: Props) {
   const [workingDir, setWorkingDir] = useState(initialWorkingDir ?? '')
   const [selectedId, setSelectedId] = useState('')
   const [customSearch, setCustomSearch] = useState('')
@@ -340,6 +359,19 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
     }
   }
 
+  async function handleRecentAgentClick(entry: RecentAgentEntry) {
+    if (loading) return
+    setLoading(true)
+    setError('')
+    try {
+      await onCreateFromRecentAgent(entry)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create session.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedId) {
@@ -393,8 +425,9 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
     <div className="customize-panel flex flex-1 min-h-0 flex-col overflow-hidden">
       <h1 className="sr-only">New Session</h1>
       <form onSubmit={handleSubmit} className="flex flex-1 flex-col min-h-0">
-        <div className="flex flex-1 flex-col min-h-0 overflow-hidden p-4 md:p-6">
-          <div className="customize-tab-content mx-auto flex w-full min-h-0 flex-1 flex-col gap-5">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 md:p-6">
+            <div className="customize-tab-content mx-auto flex w-full min-h-0 flex-1 flex-col gap-5">
 
             {(showBuiltinPane || showInstalledBrowse) && (
             <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -729,6 +762,21 @@ export function NewSessionPanel({ agentTypes, initialAgentTypeId, initialWorking
             )}
 
             {error && <p className="shrink-0 text-sm text-destructive">{error}</p>}
+            </div>
+          </div>
+
+          <div className="shrink-0 border-t px-4 py-3 md:px-6">
+            <div className="customize-tab-content mx-auto w-full">
+              <RecentsSection
+                sessions={sessions}
+                agentTypes={agentTypes}
+                recentSessionIds={recentSessionIds}
+                recentAgents={recentAgents}
+                onRecentAgentClick={(entry) => void handleRecentAgentClick(entry)}
+                onRecentSessionClick={onOpenRecentSession}
+                onRecentsChange={onRecentsChange}
+              />
+            </div>
           </div>
         </div>
 

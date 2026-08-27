@@ -13,12 +13,21 @@ import (
 	"nui/internal/model"
 )
 
+type RecentAgentEntry struct {
+	AgentType   string         `json:"agentType"`
+	WorkingDir  string         `json:"workingDir,omitempty"`
+	AgentConfig map[string]any `json:"agentConfig,omitempty"`
+	UsedAt      string         `json:"usedAt,omitempty"`
+}
+
 type Settings struct {
 	Theme                string   `json:"theme"`                            // "light" | "dark"
 	DefaultAgentType     string   `json:"defaultAgentType,omitempty"`       // default agent for new sessions on launch
 	DefaultHarness       string   `json:"defaultHarness,omitempty"`         // harness for internal agents (e.g. api/anthropic, claude-code)
 	LastAgentType        string   `json:"lastAgentType,omitempty"`          // last agent picked in new-session dialog
 	LastSessionID        string   `json:"lastSessionId,omitempty"`          // last selected session in UI
+	RecentSessionIDs     []string           `json:"recentSessionIds,omitempty"`
+	RecentAgents         []RecentAgentEntry `json:"recentAgents,omitempty"`
 	SidebarOpen          *bool    `json:"sidebarOpen,omitempty"`            // desktop sidebar expanded state
 	SidebarWidth         *int     `json:"sidebarWidth,omitempty"`           // desktop sidebar width in px
 	DisabledExtensions   []string          `json:"disabledExtensions,omitempty"`     // extension names excluded from runtime
