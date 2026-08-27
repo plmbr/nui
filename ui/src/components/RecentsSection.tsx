@@ -31,6 +31,7 @@ export function RecentsSection({
   onRecentSessionClick,
   onRecentsChange,
 }: Props) {
+  const [open, setOpen] = useState(true)
   const [moreKind, setMoreKind] = useState<'agents' | 'sessions' | null>(null)
 
   const agentItems = useMemo(
@@ -47,68 +48,86 @@ export function RecentsSection({
 
   return (
     <>
-      <section className="recents-section" aria-label="Recent items">
-        <div className="recents-section__grid">
-          <RecentsColumn
-            title="Recent agents"
-            emptyLabel="No recent agents"
-            itemCount={previewAgents.length}
-            showMore={agentItems.length > RECENTS_PREVIEW_LIMIT}
-            onMore={() => setMoreKind('agents')}
-          >
-            {previewAgents.map((item) => (
-              <RecentsListRow
-                key={item.entry.agentType}
-                label={item.label}
-                ariaLabel={`Recent agent: ${item.label}`}
-                onClick={() => onRecentAgentClick(item.entry)}
-                icon={(
-                  <HarnessIcon
-                    harness={item.agentType.harness}
-                    provider={item.agentType.provider}
-                    agentId={item.agentType.id}
-                    size="sm"
-                    className="shrink-0"
-                  />
-                )}
-              />
-            ))}
-          </RecentsColumn>
+      <section className="recents-section" aria-label="Recents">
+        <button
+          type="button"
+          className="recents-section__title"
+          aria-expanded={open}
+          onClick={() => setOpen((value) => !value)}
+        >
+          <ChevronRight
+            className={cn(
+              'size-4 shrink-0 text-muted-foreground transition-transform duration-200',
+              open && 'rotate-90',
+            )}
+            aria-hidden
+          />
+          <span>Recents</span>
+        </button>
 
-          <RecentsColumn
-            title="Recent sessions"
-            emptyLabel="No recent sessions"
-            itemCount={previewSessions.length}
-            showMore={sessionItems.length > RECENTS_PREVIEW_LIMIT}
-            onMore={() => setMoreKind('sessions')}
-          >
-            {previewSessions.map((item) => (
-              <RecentsListRow
-                key={item.id}
-                label={item.label}
-                ariaLabel={`Recent session: ${item.label}`}
-                onClick={() => onRecentSessionClick(item.id)}
-                icon={(
-                  <HarnessIcon
-                    harness={item.agentType?.harness ?? 'api'}
-                    provider={item.agentType?.provider}
-                    agentId={item.session.agentType}
-                    size="sm"
-                    className="shrink-0"
-                  />
-                )}
-              />
-            ))}
-          </RecentsColumn>
-        </div>
+        {open && (
+          <div className="recents-section__grid">
+            <RecentsColumn
+              title="Agents"
+              emptyLabel="No recent agents"
+              itemCount={previewAgents.length}
+              showMore={agentItems.length > RECENTS_PREVIEW_LIMIT}
+              onMore={() => setMoreKind('agents')}
+            >
+              {previewAgents.map((item) => (
+                <RecentsListRow
+                  key={item.entry.agentType}
+                  label={item.label}
+                  ariaLabel={`Recent agent: ${item.label}`}
+                  onClick={() => onRecentAgentClick(item.entry)}
+                  icon={(
+                    <HarnessIcon
+                      harness={item.agentType.harness}
+                      provider={item.agentType.provider}
+                      agentId={item.agentType.id}
+                      size="sm"
+                      className="shrink-0"
+                    />
+                  )}
+                />
+              ))}
+            </RecentsColumn>
+
+            <RecentsColumn
+              title="Sessions"
+              emptyLabel="No recent sessions"
+              itemCount={previewSessions.length}
+              showMore={sessionItems.length > RECENTS_PREVIEW_LIMIT}
+              onMore={() => setMoreKind('sessions')}
+            >
+              {previewSessions.map((item) => (
+                <RecentsListRow
+                  key={item.id}
+                  label={item.label}
+                  ariaLabel={`Recent session: ${item.label}`}
+                  onClick={() => onRecentSessionClick(item.id)}
+                  icon={(
+                    <HarnessIcon
+                      harness={item.agentType?.harness ?? 'api'}
+                      provider={item.agentType?.provider}
+                      agentId={item.session.agentType}
+                      size="sm"
+                      className="shrink-0"
+                    />
+                  )}
+                />
+              ))}
+            </RecentsColumn>
+          </div>
+        )}
       </section>
 
       {moreKind && (
         <RecentsMoreDialog
           kind={moreKind}
           open={moreKind !== null}
-          onOpenChange={(open) => {
-            if (!open) setMoreKind(null)
+          onOpenChange={(openDialog) => {
+            if (!openDialog) setMoreKind(null)
           }}
           sessions={sessions}
           agentTypes={agentTypes}
@@ -138,38 +157,18 @@ function RecentsColumn({
   onMore: () => void
   children: ReactNode
 }) {
-  const [open, setOpen] = useState(false)
-
   return (
     <div className="recents-section__column">
-      <button
-        type="button"
-        className="recents-section__heading"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-      >
-        <ChevronRight
-          className={cn(
-            'size-4 shrink-0 text-muted-foreground transition-transform duration-200',
-            open && 'rotate-90',
-          )}
-          aria-hidden
-        />
-        <span className="min-w-0 flex-1 truncate text-left">{title}</span>
-      </button>
-      {open && (
-        <>
-          <div className="recents-section__list">
-            {itemCount > 0 ? children : (
-              <p className="recents-section__empty">{emptyLabel}</p>
-            )}
-          </div>
-          {showMore && (
-            <button type="button" className="recents-section__more" onClick={onMore}>
-              More…
-            </button>
-          )}
-        </>
+      <h3 className="recents-section__heading">{title}</h3>
+      <div className="recents-section__list">
+        {itemCount > 0 ? children : (
+          <p className="recents-section__empty">{emptyLabel}</p>
+        )}
+      </div>
+      {showMore && (
+        <button type="button" className="recents-section__more" onClick={onMore}>
+          More…
+        </button>
       )}
     </div>
   )

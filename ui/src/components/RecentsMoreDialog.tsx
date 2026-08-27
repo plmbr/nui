@@ -53,7 +53,7 @@ export function RecentsMoreDialog({
   const [removingKey, setRemovingKey] = useState<string | null>(null)
   const agentItems = resolveRecentAgents(recentAgents, agentTypes)
   const sessionItems = resolveRecentSessions(recentSessionIds, sessions, agentTypes)
-  const title = kind === 'agents' ? 'Recent agents' : 'Recent sessions'
+  const title = kind === 'agents' ? 'Agents' : 'Sessions'
 
   async function removeAgent(agentType: string) {
     setRemovingKey(agentType)
