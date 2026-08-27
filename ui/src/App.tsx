@@ -478,6 +478,15 @@ export default function App() {
 
   const handleLaunchWithPrompt = useCallback(async (prompt: string) => {
     const result = await api.orchestrate({ prompt })
+    if (result.ambiguous && result.candidates?.length) {
+      return {
+        prompt: result.prompt || prompt,
+        candidates: result.candidates,
+      }
+    }
+    if (!result.session) {
+      throw new Error('Orchestrator did not return a session')
+    }
     await loadSessions()
     setCustomizeOpen(false)
     setSchedulesOpen(false)
@@ -489,6 +498,23 @@ export default function App() {
     setHideInput(false)
     navigateToSession(result.session.id)
     api.settings.update({ lastSessionId: result.session.id }).catch(() => {})
+    void refreshRecents()
+  }, [loadSessions, refreshRecents])
+
+  const handleResolveAmbiguity = useCallback(async (agentType: string, prompt: string) => {
+    const session = await api.sessions.create({ agentType })
+    api.settings.update({ lastAgentType: agentType }).catch(() => {})
+    await loadSessions()
+    setCustomizeOpen(false)
+    setSchedulesOpen(false)
+    setNewSessionOpen(false)
+    setLandingOpen(false)
+    setSessionListGroupId(null)
+    setSelectedId(session.id)
+    setInitialPrompt(prompt)
+    setHideInput(false)
+    navigateToSession(session.id)
+    api.settings.update({ lastSessionId: session.id }).catch(() => {})
     void refreshRecents()
   }, [loadSessions, refreshRecents])
 
@@ -614,6 +640,7 @@ export default function App() {
                 recentSessionIds={recentSessionIds}
                 recentAgents={recentAgents}
                 onLaunchWithPrompt={handleLaunchWithPrompt}
+                onResolveAmbiguity={handleResolveAmbiguity}
                 onNewSession={handleOpenNewSession}
                 onCustomize={handleOpenCustomize}
                 onOpenSession={handleOpenRecentSession}

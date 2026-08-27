@@ -582,6 +582,30 @@ html.nui-desktop {
     @apply -mt-2 w-full max-w-3xl text-left text-sm text-destructive;
   }
 
+  .landing-page__ambiguity {
+    @apply -mt-1 w-full max-w-3xl rounded-xl border border-border/70 bg-background/80 p-3 text-left shadow-sm backdrop-blur-sm;
+  }
+
+  .landing-page__ambiguity-title {
+    @apply m-0 mb-2 text-sm font-medium text-foreground;
+  }
+
+  .landing-page__ambiguity-list {
+    @apply m-0 flex list-none flex-col gap-1.5 p-0;
+  }
+
+  .landing-page__ambiguity-option {
+    @apply flex w-full flex-col items-start gap-0.5 rounded-lg border border-transparent bg-muted/40 px-3 py-2 text-left transition-colors hover:border-border hover:bg-muted/70 disabled:opacity-50;
+  }
+
+  .landing-page__ambiguity-option-label {
+    @apply inline-flex items-center gap-2 text-sm font-medium text-foreground;
+  }
+
+  .landing-page__ambiguity-option-desc {
+    @apply text-xs leading-snug text-muted-foreground;
+  }
+
   .landing-page__actions {
     @apply flex w-full max-w-3xl flex-wrap items-center justify-center gap-2 pt-1;
   }

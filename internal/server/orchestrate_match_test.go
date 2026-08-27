@@ -41,6 +41,17 @@ func TestMatchOrchestratorAgent_ambiguous(t *testing.T) {
 	if ok {
 		t.Fatal("expected ambiguous match to fail")
 	}
+	amb := ambiguousOrchestratorCandidates("send a hi to demo's agent", candidates)
+	if len(amb) < 2 {
+		t.Fatalf("expected ambiguous candidates, got %d", len(amb))
+	}
+	ids := map[string]bool{}
+	for _, c := range amb {
+		ids[c.ID] = true
+	}
+	if !ids["ext:pack/demo-alpha"] || !ids["ext:pack/demo-beta"] {
+		t.Fatalf("candidates = %+v", amb)
+	}
 }
 
 func TestMatchOrchestratorAgent_packageUpdater(t *testing.T) {

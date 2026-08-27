@@ -305,9 +305,16 @@ export const api = {
   },
 
   orchestrate: (data: { prompt: string; workingDir?: string }): Promise<{
-    session: Session
+    session?: Session
     prompt: string
-    selectedAgentType: string
+    selectedAgentType?: string
+    ambiguous?: boolean
+    candidates?: Array<{
+      id: string
+      label: string
+      description?: string
+      score: number
+    }>
   }> =>
     request('/orchestrate', {
       method: 'POST',

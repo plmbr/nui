@@ -27,10 +27,19 @@ type orchestrateRequest struct {
 	WorkingDir string `json:"workingDir,omitempty"`
 }
 
+type orchestrateCandidate struct {
+	ID          string `json:"id"`
+	Label       string `json:"label"`
+	Description string `json:"description,omitempty"`
+	Score       int    `json:"score"`
+}
+
 type orchestrateResponse struct {
-	Session           model.Session `json:"session"`
-	Prompt            string        `json:"prompt"`
-	SelectedAgentType string        `json:"selectedAgentType"`
+	Session           *model.Session        `json:"session,omitempty"`
+	Prompt            string                `json:"prompt"`
+	SelectedAgentType string                `json:"selectedAgentType,omitempty"`
+	Ambiguous         bool                  `json:"ambiguous,omitempty"`
+	Candidates        []orchestrateCandidate `json:"candidates,omitempty"`
 }
 
 func handleOrchestrate(w http.ResponseWriter, r *http.Request) {
@@ -66,18 +75,30 @@ func handleOrchestrate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if result.Ambiguous {
+		writeJSON(w, http.StatusOK, orchestrateResponse{
+			Prompt:     result.Prompt,
+			Ambiguous:  true,
+			Candidates: result.Candidates,
+		})
+		return
+	}
+
 	sidebarClosed := false
 	setBootstrap(result.Session.ID, result.Prompt, &sidebarClosed, false)
+	sess := result.Session
 	writeJSON(w, http.StatusCreated, orchestrateResponse{
-		Session:           result.Session,
+		Session:           &sess,
 		Prompt:            result.Prompt,
 		SelectedAgentType: result.Session.AgentType,
 	})
 }
 
 type orchestrateRunResult struct {
-	Session model.Session
-	Prompt  string
+	Session    model.Session
+	Prompt     string
+	Ambiguous  bool
+	Candidates []orchestrateCandidate
 }
 
 func runOrchestrator(ctx context.Context, prompt, workingDir string) (orchestrateRunResult, error) {

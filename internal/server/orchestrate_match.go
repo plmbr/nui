@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"unicode"
 
@@ -95,7 +96,17 @@ func tryDirectOrchestratorLaunch(prompt, workingDir string) (orchestrateRunResul
 	}
 	candidates := orchestratorLaunchableAgents(listAgentTypes())
 	agent, score, ok := matchOrchestratorAgent(prompt, candidates)
-	if !ok || score < 80 {
+	if !ok {
+		if amb := ambiguousOrchestratorCandidates(prompt, candidates); len(amb) > 0 {
+			return orchestrateRunResult{
+				Prompt:     prompt,
+				Ambiguous:  true,
+				Candidates: amb,
+			}, true, nil
+		}
+		return orchestrateRunResult{}, false, nil
+	}
+	if score < 80 {
 		return orchestrateRunResult{}, false, nil
 	}
 	delegated := explicitDelegatedPrompt(prompt)
@@ -116,37 +127,74 @@ func tryDirectOrchestratorLaunch(prompt, workingDir string) (orchestrateRunResul
 	return orchestrateRunResult{Session: s, Prompt: delegated}, true, nil
 }
 
-func matchOrchestratorAgent(prompt string, candidates []AgentTypeInfo) (AgentTypeInfo, int, bool) {
+type scoredOrchestratorAgent struct {
+	Agent AgentTypeInfo
+	Score int
+}
+
+func rankOrchestratorAgents(prompt string, candidates []AgentTypeInfo) []scoredOrchestratorAgent {
 	if len(candidates) == 0 {
-		return AgentTypeInfo{}, 0, false
+		return nil
 	}
 	refs := extractAgentReferences(prompt)
 	semantic := tfidfAgentScores(prompt, candidates)
-	bestIdx := -1
-	bestScore := 0
-	secondScore := 0
-	for i, candidate := range candidates {
+	out := make([]scoredOrchestratorAgent, 0, len(candidates))
+	for _, candidate := range candidates {
 		score := agentMatchScore(prompt, refs, candidate)
 		if cos, ok := semantic[candidate.ID]; ok {
 			score += agentindex.SemanticBonus(cos)
 		}
-		if score > bestScore {
-			secondScore = bestScore
-			bestScore = score
-			bestIdx = i
-			continue
-		}
-		if score > secondScore {
-			secondScore = score
-		}
+		out = append(out, scoredOrchestratorAgent{Agent: candidate, Score: score})
 	}
-	if bestIdx < 0 || bestScore < 80 {
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Score == out[j].Score {
+			return out[i].Agent.Label < out[j].Agent.Label
+		}
+		return out[i].Score > out[j].Score
+	})
+	return out
+}
+
+func matchOrchestratorAgent(prompt string, candidates []AgentTypeInfo) (AgentTypeInfo, int, bool) {
+	ranked := rankOrchestratorAgents(prompt, candidates)
+	if len(ranked) == 0 || ranked[0].Score < 80 {
 		return AgentTypeInfo{}, 0, false
 	}
-	if secondScore > 0 && bestScore-secondScore < 25 {
+	if len(ranked) > 1 && ranked[0].Score-ranked[1].Score < 25 {
 		return AgentTypeInfo{}, 0, false
 	}
-	return candidates[bestIdx], bestScore, true
+	return ranked[0].Agent, ranked[0].Score, true
+}
+
+// ambiguousOrchestratorCandidates returns near-tied high scorers for user disambiguation.
+func ambiguousOrchestratorCandidates(prompt string, candidates []AgentTypeInfo) []orchestrateCandidate {
+	ranked := rankOrchestratorAgents(prompt, candidates)
+	if len(ranked) < 2 || ranked[0].Score < 80 {
+		return nil
+	}
+	if ranked[0].Score-ranked[1].Score >= 25 {
+		return nil
+	}
+	floor := ranked[0].Score - 24
+	if floor < 80 {
+		floor = 80
+	}
+	out := make([]orchestrateCandidate, 0, len(ranked))
+	for _, item := range ranked {
+		if item.Score < floor {
+			break
+		}
+		out = append(out, orchestrateCandidate{
+			ID:          item.Agent.ID,
+			Label:       item.Agent.Label,
+			Description: item.Agent.Description,
+			Score:       item.Score,
+		})
+	}
+	if len(out) < 2 {
+		return nil
+	}
+	return out
 }
 
 func tfidfAgentScores(prompt string, candidates []AgentTypeInfo) map[string]float64 {
