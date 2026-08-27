@@ -9,6 +9,7 @@ import (
 	"strings"
 	"unicode"
 
+	"nui/internal/agentindex"
 	"nui/internal/agents"
 	"nui/internal/extensions"
 	"nui/internal/model"
@@ -120,11 +121,15 @@ func matchOrchestratorAgent(prompt string, candidates []AgentTypeInfo) (AgentTyp
 		return AgentTypeInfo{}, 0, false
 	}
 	refs := extractAgentReferences(prompt)
+	semantic := tfidfAgentScores(prompt, candidates)
 	bestIdx := -1
 	bestScore := 0
 	secondScore := 0
 	for i, candidate := range candidates {
 		score := agentMatchScore(prompt, refs, candidate)
+		if cos, ok := semantic[candidate.ID]; ok {
+			score += agentindex.SemanticBonus(cos)
+		}
 		if score > bestScore {
 			secondScore = bestScore
 			bestScore = score
@@ -142,6 +147,14 @@ func matchOrchestratorAgent(prompt string, candidates []AgentTypeInfo) (AgentTyp
 		return AgentTypeInfo{}, 0, false
 	}
 	return candidates[bestIdx], bestScore, true
+}
+
+func tfidfAgentScores(prompt string, candidates []AgentTypeInfo) map[string]float64 {
+	docs := make([]agentindex.Doc, 0, len(candidates))
+	for _, c := range candidates {
+		docs = append(docs, agentindex.BuildDoc(c.ID, c.Label, c.Description, c.Tags))
+	}
+	return agentindex.Score(prompt, docs)
 }
 
 func agentMatchScore(prompt string, refs []string, agent AgentTypeInfo) int {
@@ -186,10 +199,15 @@ func agentMatchScore(prompt string, refs []string, agent AgentTypeInfo) int {
 	score += distinctTokenMatchBonus(lower, nameTokens)
 	score += localIDPartMatchScore(lower, localID)
 	score -= unmatchedNameTokenPenalty(lower, nameTokens)
+	score += descriptionWordMatchScore(lower, desc)
 
 	for _, word := range promptWords(lower) {
 		for _, tok := range searchTokens {
-			if stemMatch(word, tok) && word != tok {
+			if word == tok {
+				score += 45
+				continue
+			}
+			if stemMatch(word, tok) {
 				score += 55
 			}
 		}
@@ -207,8 +225,44 @@ func agentMatchScore(prompt string, refs []string, agent AgentTypeInfo) int {
 		score += defaultPromptMatchScore(lower, agent.DefaultPrompt)
 	}
 
-	if strings.Contains(lower, localID) && !looksLikeUUID(localID) {
+	if localIDSubstringBonus(lower, localID) {
 		score += 120
+	}
+	return score
+}
+
+func localIDSubstringBonus(prompt, localID string) bool {
+	localID = strings.ToLower(strings.TrimSpace(localID))
+	if localID == "" || looksLikeUUID(localID) {
+		return false
+	}
+	if !strings.Contains(prompt, localID) {
+		return false
+	}
+	// Short ids like "acme" match too many task prompts; require specificity.
+	if len(localID) < 10 && !strings.ContainsAny(localID, "-_") {
+		return false
+	}
+	return true
+}
+
+func descriptionWordMatchScore(prompt, desc string) int {
+	descWords := promptWords(desc)
+	if len(descWords) == 0 {
+		return 0
+	}
+	inDesc := map[string]bool{}
+	for _, w := range descWords {
+		inDesc[w] = true
+	}
+	score := 0
+	for _, word := range promptWords(prompt) {
+		if len(word) < 4 {
+			continue
+		}
+		if inDesc[word] {
+			score += 40
+		}
 	}
 	return score
 }
@@ -221,12 +275,25 @@ func unmatchedNameTokenPenalty(prompt string, nameTokens []string) int {
 		if len(tok) < 4 {
 			continue
 		}
+		if genericAgentNameToken(tok) {
+			continue
+		}
 		if tokenMatchesPrompt(prompt, tok) {
 			continue
 		}
 		penalty += 40
 	}
 	return penalty
+}
+
+func genericAgentNameToken(tok string) bool {
+	switch tok {
+	case "agent", "runtime", "coding", "assistant", "helper", "local",
+		"extension", "experimental", "internal", "builtin", "test":
+		return true
+	default:
+		return false
+	}
 }
 
 func tokenMatchesPrompt(prompt, tok string) bool {

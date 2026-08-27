@@ -128,3 +128,79 @@ func TestMatchOrchestratorAgent_stockAnalyzer(t *testing.T) {
 		t.Fatalf("agent id = %q, want acme-stock-analyzer", agent.ID)
 	}
 }
+
+func TestMatchOrchestratorAgent_tfidfParaphrase(t *testing.T) {
+	candidates := []AgentTypeInfo{
+		{
+			ID:          "acme-docs-finder",
+			Label:       "Acme Docs Finder",
+			Description: "Looks up internal documentation and library references.",
+			Tags:        []string{"docs", "lookup"},
+			Available:   true,
+		},
+		{
+			ID:          "acme-calendar",
+			Label:       "Acme Calendar",
+			Description: "Schedules meetings on the calendar.",
+			Tags:        []string{"calendar"},
+			Available:   true,
+		},
+	}
+	agent, score, ok := matchOrchestratorAgent("find library documentation references", candidates)
+	if !ok {
+		t.Fatal("expected match")
+	}
+	if agent.ID != "acme-docs-finder" {
+		t.Fatalf("agent id = %q, want acme-docs-finder (score=%d)", agent.ID, score)
+	}
+}
+
+func TestMatchOrchestratorAgent_prefersBaseOverUnusedVariant(t *testing.T) {
+	candidates := []AgentTypeInfo{
+		{
+			ID:          "acme-search-agent",
+			Label:       "Acme Search Agent",
+			Description: "Search the Acme knowledge base.",
+			Available:   true,
+		},
+		{
+			ID:          "acme-search-agent-short",
+			Label:       "Acme Search Agent Short",
+			Description: "Search the Acme knowledge base with short answers.",
+			Available:   true,
+		},
+	}
+	agent, _, ok := matchOrchestratorAgent("use acme search and lookup widgets", candidates)
+	if !ok {
+		t.Fatal("expected match")
+	}
+	if agent.ID != "acme-search-agent" {
+		t.Fatalf("agent id = %q, want acme-search-agent", agent.ID)
+	}
+}
+
+func TestMatchOrchestratorAgent_prefersDescriptionIntentOverShortName(t *testing.T) {
+	candidates := []AgentTypeInfo{
+		{
+			ID:          "ext:tools/acme-task-runtime",
+			Label:       "Acme Task Runtime Agent",
+			Description: "List, create, manage acme tasks, interact with acme sessions using task MCP",
+			Tags:        []string{"managed-agents"},
+			Available:   true,
+		},
+		{
+			ID:          "ext:tools/acme",
+			Label:       "Acme",
+			Description: "General coding agent",
+			Tags:        []string{"acme-extension"},
+			Available:   true,
+		},
+	}
+	agent, score, ok := matchOrchestratorAgent("list my acme tasks", candidates)
+	if !ok {
+		t.Fatal("expected match")
+	}
+	if agent.ID != candidates[0].ID {
+		t.Fatalf("agent id = %q, want Acme Task Runtime Agent (score=%d)", agent.ID, score)
+	}
+}
