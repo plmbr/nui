@@ -156,7 +156,8 @@ Interactive AG-UI chat does not yet support mid-stream offset replay. A disconne
 |---|---|---|---|
 | Sessions + agent session IDs + UI messages | JSON | `~/.nui/data.json` | Done — rows removed on session delete |
 | Settings | JSON | `~/.nui/settings.json` | Done (`theme`, `defaultAgentType`, `defaultHarness`, `lastAgentType`, `lastSessionId`, `sidebarOpen`, `disabledExtensions`, memory toggles); `lastSessionId` cleared when that session is deleted |
-| Secrets | JSON | `~/.nui/secrets.json` (0600) | Done — API provider keys/URLs for desktop launches; Customize → Credentials |
+| Secrets | JSON | `~/.nui/secrets.json` (0600) | Done — managed API credentials + free-form global env; Customize → Env vars |
+| Extension env | JSON | `~/.nui/extension-env.json` (0600) | Done — per-extension env maps; Customize → Extensions → Env |
 | Per-session harness config | dir | `~/.nui/sessions/<session-id>/` | Done — removed on session delete |
 | Isolated workspaces | dir | `~/.nui/workspaces/<session-id>/` | Done — removed on session delete |
 | Chat uploads | files | `$TMPDIR/nui-uploads/<session-id>/` | Done — removed on session delete |
@@ -198,7 +199,9 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 | `GET` | `/api/agent-types` | Builtin + ADL + extension agent types |
 | `GET` | `/api/directories` | Working-dir suggestions |
 | `GET/PUT` | `/api/settings` | User preferences (partial PUT; includes memory toggles) |
-| `GET/PUT` | `/api/credentials` | API provider secrets (`~/.nui/secrets.json`); PUT body `{ "env": { "ANTHROPIC_API_KEY": "…" } }` (empty clears) |
+| `GET/PUT` | `/api/env` | Global env (`~/.nui/secrets.json`): managed credentials + custom key/values. PUT `{ "env": {…}, "custom": {…} }` (empty value clears; custom replaces all custom keys). `/api/credentials` is an alias. |
+| `GET/PUT` | `/api/credentials` | Alias of `/api/env` (backward compatible). |
+| `GET/PUT` | `/api/extensions/{name}/env` | Per-extension env (`~/.nui/extension-env.json`). PUT `{ "env": {…} }` replaces that extension’s map. Reloads extension hosts. |
 | `GET` | `/api/bootstrap` | One-shot CLI bootstrap (`sessionId`, `initialPrompt`) |
 | `POST` | `/api/launch` | Create session + optional initial prompt |
 | `POST` | `/api/orchestrate` | Home-launcher run via `nui` master agent |

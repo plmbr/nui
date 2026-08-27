@@ -12,9 +12,10 @@ import (
 
 const secretsFileName = "secrets.json"
 
-// Secrets holds user-configured environment values for API providers.
-// Stored at ~/.nui/secrets.json with mode 0600 for desktop/app launches
-// that do not inherit a shell environment.
+// Secrets holds user-configured environment values: curated API provider
+// credentials and free-form custom globals. Stored at ~/.nui/secrets.json
+// with mode 0600 for desktop/app launches that do not inherit a shell
+// environment. Applied to the nui process (fill blanks) and child processes.
 type Secrets struct {
 	Env map[string]string `json:"env"`
 }

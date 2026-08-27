@@ -137,7 +137,9 @@ Builtin and ADL agents with `harness.type: api` run entirely inside the nui bina
 | `openrouter` | OpenAI-compatible + OpenRouter base URL | `OPENROUTER_API_KEY` |
 | `ollama` | Ollama (local) | none (`OLLAMA_HOST` optional; model auto-picked from installed models, or set `OLLAMA_MODEL`) |
 
-Credential resolution order: ADL/`req.Env` → process environment → `~/.nui/secrets.json` (Customize → Credentials). Desktop apps that are not launched from a terminal should set keys via Credentials.
+Credential resolution order: ADL/`req.Env` → process environment → `~/.nui/secrets.json` (Customize → Env vars). Desktop apps that are not launched from a terminal should set keys via Env vars.
+
+Global secrets (managed + custom) and per-extension env (`~/.nui/extension-env.json`) are merged into child processes. Precedence for children: ADL/`req.Env` → fixed `NUI_*` → per-extension env → secrets.json (fill blanks) → launch process env.
 
 ADL example:
 

@@ -88,7 +88,7 @@ Install the agent CLI you want to use and make sure it is on your `PATH`:
 2. **New session** — choose a built-in or installed agent and a working directory.
 3. **Chat** — send prompts, attach files, and use `@` mentions for context.
 4. **Sessions** — switch between past sessions from the sidebar; rename or delete as needed.
-5. **Settings** — toggle light/dark theme, manage extensions, and configure MCP servers (including OAuth for remote MCP).
+5. **Settings** — theme, env vars (credentials + custom globals), extensions (including per-extension env), and MCP servers (including OAuth for remote MCP).
 
 Preferences (theme, last agent, sidebar state) are saved to `~/.nui/settings.json` and restored on reload.
 
@@ -187,7 +187,7 @@ nui extension list
 nui extension remove my-extension
 ```
 
-Manage installed extensions from the **Settings → Extensions** tab, or disable individual extensions without uninstalling.
+Manage installed extensions from the **Settings → Extensions** tab, or disable individual extensions without uninstalling. Use **Env** on an extension to set per-extension environment variables (keys are listed on the tab; values stay in the editor). Global env vars live under **Settings → Env vars**.
 
 ## MCP integration
 

@@ -71,6 +71,7 @@ func Remove(name string) error {
 	if err := os.RemoveAll(target); err != nil {
 		return err
 	}
+	_ = store.RemoveExtensionEnv(name)
 	return removeDisabledExtension(name)
 }
 

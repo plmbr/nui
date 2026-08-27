@@ -58,6 +58,7 @@ export default function App() {
   const [sessionListGroupId, setSessionListGroupId] = useState<string | null>(null)
   const [recentSessionIds, setRecentSessionIds] = useState<string[]>([])
   const [recentAgents, setRecentAgents] = useState<RecentAgentEntry[]>([])
+  const [recentsOpen, setRecentsOpen] = useState(true)
   const [appReady, setAppReady] = useState(false)
   const initializedRef = useRef(false)
   const sessionsRef = useRef(sessions)
@@ -110,6 +111,11 @@ export default function App() {
       api.settings.update({ recentSessionIds: next }).catch(() => {})
       return next
     })
+  }, [])
+
+  const handleRecentsOpenChange = useCallback((open: boolean) => {
+    setRecentsOpen(open)
+    api.settings.update({ recentsOpen: open }).catch(() => {})
   }, [])
 
   const handleRecentsChange = useCallback((patch: {
@@ -168,6 +174,9 @@ export default function App() {
       setSidebarWidth(resolveSidebarWidth(settings.sidebarWidth))
       setRecentSessionIds(settings.recentSessionIds ?? [])
       setRecentAgents(settings.recentAgents ?? [])
+      if (settings.recentsOpen !== undefined) {
+        setRecentsOpen(settings.recentsOpen)
+      }
 
       const openCustomize = isCustomizePath()
       const openSchedules = isSchedulesPath()
@@ -639,6 +648,8 @@ export default function App() {
                 agentTypes={agentTypes}
                 recentSessionIds={recentSessionIds}
                 recentAgents={recentAgents}
+                recentsOpen={recentsOpen}
+                onRecentsOpenChange={handleRecentsOpenChange}
                 onLaunchWithPrompt={handleLaunchWithPrompt}
                 onResolveAmbiguity={handleResolveAmbiguity}
                 onNewSession={handleOpenNewSession}
@@ -665,6 +676,8 @@ export default function App() {
                 sessions={sessions}
                 recentSessionIds={recentSessionIds}
                 recentAgents={recentAgents}
+                recentsOpen={recentsOpen}
+                onRecentsOpenChange={handleRecentsOpenChange}
                 initialAgentTypeId={agentFromNewSessionSearch()}
                 initialWorkingDir={cwdFromNewSessionSearch()}
                 onClose={handleCloseNewSession}

@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, AgentFileContent, AgentFileInfo, AgentDeployerInfo, AgentDeployResult, AgentEvalSummary, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, Credentials, DirectorySuggestions, ExtensionInfo, HitlRequest, HitlResponse, MCPOAuthStatus, MCPServer, MentionListResponse, MemorySummary, Schedule, Session, Settings, SkillEntry, UploadedImage } from './types'
+import type { AgentType, AgentFileContent, AgentFileInfo, AgentDeployerInfo, AgentDeployResult, AgentEvalSummary, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, Credentials, DirectorySuggestions, EnvVars, ExtensionEnv, ExtensionInfo, HitlRequest, HitlResponse, MCPOAuthStatus, MCPServer, MentionListResponse, MemorySummary, Schedule, Session, Settings, SkillEntry, UploadedImage } from './types'
 
 export interface RunRecord {
   runId: string
@@ -290,12 +290,29 @@ export const api = {
 
   credentials: {
     get: (): Promise<Credentials> =>
-      request('/credentials'),
+      request('/env'),
 
-    update: (env: Record<string, string>): Promise<Credentials> =>
-      request('/credentials', {
+    update: (body: {
+      env?: Record<string, string>
+      custom?: Record<string, string>
+    }): Promise<Credentials> =>
+      request('/env', {
         method: 'PUT',
-        body: JSON.stringify({ env }),
+        body: JSON.stringify(body),
+      }),
+  },
+
+  env: {
+    get: (): Promise<EnvVars> =>
+      request('/env'),
+
+    update: (body: {
+      env?: Record<string, string>
+      custom?: Record<string, string>
+    }): Promise<EnvVars> =>
+      request('/env', {
+        method: 'PUT',
+        body: JSON.stringify(body),
       }),
   },
 
@@ -332,6 +349,15 @@ export const api = {
 
     reload: (): Promise<{ ok: boolean }> =>
       request('/extensions/reload', { method: 'POST' }),
+
+    getEnv: (name: string): Promise<ExtensionEnv> =>
+      request(`/extensions/${encodeURIComponent(name)}/env`),
+
+    updateEnv: (name: string, env: Record<string, string>): Promise<ExtensionEnv> =>
+      request(`/extensions/${encodeURIComponent(name)}/env`, {
+        method: 'PUT',
+        body: JSON.stringify({ env }),
+      }),
   },
 
   mcpServers: {

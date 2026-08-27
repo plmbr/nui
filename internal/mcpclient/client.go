@@ -191,9 +191,7 @@ func (c *Client) connectOne(srv model.ADLMCPServer) (*mcp.ClientSession, error) 
 		client := mcp.NewClient(&mcp.Implementation{Name: "nui", Version: "1.0.0"}, nil)
 		// Use exec.Command (not CommandContext): connect timeout must not bind to child lifetime.
 		command := exec.Command(cmd, srv.Args...)
-		if len(srv.Env) > 0 {
-			command.Env = envWithOverrides(srv.Env)
-		}
+		command.Env = envWithOverrides(srv.Env)
 		transport := &mcp.CommandTransport{Command: command}
 		ctx := context.Background()
 		return client.Connect(ctx, transport, nil)

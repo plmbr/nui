@@ -27,6 +27,8 @@ interface Props {
   agentTypes: AgentType[]
   recentSessionIds?: string[]
   recentAgents?: RecentAgentEntry[]
+  recentsOpen: boolean
+  onRecentsOpenChange: (open: boolean) => void
   onLaunchWithPrompt: (prompt: string) => Promise<OrchestrateAmbiguity | void>
   onResolveAmbiguity: (agentType: string, prompt: string) => Promise<void>
   onNewSession: () => void
@@ -43,6 +45,8 @@ export function LandingPage({
   agentTypes,
   recentSessionIds,
   recentAgents,
+  recentsOpen,
+  onRecentsOpenChange,
   onLaunchWithPrompt,
   onResolveAmbiguity,
   onNewSession,
@@ -242,6 +246,8 @@ export function LandingPage({
           agentTypes={agentTypes}
           recentSessionIds={recentSessionIds}
           recentAgents={recentAgents}
+          open={recentsOpen}
+          onOpenChange={onRecentsOpenChange}
           onRecentAgentClick={(entry) => void handleRecentAgentClick(entry)}
           onRecentSessionClick={onOpenSession}
           onRecentsChange={onRecentsChange}

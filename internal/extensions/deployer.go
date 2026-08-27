@@ -6,11 +6,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 
 	"nui/internal/model"
+	"nui/internal/store"
 )
 
 // ExtensionAgentDeployer is a named deploy command declared under contributions.aiAssets.agentDeployers.
@@ -166,10 +166,10 @@ func InvokeDeployer(ref ResolvedDeployer, req DeployRequest) (DeployResponse, er
 	}
 	cmd := exec.Command(ref.Deployer.Command[0], ref.Deployer.Command[1:]...)
 	cmd.Dir = ref.Extension.Dir
-	cmd.Env = append(os.Environ(),
-		"NUI_EXTENSION_DIR="+ref.Extension.Dir,
-		"NUI_EXTENSION_NAME="+ref.Extension.Manifest.Name,
-	)
+	cmd.Env = store.ExtensionProcessEnv(ref.Extension.Manifest.Name, map[string]string{
+		"NUI_EXTENSION_DIR":  ref.Extension.Dir,
+		"NUI_EXTENSION_NAME": ref.Extension.Manifest.Name,
+	})
 	cmd.Stdin = bytes.NewReader(append(payload, '\n'))
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

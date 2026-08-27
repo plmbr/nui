@@ -16,6 +16,11 @@ import (
 )
 
 func TestAPIHarnessAvailable(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".nui"), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	h := model.ADLHarness{Type: "api", Provider: "anthropic"}
 	if APIHarnessAvailable(h) {
@@ -195,6 +200,11 @@ func TestBuildAPIMessages_skipsToolJSONAssistantHistory(t *testing.T) {
 }
 
 func TestAPIHarnessAvailableDef(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".nui"), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	def := model.ADLDefinition{
 		ID:      "anthropic",
 		Harness: model.ADLHarness{Type: "api", Provider: "anthropic"},
@@ -247,6 +257,11 @@ func TestResolveAPIModelAgentConfig(t *testing.T) {
 }
 
 func TestResolveAPIModelHarnessDefault(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".nui"), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("ANTHROPIC_BASE_URL", "")
 	t.Setenv("ANTHROPIC_MODEL", "")
 	t.Setenv("ANTHROPIC_DEFAULT_SONNET_MODEL", "")
@@ -311,6 +326,11 @@ func TestResolveAnthropicModelCandidatesExplicitEnv(t *testing.T) {
 }
 
 func TestResolveAnthropicModelCandidatesPublicAPI(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".nui"), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("ANTHROPIC_BASE_URL", "")
 	t.Setenv("ANTHROPIC_MODEL", "")
 	h := model.ADLHarness{Type: "api", Provider: "anthropic", Model: anthropicBuiltinDefaultModel}

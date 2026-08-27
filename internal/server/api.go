@@ -97,6 +97,7 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/directories", handleDirectories)
 	mux.HandleFunc("/api/settings", handleSettings)
 	mux.HandleFunc("/api/credentials", handleCredentials)
+	mux.HandleFunc("/api/env", handleEnv)
 	mux.HandleFunc("/api/bootstrap", handleBootstrap)
 	mux.HandleFunc("/api/launch", handleLaunch)
 	mux.HandleFunc("/api/orchestrate", handleOrchestrate)
@@ -104,6 +105,7 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/capabilities", handleCapabilities)
 	mux.HandleFunc("/api/extensions", handleExtensions)
 	mux.HandleFunc("/api/extensions/reload", handleExtensionsReload)
+	mux.HandleFunc("/api/extensions/", handleExtensionPath)
 	mux.HandleFunc("/api/mcp-servers", handleMCPServers)
 	mux.HandleFunc("/api/skills", handleSkills)
 	mux.HandleFunc("/api/skills/", handleSkill)
@@ -963,6 +965,9 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		if patch.SidebarOpen != nil {
 			current.SidebarOpen = patch.SidebarOpen
+		}
+		if patch.RecentsOpen != nil {
+			current.RecentsOpen = patch.RecentsOpen
 		}
 		if patch.SidebarWidth != nil {
 			w := *patch.SidebarWidth

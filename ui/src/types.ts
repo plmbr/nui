@@ -183,6 +183,8 @@ export interface Settings {
   lastSessionId?: string
   recentSessionIds?: string[]
   recentAgents?: RecentAgentEntry[]
+  /** Recents section expanded; defaults to true when omitted. */
+  recentsOpen?: boolean
   sidebarOpen?: boolean
   sidebarWidth?: number
   disabledExtensions?: string[]
@@ -206,8 +208,21 @@ export interface CredentialField {
   configured: boolean
 }
 
+export interface CustomEnvEntry {
+  key: string
+  value: string
+}
+
 export interface Credentials {
   fields: CredentialField[]
+  custom?: CustomEnvEntry[]
+}
+
+export type EnvVars = Credentials
+
+export interface ExtensionEnv {
+  keys: string[]
+  env?: Record<string, string>
 }
 
 export type MemoryMode = 'auto' | 'manual' | 'disabled'
@@ -225,6 +240,7 @@ export interface ExtensionInfo {
   rules?: string[]
   mentionProviders?: string[]
   agents?: string[]
+  envKeys?: string[]
 }
 
 export interface MCPServerAuth {

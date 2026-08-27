@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"nui/internal/model"
+	"nui/internal/store"
 )
 
 type catalogProvider struct {
@@ -17,10 +18,10 @@ type catalogProvider struct {
 
 func newCatalogProvider(extDir, extName string, command []string) (*catalogProvider, error) {
 	fmt.Fprintf(os.Stderr, "[extensions] initializing catalog for %q\n", extName)
-	env := append(os.Environ(),
-		"NUI_EXTENSION_DIR="+extDir,
-		"NUI_EXTENSION_NAME="+extName,
-	)
+	env := store.ExtensionProcessEnv(extName, map[string]string{
+		"NUI_EXTENSION_DIR":  extDir,
+		"NUI_EXTENSION_NAME": extName,
+	})
 	rpc, err := StartStdioRPC(command, env, extDir)
 	if err != nil {
 		return nil, err

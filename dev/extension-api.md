@@ -431,6 +431,12 @@ nui extension add dev/extension-examples/storage-demo
 
 Extensions may declare `contributions.aiAssets.agentDeployers` — named commands that deploy user ADL agents to a remote platform. Registry URLs, image tags, and auth are **extension-owned** (config files, env vars); nui only passes the agent definition and bundled assets.
 
+User-configured environment for extensions:
+
+- **Global** — Customize → Env vars (custom section) → `~/.nui/secrets.json`. Applied to the nui process (fill blanks) and all child processes.
+- **Per-extension** — Customize → Extensions → Env → `~/.nui/extension-env.json`. Merged when that extension’s hosts/harnesses spawn.
+- Core nui runtime keys (e.g. `NUI_API_URL`, `NUI_EXTENSION_DIR`) are reserved; extension-owned names such as `NUI_MY_EXTENSION_TOKEN` are allowed.
+
 Deployer ids use the `ext:<extension>/<name>` convention, for example `ext:docker-deployer/docker`.
 
 **CLI:**

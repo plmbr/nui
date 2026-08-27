@@ -19,6 +19,7 @@ import (
 
 	"nui/internal/devcontainer"
 	"nui/internal/extensions"
+	"nui/internal/store"
 )
 
 // builtinAgentTypes are harness types implemented in-process inside the nui binary.
@@ -248,7 +249,7 @@ func (m *Manager) getExtensionHarnessAgent(projectID string, ref extensions.Harn
 	} else {
 		switch transport {
 		case "stdio":
-			ag, err = newStdioHarnessAgent(ref.AgentID, ref.Entry.ID, projectID, ref.Extension.Dir, ref.Runtime)
+			ag, err = newStdioHarnessAgent(ref.AgentID, ref.Entry.ID, projectID, ref.Extension.Manifest.Name, ref.Extension.Dir, ref.Runtime)
 		case "tcp":
 			conn, connErr := m.startTCPHarness(ref)
 			if connErr != nil {
@@ -283,11 +284,11 @@ func (m *Manager) startTCPHarness(ref extensions.HarnessRef) (ConnectionInfo, er
 	}
 	cmd := exec.Command(command[0], command[1:]...)
 	cmd.Dir = cwd
-	cmd.Env = append(os.Environ(),
-		"NUI_EXTENSION_DIR="+ref.Extension.Dir,
-		"NUI_HARNESS_ID="+ref.Entry.ID,
-		"NUI_CONNECTION_ID="+SanitizeConnectionID(ref.AgentID),
-	)
+	cmd.Env = store.ExtensionProcessEnv(ref.Extension.Manifest.Name, map[string]string{
+		"NUI_EXTENSION_DIR":  ref.Extension.Dir,
+		"NUI_HARNESS_ID":     ref.Entry.ID,
+		"NUI_CONNECTION_ID":  SanitizeConnectionID(ref.AgentID),
+	})
 	if err := cmd.Start(); err != nil {
 		return ConnectionInfo{}, err
 	}
@@ -318,10 +319,10 @@ func (m *Manager) startHTTPHarness(ref extensions.HarnessRef) (string, error) {
 		cmd := exec.Command(command[0], command[1:]...)
 		cmd.Dir = cwd
 		connID := SanitizeConnectionID(ref.AgentID)
-		cmd.Env = append(os.Environ(),
-			"NUI_EXTENSION_DIR="+ref.Extension.Dir,
-			"NUI_CONNECTION_ID="+connID,
-		)
+		cmd.Env = store.ExtensionProcessEnv(ref.Extension.Manifest.Name, map[string]string{
+			"NUI_EXTENSION_DIR": ref.Extension.Dir,
+			"NUI_CONNECTION_ID": connID,
+		})
 		if err := cmd.Start(); err != nil {
 			return "", err
 		}
@@ -642,6 +643,20 @@ func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, harnessType,
 		if val := lookupCredentialValue(envKey, nil); val != "" {
 			args = append(args, "-e", envKey+"="+val)
 		}
+	}
+	// Forward remaining global secrets (custom env vars + other managed keys).
+	for key, val := range store.AllSecretEnv() {
+		switch key {
+		case "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_OAUTH_TOKEN", "ANTHROPIC_BASE_URL", "OPENAI_API_KEY", "OPENAI_BASE_URL":
+			continue
+		}
+		if strings.TrimSpace(val) == "" {
+			continue
+		}
+		if processVal := strings.TrimSpace(os.Getenv(key)); processVal != "" {
+			val = processVal
+		}
+		args = append(args, "-e", key+"="+val)
 	}
 	// If any base URL points to a loopback hostname, route it to the host machine.
 	for _, urlEnv := range []string{"ANTHROPIC_BASE_URL", "OPENAI_BASE_URL"} {

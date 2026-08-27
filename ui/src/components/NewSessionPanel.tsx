@@ -39,6 +39,8 @@ interface Props {
   sessions: Session[]
   recentSessionIds?: string[]
   recentAgents?: RecentAgentEntry[]
+  recentsOpen: boolean
+  onRecentsOpenChange: (open: boolean) => void
   initialAgentTypeId?: string | null
   initialWorkingDir?: string | null
   onClose: () => void
@@ -89,6 +91,8 @@ export function NewSessionPanel({
   sessions,
   recentSessionIds,
   recentAgents,
+  recentsOpen,
+  onRecentsOpenChange,
   initialAgentTypeId,
   initialWorkingDir,
   onClose,
@@ -772,6 +776,8 @@ export function NewSessionPanel({
                 agentTypes={agentTypes}
                 recentSessionIds={recentSessionIds}
                 recentAgents={recentAgents}
+                open={recentsOpen}
+                onOpenChange={onRecentsOpenChange}
                 onRecentAgentClick={(entry) => void handleRecentAgentClick(entry)}
                 onRecentSessionClick={onOpenRecentSession}
                 onRecentsChange={onRecentsChange}

@@ -433,40 +433,7 @@ func setDefaultEnvOverride(overrides map[string]string, key, value string) {
 }
 
 func envWithOverrides(overrides map[string]string) []string {
-	m := make(map[string]string)
-	for _, kv := range os.Environ() {
-		k, v, ok := strings.Cut(kv, "=")
-		if ok {
-			m[k] = v
-		}
-	}
-	// Desktop / non-shell launches store provider keys in ~/.nui/secrets.json.
-	// Fill gaps so CLI harnesses (claude-code, etc.) see the same credentials as the api harness.
-	fillManagedCredentialSecrets(m)
-	for k, v := range overrides {
-		m[k] = v
-	}
-	out := make([]string, 0, len(m))
-	for k, v := range m {
-		out = append(out, k+"="+v)
-	}
-	return out
-}
-
-// fillManagedCredentialSecrets copies Customize → Credentials values into m for keys
-// that are unset or blank. Process env and later overrides still win.
-func fillManagedCredentialSecrets(m map[string]string) {
-	if m == nil {
-		return
-	}
-	for _, spec := range CredentialFieldSpecs() {
-		if strings.TrimSpace(m[spec.Key]) != "" {
-			continue
-		}
-		if v := store.SecretEnv(spec.Key); v != "" {
-			m[spec.Key] = v
-		}
-	}
+	return store.MergeProcessEnv(overrides)
 }
 
 func appendHitlAskUserSkill(skillList []model.ADLSkill) []model.ADLSkill {

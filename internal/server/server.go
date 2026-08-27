@@ -20,6 +20,7 @@ import (
 	"nui/internal/memory"
 	"nui/internal/mentions"
 	"nui/internal/storageext"
+	"nui/internal/store"
 )
 
 var extensionManager *agent.Manager
@@ -71,6 +72,7 @@ func NewInstance(cfg ListenConfig) (*Instance, error) {
 	if err := initStore(); err != nil {
 		return nil, fmt.Errorf("loading store: %w", err)
 	}
+	store.ApplyGlobalEnvToProcess()
 
 	if _, err := harnesssdk.InstallDir(); err != nil {
 		fmt.Fprintf(os.Stderr, "[harness-sdk] failed to install: %v\n", err)

@@ -85,6 +85,60 @@ func TestHandleCredentials_rejectsUnknownKey(t *testing.T) {
 	}
 }
 
+func TestHandleEnv_customAndReserved(t *testing.T) {
+	setupTestServerEnv(t)
+	t.Setenv("ANTHROPIC_API_KEY", "")
+
+	putReq := httptest.NewRequest(http.MethodPut, "/api/env", strings.NewReader(`{
+		"env": {"ANTHROPIC_API_KEY": "sk-a"},
+		"custom": {"MY_TOKEN": "tok", "OTHER": "v"}
+	}`))
+	putRec := httptest.NewRecorder()
+	handleEnv(putRec, putReq)
+	if putRec.Code != http.StatusOK {
+		t.Fatalf("PUT status = %d body=%s", putRec.Code, putRec.Body.String())
+	}
+	var updated envResponse
+	if err := json.Unmarshal(putRec.Body.Bytes(), &updated); err != nil {
+		t.Fatal(err)
+	}
+	if len(updated.Custom) != 2 {
+		t.Fatalf("custom = %+v", updated.Custom)
+	}
+
+	bad := httptest.NewRequest(http.MethodPut, "/api/env", strings.NewReader(`{
+		"custom": {"NUI_API_URL": "nope"}
+	}`))
+	badRec := httptest.NewRecorder()
+	handleEnv(badRec, bad)
+	if badRec.Code != http.StatusBadRequest {
+		t.Fatalf("reserved status = %d body=%s", badRec.Code, badRec.Body.String())
+	}
+
+	// Custom-only PUT replaces custom keys without wiping managed.
+	replace := httptest.NewRequest(http.MethodPut, "/api/env", strings.NewReader(`{
+		"custom": {"ONLY": "one"}
+	}`))
+	replaceRec := httptest.NewRecorder()
+	handleEnv(replaceRec, replace)
+	if replaceRec.Code != http.StatusOK {
+		t.Fatalf("replace status = %d", replaceRec.Code)
+	}
+	saved, err := store.LoadSecrets()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if saved.Env["ANTHROPIC_API_KEY"] != "sk-a" {
+		t.Fatalf("managed wiped: %+v", saved.Env)
+	}
+	if saved.Env["ONLY"] != "one" {
+		t.Fatalf("custom = %+v", saved.Env)
+	}
+	if _, ok := saved.Env["MY_TOKEN"]; ok {
+		t.Fatal("old custom key should be removed on replace")
+	}
+}
+
 func TestHandleCredentials_methodNotAllowed(t *testing.T) {
 	req := httptest.NewRequest(http.MethodDelete, "/api/credentials", nil)
 	rec := httptest.NewRecorder()

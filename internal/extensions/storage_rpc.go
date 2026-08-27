@@ -5,10 +5,10 @@ package extensions
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 
 	"nui/internal/model"
+	"nui/internal/store"
 )
 
 // StorageRPCClient talks to an extension storage provider over stdio JSON-RPC.
@@ -54,10 +54,10 @@ func NewStorageRPCClient(extDir, extName string, rt RuntimeConfig) (*StorageRPCC
 		return nil, fmt.Errorf("storage runtime command is required")
 	}
 	cmd := expandCommand(rt.Command, extDir)
-	env := append(os.Environ(),
-		"NUI_EXTENSION_DIR="+extDir,
-		"NUI_EXTENSION_NAME="+extName,
-	)
+	env := store.ExtensionProcessEnv(extName, map[string]string{
+		"NUI_EXTENSION_DIR":  extDir,
+		"NUI_EXTENSION_NAME": extName,
+	})
 	rpc, err := StartStdioRPC(cmd, env, runtimeCwd(extDir, &rt))
 	if err != nil {
 		return nil, err

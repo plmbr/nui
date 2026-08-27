@@ -17,6 +17,8 @@ interface Props {
   agentTypes: AgentType[]
   recentSessionIds?: string[]
   recentAgents?: RecentAgentEntry[]
+  open: boolean
+  onOpenChange: (open: boolean) => void
   onRecentAgentClick: (entry: RecentAgentEntry) => void
   onRecentSessionClick: (sessionId: string) => void
   onRecentsChange: (patch: { recentSessionIds?: string[]; recentAgents?: RecentAgentEntry[] }) => void
@@ -27,11 +29,12 @@ export function RecentsSection({
   agentTypes,
   recentSessionIds,
   recentAgents,
+  open,
+  onOpenChange,
   onRecentAgentClick,
   onRecentSessionClick,
   onRecentsChange,
 }: Props) {
-  const [open, setOpen] = useState(true)
   const [moreKind, setMoreKind] = useState<'agents' | 'sessions' | null>(null)
 
   const agentItems = useMemo(
@@ -53,7 +56,7 @@ export function RecentsSection({
           type="button"
           className="recents-section__title"
           aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
+          onClick={() => onOpenChange(!open)}
         >
           <ChevronRight
             className={cn(

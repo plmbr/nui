@@ -172,6 +172,9 @@ func (a *ExtensionAgent) Run(ctx context.Context, req RunRequest, events chan<- 
 	if req.Model != "" {
 		params["model"] = req.Model
 	}
+	if len(req.Env) > 0 {
+		params["env"] = req.Env
+	}
 
 	rpcReq, _ := json.Marshal(map[string]any{
 		"jsonrpc": "2.0",

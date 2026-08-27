@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"nui/internal/extensions"
@@ -117,5 +118,80 @@ version: 1.0.0
 	info := extensions.Default.Info()
 	if len(info) != 1 || info[0].Name != "reload-pack" {
 		t.Fatalf("info = %+v", info)
+	}
+}
+
+func TestHandleExtensionEnv(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	extDir := filepath.Join(home, ".nui", "extensions", "test-pack")
+	if err := os.MkdirAll(extDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := `apiVersion: nui.plmbr.dev/extension/v1
+name: test-pack
+version: 1.0.0
+displayName: Test Pack
+`
+	if err := os.WriteFile(filepath.Join(extDir, "extension.yaml"), []byte(manifest), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	prev := extensions.Default
+	reg, err := extensions.LoadRegistry()
+	if err != nil {
+		t.Fatal(err)
+	}
+	extensions.Default = reg
+	t.Cleanup(func() { extensions.Default = prev })
+
+	putReq := httptest.NewRequest(http.MethodPut, "/api/extensions/test-pack/env", strings.NewReader(`{
+		"env": {"EXT_TOKEN": "secret", "NUI_API_URL": "nope"}
+	}`))
+	putRec := httptest.NewRecorder()
+	handleExtensionPath(putRec, putReq)
+	if putRec.Code != http.StatusBadRequest {
+		t.Fatalf("reserved status = %d body=%s", putRec.Code, putRec.Body.String())
+	}
+
+	putReq = httptest.NewRequest(http.MethodPut, "/api/extensions/test-pack/env", strings.NewReader(`{
+		"env": {"EXT_TOKEN": "secret", "NUI_MY_EXTENSION_TOKEN": "ok"}
+	}`))
+	putRec = httptest.NewRecorder()
+	handleExtensionPath(putRec, putReq)
+	if putRec.Code != http.StatusOK {
+		t.Fatalf("PUT status = %d body=%s", putRec.Code, putRec.Body.String())
+	}
+
+	getReq := httptest.NewRequest(http.MethodGet, "/api/extensions/test-pack/env", nil)
+	getRec := httptest.NewRecorder()
+	handleExtensionPath(getRec, getReq)
+	if getRec.Code != http.StatusOK {
+		t.Fatalf("GET status = %d", getRec.Code)
+	}
+	var body extensionEnvResponse
+	if err := json.Unmarshal(getRec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Env["EXT_TOKEN"] != "secret" {
+		t.Fatalf("env = %+v", body.Env)
+	}
+	if body.Env["NUI_MY_EXTENSION_TOKEN"] != "ok" {
+		t.Fatalf("extension-owned key missing: %+v", body.Env)
+	}
+	if len(body.Keys) != 2 {
+		t.Fatalf("keys = %v", body.Keys)
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/extensions", nil)
+	listRec := httptest.NewRecorder()
+	handleExtensions(listRec, listReq)
+	var list []extensions.ExtensionInfo
+	if err := json.Unmarshal(listRec.Body.Bytes(), &list); err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || len(list[0].EnvKeys) != 2 {
+		t.Fatalf("list envKeys = %+v", list)
 	}
 }

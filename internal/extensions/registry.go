@@ -564,6 +564,7 @@ type ExtensionInfo struct {
 	HITLChannels     []string `json:"hitlChannels,omitempty"`
 	StorageHandlers  []string `json:"storageHandlers,omitempty"`
 	Agents        []string `json:"agents,omitempty"`
+	EnvKeys       []string `json:"envKeys,omitempty"`
 }
 
 // List returns installed extension metadata sorted by name.
@@ -634,6 +635,7 @@ func (r *Registry) Info() []ExtensionInfo {
 			}
 			info.Agents = append(info.Agents, id)
 		}
+		info.EnvKeys = store.ExtensionEnvKeys(name)
 		out = append(out, info)
 	}
 	return out

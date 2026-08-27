@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"nui/internal/model"
+	"nui/internal/store"
 )
 
 // ContributionManifest is returned by extension.initialize from a programmatic extension process.
@@ -44,13 +45,14 @@ func startProgrammaticHost(extDir string, manifest Manifest) (*programmaticHost,
 	}
 	entry := resolveInstallEntry(extDir, manifest.Install)
 	command := expandRuntimeCommand(manifest.Runtime.Command, extDir, entry)
-	env := append(os.Environ(),
-		"NUI_EXTENSION_DIR="+extDir,
-		"NUI_EXTENSION_NAME="+manifest.Name,
-	)
-	if entry != "" {
-		env = append(env, "NUI_EXTENSION_ENTRY="+entry)
+	fixed := map[string]string{
+		"NUI_EXTENSION_DIR":  extDir,
+		"NUI_EXTENSION_NAME": manifest.Name,
 	}
+	if entry != "" {
+		fixed["NUI_EXTENSION_ENTRY"] = entry
+	}
+	env := store.ExtensionProcessEnv(manifest.Name, fixed)
 	cwd := runtimeCwd(extDir, manifest.Runtime)
 	rpc, err := StartProgrammaticRPC(command, env, cwd)
 	if err != nil {

@@ -15,12 +15,14 @@ import (
 	"sync/atomic"
 
 	"nui/internal/extensions"
+	"nui/internal/store"
 )
 
 // StdioHarnessAgent implements Agent via JSON-RPC 2.0 on a harness subprocess stdin/stdout.
 type StdioHarnessAgent struct {
 	agentName  string
 	harnessID  string
+	extName    string
 	mu         sync.Mutex
 	rpc        *stdioHarnessRPC
 	extDir     string
@@ -37,10 +39,11 @@ type stdioHarnessRPC struct {
 
 var harnessRPCID atomic.Int64
 
-func newStdioHarnessAgent(name, harnessID, projectID, extDir string, rt extensions.RuntimeConfig) (*StdioHarnessAgent, error) {
+func newStdioHarnessAgent(name, harnessID, projectID, extName, extDir string, rt extensions.RuntimeConfig) (*StdioHarnessAgent, error) {
 	a := &StdioHarnessAgent{
 		agentName: name,
 		harnessID: harnessID,
+		extName:   extName,
 		extDir:    extDir,
 		runtime:   rt,
 		projectID: projectID,
@@ -72,31 +75,33 @@ func (a *StdioHarnessAgent) buildHarnessEnv(req RunRequest) []string {
 			apiURL = strings.TrimRight(v, "/")
 		}
 	}
-	env := append(os.Environ(),
-		"NUI_EXTENSION_DIR="+a.extDir,
-		"NUI_SESSION_ID="+sessionID,
-		"NUI_HARNESS_ID="+a.harnessID,
-		"NUI_API_URL="+apiURL,
-	)
+	fixed := map[string]string{
+		"NUI_EXTENSION_DIR": a.extDir,
+		"NUI_SESSION_ID":    sessionID,
+		"NUI_HARNESS_ID":    a.harnessID,
+		"NUI_API_URL":       apiURL,
+	}
 	if runID := strings.TrimSpace(req.RunID); runID != "" {
-		env = append(env, "NUI_RUN_ID="+runID)
+		fixed["NUI_RUN_ID"] = runID
 	}
 	if sdkDir, err := extensions.HitlSDKDir(); err == nil && sdkDir != "" {
-		env = append(env, "NUI_HITL_SDK_DIR="+sdkDir)
+		fixed["NUI_HITL_SDK_DIR"] = sdkDir
 		pyPath := sdkDir
 		if existing := os.Getenv("PYTHONPATH"); existing != "" {
 			pyPath = sdkDir + string(os.PathListSeparator) + existing
 		}
-		env = append(env, "PYTHONPATH="+pyPath)
+		fixed["PYTHONPATH"] = pyPath
 	}
+	adl := map[string]string{}
 	for k, v := range req.Env {
 		switch k {
 		case EnvNuiSessionID, EnvnuiRunID, EnvnuiAPIURL:
 			continue
 		}
-		env = append(env, k+"="+v)
+		adl[k] = v
 	}
-	return env
+	// Precedence: process → secrets → per-ext → NUI_* → ADL
+	return store.ExtensionProcessEnv(a.extName, fixed, adl)
 }
 
 func (a *StdioHarnessAgent) ensureRPC(req RunRequest) error {

@@ -196,7 +196,7 @@ func TestMatchOrchestratorAgent_prefersDescriptionIntentOverShortName(t *testing
 			ID:          "ext:tools/acme-task-runtime",
 			Label:       "Acme Task Runtime Agent",
 			Description: "List, create, manage acme tasks, interact with acme sessions using task MCP",
-			Tags:        []string{"managed-agents"},
+			Tags:        []string{"task-runtime"},
 			Available:   true,
 		},
 		{
