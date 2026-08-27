@@ -721,8 +721,12 @@ html.nui-desktop {
   .app-header__theme-switch {
     @apply size-7 rounded-md border border-transparent bg-transparent text-muted-foreground;
 
-    &:hover {
+    &:hover:not(:disabled) {
       @apply border-border bg-card text-foreground;
+    }
+
+    &:disabled {
+      @apply opacity-40 cursor-not-allowed;
     }
   }
 
@@ -989,32 +993,33 @@ html.nui-desktop {
     border-color: color-mix(in oklch, var(--border) 80%, transparent);
   }
 
-  .theme-card__preview--light {
-    background: var(--background);
+  .theme-card__preview--hawaiian {
+    background:
+      radial-gradient(circle at 18% 22%, color-mix(in oklch, var(--plumeria-petal-mid) 55%, transparent), transparent 42%),
+      radial-gradient(circle at 82% 78%, color-mix(in oklch, var(--plumeria-petal-tip) 40%, transparent), transparent 38%),
+      var(--background);
   }
 
-  .theme-card__preview--dark {
-    background: oklch(0.205 0.012 240);
+  .theme-card__preview--standard {
+    background: var(--background);
   }
 
   .theme-card__sidebar {
     @apply w-[28%] border-r;
-    border-color: inherit;
-    background: color-mix(in oklch, currentColor 4%, transparent);
-  }
-
-  .theme-card__preview--light .theme-card__sidebar {
-    background: var(--sidebar);
     border-color: var(--border);
-  }
-
-  .theme-card__preview--dark .theme-card__sidebar {
-    background: oklch(0.225 0.014 240);
-    border-color: oklch(0.35 0.012 240 / 55%);
+    background: var(--sidebar);
   }
 
   .theme-card__main {
-    @apply flex flex-1 flex-col justify-end gap-1.5 p-2;
+    @apply relative flex flex-1 flex-col justify-end gap-1.5 p-2;
+  }
+
+  .theme-card__bloom {
+    @apply absolute right-2 top-2 size-3 rounded-full;
+    background:
+      radial-gradient(circle at 35% 35%, var(--plumeria-petal-highlight), transparent 55%),
+      radial-gradient(circle at 65% 60%, var(--plumeria-petal-tip), transparent 60%);
+    opacity: 0.85;
   }
 
   .theme-card__bubble {
@@ -1023,28 +1028,20 @@ html.nui-desktop {
 
   .theme-card__bubble--user {
     @apply ml-auto w-[55%];
-  }
-
-  .theme-card__preview--light .theme-card__bubble--user {
     background: var(--user-bubble);
   }
 
-  .theme-card__preview--light .theme-card__bubble--agent {
+  .theme-card__bubble--agent {
+    width: 70%;
     background: var(--muted);
-    width: 70%;
-  }
-
-  .theme-card__preview--dark .theme-card__bubble--user {
-    background: oklch(0.285 0.018 240);
-  }
-
-  .theme-card__preview--dark .theme-card__bubble--agent {
-    background: oklch(0.275 0.014 240);
-    width: 70%;
   }
 
   .theme-card__label {
-    @apply px-1 text-xs font-medium text-foreground;
+    @apply flex flex-col gap-0.5 px-1 text-xs font-medium text-foreground;
+  }
+
+  .theme-card__meta {
+    @apply text-[0.65rem] font-normal text-muted-foreground;
   }
 
   .theme-btn {

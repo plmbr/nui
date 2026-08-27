@@ -938,6 +938,13 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 			}
 			current.Theme = patch.Theme
 		}
+		if patch.UITheme != "" {
+			if !validUITheme(patch.UITheme) {
+				http.Error(w, "uiTheme must be 'hawaiian' or 'standard'", http.StatusBadRequest)
+				return
+			}
+			current.UITheme = patch.UITheme
+		}
 		if patch.DefaultAgentType != "" {
 			current.DefaultAgentType = patch.DefaultAgentType
 		}
@@ -1013,6 +1020,9 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 		if current.Theme == "" {
 			current.Theme = "light"
 		}
+		if current.UITheme == "" {
+			current.UITheme = "hawaiian"
+		}
 		if err := store.SaveSettings(current); err != nil {
 			http.Error(w, "failed to save settings", http.StatusInternalServerError)
 			return
@@ -1021,6 +1031,15 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func validUITheme(id string) bool {
+	switch id {
+	case "hawaiian", "standard":
+		return true
+	default:
+		return false
 	}
 }
 

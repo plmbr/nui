@@ -22,6 +22,7 @@ import { SlashCommandMenu } from '@/components/SlashCommandMenu'
 import { HitlPromptCard } from '@/components/HitlPromptCard'
 import { ToolCallGroup } from '@/components/ToolCallGroup'
 import { VisualizationFrame } from '@/components/VisualizationFrame'
+import { useTheme } from '@/contexts/theme'
 import { imageSrc, useSessionChat } from '@/hooks/useSessionChat'
 import { segmentAssistantParts } from '@/lib/toolCallDisplay'
 import {
@@ -152,6 +153,8 @@ export function ChatPanel({
   slashCommands = [],
 }: Props) {
   const { messages, sendMessage, stopRun, isRunning, isLoading, pendingHitlRequests } = useSessionChat(session.id)
+  const { uiThemeDef } = useTheme()
+  const showFlowers = uiThemeDef.flowers
   const [input, setInput] = useState('')
   const [attachments, setAttachments] = useState<PendingAttachment[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -582,7 +585,7 @@ export function ChatPanel({
 
   return (
     <div className="agui-chat flex flex-col flex-1 min-h-0">
-      {messages.length === 0 && (
+      {messages.length === 0 && showFlowers && (
         <PlumeriaRandomBackdrop
           count={4}
           opacityVariant="chat"

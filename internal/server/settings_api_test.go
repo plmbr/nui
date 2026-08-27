@@ -75,6 +75,45 @@ func TestHandleSettings_invalidTheme(t *testing.T) {
 	}
 }
 
+func TestHandleSettings_uiTheme(t *testing.T) {
+	setupTestServerEnv(t)
+
+	putReq := httptest.NewRequest(http.MethodPut, "/api/settings", strings.NewReader(`{"uiTheme":"standard"}`))
+	putRec := httptest.NewRecorder()
+	handleSettings(putRec, putReq)
+	if putRec.Code != http.StatusOK {
+		t.Fatalf("PUT status = %d body=%s", putRec.Code, putRec.Body.String())
+	}
+	var updated store.Settings
+	if err := json.Unmarshal(putRec.Body.Bytes(), &updated); err != nil {
+		t.Fatal(err)
+	}
+	if updated.UITheme != "standard" {
+		t.Fatalf("UITheme = %q, want standard", updated.UITheme)
+	}
+
+	badReq := httptest.NewRequest(http.MethodPut, "/api/settings", strings.NewReader(`{"uiTheme":"neon"}`))
+	badRec := httptest.NewRecorder()
+	handleSettings(badRec, badReq)
+	if badRec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid uiTheme status = %d body=%s", badRec.Code, badRec.Body.String())
+	}
+
+	getReq := httptest.NewRequest(http.MethodGet, "/api/settings", nil)
+	getRec := httptest.NewRecorder()
+	handleSettings(getRec, getReq)
+	if getRec.Code != http.StatusOK {
+		t.Fatalf("GET status = %d", getRec.Code)
+	}
+	var loaded store.Settings
+	if err := json.Unmarshal(getRec.Body.Bytes(), &loaded); err != nil {
+		t.Fatal(err)
+	}
+	if loaded.UITheme != "standard" {
+		t.Fatalf("persisted UITheme = %q", loaded.UITheme)
+	}
+}
+
 func TestHandleSettings_recentsRoundTrip(t *testing.T) {
 	setupTestServerEnv(t)
 

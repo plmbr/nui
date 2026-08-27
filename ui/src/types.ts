@@ -170,8 +170,13 @@ export interface RecentAgentEntry {
   usedAt?: string
 }
 
+export type ColorMode = 'light' | 'dark'
+export type UIThemeId = 'hawaiian' | 'standard'
+
 export interface Settings {
-  theme: 'light' | 'dark'
+  theme: ColorMode
+  /** Visual theme; defaults to hawaiian when omitted. */
+  uiTheme?: UIThemeId
   defaultAgentType?: string
   defaultHarness?: string
   lastAgentType?: string

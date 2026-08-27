@@ -2,45 +2,121 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { api } from '@/api'
-
-type Theme = 'light' | 'dark'
+import {
+  DEFAULT_UI_THEME,
+  preferredModeForTheme,
+  resolveUITheme,
+  themeSupportsMode,
+  type UIThemeDefinition,
+} from '@/lib/uiThemes'
+import type { ColorMode, UIThemeId } from '@/types'
 
 interface ThemeContextValue {
-  theme: Theme
-  setTheme: (theme: Theme) => void
+  /** Color mode (light / dark). */
+  theme: ColorMode
+  setTheme: (theme: ColorMode) => void
+  /** Visual theme (Hawaiian, Standard, …). */
+  uiTheme: UIThemeId
+  uiThemeDef: UIThemeDefinition
+  setUITheme: (id: UIThemeId) => void
+  /** Whether the active visual theme supports dark mode. */
+  supportsDark: boolean
+  /** Whether the active visual theme supports light mode. */
+  supportsLight: boolean
+  /** Whether light/dark can be toggled for the active visual theme. */
+  canToggleMode: boolean
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
   theme: 'light',
   setTheme: () => {},
+  uiTheme: DEFAULT_UI_THEME,
+  uiThemeDef: resolveUITheme(DEFAULT_UI_THEME),
+  setUITheme: () => {},
+  supportsDark: true,
+  supportsLight: true,
+  canToggleMode: true,
 })
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Initialize from localStorage for instant first paint — no flash on load
-  const [theme, setThemeState] = useState<Theme>(() => {
-    return (localStorage.getItem('theme') as Theme) ?? 'light'
-  })
+function readCachedUITheme(): UIThemeId {
+  return resolveUITheme(localStorage.getItem('uiTheme')).id
+}
 
-  // Apply theme class to DOM and keep localStorage in sync as fast-path cache
+function readCachedColorMode(uiThemeId: UIThemeId): ColorMode {
+  const def = resolveUITheme(uiThemeId)
+  const cached = localStorage.getItem('theme') as ColorMode | null
+  return preferredModeForTheme(def, cached === 'dark' || cached === 'light' ? cached : 'light')
+}
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [uiTheme, setUIThemeState] = useState<UIThemeId>(() => readCachedUITheme())
+  const [theme, setThemeState] = useState<ColorMode>(() => readCachedColorMode(readCachedUITheme()))
+
+  const uiThemeDef = resolveUITheme(uiTheme)
+  const supportsDark = themeSupportsMode(uiThemeDef, 'dark')
+  const supportsLight = themeSupportsMode(uiThemeDef, 'light')
+  const canToggleMode = supportsDark && supportsLight
+
+  // Apply color mode + visual theme to DOM; keep localStorage as fast-path cache
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark')
     document.documentElement.style.colorScheme = theme
+    document.documentElement.dataset.uiTheme = uiTheme
     localStorage.setItem('theme', theme)
-  }, [theme])
+    localStorage.setItem('uiTheme', uiTheme)
+  }, [theme, uiTheme])
 
   // On mount: reconcile with server (source of truth)
   useEffect(() => {
-    api.settings.get()
-      .then(s => { if (s.theme) setThemeState(s.theme) })
+    api.settings
+      .get()
+      .then((s) => {
+        const nextUI = resolveUITheme(s.uiTheme).id
+        const nextMode = preferredModeForTheme(
+          resolveUITheme(nextUI),
+          s.theme === 'dark' || s.theme === 'light' ? s.theme : 'light',
+        )
+        setUIThemeState(nextUI)
+        setThemeState(nextMode)
+      })
       .catch(() => {})
   }, [])
 
-  function setTheme(t: Theme) {
+  function setTheme(t: ColorMode) {
+    if (!themeSupportsMode(uiThemeDef, t)) return
     setThemeState(t)
     api.settings.update({ theme: t }).catch(() => {})
   }
 
-  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>
+  function setUITheme(id: UIThemeId) {
+    const def = resolveUITheme(id)
+    const nextMode = preferredModeForTheme(def, theme)
+    setUIThemeState(def.id)
+    setThemeState(nextMode)
+    api.settings
+      .update({
+        uiTheme: def.id,
+        ...(nextMode !== theme ? { theme: nextMode } : {}),
+      })
+      .catch(() => {})
+  }
+
+  return (
+    <ThemeContext.Provider
+      value={{
+        theme,
+        setTheme,
+        uiTheme,
+        uiThemeDef,
+        setUITheme,
+        supportsDark,
+        supportsLight,
+        canToggleMode,
+      }}
+    >
+      {children}
+    </ThemeContext.Provider>
+  )
 }
 
 export function useTheme() {

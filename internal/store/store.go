@@ -21,7 +21,8 @@ type RecentAgentEntry struct {
 }
 
 type Settings struct {
-	Theme                string   `json:"theme"`                            // "light" | "dark"
+	Theme                string   `json:"theme"`                            // "light" | "dark" color mode
+	UITheme              string   `json:"uiTheme,omitempty"`                // visual theme id, e.g. "hawaiian" | "standard"; default hawaiian
 	DefaultAgentType     string   `json:"defaultAgentType,omitempty"`       // default agent for new sessions on launch
 	DefaultHarness       string   `json:"defaultHarness,omitempty"`         // harness for internal agents (e.g. api/anthropic, claude-code)
 	LastAgentType        string   `json:"lastAgentType,omitempty"`          // last agent picked in new-session dialog
@@ -57,23 +58,27 @@ func Dir() (string, error) {
 }
 
 func LoadSettings() (Settings, error) {
+	defaults := Settings{Theme: "light", UITheme: "hawaiian"}
 	dir, err := Dir()
 	if err != nil {
-		return Settings{Theme: "light"}, err
+		return defaults, err
 	}
 	data, err := os.ReadFile(filepath.Join(dir, "settings.json"))
 	if errors.Is(err, os.ErrNotExist) {
-		return Settings{Theme: "light"}, nil
+		return defaults, nil
 	}
 	if err != nil {
-		return Settings{Theme: "light"}, err
+		return defaults, err
 	}
 	var s Settings
 	if err := json.Unmarshal(data, &s); err != nil {
-		return Settings{Theme: "light"}, err
+		return defaults, err
 	}
 	if s.Theme == "" {
 		s.Theme = "light"
+	}
+	if s.UITheme == "" {
+		s.UITheme = "hawaiian"
 	}
 	return s, nil
 }

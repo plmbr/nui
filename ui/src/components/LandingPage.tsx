@@ -1,12 +1,13 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
-import { Loader2, Plus, Settings } from 'lucide-react'
+import { ArrowUp, Loader2, Plus, Settings } from 'lucide-react'
 import { LandingTitle } from '@/components/LandingTitle'
 import { PlumeriaFlower } from '@/components/PlumeriaFlower'
 import { PlumeriaRandomBackdrop } from '@/components/PlumeriaBackdrop'
 import { RecentsSection } from '@/components/RecentsSection'
 import { Button } from '@/components/ui/button'
+import { useTheme } from '@/contexts/theme'
 import type { AgentType, RecentAgentEntry, Session } from '@/types'
 
 interface Props {
@@ -39,6 +40,8 @@ export function LandingPage({
   onRecentsChange,
 }: Props) {
   const promptRef = useRef<HTMLTextAreaElement>(null)
+  const { uiThemeDef } = useTheme()
+  const showFlowers = uiThemeDef.flowers
   const [layoutKey] = useState(() => Date.now())
   const [prompt, setPrompt] = useState('')
   const [loading, setLoading] = useState(false)
@@ -102,7 +105,9 @@ export function LandingPage({
 
   return (
     <div className="landing-page">
-      <PlumeriaRandomBackdrop count={6} opacityVariant="landing" layoutKey={layoutKey} />
+      {showFlowers && (
+        <PlumeriaRandomBackdrop count={6} opacityVariant="landing" layoutKey={layoutKey} />
+      )}
       <div className="landing-page__hero">
         <div className="landing-page__content">
           <LandingTitle />
@@ -134,7 +139,11 @@ export function LandingPage({
                 <Loader2 className="size-4 animate-spin" aria-hidden />
               ) : (
                 <>
-                  <PlumeriaFlower size={18} className="landing-page__prompt-send-flower" />
+                  {showFlowers ? (
+                    <PlumeriaFlower size={18} className="landing-page__prompt-send-flower" />
+                  ) : (
+                    <ArrowUp className="size-4 shrink-0" aria-hidden />
+                  )}
                   <span className="landing-page__prompt-send-label">Submit</span>
                 </>
               )}
