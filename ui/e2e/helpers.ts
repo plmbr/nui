@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
 export async function waitForAppReady(page: Page) {
   await page.goto('/launch')
@@ -8,7 +8,16 @@ export async function waitForAppReady(page: Page) {
 }
 
 export async function openNewSession(page: Page) {
-  await page.getByRole('main').getByRole('button', { name: 'New Session' }).click()
+  // Prefer landing CTA; avoid matching sidebar / recent-session rows.
+  const landingCta = page.locator('.landing-page__actions').getByRole('button', {
+    name: 'New Session',
+    exact: true,
+  })
+  if (await landingCta.isVisible().catch(() => false)) {
+    await landingCta.click()
+  } else {
+    await page.getByRole('main').getByRole('button', { name: 'New Session', exact: true }).click()
+  }
   await page.getByRole('heading', { name: 'New Session' }).waitFor()
 }
 
@@ -18,13 +27,20 @@ export function newSessionPanel(page: Page) {
   })
 }
 
+/** Agent picker cards only — excludes Recents rows in the same panel. */
+export function newSessionAgentButton(panel: Locator, agentLabel: string | RegExp) {
+  return panel
+    .locator('[aria-label="Built-in agents"], [aria-label="Installed agents"]')
+    .getByRole('button', { name: agentLabel })
+}
+
 export function defaultE2EAgentLabel(): RegExp {
   return echoAgentAvailable() ? /E2E Echo/i : /Claude Code/i
 }
 
 export async function ensureAgentVisibleInNewSession(page: Page, agentLabel: string | RegExp) {
   const panel = newSessionPanel(page)
-  const agentButton = panel.getByRole('button', { name: agentLabel })
+  const agentButton = newSessionAgentButton(panel, agentLabel)
   if (await agentButton.isVisible()) {
     return
   }
@@ -57,11 +73,19 @@ export async function showBuiltinAgentsInNewSession(page: Page) {
 export async function selectAgentInNewSession(page: Page, agentLabel: string | RegExp) {
   const panel = newSessionPanel(page)
   await ensureAgentVisibleInNewSession(page, agentLabel)
-  await panel.getByRole('button', { name: agentLabel }).click()
+  await newSessionAgentButton(panel, agentLabel).click()
 }
 
 export async function openCustomize(page: Page) {
-  await page.getByRole('main').getByRole('button', { name: 'Customize' }).click()
+  const landingCta = page.locator('.landing-page__actions').getByRole('button', {
+    name: 'Customize',
+    exact: true,
+  })
+  if (await landingCta.isVisible().catch(() => false)) {
+    await landingCta.click()
+  } else {
+    await page.getByRole('main').getByRole('button', { name: 'Customize', exact: true }).click()
+  }
   await page.waitForURL(/\/customize/)
 }
 
@@ -109,7 +133,7 @@ export function skipUnlessLocalIntegration() {
 
 export async function openCustomizeTab(page: Page, tab: string) {
   await openCustomize(page)
-  await page.getByRole('button', { name: tab }).click()
+  await page.locator('.customize-tabs').getByRole('button', { name: tab, exact: true }).click()
 }
 
 export async function waitForAssistantReply(page: Page) {

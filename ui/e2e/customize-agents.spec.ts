@@ -1,12 +1,11 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { test, expect } from '@playwright/test'
-import { waitForAppReady, openCustomize } from './helpers'
+import { waitForAppReady, openCustomizeTab } from './helpers'
 
 test('agents tab supports simplified eval authoring', async ({ page }) => {
   await waitForAppReady(page)
-  await openCustomize(page)
-  await page.getByRole('button', { name: 'Agents' }).click()
+  await openCustomizeTab(page, 'Agents')
   await page.getByRole('button', { name: 'New agent' }).click()
   await expect(page.locator('.agent-form')).toBeVisible()
 
@@ -27,8 +26,7 @@ test('agents tab supports simplified eval authoring', async ({ page }) => {
 
 test('agents tab supports creating a docker harness agent', async ({ page }) => {
   await waitForAppReady(page)
-  await openCustomize(page)
-  await page.getByRole('button', { name: 'Agents' }).click()
+  await openCustomizeTab(page, 'Agents')
   await page.getByRole('button', { name: 'New agent' }).click()
   await expect(page.locator('.agent-form')).toBeVisible()
 

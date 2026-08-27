@@ -5,6 +5,7 @@ import {
   createSessionWithAgent,
   defaultE2EAgentLabel,
   ensureAgentVisibleInNewSession,
+  newSessionAgentButton,
   newSessionPanel,
   openNewSession,
   waitForAppReady,
@@ -16,7 +17,7 @@ test('new session wizard opens and lists agents', async ({ page }) => {
   const agentLabel = defaultE2EAgentLabel()
   await ensureAgentVisibleInNewSession(page, agentLabel)
   const panel = newSessionPanel(page)
-  await expect(panel.getByRole('button', { name: agentLabel })).toBeVisible()
+  await expect(newSessionAgentButton(panel, agentLabel)).toBeVisible()
 })
 
 test('create default agent session and land on chat route', async ({ page }) => {

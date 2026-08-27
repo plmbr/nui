@@ -60,6 +60,7 @@ export function RecentsSection({
               <RecentsListRow
                 key={item.entry.agentType}
                 label={item.label}
+                ariaLabel={`Recent agent: ${item.label}`}
                 onClick={() => onRecentAgentClick(item.entry)}
                 icon={(
                   <HarnessIcon
@@ -85,6 +86,7 @@ export function RecentsSection({
               <RecentsListRow
                 key={item.id}
                 label={item.label}
+                ariaLabel={`Recent session: ${item.label}`}
                 onClick={() => onRecentSessionClick(item.id)}
                 icon={(
                   <HarnessIcon

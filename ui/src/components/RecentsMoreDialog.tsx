@@ -98,6 +98,7 @@ export function RecentsMoreDialog({
                   <RecentsDialogRow
                     key={item.entry.agentType}
                     label={item.label}
+                    openLabel={`Recent agent: ${item.label}`}
                     removing={removingKey === item.entry.agentType}
                     removeLabel={`Remove ${item.label} from recent agents`}
                     onOpen={() => {
@@ -124,6 +125,7 @@ export function RecentsMoreDialog({
                 <RecentsDialogRow
                   key={item.id}
                   label={item.label}
+                  openLabel={`Recent session: ${item.label}`}
                   removing={removingKey === item.id}
                   removeLabel={`Remove ${item.label} from recent sessions`}
                   onOpen={() => {
@@ -152,6 +154,7 @@ export function RecentsMoreDialog({
 
 function RecentsDialogRow({
   label,
+  openLabel,
   icon,
   removing,
   removeLabel,
@@ -159,6 +162,7 @@ function RecentsDialogRow({
   onRemove,
 }: {
   label: string
+  openLabel: string
   icon: ReactNode
   removing: boolean
   removeLabel: string
@@ -167,9 +171,9 @@ function RecentsDialogRow({
 }) {
   return (
     <li className="recents-dialog__row">
-      <button type="button" className="recents-dialog__row-open" onClick={onOpen}>
+      <button type="button" className="recents-dialog__row-open" aria-label={openLabel} onClick={onOpen}>
         {icon}
-        <span className="recents-dialog__row-label">{label}</span>
+        <span className="recents-dialog__row-label" aria-hidden="true">{label}</span>
       </button>
       <Button
         type="button"
