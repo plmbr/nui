@@ -178,11 +178,13 @@ func TestHandleSessionAGUI_autoTitlesDefaultSession(t *testing.T) {
 			if titleCalls != 1 {
 				t.Fatalf("title harness calls = %d, want 1", titleCalls)
 			}
+			waitForSessionTitleGeneration()
 			return
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
 
+	waitForSessionTitleGeneration()
 	mu.RLock()
 	s, _ := findSession(session.ID)
 	mu.RUnlock()

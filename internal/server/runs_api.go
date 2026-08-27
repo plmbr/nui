@@ -196,7 +196,7 @@ func runInBackground(sessionID string, session model.Session, agentSessionID, ru
 	persistAssistantTurn(sessionID, result.AssistantContent, result.NewAgentSessionID, sessionSkipsTopLevelHarnessSession(session))
 	finishRunRecord(runID, status, result.AssistantContent, errMsg)
 
-	go maybeGenerateSessionTitle(sessionID)
+	scheduleMaybeGenerateSessionTitle(sessionID)
 }
 
 func sessionSkipsTopLevelHarnessSession(session model.Session) bool {

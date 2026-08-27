@@ -388,7 +388,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 		finishRunRecord(runID, RunStatusCompleted, assistantContent.String(), "")
 	}
 
-	go maybeGenerateSessionTitle(sessionID)
+	scheduleMaybeGenerateSessionTitle(sessionID)
 }
 
 func writeAGUIEventIfConnected(reqCtx context.Context, w http.ResponseWriter, flusher http.Flusher, event any) {

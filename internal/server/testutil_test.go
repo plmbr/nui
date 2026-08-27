@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"nui/internal/agent"
 	"nui/internal/model"
@@ -52,6 +53,19 @@ func setupTestServerEnv(t *testing.T) *agent.Manager {
 	t.Helper()
 	withTempHome(t)
 	resetAllServerState(t)
+	// Title generation persists to ~/.nui after rename; wait before t.TempDir cleanup.
+	t.Cleanup(func() {
+		done := make(chan struct{})
+		go func() {
+			waitForSessionTitleGeneration()
+			close(done)
+		}()
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Errorf("timed out waiting for session title generation to finish")
+		}
+	})
 	if err := initStore(); err != nil {
 		t.Fatal(err)
 	}

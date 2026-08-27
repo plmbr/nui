@@ -26,7 +26,25 @@ const (
 	titleGenerationTimeout    = 45 * time.Second
 )
 
-var titleGenerationInFlight sync.Map // sessionID -> struct{}
+var (
+	titleGenerationInFlight sync.Map // sessionID -> struct{}
+	titleGenerationWG       sync.WaitGroup
+)
+
+// scheduleMaybeGenerateSessionTitle starts title generation in the background and
+// tracks it so tests can wait for SaveData / extension cleanup before TempDir teardown.
+func scheduleMaybeGenerateSessionTitle(sessionID string) {
+	titleGenerationWG.Add(1)
+	go func() {
+		defer titleGenerationWG.Done()
+		maybeGenerateSessionTitle(sessionID)
+	}()
+}
+
+// waitForSessionTitleGeneration blocks until all scheduled title jobs finish.
+func waitForSessionTitleGeneration() {
+	titleGenerationWG.Wait()
+}
 
 // maybeGenerateSessionTitle renames a session from its first exchange using an ephemeral harness call.
 func maybeGenerateSessionTitle(sessionID string) {
