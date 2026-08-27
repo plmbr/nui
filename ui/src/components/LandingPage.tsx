@@ -158,7 +158,7 @@ export function LandingPage({
                 if (ambiguity) setAmbiguity(null)
               }}
               onKeyDown={onKeyDown}
-              placeholder="Aloha! Drop a task here — nui will route the mahi so you can kick back and enjoy the breeze."
+              placeholder={uiThemeDef.landingPlaceholder}
               rows={4}
               spellCheck={false}
               autoCorrect="off"

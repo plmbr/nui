@@ -10,6 +10,8 @@ export interface UIThemeDefinition {
   modes: readonly ColorMode[]
   /** Plumeria backdrop and flower accents. */
   flowers: boolean
+  /** Landing prompt placeholder copy. */
+  landingPlaceholder: string
 }
 
 export const UI_THEMES: Record<UIThemeId, UIThemeDefinition> = {
@@ -19,6 +21,8 @@ export const UI_THEMES: Record<UIThemeId, UIThemeDefinition> = {
     description: 'Warm lei accents with plumeria blooms',
     modes: ['light', 'dark'],
     flowers: true,
+    landingPlaceholder:
+      'Aloha! Drop a task here — nui will route the mahi so you can kick back and enjoy the breeze.',
   },
   standard: {
     id: 'standard',
@@ -26,6 +30,7 @@ export const UI_THEMES: Record<UIThemeId, UIThemeDefinition> = {
     description: 'Clean look without floral accents',
     modes: ['light', 'dark'],
     flowers: false,
+    landingPlaceholder: 'Drop a task here — nui will route it to the right agent.',
   },
 }
 
