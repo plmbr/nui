@@ -82,7 +82,22 @@ var nuiPromptSuggestions = []model.ADLPromptSuggestion{
 	{
 		Title:  "What can you do?",
 		Icon:   "sparkles",
-		Prompt: "What can you do? Which agents are available and when should I use each one?",
+		Prompt: "What can you do? Cover routing tasks to agents, controlling the UI (settings, theme, new session), and inspecting extensions, harnesses, and MCP servers.",
+	},
+	{
+		Title:  "Open settings",
+		Icon:   "settings",
+		Prompt: "Show the settings UI",
+	},
+	{
+		Title:  "Dark mode",
+		Icon:   "moon",
+		Prompt: "Change theme to dark mode",
+	},
+	{
+		Title:  "New session",
+		Icon:   "plus",
+		Prompt: "Go to the new session panel",
 	},
 	{
 		Title:  "Pick an agent",
