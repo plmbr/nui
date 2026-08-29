@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -70,7 +71,11 @@ type AgentType struct {
 }
 
 type Settings struct {
-	DefaultAgentType string `json:"defaultAgentType,omitempty"`
+	DefaultAgentType   string   `json:"defaultAgentType,omitempty"`
+	DefaultHarness     string   `json:"defaultHarness,omitempty"`
+	Theme              string   `json:"theme,omitempty"`
+	UITheme            string   `json:"uiTheme,omitempty"`
+	DisabledExtensions []string `json:"disabledExtensions,omitempty"`
 }
 
 type Session struct {
@@ -148,10 +153,132 @@ func (c *Client) ListOrchestratorAgents(ctx context.Context) ([]map[string]any, 
 	return out, nil
 }
 
+func (c *Client) SearchOrchestratorAgents(ctx context.Context, query string, limit int) ([]map[string]any, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil, fmt.Errorf("query is required")
+	}
+	path := "/api/orchestrator/search-agents?q=" + url.QueryEscape(query)
+	if limit > 0 {
+		path += "&limit=" + strconv.Itoa(limit)
+	}
+	var out []map[string]any
+	if err := c.getJSON(ctx, path, &out); err != nil {
+		return nil, err
+	}
+	if out == nil {
+		out = []map[string]any{}
+	}
+	return out, nil
+}
+
 func (c *Client) GetSettings(ctx context.Context) (Settings, error) {
 	var out Settings
 	if err := c.getJSON(ctx, "/api/settings", &out); err != nil {
 		return Settings{}, err
+	}
+	return out, nil
+}
+
+func (c *Client) UpdateSettings(ctx context.Context, patch Settings) (Settings, error) {
+	var out Settings
+	if err := c.putJSON(ctx, "/api/settings", patch, http.StatusOK, &out); err != nil {
+		return Settings{}, err
+	}
+	return out, nil
+}
+
+// SetDisabledExtensions replaces the disabled-extensions list (empty slice clears all).
+func (c *Client) SetDisabledExtensions(ctx context.Context, names []string) (Settings, error) {
+	if names == nil {
+		names = []string{}
+	}
+	var out Settings
+	if err := c.putJSON(ctx, "/api/settings", map[string]any{
+		"disabledExtensions": names,
+	}, http.StatusOK, &out); err != nil {
+		return Settings{}, err
+	}
+	return out, nil
+}
+
+func (c *Client) GetVersion(ctx context.Context) (string, error) {
+	var out struct {
+		Version string `json:"version"`
+	}
+	if err := c.getJSON(ctx, "/api/version", &out); err != nil {
+		return "", err
+	}
+	return out.Version, nil
+}
+
+type ExtensionInfo struct {
+	Name        string   `json:"name"`
+	Version     string   `json:"version,omitempty"`
+	DisplayName string   `json:"displayName,omitempty"`
+	Description string   `json:"description,omitempty"`
+	Disabled    bool     `json:"disabled"`
+	Harnesses   []string `json:"harnesses,omitempty"`
+	MCPServers  []string `json:"mcpServers,omitempty"`
+	Skills      []string `json:"skills,omitempty"`
+	Agents      []string `json:"agents,omitempty"`
+}
+
+func (c *Client) ListExtensions(ctx context.Context) ([]ExtensionInfo, error) {
+	var out []ExtensionInfo
+	if err := c.getJSON(ctx, "/api/extensions", &out); err != nil {
+		return nil, err
+	}
+	if out == nil {
+		out = []ExtensionInfo{}
+	}
+	return out, nil
+}
+
+func (c *Client) ReloadExtensions(ctx context.Context) error {
+	return c.postJSON(ctx, "/api/extensions/reload", map[string]any{}, http.StatusOK, &map[string]any{})
+}
+
+type MCPServerInfo struct {
+	Name    string `json:"name"`
+	Command string `json:"command,omitempty"`
+	URL     string `json:"url,omitempty"`
+	Source  string `json:"source,omitempty"` // user | extension
+}
+
+func (c *Client) ListMCPServers(ctx context.Context) ([]MCPServerInfo, error) {
+	var wrap struct {
+		MCPServers []struct {
+			Name    string `json:"name"`
+			Command string `json:"command,omitempty"`
+			URL     string `json:"url,omitempty"`
+		} `json:"mcpServers"`
+	}
+	if err := c.getJSON(ctx, "/api/mcp-servers", &wrap); err != nil {
+		return nil, err
+	}
+	var out []MCPServerInfo
+	for _, s := range wrap.MCPServers {
+		out = append(out, MCPServerInfo{
+			Name:    s.Name,
+			Command: s.Command,
+			URL:     s.URL,
+			Source:  "user",
+		})
+	}
+	exts, err := c.ListExtensions(ctx)
+	if err == nil {
+		for _, e := range exts {
+			if e.Disabled {
+				continue
+			}
+			for _, name := range e.MCPServers {
+				out = append(out, MCPServerInfo{Name: name, Source: "extension:" + e.Name})
+			}
+		}
+	}
+	if out == nil {
+		out = []MCPServerInfo{}
 	}
 	return out, nil
 }
@@ -426,6 +553,31 @@ func (c *Client) getJSON(ctx context.Context, path string, out any) error {
 		return fmt.Errorf("GET %s failed: %s: %s", path, resp.Status, strings.TrimSpace(string(body)))
 	}
 	return json.NewDecoder(resp.Body).Decode(out)
+}
+
+func (c *Client) putJSON(ctx context.Context, path string, body any, expectStatus int, out any) error {
+	data, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, c.BaseURL+path, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != expectStatus {
+		raw, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("PUT %s failed: %s: %s", path, resp.Status, strings.TrimSpace(string(raw)))
+	}
+	if out != nil {
+		return json.NewDecoder(resp.Body).Decode(out)
+	}
+	return nil
 }
 
 func (c *Client) postJSON(ctx context.Context, path string, body any, expectStatus int, out any) error {

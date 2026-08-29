@@ -365,9 +365,14 @@ export const api = {
 
   orchestrate: (data: { prompt: string; workingDir?: string }): Promise<{
     session?: Session
-    prompt: string
+    prompt?: string
     selectedAgentType?: string
     ambiguous?: boolean
+    uiActions?: Array<{
+      type: string
+      target?: string
+      theme?: string
+    }>
     candidates?: Array<{
       id: string
       label: string

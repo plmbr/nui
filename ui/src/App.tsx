@@ -16,10 +16,11 @@ import { LandingPage } from '@/components/LandingPage'
 import { NuiLogo } from '@/components/NuiLogo'
 import { NewSessionPanel } from '@/components/NewSessionPanel'
 import { SessionsListPanel } from '@/components/SessionsListPanel'
-import { ThemeProvider } from '@/contexts/theme'
+import { ThemeProvider, useTheme } from '@/contexts/theme'
 import { api } from '@/api'
 import { groupSessionsByAgentType, defaultAgentTypeForGroup, findOrCreateSessionGroup } from '@/lib/sessionGroups'
-import { clearSessionChat, probeActiveRuns, subscribeOpenSession } from '@/lib/sessionChatStore'
+import { clearSessionChat, probeActiveRuns, subscribeOpenSession, subscribeUIAction } from '@/lib/sessionChatStore'
+import { applyUIActions, type UIAction } from '@/lib/uiActions'
 import {
   agentFromNewSessionSearch,
   agentGroupIdFromPath,
@@ -44,6 +45,15 @@ import { resolveSidebarWidth } from '@/lib/sidebarWidth'
 import { sessionDisplayName } from '@/lib/sessionDisplay'
 
 export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  )
+}
+
+function AppContent() {
+  const { setTheme } = useTheme()
   const [sessions, setSessions] = useState<Session[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -429,6 +439,37 @@ export default function App() {
     navigateToNewSession()
   }, [])
 
+  const dispatchUIActions = useCallback(
+    (actions: UIAction[]) => {
+      applyUIActions(actions, {
+        navigateCustomize: handleOpenCustomize,
+        navigateNewSession: handleOpenNewSession,
+        navigateLaunch: handleOpenLaunch,
+        navigateSchedules: handleOpenSchedules,
+        setTheme,
+        refreshUI: () => {
+          void loadAgentTypes()
+          void loadSessions()
+        },
+      })
+    },
+    [
+      handleOpenCustomize,
+      handleOpenNewSession,
+      handleOpenLaunch,
+      handleOpenSchedules,
+      setTheme,
+      loadAgentTypes,
+      loadSessions,
+    ],
+  )
+
+  useEffect(() => {
+    return subscribeUIAction((event) => {
+      dispatchUIActions(event.actions)
+    })
+  }, [dispatchUIActions])
+
   const handleCloseNewSession = useCallback(() => {
     setNewSessionOpen(false)
     if (selectedId) {
@@ -495,8 +536,12 @@ export default function App() {
         candidates: result.candidates,
       }
     }
+    if (result.uiActions?.length) {
+      dispatchUIActions(result.uiActions)
+    }
     if (!result.session) {
-      throw new Error('Orchestrator did not return a session')
+      // UI-only control (navigate/theme) — stay on landing unless actions moved us.
+      return
     }
     await loadSessions()
     setCustomizeOpen(false)
@@ -505,12 +550,12 @@ export default function App() {
     setLandingOpen(false)
     setSessionListGroupId(null)
     setSelectedId(result.session.id)
-    setInitialPrompt(result.prompt)
+    setInitialPrompt(result.prompt || undefined)
     setHideInput(false)
     navigateToSession(result.session.id)
     api.state.update({ lastSessionId: result.session.id }).catch(() => {})
     void refreshRecents()
-  }, [loadSessions, refreshRecents])
+  }, [loadSessions, refreshRecents, dispatchUIActions])
 
   const handleResolveAmbiguity = useCallback(async (agentType: string, prompt: string) => {
     const session = await api.sessions.create({ agentType })
@@ -590,7 +635,6 @@ export default function App() {
   }, [loadSessions])
 
   return (
-    <ThemeProvider>
     <TooltipProvider>
       {!appReady ? (
         <div className="h-screen bg-background" />
@@ -720,6 +764,5 @@ export default function App() {
       </SidebarProvider>
       )}
     </TooltipProvider>
-    </ThemeProvider>
   )
 }

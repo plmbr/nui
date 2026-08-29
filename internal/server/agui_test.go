@@ -318,6 +318,38 @@ func TestHandleSessionAGUI_openSessionCustomEvent(t *testing.T) {
 	}
 }
 
+func TestHandleSessionAGUI_uiActionCustomEvent(t *testing.T) {
+	uiResult := `{"ok":true,"actions":[{"type":"navigate","target":"customize"},{"type":"set_theme","theme":"dark"}]}`
+	mgr := setupTestServerEnv(t)
+	mgr.SetTestHarnessRun(func(_ context.Context, _ agent.RunRequest, events chan<- agent.Event) error {
+		events <- agent.Event{
+			Type:       agent.EventToolCallResult,
+			ToolCallID: "tc-ui",
+			ToolName:   "nui-orchestrator__control_ui",
+			Content:    uiResult,
+		}
+		events <- agent.Event{Type: agent.EventDone, SessionID: "s1"}
+		return nil
+	})
+	seedSession("sess-ui", "Test", testStubAgentType, t.TempDir())
+
+	_, events := postAGUI(t, "sess-ui", "show settings")
+	var saw bool
+	for _, ev := range events {
+		if ev.Type == "CUSTOM" && ev.Raw["name"] == "ui_action" {
+			saw = true
+			val, _ := ev.Raw["value"].(map[string]any)
+			actions, _ := val["actions"].([]any)
+			if len(actions) != 2 {
+				t.Fatalf("actions = %+v", actions)
+			}
+		}
+	}
+	if !saw {
+		t.Fatalf("expected ui_action custom event, got %+v", events)
+	}
+}
+
 func TestHandleSessionAGUI_openSessionIgnoresFailedLaunch(t *testing.T) {
 	mgr := setupTestServerEnv(t)
 	mgr.SetTestHarnessRun(func(_ context.Context, _ agent.RunRequest, events chan<- agent.Event) error {

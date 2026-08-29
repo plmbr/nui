@@ -15,6 +15,7 @@ import (
 	"nui/internal/agent"
 	"nui/internal/hitl"
 	"nui/internal/model"
+	"nui/internal/uiaction"
 	"nui/internal/viz"
 )
 
@@ -289,6 +290,7 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 			}, ev.ParentToolCallID))
 			if ev.ParentToolCallID == "" {
 				emitOpenSessionEvent(reqCtx, w, flusher, acc, ev)
+				emitUIActionEvent(reqCtx, w, flusher, acc, ev)
 			}
 		case agent.EventImage:
 			if ev.ImageData == "" {
@@ -481,6 +483,38 @@ func emitOpenSessionEvent(reqCtx context.Context, w http.ResponseWriter, flusher
 	writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
 		"type":  "CUSTOM",
 		"name":  "open_session",
+		"value": value,
+	})
+}
+
+// emitUIActionEvent notifies the connected UI to apply control_ui / extension toggle actions.
+func emitUIActionEvent(reqCtx context.Context, w http.ResponseWriter, flusher http.Flusher, acc *assistantPartAccumulator, ev agent.Event) {
+	toolName := ev.ToolName
+	if toolName == "" && ev.ToolCallID != "" {
+		if part := acc.toolPartForCall(ev.ToolCallID); part != nil {
+			toolName = part.ToolName
+		}
+	}
+	var actions []uiaction.Action
+	var ok bool
+	switch {
+	case isControlUIToolName(toolName):
+		actions, ok = parseUIActionsFromToolContent(ev.Content)
+	case isSetExtensionEnabledToolName(toolName):
+		actions, ok = parseUIActionsFromToolContent(ev.Content)
+	default:
+		return
+	}
+	if !ok || len(actions) == 0 {
+		return
+	}
+	value := map[string]any{"actions": actions}
+	if ev.ToolCallID != "" {
+		value["toolCallId"] = ev.ToolCallID
+	}
+	writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
+		"type":  "CUSTOM",
+		"name":  "ui_action",
 		"value": value,
 	})
 }

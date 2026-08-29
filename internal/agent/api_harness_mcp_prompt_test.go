@@ -41,3 +41,17 @@ func TestMCPToolCatalogSystemPrompt_orchestratorRouting(t *testing.T) {
 		t.Fatalf("missing routing instructions: %q", prompt)
 	}
 }
+
+func TestMCPToolCatalogSystemPrompt_orchestratorPrefersSearchAgents(t *testing.T) {
+	prompt := mcpToolCatalogSystemPrompt([]mcpclient.Tool{
+		{Name: "nui-orchestrator__search_agents", Server: "nui-orchestrator"},
+		{Name: "nui-orchestrator__list_agents", Server: "nui-orchestrator"},
+		{Name: "nui-orchestrator__launch_session", Server: "nui-orchestrator"},
+	})
+	if !strings.Contains(prompt, "nui-orchestrator__search_agents") {
+		t.Fatalf("missing search_agents in routing: %q", prompt)
+	}
+	if !strings.Contains(prompt, "prefer over listing") {
+		t.Fatalf("expected search-first routing copy: %q", prompt)
+	}
+}

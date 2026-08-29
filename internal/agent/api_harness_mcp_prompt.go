@@ -53,17 +53,31 @@ func orchestratorRoutingInstructions(byServer map[string][]string) string {
 	if !ok {
 		return ""
 	}
-	var listTool, launchTool string
+	var searchTool, listTool, launchTool string
 	for _, name := range tools {
 		bare := mcpclient.BareToolName(name)
 		switch bare {
+		case "search_agents":
+			searchTool = name
 		case "list_agents":
 			listTool = name
 		case "launch_session":
 			launchTool = name
 		}
 	}
-	if listTool == "" || launchTool == "" {
+	if launchTool == "" {
+		return ""
+	}
+	if searchTool != "" {
+		return strings.TrimSpace(fmt.Sprintf(`### Routing (nui master agent)
+
+To delegate the user to a specialized agent, call these tools in order:
+1. %s — rank agents for the user's intent (prefer over listing everything)
+2. %s — create a session with agent_type (from step 1) and the task prompt only
+
+If one search hit clearly fits, launch immediately. Do not guess agent ids.`, searchTool, launchTool))
+	}
+	if listTool == "" {
 		return ""
 	}
 	return strings.TrimSpace(fmt.Sprintf(`### Routing (nui master agent)

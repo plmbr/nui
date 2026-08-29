@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -102,6 +103,7 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/launch", handleLaunch)
 	mux.HandleFunc("/api/orchestrate", handleOrchestrate)
 	mux.HandleFunc("/api/orchestrator/routable-agents", handleOrchestratorRoutableAgents)
+	mux.HandleFunc("/api/orchestrator/search-agents", handleOrchestratorSearchAgents)
 	mux.HandleFunc("/api/capabilities", handleCapabilities)
 	mux.HandleFunc("/api/extensions", handleExtensions)
 	mux.HandleFunc("/api/extensions/reload", handleExtensionsReload)
@@ -361,6 +363,28 @@ func handleOrchestratorRoutableAgents(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, orchestratorAgentEntries(listAgentTypes()))
 }
 
+func handleOrchestratorSearchAgents(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if q == "" {
+		http.Error(w, "q is required", http.StatusBadRequest)
+		return
+	}
+	limit := 8
+	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 {
+			http.Error(w, "limit must be a positive integer", http.StatusBadRequest)
+			return
+		}
+		limit = n
+	}
+	writeJSON(w, http.StatusOK, searchOrchestratorAgents(q, limit))
+}
+
 func agentTypeInfoFromDef(def model.ADLDefinition, builtin bool) AgentTypeInfo {
 	info := AgentTypeInfo{
 		ID:                model.ADLAgentID(def),
@@ -449,6 +473,55 @@ func orchestratorAgentEntries(all []AgentTypeInfo) []map[string]any {
 			"harness":     a.Harness,
 			"tags":        a.Tags,
 			"source":      a.Source,
+			"launchable":  true,
+		}
+		if a.PromptMode != "" {
+			entry["promptMode"] = a.PromptMode
+		}
+		if a.DefaultPrompt != "" {
+			entry["defaultPrompt"] = a.DefaultPrompt
+		}
+		out = append(out, entry)
+	}
+	return out
+}
+
+const (
+	orchestratorSearchDefaultLimit = 8
+	orchestratorSearchMaxLimit     = 20
+)
+
+// searchOrchestratorAgents ranks launchable agents for query and returns the top results.
+func searchOrchestratorAgents(query string, limit int) []map[string]any {
+	return searchOrchestratorAgentsFrom(query, limit, orchestratorLaunchableAgents(listAgentTypes()))
+}
+
+func searchOrchestratorAgentsFrom(query string, limit int, candidates []AgentTypeInfo) []map[string]any {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return []map[string]any{}
+	}
+	if limit < 1 {
+		limit = orchestratorSearchDefaultLimit
+	}
+	if limit > orchestratorSearchMaxLimit {
+		limit = orchestratorSearchMaxLimit
+	}
+	ranked := rankOrchestratorAgents(query, candidates)
+	if len(ranked) > limit {
+		ranked = ranked[:limit]
+	}
+	out := make([]map[string]any, 0, len(ranked))
+	for _, item := range ranked {
+		a := item.Agent
+		entry := map[string]any{
+			"id":          a.ID,
+			"label":       a.Label,
+			"description": a.Description,
+			"harness":     a.Harness,
+			"tags":        a.Tags,
+			"source":      a.Source,
+			"score":       item.Score,
 			"launchable":  true,
 		}
 		if a.PromptMode != "" {

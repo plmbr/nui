@@ -53,6 +53,7 @@ import {
   getSessionChatSnapshot,
   sendMessage,
   subscribeOpenSession,
+  subscribeUIAction,
 } from '@/lib/sessionChatStore'
 
 describe('sessionChatStore', () => {
@@ -159,6 +160,26 @@ describe('sessionChatStore', () => {
     })
 
     expect(seen).toEqual([{ sessionId: 'target-dup' }])
+    unsub()
+  })
+
+  it('notifies ui_action listeners from CUSTOM events', () => {
+    const seen: Array<{ type: string }> = []
+    const unsub = subscribeUIAction((event) => {
+      for (const a of event.actions) seen.push({ type: a.type })
+    })
+
+    sendMessage('sess-ui', 'show settings')
+    lastSubscriber!.next!({
+      type: 'CUSTOM',
+      name: 'ui_action',
+      value: {
+        actions: [{ type: 'navigate', target: 'customize' }],
+        toolCallId: 'tc-ui',
+      },
+    })
+
+    expect(seen).toEqual([{ type: 'navigate' }])
     unsub()
   })
 })

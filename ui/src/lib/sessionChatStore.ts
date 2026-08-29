@@ -33,6 +33,12 @@ import {
   parseOpenSessionCustomValue,
   type OpenSessionEvent,
 } from '@/lib/openSession'
+import {
+  isControlUIToolName,
+  parseControlUIToolResult,
+  parseUIActionCustomValue,
+  type UIActionEvent,
+} from '@/lib/uiActions'
 
 type StopFn = () => void | Promise<void>
 
@@ -77,14 +83,22 @@ const progressListeners = new Set<() => void>()
 const openSessionListeners = new Set<(event: OpenSessionEvent) => void>()
 /** Dedupe CUSTOM open_session + TOOL_CALL_RESULT for the same launch. */
 const notifiedOpenSessions = new Set<string>()
+const uiActionListeners = new Set<(event: UIActionEvent) => void>()
+/** Dedupe CUSTOM ui_action + TOOL_CALL_RESULT for the same tool call. */
+const notifiedUIActions = new Set<string>()
 let runningSnapshot = ''
 let progressSnapshot = ''
 
-export type { OpenSessionEvent }
+export type { OpenSessionEvent, UIActionEvent }
 
 export function subscribeOpenSession(listener: (event: OpenSessionEvent) => void): () => void {
   openSessionListeners.add(listener)
   return () => openSessionListeners.delete(listener)
+}
+
+export function subscribeUIAction(listener: (event: UIActionEvent) => void): () => void {
+  uiActionListeners.add(listener)
+  return () => uiActionListeners.delete(listener)
 }
 
 function openSessionDedupeKey(event: OpenSessionEvent): string {
@@ -101,6 +115,25 @@ function notifyOpenSession(event: OpenSessionEvent) {
     if (first) notifiedOpenSessions.delete(first)
   }
   for (const listener of openSessionListeners) {
+    listener(event)
+  }
+}
+
+function uiActionDedupeKey(event: UIActionEvent): string {
+  return `${event.sourceSessionId ?? ''}:${event.toolCallId ?? ''}:${event.actions.map((a) => a.type).join(',')}`
+}
+
+function notifyUIAction(event: UIActionEvent) {
+  const key = uiActionDedupeKey(event)
+  if (event.toolCallId && notifiedUIActions.has(key)) return
+  if (event.toolCallId) {
+    notifiedUIActions.add(key)
+    if (notifiedUIActions.size > 200) {
+      const first = notifiedUIActions.values().next().value
+      if (first) notifiedUIActions.delete(first)
+    }
+  }
+  for (const listener of uiActionListeners) {
     listener(event)
   }
 }
@@ -931,6 +964,10 @@ function startSend(sessionId: string, text: string) {
           const open = parseLaunchSessionToolResult(e.content, sessionId, e.toolCallId)
           if (open) notifyOpenSession(open)
         }
+        if (isControlUIToolName(toolName)) {
+          const ui = parseControlUIToolResult(e.content, sessionId, e.toolCallId)
+          if (ui) notifyUIAction(ui)
+        }
       } else if (event.type === EventType.CUSTOM) {
         const e = event as { name?: string; value?: Record<string, unknown> }
         if (!e.value) return
@@ -969,6 +1006,11 @@ function startSend(sessionId: string, text: string) {
         if (e.name === 'open_session') {
           const open = parseOpenSessionCustomValue(e.value, sessionId)
           if (open) notifyOpenSession(open)
+          return
+        }
+        if (e.name === 'ui_action') {
+          const ui = parseUIActionCustomValue(e.value, sessionId)
+          if (ui) notifyUIAction(ui)
           return
         }
         if (e.name === 'visualization') {
