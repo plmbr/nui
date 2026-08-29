@@ -337,7 +337,7 @@ html.nui-desktop {
       height: 1.5rem;
       width: auto;
       /* Sparkle above the i shifts the bbox center above the letterforms. */
-      transform: translateY(-5px);
+      transform: translateY(-1px);
     }
   }
 
