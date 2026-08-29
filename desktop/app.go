@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -15,14 +16,16 @@ import (
 	"sync"
 	"time"
 
-	"nui/internal/nuiclient"
 	"nui/internal/server"
 	"nui/ui"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-const defaultPort = 8080
+const (
+	defaultPort        = 8080
+	maxPortScanAttempts = 100
+)
 
 // App is the Wails desktop shell around the nui HTTP server.
 type App struct {
@@ -47,23 +50,35 @@ func NewApp() *App {
 	return &App{port: port, uiFS: ui.DistFS()}
 }
 
-// startServer starts or attaches to the local nui HTTP server.
+// findListenPort returns the first TCP port in [start, start+maxAttempts) that
+// can be bound on host. Used to avoid attaching to an existing nui server.
+func findListenPort(host string, start, maxAttempts int) (int, error) {
+	for port := start; port < start+maxAttempts; port++ {
+		ln, err := net.Listen("tcp", fmt.Sprintf("%s:%d", host, port))
+		if err != nil {
+			continue
+		}
+		_ = ln.Close()
+		return port, nil
+	}
+	return 0, fmt.Errorf("no available port in range %d-%d on %s", start, start+maxAttempts-1, host)
+}
+
+// startServer starts a dedicated local nui HTTP server on the first free port
+// at or above a.port (8080 by default, or NUI_PORT as scan start).
 // Must run before wails.Run: on Darwin, OnStartup runs concurrently with the
 // first page load, so deferring server start there races and shows a blank error.
 func (a *App) startServer() error {
-	base := fmt.Sprintf("http://127.0.0.1:%d", a.port)
-	client := nuiclient.New(base)
-	healthCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	if err := client.Health(healthCtx); err == nil {
-		a.setBaseURL(base, false, nil)
-		fmt.Fprintf(os.Stderr, "nui desktop: attached to existing server at %s\n", base)
-		return nil
+	const host = "127.0.0.1"
+	port, err := findListenPort(host, a.port, maxPortScanAttempts)
+	if err != nil {
+		a.setBaseURL("", false, err)
+		return err
 	}
 
 	inst, err := server.NewInstance(server.ListenConfig{
-		Port:    a.port,
-		Host:    "127.0.0.1",
+		Port:    port,
+		Host:    host,
 		UIFiles: a.uiFS,
 		Options: server.StartOptions{},
 	})

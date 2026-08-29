@@ -2,9 +2,10 @@
 
 Native desktop shell for nui, built with [Wails v2](https://wails.io/).
 
-The window hosts a platform webview that navigates to the existing local HTTP
-server (`http://127.0.0.1:8080` by default) and React UI. REST and AG-UI SSE
-stay on real `net/http` (not the Wails asset server), so streaming works.
+The window hosts a platform webview with the React UI. The app always starts
+its own embedded HTTP server on the first free port starting at `8080` (REST
+and AG-UI SSE stay on real `net/http`, not the Wails asset server, so streaming
+works). Quitting the desktop app stops that server.
 
 ## Prerequisites
 
@@ -29,8 +30,9 @@ wails dev
 CGO_ENABLED=1 go run .
 ```
 
-If `nui server` is already listening on the port, the desktop app attaches to it
-instead of starting a second server. Override the port with `NUI_PORT`.
+The desktop app scans upward from port `8080` for a free port and starts its
+own server there (it does not attach to an already-running `nui server`).
+Override the scan start with `NUI_PORT`.
 
 Harnesses spawn built-in MCP servers via `os.Executable()` (`viz-mcp`,
 `agent-mcp`, `hitl-mcp`, `orchestrator-mcp`). The desktop binary handles those
