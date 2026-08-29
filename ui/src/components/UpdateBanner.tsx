@@ -113,6 +113,18 @@ export function UpdateBanner() {
     }
   }
 
+  const onDismiss = async () => {
+    setBusy(true)
+    try {
+      const st = await api.update.dismiss()
+      setStatus(st)
+    } catch {
+      setStatus((prev) => (prev ? { ...prev, state: 'idle', error: undefined } : prev))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const onLater = async () => {
     const ver = status.availableVersion
     if (ver) {
@@ -129,7 +141,7 @@ export function UpdateBanner() {
     <div className="update-banner" role="status">
       <div className="update-banner__text">
         <RefreshCw className="size-3.5 shrink-0 opacity-70" aria-hidden />
-        <span>
+        <span className="update-banner__message" title={status.error}>
           {desktop && status.state === 'available' ? `CLI ${label}` : label}
         </span>
       </div>
@@ -151,7 +163,7 @@ export function UpdateBanner() {
           </button>
         )}
         {status.state === 'error' && (
-          <button type="button" className="update-banner__btn" disabled={busy} onClick={() => void refresh()}>
+          <button type="button" className="update-banner__btn" disabled={busy} onClick={() => void onDismiss()}>
             Dismiss
           </button>
         )}
@@ -159,7 +171,13 @@ export function UpdateBanner() {
           type="button"
           className="update-banner__icon-btn"
           aria-label="Dismiss"
-          onClick={() => void onLater()}
+          onClick={() => {
+            if (status.state === 'error') {
+              void onDismiss()
+              return
+            }
+            void onLater()
+          }}
         >
           <X className="size-3.5" />
         </button>

@@ -31,6 +31,7 @@ func registerUpdateRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/update/download", handleUpdateDownload)
 	mux.HandleFunc("/api/update/apply", handleUpdateApply)
 	mux.HandleFunc("/api/update/skip", handleUpdateSkip)
+	mux.HandleFunc("/api/update/dismiss", handleUpdateDismiss)
 }
 
 func handleVersion(w http.ResponseWriter, r *http.Request) {
@@ -81,6 +82,7 @@ func handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	st, err := cliUpdateMgr.Check(ctx, body.Force)
 	if err != nil {
+		st.Error = err.Error()
 		writeJSON(w, http.StatusOK, st)
 		return
 	}
@@ -192,6 +194,15 @@ func handleUpdateSkip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"skippedUpdateVersion": current.SkippedUpdateVersion})
+}
+
+func handleUpdateDismiss(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	st := cliUpdateMgr.ClearError()
+	writeJSON(w, http.StatusOK, st)
 }
 
 // startUpdateChecker launches a background periodic CLI update check (never auto-downloads).

@@ -7,6 +7,7 @@ type DesktopAppBridge = {
   DownloadAppUpdate: () => Promise<UpdateStatus>
   AppUpdateStatus: () => Promise<UpdateStatus>
   QuitAndInstall: () => Promise<UpdateStatus>
+  DismissAppUpdate: () => Promise<UpdateStatus>
 }
 
 function bridge(): DesktopAppBridge | null {
@@ -42,6 +43,12 @@ export async function quitAndInstallDesktopApp(): Promise<UpdateStatus | null> {
   const b = bridge()
   if (!b) return null
   return b.QuitAndInstall()
+}
+
+export async function dismissDesktopAppUpdate(): Promise<UpdateStatus | null> {
+  const b = bridge()
+  if (!b?.DismissAppUpdate) return null
+  return b.DismissAppUpdate()
 }
 
 declare global {

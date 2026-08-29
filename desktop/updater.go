@@ -66,6 +66,11 @@ func (a *App) AppUpdateStatus() update.Status {
 	return a.appUpdate().Status()
 }
 
+// DismissAppUpdate clears a desktop update error banner.
+func (a *App) DismissAppUpdate() update.Status {
+	return a.appUpdate().ClearError()
+}
+
 // QuitAndInstall applies the downloaded desktop update and relaunches.
 func (a *App) QuitAndInstall() update.Status {
 	mgr := a.appUpdate()

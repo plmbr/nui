@@ -317,6 +317,9 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ version: version ?? '' }),
       }),
+
+    dismiss: (): Promise<UpdateStatus> =>
+      request('/update/dismiss', { method: 'POST', body: '{}' }),
   },
 
   state: {

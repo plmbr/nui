@@ -6,6 +6,7 @@ import type { UpdateStatus } from '@/types'
 import {
   checkDesktopAppUpdate,
   desktopAppUpdateStatus,
+  dismissDesktopAppUpdate,
   downloadDesktopAppUpdate,
   hasDesktopAppUpdater,
   quitAndInstallDesktopApp,
@@ -69,6 +70,18 @@ export function DesktopAppUpdateBanner() {
     return null
   }
 
+  const onDismiss = async () => {
+    setBusy(true)
+    try {
+      const st = (await dismissDesktopAppUpdate()) ?? (await api.update.dismiss())
+      setStatus(st)
+    } catch {
+      setStatus((prev) => (prev ? { ...prev, state: 'idle', error: undefined } : prev))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const label =
     status!.state === 'ready'
       ? 'Install app update and restart'
@@ -82,7 +95,9 @@ export function DesktopAppUpdateBanner() {
     <div className="update-banner update-banner--app" role="status">
       <div className="update-banner__text">
         <RefreshCw className="size-3.5 shrink-0 opacity-70" aria-hidden />
-        <span>{label}</span>
+        <span className="update-banner__message" title={status!.error}>
+          {label}
+        </span>
       </div>
       <div className="update-banner__actions">
         {status!.state === 'available' && (
@@ -131,11 +146,20 @@ export function DesktopAppUpdateBanner() {
             Later
           </button>
         )}
+        {status!.state === 'error' && (
+          <button type="button" className="update-banner__btn" disabled={busy} onClick={() => void onDismiss()}>
+            Dismiss
+          </button>
+        )}
         <button
           type="button"
           className="update-banner__icon-btn"
           aria-label="Dismiss"
           onClick={() => {
+            if (status!.state === 'error') {
+              void onDismiss()
+              return
+            }
             const ver = status!.availableVersion
             if (ver) void api.update.skip(`app:${ver}`).then(() => setSkipped(`app:${ver}`))
           }}

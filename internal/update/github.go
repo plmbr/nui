@@ -37,6 +37,35 @@ type ghAsset struct {
 	Size               int64  `json:"size"`
 }
 
+type ghAPIError struct {
+	Message string `json:"message"`
+}
+
+func githubAPIError(status string, body []byte) error {
+	msg := parseGitHubErrorMessage(body)
+	if msg != "" {
+		return fmt.Errorf("github releases: %s: %s", status, msg)
+	}
+	return fmt.Errorf("github releases: %s", status)
+}
+
+func parseGitHubErrorMessage(body []byte) string {
+	trimmed := strings.TrimSpace(string(body))
+	if trimmed == "" {
+		return ""
+	}
+	var parsed ghAPIError
+	if err := json.Unmarshal(body, &parsed); err == nil {
+		if msg := strings.TrimSpace(parsed.Message); msg != "" {
+			return msg
+		}
+	}
+	if len(trimmed) > 160 {
+		return trimmed[:157] + "..."
+	}
+	return trimmed
+}
+
 // Check fetches the latest (or tagged) release and resolves the asset for cfg.
 // newer is true when the release version is strictly newer than cfg.CurrentVersion
 // (or when force-compare is not needed — caller decides). Use IsNewer for comparison.
@@ -97,7 +126,7 @@ func fetchReleaseURL(ctx context.Context, cfg Config, url string) (ghRelease, er
 		return ghRelease{}, err
 	}
 	if res.StatusCode != http.StatusOK {
-		return ghRelease{}, fmt.Errorf("github releases: %s: %s", res.Status, strings.TrimSpace(string(body)))
+		return ghRelease{}, githubAPIError(res.Status, body)
 	}
 	var rel ghRelease
 	if err := json.Unmarshal(body, &rel); err != nil {

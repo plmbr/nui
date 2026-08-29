@@ -149,3 +149,27 @@ func TestManagerCheckUpToDate(t *testing.T) {
 		t.Fatal("should not be newer")
 	}
 }
+
+func TestParseGitHubErrorMessage(t *testing.T) {
+	body := []byte(`{"message":"API rate limit exceeded for 1.2.3.4."}`)
+	if got := parseGitHubErrorMessage(body); got != "API rate limit exceeded for 1.2.3.4." {
+		t.Fatalf("got %q", got)
+	}
+	long := strings.Repeat("x", 200)
+	if got := parseGitHubErrorMessage([]byte(long)); len(got) != 160 {
+		t.Fatalf("expected truncated message, got len %d", len(got))
+	}
+}
+
+func TestClearErrorFromBannerState(t *testing.T) {
+	m := NewManager(KindCLI, "0.7.3")
+	m.status.State = StateError
+	m.status.Error = "github releases: 403 Forbidden: rate limit"
+	st := m.ClearError()
+	if st.State != StateIdle {
+		t.Fatalf("state = %q, want idle", st.State)
+	}
+	if st.Error != "" {
+		t.Fatalf("error = %q, want empty", st.Error)
+	}
+}

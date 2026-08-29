@@ -106,8 +106,9 @@ func (m *Manager) Check(ctx context.Context, force bool) (Status, error) {
 	defer m.mu.Unlock()
 	m.status.LastCheckedAt = now
 	if err != nil {
-		m.status.State = StateError
-		m.status.Error = err.Error()
+		// Check failures (rate limits, network) are transient — don't block the UI.
+		m.status.State = StateIdle
+		m.status.Error = ""
 		return m.status, err
 	}
 	m.info = info

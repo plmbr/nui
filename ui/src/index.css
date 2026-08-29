@@ -1025,7 +1025,11 @@ html.nui-desktop {
   }
 
   .update-banner__text {
-    @apply flex items-center gap-2 min-w-0;
+    @apply flex items-center gap-2 min-w-0 flex-1;
+  }
+
+  .update-banner__message {
+    @apply min-w-0 line-clamp-2 break-words;
   }
 
   .update-banner__actions {
