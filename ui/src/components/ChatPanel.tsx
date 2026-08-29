@@ -20,6 +20,7 @@ import { ThinkingIndicator } from '@/components/ThinkingIndicator'
 import { MentionMenu } from '@/components/MentionMenu'
 import { SlashCommandMenu } from '@/components/SlashCommandMenu'
 import { HitlPromptCard } from '@/components/HitlPromptCard'
+import { UserMessageBubble } from '@/components/UserMessageBubble'
 import { ToolCallGroup } from '@/components/ToolCallGroup'
 import { VisualizationFrame } from '@/components/VisualizationFrame'
 import { useTheme } from '@/contexts/theme'
@@ -611,42 +612,40 @@ export function ChatPanel({
               ref={setMessageRef(msg.id)}
               className={`agui-message agui-message--${msg.role}`}
             >
+              {msg.role === 'user' ? (
+                <UserMessageBubble content={msg.content} />
+              ) : (
               <div
                 className={`agui-message__bubble${msg.error ? ' agui-message__bubble--error' : ''}`}
               >
-                {msg.role === 'assistant' ? (
-                  <>
-                    {msg.routedAgentLabel ? (
-                      <p className="agui-message__sub-agent-badge text-xs text-muted-foreground mb-2">
-                        via {msg.routedAgentLabel}
-                      </p>
-                    ) : null}
-                    {msg.images?.map((img) => (
-                      <img
-                        key={img.id}
-                        src={imageSrc(img)}
-                        alt="Agent image"
-                        className="agui-message__image"
-                        loading="lazy"
-                      />
-                    ))}
-                    {hasParts ? (
-                      renderAssistantSegments(
-                        normalizeVisualizationParts(parts!),
-                        msg.id,
-                        isStreaming,
-                      )
-                    ) : msg.content ? (
-                      renderTextWithThinking(msg.content, msg.id, isStreaming)
-                    ) : null}
-                    {isStreaming && !messageHasRenderableContent(msg) && (
-                      <ThinkingIndicator variant="streaming" />
-                    )}
-                  </>
-                ) : (
-                  <p>{msg.content}</p>
+                {msg.routedAgentLabel ? (
+                  <p className="agui-message__sub-agent-badge text-xs text-muted-foreground mb-2">
+                    via {msg.routedAgentLabel}
+                  </p>
+                ) : null}
+                {msg.images?.map((img) => (
+                  <img
+                    key={img.id}
+                    src={imageSrc(img)}
+                    alt="Agent image"
+                    className="agui-message__image"
+                    loading="lazy"
+                  />
+                ))}
+                {hasParts ? (
+                  renderAssistantSegments(
+                    normalizeVisualizationParts(parts!),
+                    msg.id,
+                    isStreaming,
+                  )
+                ) : msg.content ? (
+                  renderTextWithThinking(msg.content, msg.id, isStreaming)
+                ) : null}
+                {isStreaming && !messageHasRenderableContent(msg) && (
+                  <ThinkingIndicator variant="streaming" />
                 )}
               </div>
+              )}
             </div>
           )
         })}

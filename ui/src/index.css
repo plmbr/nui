@@ -1212,8 +1212,12 @@ html.nui-desktop {
     line-height: var(--leading-chat);
   }
 
+  .agui-message--user .agui-message__user-wrap {
+    @apply ml-auto w-fit max-w-[85%];
+  }
+
   .agui-message--user .agui-message__bubble {
-    @apply ml-auto w-fit max-w-[85%] rounded-[12px] border border-primary/10 bg-user-bubble px-3.5 py-2 text-user-bubble-foreground whitespace-pre-wrap;
+    @apply relative w-fit rounded-[12px] border border-primary/10 bg-user-bubble px-2.5 py-1.5 text-user-bubble-foreground whitespace-pre-wrap;
   }
 
   .agui-message--user .agui-message__bubble p {
@@ -1916,13 +1920,25 @@ html.nui-desktop {
   }
 
   .agui-code-block__copy {
-    @apply absolute top-1.5 right-1.5 z-10 size-7 text-muted-foreground opacity-90;
+    @apply absolute top-1.5 right-1.5 z-10 size-7 text-muted-foreground opacity-0 transition-opacity;
     background-color: color-mix(in oklch, var(--background) 72%, transparent);
   }
 
   @media (hover: hover) {
+    .agui-code-block:hover .agui-code-block__copy,
+    .agui-message--user:hover .agui-code-block__copy,
+    .agui-code-block__copy:focus-visible {
+      @apply opacity-90;
+    }
+
     .agui-code-block__copy:hover {
       @apply bg-muted text-foreground opacity-100;
+    }
+  }
+
+  @media (hover: none) {
+    .agui-code-block__copy {
+      @apply opacity-90;
     }
   }
 
