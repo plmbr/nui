@@ -21,6 +21,7 @@ export function GeneralTab() {
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([])
   const [defaultAgentType, setDefaultAgentType] = useState('')
   const [defaultHarness, setDefaultHarness] = useState('')
+  const [disableSloganAnimation, setDisableSloganAnimation] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -33,6 +34,7 @@ export function GeneralTab() {
         setAgentTypes(types)
         setDefaultAgentType(pickDefaultAgentTypeId(types, settings.defaultAgentType))
         setDefaultHarness(pickDefaultHarnessRef(types, settings.defaultHarness))
+        setDisableSloganAnimation(settings.disableSloganAnimation ?? false)
       })
       .catch(() => {})
   }, [])
@@ -49,6 +51,11 @@ export function GeneralTab() {
 
   const handleUIThemeChange = (id: UIThemeId) => {
     setUITheme(id)
+  }
+
+  const handleDisableSloganAnimationChange = (disabled: boolean) => {
+    setDisableSloganAnimation(disabled)
+    api.settings.update({ disableSloganAnimation: disabled }).catch(() => {})
   }
 
   const bwrapUnavailable = capabilities !== null && !capabilities.sandbox.bwrap.available
@@ -90,47 +97,45 @@ export function GeneralTab() {
       )}
       <div>
         <p className="text-sm font-medium mb-1">Appearance</p>
-        <p className="text-xs text-muted-foreground mb-3">
-          Visual theme for the app. Use the header toggle for light and dark when the theme supports both.
-        </p>
-        <div className="grid grid-cols-2 gap-3 max-w-md">
-          {UI_THEME_LIST.map((def) => {
-            const active = uiTheme === def.id
-            const modeLabel =
-              def.modes.length === 2
-                ? 'Light & dark'
-                : def.modes[0] === 'dark'
-                  ? 'Dark only'
-                  : 'Light only'
-            return (
-              <button
-                key={def.id}
-                type="button"
-                className="theme-card"
-                data-active={active}
-                aria-pressed={active}
-                onClick={() => handleUIThemeChange(def.id)}
-              >
-                <div
-                  className={`theme-card__preview ${
-                    def.flowers ? 'theme-card__preview--hawaiian' : 'theme-card__preview--standard'
-                  }`}
-                >
-                  <div className="theme-card__sidebar" />
-                  <div className="theme-card__main">
-                    {def.flowers && <span className="theme-card__bloom" aria-hidden />}
-                    <div className="theme-card__bubble theme-card__bubble--user" />
-                    <div className="theme-card__bubble theme-card__bubble--agent" />
-                  </div>
-                </div>
-                <div className="theme-card__label">
-                  <span>{def.label}</span>
-                  <span className="theme-card__meta">{modeLabel}</span>
-                </div>
-              </button>
-            )
-          })}
+        <div className="mt-4">
+          <p className="text-sm font-medium mb-2">Theme</p>
+          <p className="text-xs text-muted-foreground mb-3">
+            Use the header toggle for light and dark when the theme supports both.
+          </p>
+          <div className="flex flex-wrap gap-4">
+            {UI_THEME_LIST.map((def) => {
+              const modeLabel =
+                def.modes.length === 2
+                  ? 'Light & dark'
+                  : def.modes[0] === 'dark'
+                    ? 'Dark only'
+                    : 'Light only'
+              return (
+                <label key={def.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="size-4 rounded border-input"
+                    checked={uiTheme === def.id}
+                    onChange={() => handleUIThemeChange(def.id)}
+                  />
+                  <span>
+                    {def.label}
+                    <span className="text-muted-foreground"> · {modeLabel}</span>
+                  </span>
+                </label>
+              )
+            })}
+          </div>
         </div>
+        <label className="flex items-center gap-2 text-sm cursor-pointer mt-4">
+          <input
+            type="checkbox"
+            className="size-4 rounded border-input"
+            checked={disableSloganAnimation}
+            onChange={(e) => handleDisableSloganAnimationChange(e.target.checked)}
+          />
+          Disable slogan animation
+        </label>
       </div>
       <div>
         <p className="text-sm font-medium mb-1">Default harness</p>

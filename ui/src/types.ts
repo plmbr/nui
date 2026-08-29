@@ -177,6 +177,8 @@ export interface Settings {
   theme: ColorMode
   /** Visual theme; defaults to hawaiian when omitted. */
   uiTheme?: UIThemeId
+  /** Skip the landing-page slogan word animation before the logo. */
+  disableSloganAnimation?: boolean
   defaultAgentType?: string
   defaultHarness?: string
   lastAgentType?: string

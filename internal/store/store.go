@@ -23,6 +23,7 @@ type RecentAgentEntry struct {
 type Settings struct {
 	Theme                string   `json:"theme"`                            // "light" | "dark" color mode
 	UITheme              string   `json:"uiTheme,omitempty"`                // visual theme id, e.g. "hawaiian" | "standard"; default hawaiian
+	DisableSloganAnimation *bool  `json:"disableSloganAnimation,omitempty"` // skip landing-page slogan word animation
 	DefaultAgentType     string   `json:"defaultAgentType,omitempty"`       // default agent for new sessions on launch
 	DefaultHarness       string   `json:"defaultHarness,omitempty"`         // harness for internal agents (e.g. api/anthropic, claude-code)
 	LastAgentType        string   `json:"lastAgentType,omitempty"`          // last agent picked in new-session dialog

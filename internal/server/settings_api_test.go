@@ -114,6 +114,32 @@ func TestHandleSettings_uiTheme(t *testing.T) {
 	}
 }
 
+func TestHandleSettings_disableSloganAnimation(t *testing.T) {
+	setupTestServerEnv(t)
+
+	putReq := httptest.NewRequest(http.MethodPut, "/api/settings", strings.NewReader(`{"disableSloganAnimation":true}`))
+	putRec := httptest.NewRecorder()
+	handleSettings(putRec, putReq)
+	if putRec.Code != http.StatusOK {
+		t.Fatalf("PUT status = %d body=%s", putRec.Code, putRec.Body.String())
+	}
+	var updated store.Settings
+	if err := json.Unmarshal(putRec.Body.Bytes(), &updated); err != nil {
+		t.Fatal(err)
+	}
+	if updated.DisableSloganAnimation == nil || !*updated.DisableSloganAnimation {
+		t.Fatalf("DisableSloganAnimation = %v, want true", updated.DisableSloganAnimation)
+	}
+
+	loaded, err := store.LoadSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.DisableSloganAnimation == nil || !*loaded.DisableSloganAnimation {
+		t.Fatalf("persisted DisableSloganAnimation = %v", loaded.DisableSloganAnimation)
+	}
+}
+
 func TestHandleSettings_recentsRoundTrip(t *testing.T) {
 	setupTestServerEnv(t)
 

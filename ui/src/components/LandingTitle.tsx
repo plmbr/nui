@@ -30,13 +30,23 @@ function pickSlogan(): readonly string[] {
   return SLOGANS[Math.floor(Math.random() * SLOGANS.length)]!
 }
 
-export function LandingTitle() {
+interface LandingTitleProps {
+  /** When true, show logo only. When false, run slogan animation. When undefined, show logo until settings load. */
+  disableAnimation?: boolean
+}
+
+export function LandingTitle({ disableAnimation }: LandingTitleProps) {
+  const showAnimation = disableAnimation === false && !prefersReducedMotion()
   const [words] = useState(pickSlogan)
-  const [phase, setPhase] = useState<Phase>(() => (prefersReducedMotion() ? 'logo' : 0))
+  const [phase, setPhase] = useState<Phase>('logo')
 
   useEffect(() => {
-    if (prefersReducedMotion()) return
+    if (!showAnimation) {
+      setPhase('logo')
+      return
+    }
 
+    setPhase(0)
     const timers: number[] = []
     for (let i = 1; i < words.length; i++) {
       timers.push(window.setTimeout(() => setPhase(i), i * WORD_MS))
@@ -46,7 +56,7 @@ export function LandingTitle() {
     return () => {
       for (const id of timers) window.clearTimeout(id)
     }
-  }, [words])
+  }, [words, showAnimation])
 
   const showLogo = phase === 'logo'
   const currentWord = typeof phase === 'number' ? words[phase] : undefined

@@ -947,6 +947,9 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 			}
 			current.UITheme = patch.UITheme
 		}
+		if patch.DisableSloganAnimation != nil {
+			current.DisableSloganAnimation = patch.DisableSloganAnimation
+		}
 		if patch.DefaultAgentType != "" {
 			current.DefaultAgentType = patch.DefaultAgentType
 		}

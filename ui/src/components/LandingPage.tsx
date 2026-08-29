@@ -1,12 +1,13 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowUp, Loader2, Plus, Settings } from 'lucide-react'
 import { LandingTitle } from '@/components/LandingTitle'
 import { PlumeriaFlower } from '@/components/PlumeriaFlower'
 import { PlumeriaRandomBackdrop } from '@/components/PlumeriaBackdrop'
 import { RecentsSection } from '@/components/RecentsSection'
 import { Button } from '@/components/ui/button'
+import { api } from '@/api'
 import { useTheme } from '@/contexts/theme'
 import type { AgentType, RecentAgentEntry, Session } from '@/types'
 
@@ -65,6 +66,14 @@ export function LandingPage({
   const [pickingAgent, setPickingAgent] = useState<string | null>(null)
   const [ambiguity, setAmbiguity] = useState<OrchestrateAmbiguity | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [disableSloganAnimation, setDisableSloganAnimation] = useState<boolean | undefined>(undefined)
+
+  useEffect(() => {
+    api.settings
+      .get()
+      .then((settings) => setDisableSloganAnimation(settings.disableSloganAnimation ?? false))
+      .catch(() => setDisableSloganAnimation(false))
+  }, [])
 
   const submit = useCallback(async () => {
     const trimmed = prompt.trim()
@@ -150,7 +159,7 @@ export function LandingPage({
       )}
       <div className="landing-page__hero">
         <div className="landing-page__content">
-          <LandingTitle />
+          <LandingTitle disableAnimation={disableSloganAnimation} />
 
           <div className="landing-page__prompt">
             <textarea
