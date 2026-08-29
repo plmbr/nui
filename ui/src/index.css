@@ -157,7 +157,7 @@
     --gradient-accent-to: var(--brand-gradient-to);
     --gradient-accent: var(--brand-gradient);
 
-    --user-bubble: oklch(0.94 0.012 215);
+    --user-bubble: oklch(0.96 0.01 225);
     --user-bubble-foreground: oklch(0.30 0.04 215);
     --chat-foreground: #404040;
     --chat-heading: #0a0a0a;
