@@ -6,6 +6,8 @@ import (
 	"context"
 	"log"
 
+	"nui/internal/appversion"
+
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -25,6 +27,8 @@ func main() {
 	// so external MCP hosts / shells find `nui` without a separate download.
 	ensureCLIInstalled()
 
+	appversion.Set(desktopAppVersion())
+
 	app := NewApp()
 	// Start HTTP before the window: Darwin runs OnStartup concurrently with the
 	// first page load, so deferring server start there races and shows a blank error.
@@ -43,6 +47,7 @@ func main() {
 			Assets:     app.UIAssets(),
 			Middleware: app.assetMiddleware,
 		},
+		Bind: []interface{}{app},
 		OnStartup: func(ctx context.Context) {
 			app.onStartup(ctx)
 		},

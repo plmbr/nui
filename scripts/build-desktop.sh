@@ -69,8 +69,23 @@ fi
 echo "==> Generating app icon"
 "$ROOT/scripts/generate-desktop-icon.sh"
 
-echo "==> Building nui desktop (Wails)"
-build_args=(-skipbindings)
+VERSION="$(tr -d '[:space:]' <"$ROOT/VERSION")"
+# Keep Wails metadata in sync with the canonical VERSION file.
+if command -v python3 >/dev/null 2>&1; then
+  python3 - "$DESKTOP/wails.json" "$VERSION" <<'PY'
+import json, sys
+path, ver = sys.argv[1], sys.argv[2]
+with open(path) as f:
+    data = json.load(f)
+data.setdefault("info", {})["productVersion"] = ver
+with open(path, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+PY
+fi
+
+echo "==> Building nui desktop (Wails) ${VERSION}"
+build_args=(-skipbindings -ldflags "-X nui/internal/appversion.Version=${VERSION}")
 CLI_GOOS=""
 CLI_GOARCH=""
 if [[ -n "$PLATFORM" ]]; then
@@ -84,6 +99,7 @@ fi
 (
   cd "$DESKTOP"
   # No Go bindings are used (UI talks to localhost HTTP); skip binding gen.
+  # App update methods are still Bound and callable via window.go.main.App.*.
   wails build "${build_args[@]}"
 )
 

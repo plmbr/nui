@@ -1020,6 +1020,30 @@ html.nui-desktop {
     }
   }
 
+  .update-banner {
+    @apply flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-2 text-sm;
+  }
+
+  .update-banner__text {
+    @apply flex items-center gap-2 min-w-0;
+  }
+
+  .update-banner__actions {
+    @apply flex items-center gap-1.5 shrink-0;
+  }
+
+  .update-banner__btn {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50;
+  }
+
+  .update-banner__btn--ghost {
+    @apply border-transparent bg-transparent hover:bg-muted;
+  }
+
+  .update-banner__icon-btn {
+    @apply inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground;
+  }
+
   /* ─── Customize panel ────────────────────────────────────────── */
   .customize-panel {
     @apply bg-background;

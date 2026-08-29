@@ -22,21 +22,40 @@ type RecentAgentEntry struct {
 
 // Settings holds durable preferences (admin-seedable; user overrides).
 type Settings struct {
-	Theme                  string            `json:"theme"`                            // "light" | "dark" color mode
-	UITheme                string            `json:"uiTheme,omitempty"`                // visual theme id, e.g. "hawaiian" | "standard"; default hawaiian
-	DisableSloganAnimation *bool             `json:"disableSloganAnimation,omitempty"` // skip landing-page slogan word animation
-	DefaultAgentType       string            `json:"defaultAgentType,omitempty"`       // default agent for new sessions on launch
-	DefaultHarness         string            `json:"defaultHarness,omitempty"`         // harness for internal agents (e.g. api/anthropic, claude-code)
-	DisabledExtensions     []string          `json:"disabledExtensions,omitempty"`     // extension names excluded from runtime
-	MCPOAuthCallbackURL    string            `json:"mcpOAuthCallbackUrl,omitempty"`    // optional OAuth callback base URL override
-	MemoryUserMode         string            `json:"memoryUserMode,omitempty"`         // auto | manual | disabled; default manual
-	MemoryAgentsMode       map[string]string `json:"memoryAgentsMode,omitempty"`       // per ADL agent id; missing = manual
+	Theme                    string            `json:"theme"`                              // "light" | "dark" color mode
+	UITheme                  string            `json:"uiTheme,omitempty"`                  // visual theme id, e.g. "hawaiian" | "standard"; default hawaiian
+	DisableSloganAnimation   *bool             `json:"disableSloganAnimation,omitempty"`   // skip landing-page slogan word animation
+	DefaultAgentType         string            `json:"defaultAgentType,omitempty"`         // default agent for new sessions on launch
+	DefaultHarness           string            `json:"defaultHarness,omitempty"`           // harness for internal agents (e.g. api/anthropic, claude-code)
+	DisabledExtensions       []string          `json:"disabledExtensions,omitempty"`       // extension names excluded from runtime
+	MCPOAuthCallbackURL      string            `json:"mcpOAuthCallbackUrl,omitempty"`      // optional OAuth callback base URL override
+	MemoryUserMode           string            `json:"memoryUserMode,omitempty"`           // auto | manual | disabled; default manual
+	MemoryAgentsMode         map[string]string `json:"memoryAgentsMode,omitempty"`         // per ADL agent id; missing = manual
+	AutoCheckUpdates         *bool             `json:"autoCheckUpdates,omitempty"`         // nil/true = check periodically; false = off
+	UpdateCheckIntervalHours int               `json:"updateCheckIntervalHours,omitempty"` // default 24
+	SkippedUpdateVersion     string            `json:"skippedUpdateVersion,omitempty"`     // dismiss banner until a newer version
+}
+
+// AutoCheckUpdatesEnabled reports whether periodic update checks are on (default true).
+func AutoCheckUpdatesEnabled(s Settings) bool {
+	if s.AutoCheckUpdates == nil {
+		return true
+	}
+	return *s.AutoCheckUpdates
+}
+
+// UpdateCheckInterval returns the check interval, defaulting to 24 hours.
+func UpdateCheckInterval(s Settings) int {
+	if s.UpdateCheckIntervalHours <= 0 {
+		return 24
+	}
+	return s.UpdateCheckIntervalHours
 }
 
 // State holds ephemeral UI restoration data (user-only; never admin-seeded).
 type State struct {
-	LastAgentType    string             `json:"lastAgentType,omitempty"`  // last agent picked in new-session dialog
-	LastSessionID    string             `json:"lastSessionId,omitempty"`  // last selected session in UI
+	LastAgentType    string             `json:"lastAgentType,omitempty"` // last agent picked in new-session dialog
+	LastSessionID    string             `json:"lastSessionId,omitempty"` // last selected session in UI
 	RecentSessionIDs []string           `json:"recentSessionIds,omitempty"`
 	RecentAgents     []RecentAgentEntry `json:"recentAgents,omitempty"`
 	RecentsOpen      *bool              `json:"recentsOpen,omitempty"`  // Recents section expanded on launch/new-session

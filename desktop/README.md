@@ -44,23 +44,24 @@ nvm default, `~/.opencode/bin`, …) so builtin CLI agents (`claude`, `pi`,
 `codex`, `opencode`) are detected in the new-session picker and runnable from
 harnesses.
 
-### Bundled CLI (first-launch install)
+### Bundled CLI (PATH install)
 
 `build-desktop.sh` also builds a `CGO_ENABLED=0` `nui` CLI and stages it:
 
 - macOS: `nui.app/Contents/Resources/nui`
 - Windows / Linux: `nui.exe` / `nui` next to the desktop binary
 
-On GUI launch (after MCP dispatch), the app copies that binary into the same
-dirs as the public installers when missing:
+On GUI launch (after MCP dispatch), the app installs that binary into the same
+dirs as the public installers when missing, or **upgrades** it when the bundled
+sidecar is newer than the PATH install:
 
 | OS | Install path |
 |---|---|
 | macOS / Linux | `~/.local/bin/nui` |
 | Windows | `%LOCALAPPDATA%\nui\nui.exe` |
 
-An existing install at that path is never replaced (for example when you installed
-a newer CLI via `install.sh` before opening the desktop app).
+Online upgrades prefer GitHub Releases (`nui update` / in-app “CLI update”
+banner) so the PATH CLI can move independently of the app.
 
 Override with `NUI_INSTALL_DIR`. State is recorded in `~/.nui/desktop-cli.json`.
 
@@ -74,6 +75,17 @@ PATH setup:
 Open a new terminal (or restart Cursor) after first launch so external MCP
 configs with `"command": "nui"` pick up the install. `wails dev` / `go run`
 without a staged sidecar is a no-op.
+
+### Updates
+
+Electron-style app self-update (check → notify → confirm download → confirm
+install & restart) uses GitHub `nui-desktop_*` assets. PATH CLI updates use
+`nui_*` assets via the shared updater / `/api/update/*` (`target: pathCli`).
+
+Auto-check is controlled by Settings → General → “Automatically check for
+updates” (default on). Downloads and installs always require confirmation.
+After an in-app desktop update on macOS you may still need `xattr -cr` until
+notarization lands.
 
 ## Build
 

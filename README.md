@@ -30,6 +30,18 @@ $env:NUI_VERSION = "v0.4.0-alpha"; irm https://nui.plmbr.dev/install.ps1 | iex
 
 **Manual install:** download the archive for your platform from [GitHub Releases](https://github.com/plmbr/nui/releases), extract the `nui` binary (or `nui.exe` on Windows), and place it on your `PATH`.
 
+### Updating
+
+```sh
+nui update --check   # exit 0 = up to date, 1 = available
+nui update           # confirm → download → confirm → replace this binary
+nui update --yes     # non-interactive
+```
+
+Or re-run the install script / download a newer release. The web UI (Customize → General) can check for updates and prompt before download/install. Auto-check is on by default (notify only; never silent install).
+
+**Desktop:** the app can update itself (Electron-style: check → notify → download → install & restart) and separately upgrade the PATH CLI (`~/.local/bin/nui`).
+
 **macOS note:** release binaries and the desktop `.app` are currently **not** Developer ID–notarized. The CLI install script strips quarantine and ad-hoc codesigns the binary automatically. If you install manually or download `nui.app`:
 
 ```sh

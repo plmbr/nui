@@ -281,7 +281,16 @@ Build a desktop package for the current platform:
 ```
 
 CLI artifacts land in `dist/` as `nui_<tag>_<os>_<arch>.tar.gz` (or `.zip` on Windows) plus `checksums.txt`.
-Desktop artifacts are `nui-desktop_<tag>_<os>_<arch>.zip` (darwin/windows) or `.tar.gz` (linux).
+Desktop artifacts are `nui-desktop_<tag>_<os>_<arch>.zip` (darwin/windows) or `.tar.gz` (linux). The release workflow regenerates `checksums.txt` to include both CLI and desktop archives.
+
+### In-app / CLI updates
+
+- Shared package: `internal/update` (GitHub Releases, SHA-256, CLI/desktop apply).
+- CLI: `nui update` (`--check`, `--yes`, `--force`).
+- Server: `/api/version`, `/api/update/{status,check,download,apply,skip}`; background check when `autoCheckUpdates` is enabled (notify only).
+- Desktop: Wails-bound app self-update + PATH CLI track (`pathCli`). `build-desktop.sh` syncs `wails.json` `productVersion` and `-X nui/internal/appversion.Version` from `VERSION`.
+
+Notarization / Developer ID signing remains a follow-up for frictionless macOS trust after updates.
 
 ### Serving the website and install script
 

@@ -174,19 +174,20 @@ func TestCLIInstallDestExists(t *testing.T) {
 	}
 }
 
-func TestInstallBundledCLI_skipsExistingDest(t *testing.T) {
+func TestInstallBundledCLI_skipsNewerOrEqualDest(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("shell stub binary")
 	}
 	dir := t.TempDir()
 	dest := filepath.Join(dir, "nui")
-	existing := "#!/bin/sh\nif [ \"$1\" = version ]; then echo 1.0.0-existing; exit 0; fi\nexit 1\n"
+	// Installed CLI is newer than bundled — must keep it.
+	existing := "#!/bin/sh\nif [ \"$1\" = version ]; then echo 2.0.0; exit 0; fi\nexit 1\n"
 	if err := os.WriteFile(dest, []byte(existing), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
 	bundled := filepath.Join(dir, "bundled")
-	bundledScript := "#!/bin/sh\nif [ \"$1\" = version ]; then echo 9.9.9-bundled; exit 0; fi\nexit 1\n"
+	bundledScript := "#!/bin/sh\nif [ \"$1\" = version ]; then echo 1.0.0; exit 0; fi\nexit 1\n"
 	if err := os.WriteFile(bundled, []byte(bundledScript), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -199,8 +200,38 @@ func TestInstallBundledCLI_skipsExistingDest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != "1.0.0-existing" {
+	if got != "2.0.0" {
 		t.Fatalf("installed version = %q, want existing binary preserved", got)
+	}
+}
+
+func TestInstallBundledCLI_upgradesOlderDest(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell stub binary")
+	}
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "nui")
+	existing := "#!/bin/sh\nif [ \"$1\" = version ]; then echo 1.0.0; exit 0; fi\nexit 1\n"
+	if err := os.WriteFile(dest, []byte(existing), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	bundled := filepath.Join(dir, "bundled")
+	bundledScript := "#!/bin/sh\nif [ \"$1\" = version ]; then echo 2.0.0; exit 0; fi\nexit 1\n"
+	if err := os.WriteFile(bundled, []byte(bundledScript), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := installBundledCLI(bundled, dest); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := readCLIVersion(dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "2.0.0" {
+		t.Fatalf("installed version = %q, want bundled upgrade", got)
 	}
 }
 

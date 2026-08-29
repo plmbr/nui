@@ -13,7 +13,82 @@ import {
 } from '@/lib/agentTypes'
 import { BUILTIN_AGENTS_LABEL, INSTALLED_AGENTS_LABEL } from '@/lib/sessionGroups'
 import { UI_THEME_LIST } from '@/lib/uiThemes'
-import type { AgentType, Capabilities, UIThemeId } from '@/types'
+import type { AgentType, Capabilities, UIThemeId, UpdateStatus } from '@/types'
+import {
+  checkDesktopAppUpdate,
+  downloadDesktopAppUpdate,
+  hasDesktopAppUpdater,
+  quitAndInstallDesktopApp,
+} from '@/lib/desktopUpdate'
+
+function isDesktopShell(): boolean {
+  return typeof window !== 'undefined' && !!window.__NUI_DESKTOP__
+}
+
+function DesktopAppUpdateControls() {
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [st, setSt] = useState<UpdateStatus | null>(null)
+  if (!hasDesktopAppUpdater()) return null
+
+  return (
+    <div className="mt-4 space-y-2">
+      <p className="text-xs text-muted-foreground">Desktop app</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true)
+            setMsg('')
+            void checkDesktopAppUpdate(false)
+              .then((s) => {
+                setSt(s)
+                if (s?.state === 'upToDate') setMsg(`App up to date (${s.currentVersion})`)
+                else if (s?.state === 'available') setMsg(`App update: ${s.availableVersion}`)
+                else if (s?.error) setMsg(s.error)
+              })
+              .finally(() => setBusy(false))
+          }}
+        >
+          Check for app updates
+        </button>
+        {st?.state === 'available' && (
+          <button
+            type="button"
+            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true)
+              void downloadDesktopAppUpdate()
+                .then(setSt)
+                .finally(() => setBusy(false))
+            }}
+          >
+            Download app
+          </button>
+        )}
+        {st?.state === 'ready' && (
+          <button
+            type="button"
+            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true)
+              void quitAndInstallDesktopApp()
+                .then(setSt)
+                .finally(() => setBusy(false))
+            }}
+          >
+            Install & restart
+          </button>
+        )}
+      </div>
+      {msg && <p className="text-xs text-muted-foreground">{msg}</p>}
+    </div>
+  )
+}
 
 export function GeneralTab() {
   const { uiTheme, setUITheme } = useTheme()
@@ -22,19 +97,27 @@ export function GeneralTab() {
   const [defaultAgentType, setDefaultAgentType] = useState('')
   const [defaultHarness, setDefaultHarness] = useState('')
   const [disableSloganAnimation, setDisableSloganAnimation] = useState(false)
+  const [autoCheckUpdates, setAutoCheckUpdates] = useState(true)
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null)
+  const [updateBusy, setUpdateBusy] = useState(false)
+  const [updateMessage, setUpdateMessage] = useState('')
+  const desktop = isDesktopShell()
 
   useEffect(() => {
     Promise.all([
       api.capabilities.get(),
       api.agentTypes.list(),
       api.settings.get().catch(() => ({ theme: 'light' as const })),
+      api.update.status().catch(() => null),
     ])
-      .then(([caps, types, settings]) => {
+      .then(([caps, types, settings, st]) => {
         setCapabilities(caps)
         setAgentTypes(types)
         setDefaultAgentType(pickDefaultAgentTypeId(types, settings.defaultAgentType))
         setDefaultHarness(pickDefaultHarnessRef(types, settings.defaultHarness))
         setDisableSloganAnimation(settings.disableSloganAnimation ?? false)
+        setAutoCheckUpdates(settings.autoCheckUpdates !== false)
+        if (st) setUpdateStatus(st)
       })
       .catch(() => {})
   }, [])
@@ -56,6 +139,65 @@ export function GeneralTab() {
   const handleDisableSloganAnimationChange = (disabled: boolean) => {
     setDisableSloganAnimation(disabled)
     api.settings.update({ disableSloganAnimation: disabled }).catch(() => {})
+  }
+
+  const handleAutoCheckChange = (enabled: boolean) => {
+    setAutoCheckUpdates(enabled)
+    api.settings.update({ autoCheckUpdates: enabled }).catch(() => {})
+  }
+
+  const handleCheckUpdates = async () => {
+    setUpdateBusy(true)
+    setUpdateMessage('')
+    try {
+      const st = await api.update.check(desktop ? { target: 'pathCli' } : undefined)
+      setUpdateStatus(st)
+      if (st.state === 'upToDate') {
+        setUpdateMessage(`Up to date (${st.currentVersion})`)
+      } else if (st.state === 'available') {
+        setUpdateMessage(`Update available: ${st.availableVersion}`)
+      } else if (st.error) {
+        setUpdateMessage(st.error)
+      }
+    } catch (e) {
+      setUpdateMessage(e instanceof Error ? e.message : String(e))
+    } finally {
+      setUpdateBusy(false)
+    }
+  }
+
+  const handleDownload = async () => {
+    setUpdateBusy(true)
+    try {
+      const st = await api.update.download()
+      setUpdateStatus(st)
+      if (st.error) setUpdateMessage(st.error)
+    } catch (e) {
+      setUpdateMessage(e instanceof Error ? e.message : String(e))
+    } finally {
+      setUpdateBusy(false)
+    }
+  }
+
+  const handleInstall = async () => {
+    setUpdateBusy(true)
+    try {
+      const st = await api.update.apply(desktop ? 'pathCli' : 'self')
+      setUpdateStatus(st)
+      if (st.error) {
+        setUpdateMessage(st.error)
+      } else {
+        setUpdateMessage(
+          desktop
+            ? `CLI installed (${st.currentVersion})`
+            : `Installed ${st.currentVersion} — reload the page`,
+        )
+      }
+    } catch (e) {
+      setUpdateMessage(e instanceof Error ? e.message : String(e))
+    } finally {
+      setUpdateBusy(false)
+    }
   }
 
   const bwrapUnavailable = capabilities !== null && !capabilities.sandbox.bwrap.available
@@ -136,6 +278,64 @@ export function GeneralTab() {
           />
           Disable slogan animation
         </label>
+      </div>
+      <div>
+        <p className="text-sm font-medium mb-1">Updates</p>
+        <p className="text-xs text-muted-foreground mb-3">
+          {desktop
+            ? 'Checks GitHub Releases for a newer CLI on your PATH. App updates are separate.'
+            : 'Checks GitHub Releases for a newer nui CLI/server. Downloads require confirmation.'}
+        </p>
+        <label className="flex items-center gap-2 text-sm cursor-pointer mb-3">
+          <input
+            type="checkbox"
+            className="size-4 rounded border-input"
+            checked={autoCheckUpdates}
+            onChange={(e) => handleAutoCheckChange(e.target.checked)}
+          />
+          Automatically check for updates
+        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
+            disabled={updateBusy}
+            onClick={() => void handleCheckUpdates()}
+          >
+            Check for updates
+          </button>
+          {updateStatus?.state === 'available' && (
+            <button
+              type="button"
+              className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
+              disabled={updateBusy}
+              onClick={() => void handleDownload()}
+            >
+              Download {updateStatus.availableVersion}
+            </button>
+          )}
+          {updateStatus?.state === 'ready' && (
+            <button
+              type="button"
+              className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
+              disabled={updateBusy}
+              onClick={() => void handleInstall()}
+            >
+              {desktop ? 'Install CLI' : 'Install'}
+            </button>
+          )}
+        </div>
+        {updateMessage && (
+          <p className="text-xs text-muted-foreground mt-2">{updateMessage}</p>
+        )}
+        {updateStatus?.state === 'downloading' && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Downloading… {Math.round((updateStatus.progress ?? 0) * 100)}%
+          </p>
+        )}
+        {desktop && (
+          <DesktopAppUpdateControls />
+        )}
       </div>
       <div>
         <p className="text-sm font-medium mb-1">Default harness</p>

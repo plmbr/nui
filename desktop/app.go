@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	defaultPort        = 8080
+	defaultPort         = 8080
 	maxPortScanAttempts = 100
 )
 
@@ -38,6 +38,7 @@ type App struct {
 	port       int
 	uiFS       fs.FS
 	proxy      *httputil.ReverseProxy
+	updater    *appUpdater
 }
 
 func NewApp() *App {
@@ -145,6 +146,7 @@ func (a *App) onStartup(ctx context.Context) {
 	a.mu.Lock()
 	a.ctx = ctx
 	a.mu.Unlock()
+	a.startAppUpdateChecker()
 }
 
 func (a *App) focusMainWindow() {

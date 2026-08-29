@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, AgentFileContent, AgentFileInfo, AgentDeployerInfo, AgentDeployResult, AgentEvalSummary, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, Credentials, DirectorySuggestions, EnvVars, ExtensionEnv, ExtensionInfo, HitlRequest, HitlResponse, MCPOAuthStatus, MCPServer, MentionListResponse, MemorySummary, Schedule, Session, Settings, SkillEntry, UIState, UploadedImage } from './types'
+import type { AgentType, AgentFileContent, AgentFileInfo, AgentDeployerInfo, AgentDeployResult, AgentEvalSummary, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, Credentials, DirectorySuggestions, EnvVars, ExtensionEnv, ExtensionInfo, HitlRequest, HitlResponse, MCPOAuthStatus, MCPServer, MentionListResponse, MemorySummary, Schedule, Session, Settings, SkillEntry, UIState, UpdateStatus, UploadedImage } from './types'
 
 export interface RunRecord {
   runId: string
@@ -285,6 +285,37 @@ export const api = {
       request('/settings', {
         method: 'PUT',
         body: JSON.stringify(patch),
+      }),
+  },
+
+  version: {
+    get: (): Promise<{ version: string }> =>
+      request('/version'),
+  },
+
+  update: {
+    status: (): Promise<UpdateStatus> =>
+      request('/update/status'),
+
+    check: (opts?: { force?: boolean; target?: 'self' | 'pathCli' }): Promise<UpdateStatus> =>
+      request('/update/check', {
+        method: 'POST',
+        body: JSON.stringify(opts ?? {}),
+      }),
+
+    download: (): Promise<UpdateStatus> =>
+      request('/update/download', { method: 'POST', body: '{}' }),
+
+    apply: (target: 'self' | 'pathCli' = 'self'): Promise<UpdateStatus> =>
+      request('/update/apply', {
+        method: 'POST',
+        body: JSON.stringify({ target }),
+      }),
+
+    skip: (version?: string): Promise<{ skippedUpdateVersion: string }> =>
+      request('/update/skip', {
+        method: 'POST',
+        body: JSON.stringify({ version: version ?? '' }),
       }),
   },
 

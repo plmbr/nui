@@ -211,3 +211,37 @@ jobs:
           files: dist/nui-desktop_${{ github.event.release.tag_name }}_${{ matrix.os_name }}_${{ matrix.arch }}.*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  checksums:
+    name: Refresh checksums.txt (CLI + desktop)
+    needs: [publish-cli, desktop]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cd dist
+          gh release download "${{ github.event.release.tag_name }}" \
+            --repo "${{ github.repository }}" \
+            --pattern 'nui_*' \
+            --pattern 'nui-desktop_*' \
+            --clobber
+          shopt -s nullglob
+          files=(nui_*.tar.gz nui_*.zip nui-desktop_*.zip nui-desktop_*.tar.gz)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "error: no release archives downloaded" >&2
+            exit 1
+          fi
+          sha256sum "${files[@]}" | sort -k2 >checksums.txt
+          cat checksums.txt
+
+      - name: Upload checksums.txt
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: dist/checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

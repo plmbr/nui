@@ -43,6 +43,15 @@ func mergeSettings(sys, user Settings) Settings {
 			out.MemoryAgentsMode[k] = v
 		}
 	}
+	if user.AutoCheckUpdates != nil {
+		out.AutoCheckUpdates = user.AutoCheckUpdates
+	}
+	if user.UpdateCheckIntervalHours > 0 {
+		out.UpdateCheckIntervalHours = user.UpdateCheckIntervalHours
+	}
+	if user.SkippedUpdateVersion != "" {
+		out.SkippedUpdateVersion = user.SkippedUpdateVersion
+	}
 	normalizeSettings(&out)
 	return out
 }

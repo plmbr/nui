@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 
+	"nui/internal/appversion"
+
 	"github.com/spf13/cobra"
 )
 
@@ -22,6 +24,7 @@ var Version = "dev"
 func SetVersion(v string) {
 	Version = v
 	rootCmd.Version = v
+	appversion.Set(v)
 }
 
 func Execute() {

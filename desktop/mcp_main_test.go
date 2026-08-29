@@ -12,7 +12,7 @@ func TestRunMCPSubcommandRecognizesBuiltins(t *testing.T) {
 	for _, name := range cases {
 		// Don't actually Run* (blocks on stdio) — only check dispatch recognition
 		// via a dry parse of the switch by ensuring unknown is false and known
-		// would be handled. We call with empty context cancel immediately... 
+		// would be handled. We call with empty context cancel immediately...
 		// Instead verify the command name is in the handled set.
 		if !isMCPSubcommand(name) {
 			t.Fatalf("expected %q to be an MCP subcommand", name)

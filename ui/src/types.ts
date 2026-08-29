@@ -185,6 +185,38 @@ export interface Settings {
   mcpOAuthCallbackUrl?: string
   memoryUserMode?: MemoryMode
   memoryAgentsMode?: Record<string, MemoryMode>
+  /** Periodic GitHub update checks (default true). */
+  autoCheckUpdates?: boolean
+  /** Hours between automatic checks (default 24). */
+  updateCheckIntervalHours?: number
+  /** Dismiss update banner until a newer version than this. */
+  skippedUpdateVersion?: string
+}
+
+export type UpdateState =
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'upToDate'
+  | 'downloading'
+  | 'ready'
+  | 'installing'
+  | 'error'
+
+export interface UpdateStatus {
+  state: UpdateState
+  kind: 'cli' | 'desktop'
+  target?: 'self' | 'pathCli'
+  currentVersion: string
+  availableVersion?: string
+  availableTag?: string
+  notes?: string
+  assetName?: string
+  bytesReceived?: number
+  bytesTotal?: number
+  progress?: number
+  error?: string
+  lastCheckedAt?: string
 }
 
 export interface UIState {

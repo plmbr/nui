@@ -13,6 +13,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"nui/internal/update"
 )
 
 const (
@@ -28,9 +30,10 @@ type desktopCLIState struct {
 }
 
 // ensureCLIInstalled copies the bundled CGO-free nui CLI into the user install
-// dir (same as install.sh / install.ps1) when missing, and ensures that dir is
-// on the user PATH. An existing install is never replaced. Never fatal — GUI
-// launch continues on errors.
+// dir (same as install.sh / install.ps1) when missing or older than the
+// bundled sidecar, and ensures that dir is on the user PATH. Never fatal —
+// GUI launch continues on errors. Online upgrades of PATH CLI use GitHub
+// Releases via the update API (pathCli target).
 func ensureCLIInstalled() {
 	if err := ensureCLIInstalledErr(); err != nil {
 		fmt.Fprintf(os.Stderr, "nui desktop: CLI install: %v\n", err)
@@ -64,13 +67,21 @@ func ensureCLIInstalledErr() error {
 }
 
 func installBundledCLI(bundled, dest string) error {
-	if cliInstallDestExists(dest) {
-		return nil
-	}
-
 	bundledVer, err := readCLIVersion(bundled)
 	if err != nil {
 		return fmt.Errorf("read bundled version: %w", err)
+	}
+
+	if cliInstallDestExists(dest) {
+		installedVer, err := readCLIVersion(dest)
+		if err != nil {
+			// Unreadable existing install — leave it alone.
+			return nil
+		}
+		// Offline bump: replace PATH CLI only when the bundled sidecar is newer.
+		if !isVersionNewer(bundledVer, installedVer) {
+			return nil
+		}
 	}
 
 	destDir := filepath.Dir(dest)
@@ -87,6 +98,10 @@ func installBundledCLI(bundled, dest string) error {
 	})
 	fmt.Fprintf(os.Stderr, "nui desktop: installed CLI %s -> %s\n", bundledVer, dest)
 	return nil
+}
+
+func isVersionNewer(candidate, current string) bool {
+	return update.IsNewer(candidate, current)
 }
 
 func cliInstallDestExists(dest string) bool {

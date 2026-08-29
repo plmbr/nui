@@ -14,7 +14,7 @@
   "info": {
     "companyName": "nui",
     "productName": "nui",
-    "productVersion": "0.4.0",
+    "productVersion": "0.7.3-beta",
     "copyright": "Copyright (c) Mehmet Bektas",
     "comments": "Self-hosted AI agent desktop UI"
   },

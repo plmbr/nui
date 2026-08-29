@@ -15,6 +15,7 @@ import (
 
 	"nui/harness-sdk"
 	"nui/internal/agent"
+	"nui/internal/appversion"
 	"nui/internal/extensions"
 	"nui/internal/mcpoauth"
 	"nui/internal/memory"
@@ -96,8 +97,10 @@ func NewInstance(cfg ListenConfig) (*Instance, error) {
 	mcpoauth.SetListenPort(port)
 
 	registerAPIRoutes(mux)
+	registerUpdateRoutes(mux)
 	registerMCPRoutes(mux)
 	runScheduler()
+	startUpdateChecker()
 
 	uiFiles := cfg.UIFiles
 	mux.HandleFunc("/health", handleHealth)
@@ -286,7 +289,7 @@ func isWailsOrigin(origin string) bool {
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprint(w, `{"status":"ok"}`)
+	fmt.Fprintf(w, `{"status":"ok","version":%q}`, appversion.Get())
 }
 
 func waitForHealth(baseURL string) {

@@ -971,6 +971,19 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 				current.MemoryAgentsMode[id] = mode
 			}
 		}
+		if patch.AutoCheckUpdates != nil {
+			current.AutoCheckUpdates = patch.AutoCheckUpdates
+		}
+		if patch.UpdateCheckIntervalHours > 0 {
+			current.UpdateCheckIntervalHours = patch.UpdateCheckIntervalHours
+		}
+		if patch.SkippedUpdateVersion != "" {
+			current.SkippedUpdateVersion = patch.SkippedUpdateVersion
+		}
+		// Allow clearing skipped version with explicit empty via sentinel — use "-" to clear.
+		if patch.SkippedUpdateVersion == "-" {
+			current.SkippedUpdateVersion = ""
+		}
 		if current.Theme == "" {
 			current.Theme = "light"
 		}
