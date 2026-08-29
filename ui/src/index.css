@@ -438,7 +438,7 @@ html.nui-desktop {
   }
 
   .landing-page__title-stage {
-    @apply relative flex items-center justify-center;
+    @apply relative flex items-center justify-center overflow-visible;
     width: 100%;
     min-height: 3.5rem;
 
@@ -449,7 +449,7 @@ html.nui-desktop {
 
   .landing-page__title-words,
   .landing-page__title-logo {
-    @apply absolute inset-0 flex items-center justify-center;
+    @apply absolute inset-0 flex items-center justify-center overflow-visible;
     transition:
       opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
       transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
@@ -458,7 +458,7 @@ html.nui-desktop {
   .landing-page__title-words {
     font-size: 2.9rem;
     font-weight: 600;
-    line-height: 1;
+    line-height: 1.1;
     letter-spacing: -0.03em;
 
     @media (min-width: 640px) {
@@ -467,10 +467,12 @@ html.nui-desktop {
   }
 
   .landing-page__title-word {
-    display: block;
+    display: inline-block;
     text-align: center;
     white-space: nowrap;
-    margin-top: 0.2rem;
+    margin-top: 0.05rem;
+    /* Room for descenders (g, y, p) under background-clip: text */
+    padding-bottom: 0.12em;
     background: var(--landing-title-word-gradient);
     -webkit-background-clip: text;
     background-clip: text;
@@ -478,7 +480,7 @@ html.nui-desktop {
     opacity: 0;
 
     @media (min-width: 640px) {
-      margin-top: 0.28rem;
+      margin-top: 0.08rem;
     }
   }
 
