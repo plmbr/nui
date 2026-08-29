@@ -50,12 +50,15 @@ harnesses.
 - Windows / Linux: `nui.exe` / `nui` next to the desktop binary
 
 On GUI launch (after MCP dispatch), the app copies that binary into the same
-dirs as the public installers when missing or outdated:
+dirs as the public installers when missing:
 
 | OS | Install path |
 |---|---|
 | macOS / Linux | `~/.local/bin/nui` |
 | Windows | `%LOCALAPPDATA%\nui\nui.exe` |
+
+An existing install at that path is never replaced (for example when you installed
+a newer CLI via `install.sh` before opening the desktop app).
 
 Override with `NUI_INSTALL_DIR`. State is recorded in `~/.nui/desktop-cli.json`.
 

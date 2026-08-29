@@ -28,8 +28,9 @@ type desktopCLIState struct {
 }
 
 // ensureCLIInstalled copies the bundled CGO-free nui CLI into the user install
-// dir (same as install.sh / install.ps1) when missing or outdated, and ensures
-// that dir is on the user PATH. Never fatal — GUI launch continues on errors.
+// dir (same as install.sh / install.ps1) when missing, and ensures that dir is
+// on the user PATH. An existing install is never replaced. Never fatal — GUI
+// launch continues on errors.
 func ensureCLIInstalled() {
 	if err := ensureCLIInstalledErr(); err != nil {
 		fmt.Fprintf(os.Stderr, "nui desktop: CLI install: %v\n", err)
@@ -52,44 +53,45 @@ func ensureCLIInstalledErr() error {
 	}
 	dest := filepath.Join(destDir, cliBinaryName())
 
-	bundledVer, err := readCLIVersion(bundled)
-	if err != nil {
-		return fmt.Errorf("read bundled version: %w", err)
-	}
-
-	needCopy := true
-	if st, err := os.Stat(dest); err == nil && !st.IsDir() {
-		if state, ok := loadCLIState(); ok && state.Version == bundledVer && state.Path == dest {
-			needCopy = false
-		} else if installedVer, err := readCLIVersion(dest); err == nil && installedVer == bundledVer {
-			needCopy = false
-			_ = saveCLIState(desktopCLIState{
-				Version:     bundledVer,
-				InstalledAt: time.Now().UTC().Format(time.RFC3339),
-				Path:        dest,
-			})
-		}
-	}
-
-	if needCopy {
-		if err := os.MkdirAll(destDir, 0o755); err != nil {
-			return err
-		}
-		if err := copyFileAtomic(bundled, dest); err != nil {
-			return fmt.Errorf("install %s: %w", dest, err)
-		}
-		_ = saveCLIState(desktopCLIState{
-			Version:     bundledVer,
-			InstalledAt: time.Now().UTC().Format(time.RFC3339),
-			Path:        dest,
-		})
-		fmt.Fprintf(os.Stderr, "nui desktop: installed CLI %s -> %s\n", bundledVer, dest)
+	if err := installBundledCLI(bundled, dest); err != nil {
+		return err
 	}
 
 	if err := ensureCLIInstallDirOnPATH(destDir); err != nil {
 		return fmt.Errorf("PATH setup: %w", err)
 	}
 	return nil
+}
+
+func installBundledCLI(bundled, dest string) error {
+	if cliInstallDestExists(dest) {
+		return nil
+	}
+
+	bundledVer, err := readCLIVersion(bundled)
+	if err != nil {
+		return fmt.Errorf("read bundled version: %w", err)
+	}
+
+	destDir := filepath.Dir(dest)
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
+		return err
+	}
+	if err := copyFileAtomic(bundled, dest); err != nil {
+		return fmt.Errorf("install %s: %w", dest, err)
+	}
+	_ = saveCLIState(desktopCLIState{
+		Version:     bundledVer,
+		InstalledAt: time.Now().UTC().Format(time.RFC3339),
+		Path:        dest,
+	})
+	fmt.Fprintf(os.Stderr, "nui desktop: installed CLI %s -> %s\n", bundledVer, dest)
+	return nil
+}
+
+func cliInstallDestExists(dest string) bool {
+	st, err := os.Stat(dest)
+	return err == nil && !st.IsDir()
 }
 
 func cliBinaryName() string {

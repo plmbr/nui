@@ -160,6 +160,75 @@ func TestAppendPATHBlockIdempotent(t *testing.T) {
 	}
 }
 
+func TestCLIInstallDestExists(t *testing.T) {
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "nui")
+	if cliInstallDestExists(dest) {
+		t.Fatal("expected missing dest")
+	}
+	if err := os.WriteFile(dest, []byte("existing"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if !cliInstallDestExists(dest) {
+		t.Fatal("expected existing dest")
+	}
+}
+
+func TestInstallBundledCLI_skipsExistingDest(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell stub binary")
+	}
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "nui")
+	existing := "#!/bin/sh\nif [ \"$1\" = version ]; then echo 1.0.0-existing; exit 0; fi\nexit 1\n"
+	if err := os.WriteFile(dest, []byte(existing), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	bundled := filepath.Join(dir, "bundled")
+	bundledScript := "#!/bin/sh\nif [ \"$1\" = version ]; then echo 9.9.9-bundled; exit 0; fi\nexit 1\n"
+	if err := os.WriteFile(bundled, []byte(bundledScript), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := installBundledCLI(bundled, dest); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := readCLIVersion(dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "1.0.0-existing" {
+		t.Fatalf("installed version = %q, want existing binary preserved", got)
+	}
+}
+
+func TestInstallBundledCLI_installsWhenMissing(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell stub binary")
+	}
+	dir := t.TempDir()
+	dest := filepath.Join(dir, "nui")
+	bundled := filepath.Join(dir, "bundled")
+	script := "#!/bin/sh\nif [ \"$1\" = version ]; then echo 9.9.9-bundled; exit 0; fi\nexit 1\n"
+	if err := os.WriteFile(bundled, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := installBundledCLI(bundled, dest); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := readCLIVersion(dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "9.9.9-bundled" {
+		t.Fatalf("installed version = %q", got)
+	}
+}
+
 func TestEnsureCLIInstalledErr_missingBundledNoop(t *testing.T) {
 	// When Executable() points at a path without a sibling CLI, ensure is a no-op.
 	// We cannot easily override os.Executable in unit tests; bundledCLIPath for a
