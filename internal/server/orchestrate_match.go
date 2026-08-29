@@ -119,11 +119,7 @@ func tryDirectOrchestratorLaunch(prompt, workingDir string) (orchestrateRunResul
 	if err != nil {
 		return orchestrateRunResult{}, false, err
 	}
-	settings, loadErr := store.LoadSettings()
-	if loadErr != nil {
-		settings = store.Settings{Theme: "light"}
-	}
-	saveSessionPreferences(s, settings)
+	saveSessionPreferences(s)
 	return orchestrateRunResult{Session: s, Prompt: delegated}, true, nil
 }
 

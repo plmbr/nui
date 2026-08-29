@@ -95,9 +95,6 @@ func UserMode(s store.Settings) string {
 	if mode := strings.TrimSpace(s.MemoryUserMode); mode != "" {
 		return normalizeMode(mode)
 	}
-	if s.MemoryUserEnabled != nil && !*s.MemoryUserEnabled {
-		return ModeDisabled
-	}
 	return ModeManual
 }
 
@@ -110,11 +107,6 @@ func AgentMode(s store.Settings, agentID string) string {
 	if s.MemoryAgentsMode != nil {
 		if mode, ok := s.MemoryAgentsMode[agentID]; ok && strings.TrimSpace(mode) != "" {
 			return normalizeMode(mode)
-		}
-	}
-	if s.MemoryAgentsEnabled != nil {
-		if enabled, ok := s.MemoryAgentsEnabled[agentID]; ok && !enabled {
-			return ModeDisabled
 		}
 	}
 	return ModeManual

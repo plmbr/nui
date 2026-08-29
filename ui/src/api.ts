@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { AgentType, AgentFileContent, AgentFileInfo, AgentDeployerInfo, AgentDeployResult, AgentEvalSummary, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, Credentials, DirectorySuggestions, EnvVars, ExtensionEnv, ExtensionInfo, HitlRequest, HitlResponse, MCPOAuthStatus, MCPServer, MentionListResponse, MemorySummary, Schedule, Session, Settings, SkillEntry, UploadedImage } from './types'
+import type { AgentType, AgentFileContent, AgentFileInfo, AgentDeployerInfo, AgentDeployResult, AgentEvalSummary, Bootstrap, Capabilities, ChatMessage, CreateScheduleRequest, CreateSessionRequest, Credentials, DirectorySuggestions, EnvVars, ExtensionEnv, ExtensionInfo, HitlRequest, HitlResponse, MCPOAuthStatus, MCPServer, MentionListResponse, MemorySummary, Schedule, Session, Settings, SkillEntry, UIState, UploadedImage } from './types'
 
 export interface RunRecord {
   runId: string
@@ -283,6 +283,17 @@ export const api = {
 
     update: (patch: Partial<Settings>): Promise<Settings> =>
       request('/settings', {
+        method: 'PUT',
+        body: JSON.stringify(patch),
+      }),
+  },
+
+  state: {
+    get: (): Promise<UIState> =>
+      request('/state'),
+
+    update: (patch: Partial<UIState>): Promise<UIState> =>
+      request('/state', {
         method: 'PUT',
         body: JSON.stringify(patch),
       }),

@@ -100,22 +100,22 @@ export default function App() {
   }, [newSessionOpen, loadAgentTypes])
 
   const refreshRecents = useCallback(async () => {
-    const settings = await api.settings.get().catch(() => ({ theme: 'light' as const }))
-    setRecentSessionIds(settings.recentSessionIds ?? [])
-    setRecentAgents(settings.recentAgents ?? [])
+    const state = await api.state.get().catch(() => ({} as const))
+    setRecentSessionIds(state.recentSessionIds ?? [])
+    setRecentAgents(state.recentAgents ?? [])
   }, [])
 
   const touchRecentSession = useCallback((sessionId: string) => {
     setRecentSessionIds((current) => {
       const next = touchRecentSessionIds(current, sessionId)
-      api.settings.update({ recentSessionIds: next }).catch(() => {})
+      api.state.update({ recentSessionIds: next }).catch(() => {})
       return next
     })
   }, [])
 
   const handleRecentsOpenChange = useCallback((open: boolean) => {
     setRecentsOpen(open)
-    api.settings.update({ recentsOpen: open }).catch(() => {})
+    api.state.update({ recentsOpen: open }).catch(() => {})
   }, [])
 
   const handleRecentsChange = useCallback((patch: {
@@ -142,7 +142,7 @@ export default function App() {
       setInitialPrompt(undefined)
       setHideInput(false)
       navigateToSession(session.id, true)
-      api.settings.update({ lastSessionId: session.id }).catch(() => {})
+      api.state.update({ lastSessionId: session.id }).catch(() => {})
       void refreshRecents()
       return session.id
     } catch {
@@ -156,9 +156,9 @@ export default function App() {
     initializedRef.current = true
 
     async function init() {
-      let [list, settings, bootstrap, types] = await Promise.all([
+      let [list, state, bootstrap, types] = await Promise.all([
         loadSessions(),
-        api.settings.get().catch(() => ({ theme: 'light' as const })),
+        api.state.get().catch(() => ({})),
         api.bootstrap.get().catch(() => ({})),
         loadAgentTypes(),
       ])
@@ -167,15 +167,15 @@ export default function App() {
 
       if (bootstrap.sidebarOpen !== undefined) {
         setSidebarOpen(bootstrap.sidebarOpen)
-        api.settings.update({ sidebarOpen: bootstrap.sidebarOpen }).catch(() => {})
-      } else if (settings.sidebarOpen !== undefined) {
-        setSidebarOpen(settings.sidebarOpen)
+        api.state.update({ sidebarOpen: bootstrap.sidebarOpen }).catch(() => {})
+      } else if (state.sidebarOpen !== undefined) {
+        setSidebarOpen(state.sidebarOpen)
       }
-      setSidebarWidth(resolveSidebarWidth(settings.sidebarWidth))
-      setRecentSessionIds(settings.recentSessionIds ?? [])
-      setRecentAgents(settings.recentAgents ?? [])
-      if (settings.recentsOpen !== undefined) {
-        setRecentsOpen(settings.recentsOpen)
+      setSidebarWidth(resolveSidebarWidth(state.sidebarWidth))
+      setRecentSessionIds(state.recentSessionIds ?? [])
+      setRecentAgents(state.recentAgents ?? [])
+      if (state.recentsOpen !== undefined) {
+        setRecentsOpen(state.recentsOpen)
       }
 
       const openCustomize = isCustomizePath()
@@ -259,7 +259,7 @@ export default function App() {
       setInitialPrompt(event.prompt)
       setHideInput(false)
       navigateToSession(event.sessionId)
-      api.settings.update({ lastSessionId: event.sessionId }).catch(() => {})
+      api.state.update({ lastSessionId: event.sessionId }).catch(() => {})
       touchRecentSession(event.sessionId)
       void loadSessions()
     })
@@ -327,7 +327,7 @@ export default function App() {
       setSelectedId(id)
       setInitialPrompt(undefined)
       setHideInput(false)
-      api.settings.update({ lastSessionId: id }).catch(() => {})
+      api.state.update({ lastSessionId: id }).catch(() => {})
       touchRecentSession(id)
     }
 
@@ -345,13 +345,13 @@ export default function App() {
     setInitialPrompt(undefined)
     setHideInput(false)
     navigateToSession(id)
-    api.settings.update({ lastSessionId: id }).catch(() => {})
+    api.state.update({ lastSessionId: id }).catch(() => {})
     touchRecentSession(id)
   }, [touchRecentSession])
 
   const handleSidebarOpenChange = useCallback((open: boolean) => {
     setSidebarOpen(open)
-    api.settings.update({ sidebarOpen: open }).catch(() => {})
+    api.state.update({ sidebarOpen: open }).catch(() => {})
   }, [])
 
   const selected = sessions.find((s) => s.id === selectedId) ?? null
@@ -475,7 +475,7 @@ export default function App() {
 
   const handleCreateFromRecentAgent = useCallback(async (entry: RecentAgentEntry) => {
     const session = await api.sessions.create(buildCreateRequestFromRecent(entry))
-    api.settings.update({ lastAgentType: entry.agentType }).catch(() => {})
+    api.state.update({ lastAgentType: entry.agentType }).catch(() => {})
     await loadSessions()
     await refreshRecents()
     handleSelect(session.id)
@@ -506,13 +506,13 @@ export default function App() {
     setInitialPrompt(result.prompt)
     setHideInput(false)
     navigateToSession(result.session.id)
-    api.settings.update({ lastSessionId: result.session.id }).catch(() => {})
+    api.state.update({ lastSessionId: result.session.id }).catch(() => {})
     void refreshRecents()
   }, [loadSessions, refreshRecents])
 
   const handleResolveAmbiguity = useCallback(async (agentType: string, prompt: string) => {
     const session = await api.sessions.create({ agentType })
-    api.settings.update({ lastAgentType: agentType }).catch(() => {})
+    api.state.update({ lastAgentType: agentType }).catch(() => {})
     await loadSessions()
     setCustomizeOpen(false)
     setSchedulesOpen(false)
@@ -523,7 +523,7 @@ export default function App() {
     setInitialPrompt(prompt)
     setHideInput(false)
     navigateToSession(session.id)
-    api.settings.update({ lastSessionId: session.id }).catch(() => {})
+    api.state.update({ lastSessionId: session.id }).catch(() => {})
     void refreshRecents()
   }, [loadSessions, refreshRecents])
 
@@ -579,7 +579,7 @@ export default function App() {
 
   const handleSidebarWidthCommit = useCallback((width: number) => {
     setSidebarWidth(width)
-    api.settings.update({ sidebarWidth: width }).catch(() => {})
+    api.state.update({ sidebarWidth: width }).catch(() => {})
   }, [])
 
   const handleRenameSession = useCallback(async (id: string, newName: string) => {

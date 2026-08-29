@@ -73,8 +73,7 @@ func TestSaveAndLoadSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dark := true
-	if err := SaveSettings(Settings{Theme: "dark", SidebarOpen: &dark, DefaultAgentType: "claude-code"}); err != nil {
+	if err := SaveSettings(Settings{Theme: "dark", DefaultAgentType: "claude-code"}); err != nil {
 		t.Fatal(err)
 	}
 	loaded, err := LoadSettings()
@@ -83,5 +82,17 @@ func TestSaveAndLoadSettings(t *testing.T) {
 	}
 	if loaded.Theme != "dark" || loaded.DefaultAgentType != "claude-code" {
 		t.Fatalf("settings = %+v", loaded)
+	}
+
+	open := true
+	if err := SaveState(State{LastSessionID: "s1", SidebarOpen: &open}); err != nil {
+		t.Fatal(err)
+	}
+	st, err := LoadState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.LastSessionID != "s1" || st.SidebarOpen == nil || !*st.SidebarOpen {
+		t.Fatalf("state = %+v", st)
 	}
 }

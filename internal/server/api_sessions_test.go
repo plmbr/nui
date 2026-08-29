@@ -183,12 +183,12 @@ func TestCleanupDeletedSessionRemovesSideStorage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	settings, err := store.LoadSettings()
+	st, err := store.LoadState()
 	if err != nil {
 		t.Fatal(err)
 	}
-	settings.LastSessionID = sessionID
-	if err := store.SaveSettings(settings); err != nil {
+	st.LastSessionID = sessionID
+	if err := store.SaveState(st); err != nil {
 		t.Fatal(err)
 	}
 
@@ -223,12 +223,12 @@ func TestCleanupDeletedSessionRemovesSideStorage(t *testing.T) {
 	if _, err := coordinator().Get(context.Background(), hitlReq.RequestID); err != hitl.ErrNotFound {
 		t.Fatalf("hitl request err = %v", err)
 	}
-	settings, err = store.LoadSettings()
+	st, err = store.LoadState()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if settings.LastSessionID != "" {
-		t.Fatalf("lastSessionId = %q, want empty", settings.LastSessionID)
+	if st.LastSessionID != "" {
+		t.Fatalf("lastSessionId = %q, want empty", st.LastSessionID)
 	}
 }
 

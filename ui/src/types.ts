@@ -181,6 +181,13 @@ export interface Settings {
   disableSloganAnimation?: boolean
   defaultAgentType?: string
   defaultHarness?: string
+  disabledExtensions?: string[]
+  mcpOAuthCallbackUrl?: string
+  memoryUserMode?: MemoryMode
+  memoryAgentsMode?: Record<string, MemoryMode>
+}
+
+export interface UIState {
   lastAgentType?: string
   lastSessionId?: string
   recentSessionIds?: string[]
@@ -189,14 +196,6 @@ export interface Settings {
   recentsOpen?: boolean
   sidebarOpen?: boolean
   sidebarWidth?: number
-  disabledExtensions?: string[]
-  mcpOAuthCallbackUrl?: string
-  memoryUserMode?: MemoryMode
-  memoryAgentsMode?: Record<string, MemoryMode>
-  /** @deprecated use memoryUserMode */
-  memoryUserEnabled?: boolean
-  /** @deprecated use memoryAgentsMode */
-  memoryAgentsEnabled?: Record<string, boolean>
 }
 
 export interface CredentialField {

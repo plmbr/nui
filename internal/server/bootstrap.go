@@ -84,7 +84,7 @@ func applyStartSettings(opts StartOptions) error {
 		return nil
 	}
 
-	settings, err := store.LoadSettings()
+	settings, err := store.LoadUserSettings()
 	if err != nil {
 		settings = store.Settings{Theme: "light"}
 	}
@@ -180,11 +180,7 @@ func launchSessionFromRequest(req launchRequest) (launchResult, error) {
 		prompt = model.ResolveADLLaunchPrompt(def, prompt)
 	}
 
-	settings, loadErr := store.LoadSettings()
-	if loadErr != nil {
-		settings = store.Settings{Theme: "light"}
-	}
-	saveSessionPreferences(s, settings)
+	saveSessionPreferences(s)
 
 	return launchResult{
 		Session:        s,
@@ -297,9 +293,9 @@ func handleEnsureDefaultSession(w http.ResponseWriter, r *http.Request) {
 }
 
 func getDefaultSession() (model.Session, error) {
-	settings, err := store.LoadSettings()
+	st, err := store.LoadState()
 	if err != nil {
-		settings = store.Settings{Theme: "light"}
+		st = store.State{}
 	}
 
 	mu.RLock()
@@ -308,9 +304,9 @@ func getDefaultSession() (model.Session, error) {
 	if len(sessions) == 0 {
 		return model.Session{}, fmt.Errorf("no sessions")
 	}
-	if settings.LastSessionID != "" {
+	if st.LastSessionID != "" {
 		for _, s := range sessions {
-			if s.ID == settings.LastSessionID {
+			if s.ID == st.LastSessionID {
 				return s, nil
 			}
 		}
@@ -388,7 +384,12 @@ func ensureDefaultAgentType(settings *store.Settings) string {
 			continue
 		}
 		settings.DefaultAgentType = id
-		if err := store.SaveSettings(*settings); err != nil {
+		user, err := store.LoadUserSettings()
+		if err != nil {
+			user = store.Settings{Theme: "light"}
+		}
+		user.DefaultAgentType = id
+		if err := store.SaveSettings(user); err != nil {
 			fmt.Fprintf(os.Stderr, "warn: save default agent type: %v\n", err)
 		}
 		return id
@@ -396,12 +397,16 @@ func ensureDefaultAgentType(settings *store.Settings) string {
 	return ""
 }
 
-func saveSessionPreferences(s model.Session, settings store.Settings) {
-	settings.LastAgentType = s.AgentType
-	settings.LastSessionID = s.ID
-	settings = recordSessionRecents(s, settings)
-	if err := store.SaveSettings(settings); err != nil {
-		fmt.Fprintf(os.Stderr, "warn: save settings after session create: %v\n", err)
+func saveSessionPreferences(s model.Session) {
+	st, err := store.LoadState()
+	if err != nil {
+		st = store.State{}
+	}
+	st.LastAgentType = s.AgentType
+	st.LastSessionID = s.ID
+	st = recordSessionRecents(s, st)
+	if err := store.SaveState(st); err != nil {
+		fmt.Fprintf(os.Stderr, "warn: save state after session create: %v\n", err)
 	}
 }
 
@@ -545,10 +550,6 @@ func handleNewSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	settings, loadErr := store.LoadSettings()
-	if loadErr != nil {
-		settings = store.Settings{Theme: "light"}
-	}
-	saveSessionPreferences(s, settings)
+	saveSessionPreferences(s)
 	writeJSON(w, http.StatusCreated, s)
 }

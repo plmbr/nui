@@ -28,9 +28,8 @@ func TestHandleSettings_getAndPut(t *testing.T) {
 
 	putBody := `{
 		"defaultAgentType": "anthropic",
-		"lastAgentType": "claude-code",
 		"disabledExtensions": ["corp-pack"],
-		"memoryAgentsEnabled": {"reviewer": true}
+		"memoryAgentsMode": {"reviewer": "manual"}
 	}`
 	putReq := httptest.NewRequest(http.MethodPut, "/api/settings", strings.NewReader(putBody))
 	putRec := httptest.NewRecorder()
@@ -44,9 +43,6 @@ func TestHandleSettings_getAndPut(t *testing.T) {
 	}
 	if updated.DefaultAgentType != "anthropic" {
 		t.Fatalf("DefaultAgentType = %q", updated.DefaultAgentType)
-	}
-	if updated.LastAgentType != "claude-code" {
-		t.Fatalf("LastAgentType = %q", updated.LastAgentType)
 	}
 	if len(updated.DisabledExtensions) != 1 || updated.DisabledExtensions[0] != "corp-pack" {
 		t.Fatalf("DisabledExtensions = %+v", updated.DisabledExtensions)
@@ -140,21 +136,21 @@ func TestHandleSettings_disableSloganAnimation(t *testing.T) {
 	}
 }
 
-func TestHandleSettings_recentsRoundTrip(t *testing.T) {
+func TestHandleState_recentsRoundTrip(t *testing.T) {
 	setupTestServerEnv(t)
 
 	putBody := `{
 		"recentSessionIds": ["s1", "s2"],
 		"recentAgents": [{"agentType":"claude-code","workingDir":"/tmp","usedAt":"2026-01-01T00:00:00Z"}]
 	}`
-	putReq := httptest.NewRequest(http.MethodPut, "/api/settings", strings.NewReader(putBody))
+	putReq := httptest.NewRequest(http.MethodPut, "/api/state", strings.NewReader(putBody))
 	putRec := httptest.NewRecorder()
-	handleSettings(putRec, putReq)
+	handleState(putRec, putReq)
 	if putRec.Code != http.StatusOK {
 		t.Fatalf("PUT status = %d body=%s", putRec.Code, putRec.Body.String())
 	}
 
-	saved, err := store.LoadSettings()
+	saved, err := store.LoadState()
 	if err != nil {
 		t.Fatal(err)
 	}

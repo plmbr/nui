@@ -433,8 +433,8 @@ Extensions may declare `contributions.aiAssets.agentDeployers` — named command
 
 User-configured environment for extensions:
 
-- **Global** — Customize → Env vars (custom section) → `~/.nui/secrets.json`. Applied to the nui process (fill blanks) and all child processes.
-- **Per-extension** — Customize → Extensions → Env → `~/.nui/extension-env.json`. Merged when that extension’s hosts/harnesses spawn.
+- **Global** — Customize → Env vars (custom section) → `~/.nui/secrets.json` (merged with `/etc/nui/secrets.json` / `NUI_SYSTEM_CONFIG` when present; user wins). Applied to the nui process (fill blanks) and all child processes.
+- **Per-extension** — Customize → Extensions → Env → `~/.nui/extension-env.json` (merged with system extension-env; user wins per key). Merged when that extension’s hosts/harnesses spawn.
 - Core nui runtime keys (e.g. `NUI_API_URL`, `NUI_EXTENSION_DIR`) are reserved; extension-owned names such as `NUI_MY_EXTENSION_TOKEN` are allowed.
 
 Deployer ids use the `ext:<extension>/<name>` convention, for example `ext:docker-deployer/docker`.

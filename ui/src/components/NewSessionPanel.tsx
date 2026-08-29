@@ -415,7 +415,7 @@ export function NewSessionPanel({
         req.agentConfig = agentConfig
       }
       const session = await api.sessions.create(req)
-      api.settings.update({ lastAgentType: selectedId }).catch(() => {})
+      api.state.update({ lastAgentType: selectedId }).catch(() => {})
       reset()
       onCreated(session)
     } catch (err) {

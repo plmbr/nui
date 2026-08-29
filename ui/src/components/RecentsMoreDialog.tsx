@@ -70,7 +70,7 @@ export function RecentsMoreDialog({
     setRemovingKey(sessionId)
     try {
       const next = removeRecentSessionId(recentSessionIds, sessionId)
-      await api.settings.update({ recentSessionIds: next })
+      await api.state.update({ recentSessionIds: next })
       onRecentsChange({ recentSessionIds: next })
     } finally {
       setRemovingKey(null)

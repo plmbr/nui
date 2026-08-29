@@ -76,22 +76,15 @@ func TestUserModeDefaultsManual(t *testing.T) {
 	}
 }
 
-func TestUserModeLegacyDisabled(t *testing.T) {
-	disabled := false
-	if UserMode(store.Settings{MemoryUserEnabled: &disabled}) != ModeDisabled {
-		t.Fatal("expected legacy disabled user mode")
-	}
-}
-
 func TestUserModeExplicit(t *testing.T) {
 	if UserMode(store.Settings{MemoryUserMode: ModeAuto}) != ModeAuto {
 		t.Fatal("expected auto")
 	}
 }
 
-func TestAgentModeLegacyDisabled(t *testing.T) {
-	if AgentMode(store.Settings{MemoryAgentsEnabled: map[string]bool{"demo": false}}, "demo") != ModeDisabled {
-		t.Fatal("expected legacy disabled agent mode")
+func TestAgentModeExplicit(t *testing.T) {
+	if AgentMode(store.Settings{MemoryAgentsMode: map[string]string{"demo": ModeDisabled}}, "demo") != ModeDisabled {
+		t.Fatal("expected disabled agent mode")
 	}
 }
 

@@ -86,7 +86,7 @@ func handleEnv(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		current, err := store.LoadSecrets()
+		current, err := store.LoadUserSecrets()
 		if err != nil {
 			http.Error(w, "failed to load secrets", http.StatusInternalServerError)
 			return

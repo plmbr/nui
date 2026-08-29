@@ -174,7 +174,12 @@ func ensureDefaultHarness(settings *store.Settings) string {
 			continue
 		}
 		settings.DefaultHarness = ref
-		_ = store.SaveSettings(*settings)
+		user, err := store.LoadUserSettings()
+		if err != nil {
+			user = store.Settings{Theme: "light"}
+		}
+		user.DefaultHarness = ref
+		_ = store.SaveSettings(user)
 		return ref
 	}
 	return ""

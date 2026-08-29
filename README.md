@@ -90,7 +90,7 @@ Install the agent CLI you want to use and make sure it is on your `PATH`:
 4. **Sessions** — switch between past sessions from the sidebar; rename or delete as needed.
 5. **Settings** — theme, env vars (credentials + custom globals), extensions (including per-extension env), and MCP servers (including OAuth for remote MCP).
 
-Preferences (theme, last agent, sidebar state) are saved to `~/.nui/settings.json` and restored on reload.
+Preferences (theme, defaults, memory) are saved to `~/.nui/settings.json`. UI restoration state (last session, recents, sidebar) is saved to `~/.nui/state.json`.
 
 ## CLI reference
 

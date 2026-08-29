@@ -19,7 +19,6 @@ import (
 	"nui/internal/devcontainer"
 	"nui/internal/extensions"
 	"nui/internal/hitl"
-	"nui/internal/memory"
 	"nui/internal/model"
 	"nui/internal/skills"
 	"nui/internal/store"
@@ -96,6 +95,7 @@ func registerAPIRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/agent-types", handleAgentTypes)
 	mux.HandleFunc("/api/directories", handleDirectories)
 	mux.HandleFunc("/api/settings", handleSettings)
+	mux.HandleFunc("/api/state", handleState)
 	mux.HandleFunc("/api/credentials", handleCredentials)
 	mux.HandleFunc("/api/env", handleEnv)
 	mux.HandleFunc("/api/bootstrap", handleBootstrap)
@@ -707,12 +707,12 @@ func clearLastSessionIDIfMatch(sessionID string) {
 	if sessionID == "" {
 		return
 	}
-	settings, err := store.LoadSettings()
-	if err != nil || settings.LastSessionID != sessionID {
+	st, err := store.LoadState()
+	if err != nil || st.LastSessionID != sessionID {
 		return
 	}
-	settings.LastSessionID = ""
-	if err := store.SaveSettings(settings); err != nil {
+	st.LastSessionID = ""
+	if err := store.SaveState(st); err != nil {
 		fmt.Fprintf(os.Stderr, "warn: clear lastSessionId: %v\n", err)
 	}
 }
@@ -914,16 +914,10 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "failed to load settings", http.StatusInternalServerError)
 			return
 		}
-		if migrated, changed := ensureRecentsMigrated(s); changed {
-			if err := store.SaveSettings(migrated); err != nil {
-				fmt.Fprintf(os.Stderr, "warn: save migrated recents: %v\n", err)
-			}
-			s = migrated
-		}
 		writeJSON(w, http.StatusOK, s)
 
 	case http.MethodPut:
-		current, err := store.LoadSettings()
+		current, err := store.LoadUserSettings()
 		if err != nil {
 			http.Error(w, "failed to load settings", http.StatusInternalServerError)
 			return
@@ -960,6 +954,72 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 			}
 			current.DefaultHarness = patch.DefaultHarness
 		}
+		if patch.DisabledExtensions != nil {
+			current.DisabledExtensions = patch.DisabledExtensions
+		}
+		if patch.MCPOAuthCallbackURL != "" {
+			current.MCPOAuthCallbackURL = patch.MCPOAuthCallbackURL
+		}
+		if patch.MemoryUserMode != "" {
+			current.MemoryUserMode = patch.MemoryUserMode
+		}
+		if patch.MemoryAgentsMode != nil {
+			if current.MemoryAgentsMode == nil {
+				current.MemoryAgentsMode = map[string]string{}
+			}
+			for id, mode := range patch.MemoryAgentsMode {
+				current.MemoryAgentsMode[id] = mode
+			}
+		}
+		if current.Theme == "" {
+			current.Theme = "light"
+		}
+		if current.UITheme == "" {
+			current.UITheme = "hawaiian"
+		}
+		if err := store.SaveSettings(current); err != nil {
+			http.Error(w, "failed to save settings", http.StatusInternalServerError)
+			return
+		}
+		effective, err := store.LoadSettings()
+		if err != nil {
+			writeJSON(w, http.StatusOK, current)
+			return
+		}
+		writeJSON(w, http.StatusOK, effective)
+
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func handleState(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		st, err := store.LoadState()
+		if err != nil {
+			http.Error(w, "failed to load state", http.StatusInternalServerError)
+			return
+		}
+		if populated, changed := ensureRecentsPopulated(st); changed {
+			if err := store.SaveState(populated); err != nil {
+				fmt.Fprintf(os.Stderr, "warn: save populated recents: %v\n", err)
+			}
+			st = populated
+		}
+		writeJSON(w, http.StatusOK, st)
+
+	case http.MethodPut:
+		current, err := store.LoadState()
+		if err != nil {
+			http.Error(w, "failed to load state", http.StatusInternalServerError)
+			return
+		}
+		var patch store.State
+		if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
 		if patch.LastAgentType != "" {
 			current.LastAgentType = patch.LastAgentType
 		}
@@ -982,57 +1042,14 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 			}
 			current.SidebarWidth = &w
 		}
-		if patch.DisabledExtensions != nil {
-			current.DisabledExtensions = patch.DisabledExtensions
-		}
 		if patch.RecentSessionIDs != nil {
 			current.RecentSessionIDs = patch.RecentSessionIDs
 		}
 		if patch.RecentAgents != nil {
 			current.RecentAgents = patch.RecentAgents
 		}
-		if patch.MemoryUserMode != "" {
-			current.MemoryUserMode = patch.MemoryUserMode
-		}
-		if patch.MemoryAgentsMode != nil {
-			if current.MemoryAgentsMode == nil {
-				current.MemoryAgentsMode = map[string]string{}
-			}
-			for id, mode := range patch.MemoryAgentsMode {
-				current.MemoryAgentsMode[id] = mode
-			}
-		}
-		if patch.MemoryUserEnabled != nil {
-			current.MemoryUserEnabled = patch.MemoryUserEnabled
-			if patch.MemoryUserMode == "" {
-				if *patch.MemoryUserEnabled {
-					current.MemoryUserMode = memory.ModeManual
-				} else {
-					current.MemoryUserMode = memory.ModeDisabled
-				}
-			}
-		}
-		if patch.MemoryAgentsEnabled != nil {
-			current.MemoryAgentsEnabled = patch.MemoryAgentsEnabled
-			if current.MemoryAgentsMode == nil {
-				current.MemoryAgentsMode = map[string]string{}
-			}
-			for id, enabled := range patch.MemoryAgentsEnabled {
-				if enabled {
-					current.MemoryAgentsMode[id] = memory.ModeManual
-				} else {
-					current.MemoryAgentsMode[id] = memory.ModeDisabled
-				}
-			}
-		}
-		if current.Theme == "" {
-			current.Theme = "light"
-		}
-		if current.UITheme == "" {
-			current.UITheme = "hawaiian"
-		}
-		if err := store.SaveSettings(current); err != nil {
-			http.Error(w, "failed to save settings", http.StatusInternalServerError)
+		if err := store.SaveState(current); err != nil {
+			http.Error(w, "failed to save state", http.StatusInternalServerError)
 			return
 		}
 		writeJSON(w, http.StatusOK, current)

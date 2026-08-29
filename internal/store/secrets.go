@@ -20,22 +20,21 @@ type Secrets struct {
 	Env map[string]string `json:"env"`
 }
 
-// LoadSecrets reads ~/.nui/secrets.json. Missing file yields empty Env.
-func LoadSecrets() (Secrets, error) {
-	dir, err := Dir()
-	if err != nil {
-		return Secrets{Env: map[string]string{}}, err
-	}
+func emptySecrets() Secrets {
+	return Secrets{Env: map[string]string{}}
+}
+
+func loadSecretsFile(dir string) (Secrets, error) {
 	data, err := os.ReadFile(filepath.Join(dir, secretsFileName))
 	if errors.Is(err, os.ErrNotExist) {
-		return Secrets{Env: map[string]string{}}, nil
+		return emptySecrets(), nil
 	}
 	if err != nil {
-		return Secrets{Env: map[string]string{}}, err
+		return emptySecrets(), err
 	}
 	var s Secrets
 	if err := json.Unmarshal(data, &s); err != nil {
-		return Secrets{Env: map[string]string{}}, err
+		return emptySecrets(), err
 	}
 	if s.Env == nil {
 		s.Env = map[string]string{}
@@ -43,12 +42,41 @@ func LoadSecrets() (Secrets, error) {
 	return s, nil
 }
 
-// SaveSecrets writes ~/.nui/secrets.json with mode 0600.
+// LoadUserSecrets reads secrets.json from the user data dir only.
+func LoadUserSecrets() (Secrets, error) {
+	dir, err := UserDir()
+	if err != nil {
+		return emptySecrets(), err
+	}
+	return loadSecretsFile(dir)
+}
+
+// LoadSystemSecrets reads secrets.json from the system config dir (if present).
+func LoadSystemSecrets() (Secrets, error) {
+	if !SystemDirExists() {
+		return emptySecrets(), nil
+	}
+	return loadSecretsFile(SystemDir())
+}
+
+// LoadSecrets returns effective secrets: system base merged with user overrides.
+func LoadSecrets() (Secrets, error) {
+	sys, err := LoadSystemSecrets()
+	if err != nil {
+		sys = emptySecrets()
+	}
+	user, err := LoadUserSecrets()
+	if err != nil {
+		return Secrets{Env: mergeEnvMaps(sys.Env, nil)}, err
+	}
+	return Secrets{Env: mergeEnvMaps(sys.Env, user.Env)}, nil
+}
+
+// SaveSecrets writes secrets.json to the user data dir with mode 0600.
 func SaveSecrets(s Secrets) error {
 	if s.Env == nil {
 		s.Env = map[string]string{}
 	}
-	// Drop empty values so the file stays tidy.
 	cleaned := make(map[string]string, len(s.Env))
 	for k, v := range s.Env {
 		k = strings.TrimSpace(k)
@@ -60,7 +88,7 @@ func SaveSecrets(s Secrets) error {
 	}
 	s.Env = cleaned
 
-	dir, err := Dir()
+	dir, err := UserDir()
 	if err != nil {
 		return err
 	}
@@ -101,7 +129,7 @@ func SaveSecrets(s Secrets) error {
 	return nil
 }
 
-// SecretEnv returns the value stored for key, or empty if unset.
+// SecretEnv returns the effective value for key (system + user), or empty if unset.
 func SecretEnv(key string) string {
 	s, err := LoadSecrets()
 	if err != nil {

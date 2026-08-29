@@ -86,10 +86,9 @@ func TestHandleMemoryList(t *testing.T) {
 	if err := memory.WriteAgent("demo", "agent note"); err != nil {
 		t.Fatal(err)
 	}
-	disabled := false
 	if err := store.SaveSettings(store.Settings{
-		MemoryUserEnabled:   &disabled,
-		MemoryAgentsEnabled: map[string]bool{"demo": true},
+		MemoryUserMode:   memory.ModeDisabled,
+		MemoryAgentsMode: map[string]string{"demo": memory.ModeManual},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -142,27 +141,5 @@ func TestHandleSettingsMemoryModes(t *testing.T) {
 	}
 	if settings.MemoryAgentsMode["demo"] != memory.ModeDisabled {
 		t.Fatalf("demo mode = %q", settings.MemoryAgentsMode["demo"])
-	}
-}
-
-func TestHandleSettingsMemoryLegacyMigration(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("HOME", home)
-
-	putReq := httptest.NewRequest(http.MethodPut, "/api/settings", strings.NewReader(`{"memoryUserEnabled":true,"memoryAgentsEnabled":{"demo":false}}`))
-	putRec := httptest.NewRecorder()
-	handleSettings(putRec, putReq)
-	if putRec.Code != http.StatusOK {
-		t.Fatalf("status = %d body %s", putRec.Code, putRec.Body.String())
-	}
-	settings, err := store.LoadSettings()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if settings.MemoryUserMode != memory.ModeManual {
-		t.Fatalf("MemoryUserMode = %q, want manual", settings.MemoryUserMode)
-	}
-	if settings.MemoryAgentsMode["demo"] != memory.ModeDisabled {
-		t.Fatalf("demo mode = %q, want disabled", settings.MemoryAgentsMode["demo"])
 	}
 }

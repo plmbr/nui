@@ -64,7 +64,7 @@ In development, Vite (`:5173`) proxies `/api` to the Go server.
 | `cmd/` | Cobra CLI (`nui server`, `nui run`, `nui agent`, `nui extension`, `nui skills`, `nui memory`, `nui schedule`, MCP stdio servers) |
 | `internal/server/` | HTTP mux, REST handlers, AG-UI streaming (`agui.go`), orchestrate/home launcher, MCP OAuth, MCP tool UI (`mcp_manager.go`) |
 | `internal/model/` | `Session`, `ChatMessage`, ADL structs |
-| `internal/store/` | Persistence: `data.json`, `settings.json`, ADL YAML in `agents/`, user plugins in `~/.nui/extensions/`, agent history loaders |
+| `internal/store/` | Persistence: `data.json`, `settings.json`, `state.json`, secrets, ADL YAML in `agents/`, user plugins in `~/.nui/extensions/`; optional system config via `NUI_SYSTEM_CONFIG` / `/etc/nui` |
 | `internal/extensions/` | Extension registry: manifest scan, list sources (file/catalog RPC), harness/MCP/skill/agent contributions |
 | `internal/agents/` | Built-in ADL defs (CLI, API, `nui` master agent) |
 | `internal/agent/` | `Agent` interface, harness agents, `ADLAgent` executor, `Manager` lifecycle, `sandbox.go` (bwrap) |
@@ -141,7 +141,8 @@ SSE `data:` events support `text`, `done`, `error`, and tool-call/image event ty
 | File | Contents |
 |---|---|
 | `~/.nui/data.json` | `sessions`, `agentSessions` (nui session ID → agent session ID), `sessionMessages` (UI chat text) |
-| `~/.nui/settings.json` | `theme`, `defaultAgentType`, `defaultHarness`, `lastAgentType`, `lastSessionId`, `sidebarOpen`, `disabledExtensions` |
+| `~/.nui/settings.json` | Preferences: `theme`, `uiTheme`, `defaultAgentType`, `defaultHarness`, `disabledExtensions`, memory modes |
+| `~/.nui/state.json` | UI state: `lastAgentType`, `lastSessionId`, `recentSessionIds`, `recentAgents`, `sidebarOpen`, `sidebarWidth`, `recentsOpen` |
 | `~/.nui/sessions/<session-id>/` | Per-session harness config (MCP, skills, system prompt, `.devcontainer/`); removed on session delete |
 | `~/.nui/workspaces/<session-id>/` | Isolated working dir when ADL does not request user `workingDirInput`; removed on session delete |
 | `$TMPDIR/nui-uploads/<session-id>/` | Pasted/dropped chat attachments; removed on session delete |

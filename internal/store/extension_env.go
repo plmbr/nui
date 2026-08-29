@@ -19,22 +19,21 @@ type ExtensionEnvFile struct {
 	Env map[string]map[string]string `json:"env"`
 }
 
-// LoadExtensionEnv reads ~/.nui/extension-env.json. Missing file yields empty Env.
-func LoadExtensionEnv() (ExtensionEnvFile, error) {
-	dir, err := Dir()
-	if err != nil {
-		return ExtensionEnvFile{Env: map[string]map[string]string{}}, err
-	}
+func emptyExtensionEnv() ExtensionEnvFile {
+	return ExtensionEnvFile{Env: map[string]map[string]string{}}
+}
+
+func loadExtensionEnvFile(dir string) (ExtensionEnvFile, error) {
 	data, err := os.ReadFile(filepath.Join(dir, extensionEnvFileName))
 	if errors.Is(err, os.ErrNotExist) {
-		return ExtensionEnvFile{Env: map[string]map[string]string{}}, nil
+		return emptyExtensionEnv(), nil
 	}
 	if err != nil {
-		return ExtensionEnvFile{Env: map[string]map[string]string{}}, err
+		return emptyExtensionEnv(), err
 	}
 	var f ExtensionEnvFile
 	if err := json.Unmarshal(data, &f); err != nil {
-		return ExtensionEnvFile{Env: map[string]map[string]string{}}, err
+		return emptyExtensionEnv(), err
 	}
 	if f.Env == nil {
 		f.Env = map[string]map[string]string{}
@@ -42,7 +41,56 @@ func LoadExtensionEnv() (ExtensionEnvFile, error) {
 	return f, nil
 }
 
-// SaveExtensionEnv writes ~/.nui/extension-env.json with mode 0600.
+// LoadUserExtensionEnv reads extension-env.json from the user data dir only.
+func LoadUserExtensionEnv() (ExtensionEnvFile, error) {
+	dir, err := UserDir()
+	if err != nil {
+		return emptyExtensionEnv(), err
+	}
+	return loadExtensionEnvFile(dir)
+}
+
+// LoadSystemExtensionEnv reads extension-env.json from the system config dir.
+func LoadSystemExtensionEnv() (ExtensionEnvFile, error) {
+	if !SystemDirExists() {
+		return emptyExtensionEnv(), nil
+	}
+	return loadExtensionEnvFile(SystemDir())
+}
+
+// LoadExtensionEnv returns effective extension env (system base + user overrides).
+func LoadExtensionEnv() (ExtensionEnvFile, error) {
+	sys, err := LoadSystemExtensionEnv()
+	if err != nil {
+		sys = emptyExtensionEnv()
+	}
+	user, err := LoadUserExtensionEnv()
+	if err != nil {
+		return ExtensionEnvFile{Env: mergeExtensionEnvMaps(sys.Env, nil)}, err
+	}
+	return ExtensionEnvFile{Env: mergeExtensionEnvMaps(sys.Env, user.Env)}, nil
+}
+
+func mergeExtensionEnvMaps(sys, user map[string]map[string]string) map[string]map[string]string {
+	out := map[string]map[string]string{}
+	for name, env := range sys {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		out[name] = cleanEnvMap(env)
+	}
+	for name, env := range user {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		out[name] = mergeEnvMaps(out[name], cleanEnvMap(env))
+	}
+	return out
+}
+
+// SaveExtensionEnv writes extension-env.json to the user data dir with mode 0600.
 func SaveExtensionEnv(f ExtensionEnvFile) error {
 	if f.Env == nil {
 		f.Env = map[string]map[string]string{}
@@ -61,7 +109,7 @@ func SaveExtensionEnv(f ExtensionEnvFile) error {
 	}
 	f.Env = cleaned
 
-	dir, err := Dir()
+	dir, err := UserDir()
 	if err != nil {
 		return err
 	}
@@ -102,7 +150,7 @@ func SaveExtensionEnv(f ExtensionEnvFile) error {
 	return nil
 }
 
-// ExtensionEnv returns the env map for one extension (may be empty).
+// ExtensionEnv returns the effective env map for one extension (may be empty).
 func ExtensionEnv(name string) map[string]string {
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -126,13 +174,14 @@ func ExtensionEnvKeys(name string) []string {
 	return keys
 }
 
-// SetExtensionEnv replaces the env map for one extension. Empty map deletes the entry.
+// SetExtensionEnv replaces the user-layer env map for one extension.
+// Empty map deletes the user entry (system defaults remain effective).
 func SetExtensionEnv(name string, env map[string]string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return errors.New("extension name is required")
 	}
-	f, err := LoadExtensionEnv()
+	f, err := LoadUserExtensionEnv()
 	if err != nil {
 		return err
 	}
@@ -148,13 +197,13 @@ func SetExtensionEnv(name string, env map[string]string) error {
 	return SaveExtensionEnv(f)
 }
 
-// RemoveExtensionEnv deletes the env entry for an extension.
+// RemoveExtensionEnv deletes the user-layer env entry for an extension.
 func RemoveExtensionEnv(name string) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil
 	}
-	f, err := LoadExtensionEnv()
+	f, err := LoadUserExtensionEnv()
 	if err != nil {
 		return err
 	}

@@ -194,8 +194,12 @@ func TestGetDefaultSession_returnsLastSession(t *testing.T) {
 
 	if err := store.SaveSettings(store.Settings{
 		Theme:            "light",
-		LastSessionID:    "sess-2",
 		DefaultAgentType: "claude-code",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveState(store.State{
+		LastSessionID: "sess-2",
 	}); err != nil {
 		t.Fatal(err)
 	}

@@ -60,7 +60,7 @@ flowchart TB
 
 4. **Docker/remote via custom ADL.** There is no built-in "Docker" or "Remote" picker in the UI. Users copy an ADL template from `dev/harness-examples/` into `~/.nui/agents/` (e.g. `docker-echo.yaml`), then select it under **Installed agents**. nui validates the connector on session create.
 
-5. **CLI launch + UI preferences.** `nui server -a <agent-id> --prompt --open` starts the HTTP server first, then creates a session via the same logic as `POST /api/launch` (shared with the warm-attach path when the server is already running). Use ADL ids for `-a` (e.g. `claude-code`). Session creation saves `lastAgentType` / `lastSessionId` to `settings.json` and exposes the prompt once via `GET /api/bootstrap`. `nui server --open` (without `-a`) also creates a fresh session with the default agent. With `--open`, nui opens the browser to `/sessions/<id>` after the session is ready. If no sessions exist at startup and no launch flags were passed, nui auto-creates one with the default agent when the UI loads. Sidebar state, `defaultAgentType`, `defaultHarness`, and last-selected session/agent are also persisted in `settings.json`.
+5. **CLI launch + UI preferences.** `nui server -a <agent-id> --prompt --open` starts the HTTP server first, then creates a session via the same logic as `POST /api/launch` (shared with the warm-attach path when the server is already running). Use ADL ids for `-a` (e.g. `claude-code`). Session creation saves `lastAgentType` / `lastSessionId` to `state.json` and exposes the prompt once via `GET /api/bootstrap`. `nui server --open` (without `-a`) also creates a fresh session with the default agent. With `--open`, nui opens the browser to `/sessions/<id>` after the session is ready. If no sessions exist at startup and no launch flags were passed, nui auto-creates one with the default agent when the UI loads. Preferences (`defaultAgentType`, `defaultHarness`, theme, memory) live in `settings.json`; sidebar/recents/last session live in `state.json`.
 
 6. **`nui` master agent (home launcher).** The home screen submits prompts to `POST /api/orchestrate`, which runs the built-in `nui` agent (legacy id `nui-orchestrator`). That agent uses the `nui-orchestrator` MCP tools (`list_agents`, `launch_session`) to open a specialist session, or the create-agent skill + `nui-agent` MCP to save a new ADL definition. Definition: `internal/agents/internal.go`.
 
@@ -155,9 +155,12 @@ Interactive AG-UI chat does not yet support mid-stream offset replay. A disconne
 | Store | Format | Location | Status |
 |---|---|---|---|
 | Sessions + agent session IDs + UI messages | JSON | `~/.nui/data.json` | Done — rows removed on session delete |
-| Settings | JSON | `~/.nui/settings.json` | Done (`theme`, `defaultAgentType`, `defaultHarness`, `lastAgentType`, `lastSessionId`, `sidebarOpen`, `disabledExtensions`, memory toggles); `lastSessionId` cleared when that session is deleted |
-| Secrets | JSON | `~/.nui/secrets.json` (0600) | Done — managed API credentials + free-form global env; Customize → Env vars |
-| Extension env | JSON | `~/.nui/extension-env.json` (0600) | Done — per-extension env maps; Customize → Extensions → Env |
+| Settings (preferences) | JSON | `~/.nui/settings.json` | Done (`theme`, `uiTheme`, `defaultAgentType`, `defaultHarness`, `disabledExtensions`, memory modes). System base: `/etc/nui/settings.json` or `NUI_SYSTEM_CONFIG` (user wins) |
+| UI state | JSON | `~/.nui/state.json` | Done (`lastAgentType`, `lastSessionId`, `recentSessionIds`, `recentAgents`, `sidebarOpen`, `sidebarWidth`, `recentsOpen`); `lastSessionId` cleared when that session is deleted |
+| Secrets | JSON | `~/.nui/secrets.json` (0600) | Done — managed API credentials + free-form global env; Customize → Env vars. Merged with system secrets when present |
+| Extension env | JSON | `~/.nui/extension-env.json` (0600) | Done — per-extension env maps; Customize → Extensions → Env. Merged with system extension-env when present |
+| Data dir override | env | `NUI_DATA_DIR` | Writable user tree (default `~/.nui`) |
+| System config | env/dir | `NUI_SYSTEM_CONFIG` / `/etc/nui` | Read-only admin defaults (settings, secrets, extension-env, mcp-servers, agents) |
 | Per-session harness config | dir | `~/.nui/sessions/<session-id>/` | Done — removed on session delete |
 | Isolated workspaces | dir | `~/.nui/workspaces/<session-id>/` | Done — removed on session delete |
 | Chat uploads | files | `$TMPDIR/nui-uploads/<session-id>/` | Done — removed on session delete |
@@ -198,10 +201,11 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 | `GET` | `/api/sessions/:id/history` | Agent-side history |
 | `GET` | `/api/agent-types` | Builtin + ADL + extension agent types |
 | `GET` | `/api/directories` | Working-dir suggestions |
-| `GET/PUT` | `/api/settings` | User preferences (partial PUT; includes memory toggles) |
-| `GET/PUT` | `/api/env` | Global env (`~/.nui/secrets.json`): managed credentials + custom key/values. PUT `{ "env": {…}, "custom": {…} }` (empty value clears; custom replaces all custom keys). `/api/credentials` is an alias. |
+| `GET/PUT` | `/api/settings` | Preferences (partial PUT; memory modes). Reads merge system+user; writes user layer only |
+| `GET/PUT` | `/api/state` | UI restoration state (`lastSessionId`, recents, sidebar). User-only |
+| `GET/PUT` | `/api/env` | Global env (`~/.nui/secrets.json`): managed credentials + custom key/values. PUT `{ "env": {…}, "custom": {…} }` (empty value clears; custom replaces all custom keys). `/api/credentials` is an alias. Merged with system secrets on read |
 | `GET/PUT` | `/api/credentials` | Alias of `/api/env` (backward compatible). |
-| `GET/PUT` | `/api/extensions/{name}/env` | Per-extension env (`~/.nui/extension-env.json`). PUT `{ "env": {…} }` replaces that extension’s map. Reloads extension hosts. |
+| `GET/PUT` | `/api/extensions/{name}/env` | Per-extension env (`~/.nui/extension-env.json`). PUT `{ "env": {…} }` replaces that extension’s **user** map. Reloads extension hosts. |
 | `GET` | `/api/bootstrap` | One-shot CLI bootstrap (`sessionId`, `initialPrompt`) |
 | `POST` | `/api/launch` | Create session + optional initial prompt |
 | `POST` | `/api/orchestrate` | Home-launcher run via `nui` master agent |
