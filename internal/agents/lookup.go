@@ -16,6 +16,7 @@ var legacyAgentTypeNames = map[string]string{
 	"pi":              "pi",
 	"codex":           "codex",
 	"opencode":        "opencode",
+	"antigravity":     "antigravity",
 	"docker-claude":   "claude-code",
 	"docker-pi":       "pi",
 	"docker-opencode": "opencode",

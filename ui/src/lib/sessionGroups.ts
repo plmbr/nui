@@ -23,6 +23,7 @@ const LEGACY_AGENT_TYPE_IDS: Record<string, string> = {
   'pi': 'pi',
   'codex': 'codex',
   'opencode': 'opencode',
+  'antigravity': 'antigravity',
   'docker-claude': 'claude-code',
   'docker-pi': 'pi',
   'docker-opencode': 'opencode',
@@ -30,7 +31,7 @@ const LEGACY_AGENT_TYPE_IDS: Record<string, string> = {
   'nui-orchestrator': NUI_AGENT_ID,
 }
 
-const BUILTIN_AGENT_IDS = new Set(['claude-code', 'pi', 'codex', 'opencode'])
+const BUILTIN_AGENT_IDS = new Set(['claude-code', 'pi', 'codex', 'opencode', 'antigravity'])
 
 export interface SessionGroup {
   id: string

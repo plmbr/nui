@@ -37,6 +37,8 @@ func builtinAgentSandbox(ag Agent) string {
 		return normalizeSandbox(a.Sandbox)
 	case *OpenCodeAgent:
 		return normalizeSandbox(a.Sandbox)
+	case *AntigravityAgent:
+		return normalizeSandbox(a.Sandbox)
 	default:
 		return "none"
 	}
@@ -65,6 +67,11 @@ func applyBuiltinSandbox(ag Agent, sandbox string) {
 			a.Stop()
 			a.Sandbox = sandbox
 		}
+	case *AntigravityAgent:
+		if normalizeSandbox(a.Sandbox) != sandbox {
+			a.Stop()
+			a.Sandbox = sandbox
+		}
 	}
 }
 
@@ -84,6 +91,9 @@ func applyDevcontainerRuntime(ag Agent, workspace, containerID string) {
 		a.DevcontainerWorkspace = workspace
 		a.DevcontainerContainerID = containerID
 	case *OpenCodeAgent:
+		a.DevcontainerWorkspace = workspace
+		a.DevcontainerContainerID = containerID
+	case *AntigravityAgent:
 		a.DevcontainerWorkspace = workspace
 		a.DevcontainerContainerID = containerID
 	}

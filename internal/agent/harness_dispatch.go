@@ -19,6 +19,7 @@ var harnessRunners = map[string]harnessRunner{
 	"pi":           runPiHarness,
 	"codex":        runCodexHarness,
 	"opencode":     runOpenCodeHarness,
+	"antigravity":  runAntigravityHarness,
 	"docker":       runDockerHarness,
 	"devcontainer": runDevcontainerHarness,
 	"remote":       runRemoteHarness,
@@ -155,6 +156,23 @@ func runOpenCodeHarness(ctx context.Context, a *ADLAgent, req RunRequest, harnes
 		ag, err := a.manager.GetAgent(projectID, "opencode", req.WorkingDir, harnessBuiltinConfig(harness))
 		if err != nil {
 			return fmt.Errorf("opencode harness: %w", err)
+		}
+		return ag.Run(ctx, req, events)
+	}
+}
+
+func runAntigravityHarness(ctx context.Context, a *ADLAgent, req RunRequest, harness model.ADLHarness, events chan<- Event) error {
+	projectID := a.harnessProjectID(req, harness)
+	switch harness.Sandbox {
+	case "docker":
+		return fmt.Errorf("antigravity docker sandbox is not supported yet")
+	default:
+		if err := requireBubblewrap(harness.Sandbox); err != nil {
+			return err
+		}
+		ag, err := a.manager.GetAgent(projectID, "antigravity", req.WorkingDir, harnessBuiltinConfig(harness))
+		if err != nil {
+			return fmt.Errorf("antigravity harness: %w", err)
 		}
 		return ag.Run(ctx, req, events)
 	}

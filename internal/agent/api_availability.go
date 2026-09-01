@@ -64,9 +64,23 @@ func CredentialFieldSpecs() []CredentialFieldSpec {
 		{
 			Key:         "GEMINI_API_KEY",
 			Label:       "Gemini API key",
-			Description: "Used by the Gemini builtin. GOOGLE_API_KEY is also accepted from the environment.",
+			Description: "Used by the Gemini API builtin and Antigravity CLI (agy) when modelProvider is gemini. GOOGLE_API_KEY is also accepted (nui aliases it to GEMINI_API_KEY for agy). Click Save after editing.",
 			Group:       "Gemini",
 			Secret:      true,
+		},
+		{
+			Key:         "GEMINI_MODEL",
+			Label:       "Gemini model",
+			Description: "Optional model override for the Gemini API builtin (e.g. gemini-3.5-flash). Also used by Antigravity when ANTIGRAVITY_MODEL is unset. GOOGLE_MODEL is accepted as an alias.",
+			Group:       "Gemini",
+			Secret:      false,
+		},
+		{
+			Key:         "ANTIGRAVITY_MODEL",
+			Label:       "Antigravity model",
+			Description: "Optional agy model slug (e.g. gemini-3.6-flash-medium). Overrides GEMINI_MODEL for the Antigravity CLI builtin. List slugs with `agy models`.",
+			Group:       "Gemini",
+			Secret:      false,
 		},
 		{
 			Key:         "OPENROUTER_API_KEY",

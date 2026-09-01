@@ -51,7 +51,7 @@ flowchart TB
 
 - Go 1.26+
 - Node.js 18+
-- Agent CLIs on `PATH` as needed: `claude`, `pi`, `codex`, `opencode`
+- Agent CLIs on `PATH` as needed: `claude`, `pi`, `codex`, `opencode`, `agy`
 - Docker (optional) — for `sandbox: docker`, custom docker-harness ADL agents, and devcontainer harnesses
 - Dev Container CLI (optional) — for `harness.type: devcontainer` (`npm install -g @devcontainers/cli`)
 
@@ -178,18 +178,19 @@ Ten built-in agent types: four CLI harnesses, five API harnesses, and the `nui` 
 | pi | `pi` | `pi --mode rpc` subprocess |
 | codex | `codex` | `codex exec` subprocess |
 | opencode | `opencode` | `opencode serve` + `opencode run` |
+| Antigravity | `antigravity` | `agy` stream-json subprocess. Model: `ANTIGRAVITY_MODEL`, then `GEMINI_MODEL` / `GOOGLE_MODEL` (env / secrets / ADL `env`), else ADL default (`gemini-3.6-flash-medium`). |
 
 **API harnesses** (`harness.type: api` — in-process via `internal/llm/`):
 
-| Name | ADL id | Provider | Default model | API key env |
-|---|---|---|---|---|
-| Claude API | `anthropic` | `anthropic` | `claude-sonnet-4-20250514` | `ANTHROPIC_API_KEY` |
-| OpenAI | `openai` | `openai` | `gpt-4o-mini` | `OPENAI_API_KEY` |
-| Gemini | `gemini` | `gemini` | `gemini-2.5-flash` | `GEMINI_API_KEY` / `GOOGLE_API_KEY` |
-| OpenRouter | `openrouter` | `openrouter` | `anthropic/claude-sonnet-4` | `OPENROUTER_API_KEY` |
-| Ollama | `ollama` | `ollama` | (none) | none (`OLLAMA_HOST` optional) |
+| Name | ADL id | Provider | Default model | API key env | Model env |
+|---|---|---|---|---|---|
+| Claude API | `anthropic` | `anthropic` | `claude-sonnet-4-20250514` | `ANTHROPIC_API_KEY` | `ANTHROPIC_MODEL` / … |
+| OpenAI | `openai` | `openai` | `gpt-4o-mini` | `OPENAI_API_KEY` | `OPENAI_MODEL` |
+| Gemini | `gemini` | `gemini` | `gemini-3.5-flash` | `GEMINI_API_KEY` / `GOOGLE_API_KEY` | `GEMINI_MODEL` / `GOOGLE_MODEL` |
+| OpenRouter | `openrouter` | `openrouter` | `anthropic/claude-sonnet-4` | `OPENROUTER_API_KEY` | `OPENROUTER_MODEL` |
+| Ollama | `ollama` | `ollama` | (none) | none (`OLLAMA_HOST` optional) | `OLLAMA_MODEL` |
 
-Definitions live in `internal/agents/api_builtins.go`. Availability is checked via `APIHarnessAvailable()` in `internal/agent/api_availability.go` (process env or `~/.nui/secrets.json` from Customize → Env vars). See [harness-design.md](dev/harness-design.md) §4 for ADL fields (`provider`, `model`, `baseURL`, `apiKeyEnv`).
+Definitions live in `internal/agents/api_builtins.go`. Availability is checked via `APIHarnessAvailable()` in `internal/agent/api_availability.go` (process env or `~/.nui/secrets.json` from Customize → Env vars). Model overrides use the same credential lookup (`resolveAPIModel` / `resolveAntigravityModel`). See [harness-design.md](dev/harness-design.md) §4 for ADL fields (`provider`, `model`, `baseURL`, `apiKeyEnv`).
 
 ### Installed agents
 
@@ -199,13 +200,13 @@ Use custom ADL for `docker`, `devcontainer`, and `remote` harness types, sandbox
 
 ### Sandbox options
 
-For `claude-code`, `pi`, `codex`, and `opencode` (set in ADL `harness.sandbox`):
+For `claude-code`, `pi`, `codex`, `opencode`, and `antigravity` (set in ADL `harness.sandbox`):
 
 | Value | Behavior |
 |---|---|
 | `none` | Run on host (default) |
 | `bubblewrap` | Wrap subprocess with `bwrap` (Linux only) |
-| `docker` | Run in a nui-managed container (`nui-<harness>:latest`, port **8090**) |
+| `docker` | Run in a nui-managed container (`nui-<harness>:latest`, port **8090**; not yet supported for `antigravity`) |
 
 ### Docker / remote connectors
 

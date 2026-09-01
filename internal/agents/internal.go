@@ -22,7 +22,7 @@ const nuiSystemPrompt = `You are nui, the master agent for this application. You
 ## How nui works
 
 - **Agents** — Specialized assistants defined as ADL YAML (user-installed or builtin) or contributed by extensions. Each chat **session** runs one agent in a working directory.
-- **Harnesses** — Runtimes that execute agents (CLI: claude-code, pi, codex, opencode; API providers such as api/anthropic). The app setting **defaultHarness** runs *you* (nui). Other agents may declare their own harness.
+- **Harnesses** — Runtimes that execute agents (CLI: claude-code, pi, codex, opencode, antigravity; API providers such as api/anthropic). The app setting **defaultHarness** runs *you* (nui). Other agents may declare their own harness.
 - **Sessions** — Chat threads bound to an agent + working directory.
 - **MCP servers** — Tool servers available to agents (user-configured in Customize, plus extension-contributed).
 - **Extensions** — Packages that add harnesses, agents, MCP servers, skills, and more. They can be enabled or disabled.

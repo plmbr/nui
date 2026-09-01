@@ -7,7 +7,7 @@ nui uses **three production harness paths** plus standalone reference examples:
 ```mermaid
 flowchart LR
   subgraph production [Production — wired to Manager]
-    GoHarnesses["Go harness agents\n(claude / pi / codex / opencode)"]
+    GoHarnesses["Go harness agents\n(claude / pi / codex / opencode / antigravity)"]
     HTTPExt["HTTPExtensionAgent\n(docker / remote / sandbox:docker)"]
     ExtHarness["Extension harness\n(stdio / tcp / http)"]
   end
@@ -24,7 +24,7 @@ flowchart LR
 
 ## 1. Builtin harnesses (Go subprocess) — primary path
 
-The four built-in CLI agents are **not** Python/TypeScript harnesses. Go structs in `internal/agent/` manage CLI subprocesses directly:
+The built-in CLI agents are **not** Python/TypeScript harnesses. Go structs in `internal/agent/` manage CLI subprocesses directly:
 
 | Harness | Implementation |
 |---|---|
@@ -32,6 +32,7 @@ The four built-in CLI agents are **not** Python/TypeScript harnesses. Go structs
 | `pi` | `PiAgent` + `persistentPiSession` (`pi --mode rpc`) |
 | `codex` | `CodexAgent` + `persistentCodexSession` |
 | `opencode` | `OpenCodeAgent` + `persistentOpenCodeSession` |
+| `antigravity` | `AntigravityAgent` + `persistentAntigravitySession` (`agy` stream-json) |
 
 Sandbox (`harness.sandbox` in ADL) is propagated via `builtin_config.go` → `Manager.getBuiltinAgent()`.
 
@@ -129,15 +130,17 @@ TCP and HTTP extension hosts write `~/.nui/connections/<id>.json`:
 
 Builtin and ADL agents with `harness.type: api` run entirely inside the nui binary via thin HTTP clients in `internal/llm`. No CLI subprocess is required.
 
-| Builtin ID | Provider | Credentials |
+| Builtin ID | Provider | Credentials / model |
 |---|---|---|
 | `anthropic` | Anthropic | `ANTHROPIC_API_KEY` (+ optional `ANTHROPIC_BASE_URL`, `ANTHROPIC_MODEL`) |
 | `openai` | OpenAI | `OPENAI_API_KEY` (+ optional `OPENAI_BASE_URL`, `OPENAI_MODEL`) |
-| `gemini` | Gemini | `GEMINI_API_KEY` or `GOOGLE_API_KEY` |
-| `openrouter` | OpenAI-compatible + OpenRouter base URL | `OPENROUTER_API_KEY` |
+| `gemini` | Gemini | `GEMINI_API_KEY` or `GOOGLE_API_KEY`; model `GEMINI_MODEL` / `GOOGLE_MODEL` (else ADL default) |
+| `openrouter` | OpenAI-compatible + OpenRouter base URL | `OPENROUTER_API_KEY` (+ optional `OPENROUTER_MODEL`) |
 | `ollama` | Ollama (local) | none (`OLLAMA_HOST` optional; model auto-picked from installed models, or set `OLLAMA_MODEL`) |
 
-Credential resolution order: ADL/`req.Env` → process environment → `~/.nui/secrets.json` (Customize → Env vars). Desktop apps that are not launched from a terminal should set keys via Env vars.
+The Antigravity CLI harness (`harness.type: antigravity`) resolves model as: session `agentConfig.model` → `ANTIGRAVITY_MODEL` → `GEMINI_MODEL` / `GOOGLE_MODEL` → ADL default (`gemini-3.6-flash-medium`).
+
+Credential and model env resolution order: ADL/`req.Env` → process environment → `~/.nui/secrets.json` (Customize → Env vars). Desktop apps that are not launched from a terminal should set keys via Env vars. `GEMINI_MODEL` and `ANTIGRAVITY_MODEL` appear in the Env vars UI under Gemini.
 
 Global secrets (managed + custom) and per-extension env (`~/.nui/extension-env.json`) are merged into child processes. Precedence for children: ADL/`req.Env` → fixed `NUI_*` → per-extension env → secrets.json (fill blanks) → launch process env.
 

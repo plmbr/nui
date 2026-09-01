@@ -415,13 +415,13 @@ name: API Agent
 harness:
   type: api
   provider: gemini
-  model: gemini-2.5-flash
+  model: gemini-3.6-flash-medium
 `
     const { form } = parseAgentYaml(original, emptyOptions)
     const merged = mergeFormIntoAgentYaml(original, form, emptyOptions)
     expect(merged).toContain('type: api')
     expect(merged).toContain('provider: gemini')
-    expect(merged).toContain('model: gemini-2.5-flash')
+    expect(merged).toContain('model: gemini-3.6-flash-medium')
   })
 
   it('parses devcontainer innerHarness', () => {

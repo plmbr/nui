@@ -17,7 +17,7 @@ export function selectableAgentTypes(types: AgentType[]): AgentType[] {
 }
 
 const API_BUILTIN_ORDER = ['anthropic', 'openai', 'gemini', 'openrouter', 'ollama'] as const
-const CLI_BUILTIN_ORDER = ['claude-code', 'pi', 'codex', 'opencode'] as const
+const CLI_BUILTIN_ORDER = ['claude-code', 'pi', 'codex', 'opencode', 'antigravity'] as const
 
 function sortAgentsByIdOrder(agents: AgentType[], order: readonly string[]): AgentType[] {
   const rank = new Map(order.map((id, index) => [id, index]))
@@ -107,7 +107,7 @@ export function harnessSupportsUserScope(harness: AgentType['harness']): boolean
 
 /** Harnesses that support interactive tool approval via harness permissions. */
 export function harnessSupportsPermissions(harness: AgentType['harness']): boolean {
-  return harness === 'claude-code' || harness === 'codex'
+  return harness === 'claude-code' || harness === 'codex' || harness === 'antigravity'
 }
 
 export function agentSupportsHarnessPermissions(agent: AgentType | undefined): boolean {

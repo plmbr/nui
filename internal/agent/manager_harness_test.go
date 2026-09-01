@@ -33,7 +33,7 @@ func TestGetBuiltinAgentDifferentHarnessTypes(t *testing.T) {
 func TestGetBuiltinAgentAllCLIHarnessTypes(t *testing.T) {
 	m := NewManager()
 	projectID := "proj-all-cli"
-	for _, typ := range []string{"claude-code", "pi", "codex", "opencode"} {
+	for _, typ := range []string{"claude-code", "pi", "codex", "opencode", "antigravity"} {
 		ag, err := m.getBuiltinAgent(projectID, typ, nil)
 		if err != nil {
 			t.Fatalf("%s: %v", typ, err)

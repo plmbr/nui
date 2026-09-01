@@ -28,6 +28,7 @@ var builtinAgentTypes = map[string]bool{
 	"pi":          true,
 	"codex":       true,
 	"opencode":    true,
+	"antigravity": true,
 }
 
 const containerIdleTimeout = 30 * time.Minute
@@ -381,6 +382,8 @@ func (m *Manager) getBuiltinAgent(projectID, agentType string, config map[string
 		ag = &CodexAgent{}
 	case "opencode":
 		ag = &OpenCodeAgent{}
+	case "antigravity":
+		ag = &AntigravityAgent{}
 	default:
 		return nil, fmt.Errorf("unknown agent type: %q", agentType)
 	}

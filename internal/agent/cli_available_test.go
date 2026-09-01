@@ -17,6 +17,7 @@ func TestCLIAvailable_knownHarnesses(t *testing.T) {
 		{"claude-code", "claude"},
 		{"pi", "pi"},
 		{"opencode", "opencode"},
+		{"antigravity", "agy"},
 	}
 	for _, tc := range cases {
 		_, lookErr := exec.LookPath(tc.bin)
@@ -40,6 +41,20 @@ func TestCLIAvailable_codexUsesNUIPath(t *testing.T) {
 	t.Setenv("NUI_CODEX_PATH", filepath.Join(tmp, "missing"))
 	// Fall back to LookPath / known paths — just ensure it does not panic.
 	_ = CLIAvailable("codex")
+}
+
+func TestCLIAvailable_antigravityUsesNUIPath(t *testing.T) {
+	tmp := t.TempDir()
+	fake := filepath.Join(tmp, "agy-fake")
+	if err := os.WriteFile(fake, []byte("#!/bin/sh\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("NUI_ANTIGRAVITY_PATH", fake)
+	if !CLIAvailable("antigravity") {
+		t.Fatal("expected antigravity available via NUI_ANTIGRAVITY_PATH")
+	}
+	t.Setenv("NUI_ANTIGRAVITY_PATH", filepath.Join(tmp, "missing"))
+	_ = CLIAvailable("antigravity")
 }
 
 func TestCLIAvailable_unknownAlwaysTrue(t *testing.T) {

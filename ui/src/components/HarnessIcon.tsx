@@ -13,6 +13,8 @@ import opencodeLightIcon from '@/assets/harness/opencode-light.svg?url'
 import opencodeDarkIcon from '@/assets/harness/opencode-dark.svg?url'
 import openaiIcon from '@/assets/harness/openai.svg?url'
 import geminiIcon from '@/assets/harness/gemini.svg?url'
+import antigravityLightIcon from '@/assets/harness/antigravity-light.svg?url'
+import antigravityDarkIcon from '@/assets/harness/antigravity-dark.svg?url'
 import openrouterIcon from '@/assets/harness/openrouter.svg?url'
 import ollamaLightIcon from '@/assets/harness/ollama-light.svg?url'
 import ollamaDarkIcon from '@/assets/harness/ollama-dark.svg?url'
@@ -28,7 +30,8 @@ const HARNESS_ACCENTS: Partial<Record<IconKey, string>> = {
   codex: '#10a37f',
   openai: '#10a37f',
   opencode: '#3b82f6',
-  gemini: '#4285f4',
+  antigravity: '#3e4b5d',
+  gemini: '#3186FF',
   openrouter: '#94A3B8',
   ollama: '#1f2937',
   docker: '#2496ed',
@@ -44,6 +47,7 @@ const BRAND_ICON_SRC: Partial<Record<IconKey, string | { light: string; dark: st
   codex: codexIcon,
   openai: openaiIcon,
   opencode: { light: opencodeLightIcon, dark: opencodeDarkIcon },
+  antigravity: { light: antigravityLightIcon, dark: antigravityDarkIcon },
   gemini: geminiIcon,
   openrouter: openrouterIcon,
   ollama: { light: ollamaLightIcon, dark: ollamaDarkIcon },

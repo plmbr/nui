@@ -499,3 +499,81 @@ func TestEnsureOllamaModelUsesLister(t *testing.T) {
 		t.Fatalf("got %q err %v", got, err)
 	}
 }
+
+func TestResolveAPIModelGeminiEnv(t *testing.T) {
+	t.Setenv("GEMINI_MODEL", "gemini-from-env")
+	t.Setenv("GOOGLE_MODEL", "")
+	h := model.ADLHarness{Type: "api", Provider: "gemini", Model: "gemini-3.5-flash"}
+	got := resolveAPIModel(RunRequest{Model: h.Model}, h)
+	if got != "gemini-from-env" {
+		t.Fatalf("model = %q, want GEMINI_MODEL", got)
+	}
+}
+
+func TestResolveAPIModelGeminiSecrets(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".nui"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GEMINI_MODEL", "")
+	t.Setenv("GOOGLE_MODEL", "")
+	path := filepath.Join(home, ".nui", "secrets.json")
+	if err := os.WriteFile(path, []byte(`{"env":{"GEMINI_MODEL":"gemini-from-secrets"}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	h := model.ADLHarness{Type: "api", Provider: "gemini", Model: "gemini-3.5-flash"}
+	got := resolveAPIModel(RunRequest{Model: h.Model}, h)
+	if got != "gemini-from-secrets" {
+		t.Fatalf("model = %q, want secrets override", got)
+	}
+}
+
+func TestResolveAntigravityModelPriority(t *testing.T) {
+	t.Setenv("ANTIGRAVITY_MODEL", "agy-specific")
+	t.Setenv("GEMINI_MODEL", "gemini-shared")
+	t.Setenv("GOOGLE_MODEL", "")
+	h := model.ADLHarness{Type: "antigravity", Model: "gemini-3.6-flash-medium"}
+	got := resolveAntigravityModel(RunRequest{Model: h.Model}, h)
+	if got != "agy-specific" {
+		t.Fatalf("model = %q, want ANTIGRAVITY_MODEL", got)
+	}
+
+	t.Setenv("ANTIGRAVITY_MODEL", "")
+	got = resolveAntigravityModel(RunRequest{Model: h.Model}, h)
+	if got != "gemini-shared" {
+		t.Fatalf("model = %q, want GEMINI_MODEL fallback", got)
+	}
+
+	t.Setenv("GEMINI_MODEL", "")
+	got = resolveAntigravityModel(RunRequest{Model: h.Model}, h)
+	if got != "gemini-3.6-flash-medium" {
+		t.Fatalf("model = %q, want ADL default", got)
+	}
+}
+
+func TestResolveAntigravityModelAgentConfigWins(t *testing.T) {
+	t.Setenv("ANTIGRAVITY_MODEL", "from-env")
+	h := model.ADLHarness{Type: "antigravity", Model: "adl-default"}
+	got := resolveAntigravityModel(RunRequest{
+		Model:       h.Model,
+		AgentConfig: map[string]any{"model": "session-model"},
+	}, h)
+	if got != "session-model" {
+		t.Fatalf("model = %q", got)
+	}
+}
+
+func TestCredentialFieldSpecsIncludeGeminiModels(t *testing.T) {
+	want := map[string]bool{"GEMINI_MODEL": false, "ANTIGRAVITY_MODEL": false}
+	for _, spec := range CredentialFieldSpecs() {
+		if _, ok := want[spec.Key]; ok {
+			want[spec.Key] = true
+		}
+	}
+	for key, found := range want {
+		if !found {
+			t.Fatalf("missing CredentialFieldSpec %s", key)
+		}
+	}
+}

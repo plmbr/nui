@@ -24,6 +24,7 @@ import {
   selectableAgentTypes,
   defaultUserScopeHarnessConfig,
   showUserScopeOption,
+  showToolApprovalsOption,
   isNuiAgent,
   isApiBuiltinAgent,
   isCliBuiltinAgent,
@@ -150,6 +151,10 @@ export function NewSessionPanel({
     setSelectedId(id)
     if (userDefined.some((a) => a.id === id)) setAgentPane('installed')
     else if (builtins.some((a) => a.id === id) || isNuiAgent(id)) setAgentPane('builtin')
+    // Match ADL harness.permissions default (bypass for antigravity/claude-code/codex).
+    if (showToolApprovalsOption(agent)) {
+      setHarnessPermissionsEnabled(agent.harnessPermissions !== 'bypass')
+    }
   }
 
   useEffect(() => {

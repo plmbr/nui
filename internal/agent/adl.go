@@ -157,6 +157,8 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 		}
 		req.APIProvider = harness.Provider
 		req.Model = resolveAPIModel(req, harness)
+	} else if harness.Type == "antigravity" {
+		req.Model = resolveAntigravityModel(req, harness)
 	} else if !req.Ephemeral && len(deps.MCPServers) > 0 {
 		for _, msg := range mcpoauth.ProbeConnectFailures(ctx, deps.MCPServers) {
 			events <- Event{Type: EventText, Content: msg + "\n"}

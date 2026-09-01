@@ -13,7 +13,7 @@ import (
 
 func TestHarnessRunners_includesAllBuiltinTypes(t *testing.T) {
 	want := []string{
-		"claude-code", "pi", "codex", "opencode",
+		"claude-code", "pi", "codex", "opencode", "antigravity",
 		"docker", "devcontainer", "remote", "api",
 	}
 	for _, typ := range want {

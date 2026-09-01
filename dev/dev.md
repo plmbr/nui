@@ -48,12 +48,12 @@ flowchart TB
 
 ### Key design decisions
 
-1. **Every session is an ADL agent.** Even the four built-in CLI harnesses are compiled-in ADL definitions (`builtinAgentDefs` in `internal/agents/builtins.go`). Selecting "Claude Code" in the UI stores `agentType: "claude-code"` (the ADL `id`), which resolves to `harness.type: claude-code`. CLI flags such as `--agent-type` and `nui run -a` expect the ADL id (e.g. `claude-code`), not the display name. Built-in types also include five API harnesses (`anthropic`, `openai`, `gemini`, `openrouter`, `ollama`) and the `nui` master agent.
+1. **Every session is an ADL agent.** Even the built-in CLI harnesses are compiled-in ADL definitions (`builtinAgentDefs` in `internal/agents/builtins.go`). Selecting "Claude Code" in the UI stores `agentType: "claude-code"` (the ADL `id`), which resolves to `harness.type: claude-code`. CLI flags such as `--agent-type` and `nui run -a` expect the ADL id (e.g. `claude-code`), not the display name. Built-in types also include five API harnesses (`anthropic`, `openai`, `gemini`, `openrouter`, `ollama`) and the `nui` master agent.
 
 2. **Chat uses AG-UI, not raw SSE.** The UI (`useSessionChat.ts`) streams via `POST /api/sessions/:id/ag-ui` using the [AG-UI protocol](https://github.com/ag-ui-protocol/ag-ui). Tool calls, images, and MCP app frames are translated from agent `Event` types in `agui.go`. The legacy `POST /chat` endpoint still exists but the UI does not use it.
 
 3. **Three production harness paths.**
-   - **Go subprocess:** builtin harnesses (`claude-code`, `pi`, `codex`, `opencode`) managed directly in Go.
+   - **Go subprocess:** builtin harnesses (`claude-code`, `pi`, `codex`, `opencode`, `antigravity`) managed directly in Go.
    - **HTTP/SSE:** docker, devcontainer, remote, and builtin `sandbox: docker` via `HTTPExtensionAgent`.
    - **Extension harnesses:** installed extensions contribute harnesses wired via `Manager.getExtensionHarnessAgent()` — stdio (default), TCP (`ExtensionAgent`), or HTTP (`HTTPExtensionAgent`). ADL references them as `harness.type: ext:<extension>/<harness-id>`.
    - **Reference only:** standalone examples in `dev/harness-examples/py|ts/` (no `extension.yaml`) demonstrate the TCP JSON-RPC protocol but are not registered as agent types.
@@ -239,7 +239,7 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 ## Implementation Phases
 
 ### Phase 1 — Interactive chat ✅
-- [x] Four builtin CLI harnesses (claude-code, pi, codex, opencode)
+- [x] Five builtin CLI harnesses (claude-code, pi, codex, opencode, antigravity)
 - [x] Five builtin API harnesses (anthropic, openai, gemini, openrouter, ollama)
 - [x] Session CRUD + persistence (`data.json` including UI messages)
 - [x] AG-UI chat streaming with tool calls and images

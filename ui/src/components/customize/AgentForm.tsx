@@ -63,7 +63,7 @@ function selectedHarness(form: AgentFormModel, options: AgentFormOptions) {
 }
 
 function isCliHarness(harnessType: string | undefined): boolean {
-  return harnessType != null && ['claude-code', 'pi', 'codex', 'opencode'].includes(harnessType)
+  return harnessType != null && ['claude-code', 'pi', 'codex', 'opencode', 'antigravity'].includes(harnessType)
 }
 
 function isApiHarness(harnessType: string | undefined): boolean {

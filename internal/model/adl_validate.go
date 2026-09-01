@@ -152,12 +152,12 @@ func validateHarness(h ADLHarness, path string) error {
 }
 
 // CLIHarnessTypes are harness types allowed in allowedHarnesses (v1).
-var CLIHarnessTypes = []string{"claude-code", "pi", "codex", "opencode"}
+var CLIHarnessTypes = []string{"claude-code", "pi", "codex", "opencode", "antigravity"}
 
 // IsCLIHarnessType reports whether t is a CLI subprocess harness.
 func IsCLIHarnessType(t string) bool {
 	switch strings.TrimSpace(t) {
-	case "claude-code", "pi", "codex", "opencode":
+	case "claude-code", "pi", "codex", "opencode", "antigravity":
 		return true
 	default:
 		return false
@@ -231,7 +231,7 @@ func validateAllowedHarnesses(def ADLDefinition) error {
 		defaultType = "claude-code"
 	}
 	if !IsCLIHarnessType(defaultType) {
-		return fmt.Errorf("allowedHarnesses requires harness.type to be a CLI harness (claude-code, pi, codex, opencode); got %q", defaultType)
+		return fmt.Errorf("allowedHarnesses requires harness.type to be a CLI harness (claude-code, pi, codex, opencode, antigravity); got %q", defaultType)
 	}
 	seen := map[string]bool{}
 	for i, raw := range def.AllowedHarnesses {
@@ -240,7 +240,7 @@ func validateAllowedHarnesses(def ADLDefinition) error {
 			return fmt.Errorf("allowedHarnesses[%d]: harness type is required", i)
 		}
 		if !IsCLIHarnessType(t) {
-			return fmt.Errorf("allowedHarnesses[%d]: %q is not a CLI harness (only claude-code, pi, codex, opencode)", i, t)
+			return fmt.Errorf("allowedHarnesses[%d]: %q is not a CLI harness (only claude-code, pi, codex, opencode, antigravity)", i, t)
 		}
 		if seen[t] {
 			return fmt.Errorf("allowedHarnesses: duplicate %q", t)
@@ -252,7 +252,7 @@ func validateAllowedHarnesses(def ADLDefinition) error {
 
 func isValidHarnessType(t string) bool {
 	switch t {
-	case "claude-code", "pi", "codex", "opencode", "docker", "devcontainer", "remote", "api":
+	case "claude-code", "pi", "codex", "opencode", "antigravity", "docker", "devcontainer", "remote", "api":
 		return true
 	}
 	if strings.HasPrefix(t, "ext:") {

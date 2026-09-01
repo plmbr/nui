@@ -51,7 +51,7 @@ var apiBuiltinAgentDefs = []model.ADLDefinition{
 		Harness: model.ADLHarness{
 			Type:     "api",
 			Provider: "gemini",
-			Model:    "gemini-2.5-flash",
+			Model:    "gemini-3.5-flash",
 		},
 		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelnuiUI}},
 		PromptSuggestions: builtinPromptSuggestions,

@@ -88,12 +88,13 @@ type ADLPromptSuggestion struct {
 //   - "pi"          — runs the pi CLI as a host subprocess
 //   - "codex"       — runs the codex CLI as a host subprocess
 //   - "opencode"    — runs the opencode CLI as a host subprocess
+//   - "antigravity" — runs the Google Antigravity CLI (agy) as a host subprocess
 //   - "docker"        — connects to an HTTP/SSE agent in a Docker container (requires image + containerPort)
 //   - "devcontainer"  — nui-managed dev container sandbox (requires innerHarness)
 //   - "remote"        — connects to a pre-running HTTP/SSE agent over the network (requires host + port)
 //   - "api"           — in-process LLM API harness (anthropic, openai, gemini, ollama, openrouter, …)
 //
-// Sandbox options (harness.sandbox) — applies to "claude-code", "pi", "codex", and "opencode" harnesses:
+// Sandbox options (harness.sandbox) — applies to "claude-code", "pi", "codex", "opencode", and "antigravity" harnesses:
 //   - "none"        — run directly on the host (default)
 //   - "bubblewrap"  — wrap the subprocess in a bubblewrap sandbox (Linux only)
 //   - "docker"      — run the subprocess agent inside a Docker container
@@ -110,7 +111,7 @@ type ADLHarness struct {
 	Host          string            `yaml:"host"          json:"host,omitempty"`           // harness type=remote only
 	Port          int               `yaml:"port"          json:"port,omitempty"`           // harness type=remote only
 	Env           map[string]string `yaml:"env"           json:"env,omitempty"`
-	Permissions   string            `yaml:"permissions"   json:"permissions,omitempty"` // interactive | bypass (claude-code, codex)
+	Permissions   string            `yaml:"permissions"   json:"permissions,omitempty"` // interactive | bypass (claude-code, codex, antigravity)
 	DisableTools  bool              `yaml:"disableTools"  json:"disableTools,omitempty"` // harness type=api: omit tools/tool_choice from LLM requests
 }
 

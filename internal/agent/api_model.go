@@ -3,7 +3,6 @@
 package agent
 
 import (
-	"os"
 	"strings"
 
 	"nui/internal/model"
@@ -22,26 +21,22 @@ var providerModelEnvKeys = map[string][]string{
 	"ollama":     {"OLLAMA_MODEL"},
 }
 
+// antigravityModelEnvKeys override the Antigravity CLI harness model (first match wins).
+var antigravityModelEnvKeys = []string{
+	"ANTIGRAVITY_MODEL",
+	"GEMINI_MODEL",
+	"GOOGLE_MODEL",
+}
+
 // resolveAPIModel picks the model id for an api harness run.
-// Priority: session agentConfig.model → provider env vars → harness ADL model.
+// Priority: session agentConfig.model → provider env/secrets → harness ADL model.
 func resolveAPIModel(req RunRequest, harness model.ADLHarness) string {
-	if req.AgentConfig != nil {
-		if m, ok := req.AgentConfig["model"].(string); ok {
-			if m = strings.TrimSpace(m); m != "" {
-				return m
-			}
-		}
+	if m := modelFromAgentConfig(req); m != "" {
+		return m
 	}
 	provider := strings.TrimSpace(harness.Provider)
-	for _, key := range providerModelEnvKeys[provider] {
-		if req.Env != nil {
-			if v := strings.TrimSpace(req.Env[key]); v != "" {
-				return v
-			}
-		}
-		if v := strings.TrimSpace(os.Getenv(key)); v != "" {
-			return v
-		}
+	if m := firstModelEnv(req.Env, providerModelEnvKeys[provider]...); m != "" {
+		return m
 	}
 	resolved := strings.TrimSpace(req.Model)
 	if resolved == "" {
@@ -53,4 +48,38 @@ func resolveAPIModel(req RunRequest, harness model.ADLHarness) string {
 		}
 	}
 	return resolved
+}
+
+// resolveAntigravityModel picks the model slug for the Antigravity CLI harness.
+// Priority: session agentConfig.model → ANTIGRAVITY_MODEL / GEMINI_MODEL / GOOGLE_MODEL
+// (ADL env, process env, or ~/.nui/secrets.json) → harness ADL model.
+func resolveAntigravityModel(req RunRequest, harness model.ADLHarness) string {
+	if m := modelFromAgentConfig(req); m != "" {
+		return m
+	}
+	if m := firstModelEnv(req.Env, antigravityModelEnvKeys...); m != "" {
+		return m
+	}
+	resolved := strings.TrimSpace(req.Model)
+	if resolved == "" {
+		resolved = strings.TrimSpace(harness.Model)
+	}
+	return resolved
+}
+
+func modelFromAgentConfig(req RunRequest) string {
+	if req.AgentConfig == nil {
+		return ""
+	}
+	m, _ := req.AgentConfig["model"].(string)
+	return strings.TrimSpace(m)
+}
+
+func firstModelEnv(adlEnv map[string]string, keys ...string) string {
+	for _, key := range keys {
+		if v := lookupCredentialValue(key, adlEnv); v != "" {
+			return v
+		}
+	}
+	return ""
 }

@@ -64,7 +64,7 @@ func HarnessAvailable(ref string) bool {
 
 func harnessAvailable(def model.ADLDefinition) bool {
 	switch def.Harness.Type {
-	case "claude-code", "pi", "codex", "opencode":
+	case "claude-code", "pi", "codex", "opencode", "antigravity":
 		return agent.CLIAvailable(def.Harness.Type)
 	case "api":
 		return agent.APIHarnessAvailable(def.Harness)

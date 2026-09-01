@@ -72,6 +72,17 @@ var builtinAgentDefs = []model.ADLDefinition{
 		WorkingDirInput:   true,
 		PromptSuggestions: builtinPromptSuggestions,
 	},
+	{
+		ID:                "antigravity",
+		Name:              "Antigravity",
+		Description:       "Google Antigravity CLI (agy) running as a local subprocess",
+		Tags:              []string{"builtin", "cli"},
+		Harness:           model.ADLHarness{Type: "antigravity", Model: "gemini-3.6-flash-medium", Sandbox: "none", Permissions: hitl.PermissionsBypass},
+		AllowedHarnesses:  []string{"antigravity"},
+		HITL:              model.ADLHITL{Mode: hitl.ModeInteractive, Channels: []string{hitl.ChannelnuiUI}},
+		WorkingDirInput:   true,
+		PromptSuggestions: builtinPromptSuggestions,
+	},
 }
 
 // BuiltinAgentDefs returns compiled-in ADL agent definitions shipped with nui.

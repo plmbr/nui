@@ -120,6 +120,7 @@ const BUILTIN_HARNESSES: HarnessOption[] = [
   { id: 'builtin:pi', label: 'Pi', group: 'Built-in', harnessType: 'pi', sandbox: 'none' },
   { id: 'builtin:codex', label: 'Codex', group: 'Built-in', harnessType: 'codex', sandbox: 'none' },
   { id: 'builtin:opencode', label: 'OpenCode', group: 'Built-in', harnessType: 'opencode', sandbox: 'none' },
+  { id: 'builtin:antigravity', label: 'Antigravity', group: 'Built-in', harnessType: 'antigravity', sandbox: 'none' },
   { id: 'builtin:api', label: 'API (LLM provider)', group: 'Built-in', harnessType: 'api' },
   { id: 'builtin:devcontainer', label: 'Dev container', group: 'Built-in', harnessType: 'devcontainer' },
   { id: 'builtin:docker', label: 'Docker (HTTP/SSE container)', group: 'Built-in', harnessType: 'docker' },

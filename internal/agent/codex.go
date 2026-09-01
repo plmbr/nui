@@ -57,6 +57,8 @@ func CLIAvailable(harnessType string) bool {
 	case "opencode":
 		_, err := exec.LookPath("opencode")
 		return err == nil
+	case "antigravity":
+		return antigravityCLIAvailable()
 	default:
 		return true
 	}

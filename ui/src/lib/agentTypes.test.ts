@@ -49,6 +49,7 @@ describe('agentTypes', () => {
   it('detects harness permission support', () => {
     expect(agentSupportsHarnessPermissions(claudeAgent)).toBe(true)
     expect(agentSupportsHarnessPermissions({ ...claudeAgent, harness: 'pi' })).toBe(false)
+    expect(agentSupportsHarnessPermissions({ ...claudeAgent, id: 'antigravity', harness: 'antigravity' })).toBe(true)
   })
 
   it('hides tool approval toggle when policy is all', () => {

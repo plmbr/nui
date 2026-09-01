@@ -78,6 +78,7 @@ Install the agent CLI you want to use and make sure it is on your `PATH`:
 | `pi` | `pi` |
 | `codex` | `codex` |
 | `opencode` | `opencode` |
+| `antigravity` | `agy` |
 
 **API agents** (no CLI required) use provider API keys instead:
 
@@ -85,9 +86,18 @@ Install the agent CLI you want to use and make sure it is on your `PATH`:
 |---|---|
 | Claude API | `ANTHROPIC_API_KEY` (or `ANTHROPIC_AUTH_TOKEN`) |
 | OpenAI | `OPENAI_API_KEY` |
-| Gemini | `GEMINI_API_KEY` or `GOOGLE_API_KEY` |
+| Gemini | `GEMINI_API_KEY` or `GOOGLE_API_KEY` (also used by Antigravity CLI when `modelProvider` is `gemini`) |
 | OpenRouter | `OPENROUTER_API_KEY` |
 | Ollama | none (local; optional `OLLAMA_HOST`) |
+
+**Model overrides** (process env, ADL `env`, or **Settings → Env vars** / `~/.nui/secrets.json`; session `agentConfig.model` wins):
+
+| Agent | Model env vars (first set wins) | Default when unset |
+|---|---|---|
+| Gemini API | `GEMINI_MODEL`, `GOOGLE_MODEL` | `gemini-3.5-flash` |
+| Antigravity CLI | `ANTIGRAVITY_MODEL`, then `GEMINI_MODEL` / `GOOGLE_MODEL` | `gemini-3.6-flash-medium` |
+| Claude API | `ANTHROPIC_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL`, `CLAUDE_MODEL` | ADL default |
+| OpenAI / OpenRouter / Ollama | `OPENAI_MODEL` / `OPENROUTER_MODEL` / `OLLAMA_MODEL` | ADL default |
 
 **Optional:**
 
@@ -165,6 +175,7 @@ Set `NUI_URL` or pass `--url` if the server is not on `http://127.0.0.1:8080`. U
 | `pi` | pi agent CLI |
 | `codex` | OpenAI Codex CLI |
 | `opencode` | OpenCode CLI |
+| `antigravity` | Google Antigravity CLI (`agy`) |
 
 **API agents** (in-process LLM calls; selectable under built-in agents in the New Session panel):
 

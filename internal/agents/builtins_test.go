@@ -23,7 +23,7 @@ func TestBuiltinAgentDefsIncludesCLIHarnesses(t *testing.T) {
 
 func TestBuiltinAgentDefsCatalogComplete(t *testing.T) {
 	want := []string{
-		"claude-code", "pi", "codex", "opencode",
+		"claude-code", "pi", "codex", "opencode", "antigravity",
 		"anthropic", "openai", "gemini", "openrouter", "ollama",
 		NuiAgentID,
 	}
@@ -49,11 +49,13 @@ func TestBuiltinCLIHarnessDefaults(t *testing.T) {
 	defs := map[string]struct {
 		harnessType string
 		perms       string
+		model       string
 	}{
 		"claude-code": {harnessType: "claude-code", perms: hitl.PermissionsBypass},
 		"pi":          {harnessType: "pi"},
 		"codex":       {harnessType: "codex", perms: hitl.PermissionsBypass},
 		"opencode":    {harnessType: "opencode"},
+		"antigravity": {harnessType: "antigravity", perms: hitl.PermissionsBypass, model: "gemini-3.6-flash-medium"},
 	}
 	for _, def := range BuiltinAgentDefs() {
 		want, ok := defs[def.ID]
@@ -68,6 +70,9 @@ func TestBuiltinCLIHarnessDefaults(t *testing.T) {
 		}
 		if def.Harness.Permissions != want.perms {
 			t.Fatalf("%s permissions = %q, want %q", def.ID, def.Harness.Permissions, want.perms)
+		}
+		if want.model != "" && def.Harness.Model != want.model {
+			t.Fatalf("%s model = %q, want %q", def.ID, def.Harness.Model, want.model)
 		}
 		if !def.WorkingDirInput {
 			t.Fatalf("%s should allow working dir input", def.ID)

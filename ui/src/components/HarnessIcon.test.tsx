@@ -37,4 +37,18 @@ describe('HarnessIcon', () => {
     expect(wrap.className).not.toContain('w-28')
     expect(container.querySelector('img')?.getAttribute('src') ?? '').toContain('claude-code-text')
   })
+
+  it('renders gemini brand icon for api provider', () => {
+    const { container } = render(<HarnessIcon harness="api" provider="gemini" size="xl" />)
+    const src = container.querySelector('img')?.getAttribute('src') ?? ''
+    expect(src).toMatch(/gemini|#3186FF/i)
+  })
+
+  it('renders antigravity brand icon with light/dark variants', () => {
+    const { container } = render(<HarnessIcon harness="antigravity" size="xl" />)
+    const imgs = container.querySelectorAll('img')
+    expect(imgs.length).toBe(2)
+    expect(imgs[0]?.getAttribute('src') ?? '').toContain('3e4b5d')
+    expect(imgs[1]?.getAttribute('src') ?? '').toMatch(/e8eaed/i)
+  })
 })

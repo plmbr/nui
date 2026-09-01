@@ -33,7 +33,7 @@ type AgentTypeInfo struct {
 	ID                         string                      `json:"id"`
 	Label                      string                      `json:"label"`
 	Description                string                      `json:"description,omitempty"`
-	Harness                    string                      `json:"harness"`                      // claude-code | pi | codex | opencode | api | docker | remote
+	Harness                    string                      `json:"harness"`                      // claude-code | pi | codex | opencode | antigravity | api | docker | remote
 	Provider                   string                      `json:"provider,omitempty"`           // harness type=api: anthropic | openai | gemini | ollama | openrouter
 	Sandbox                    string                      `json:"sandbox,omitempty"`            // none | bubblewrap | docker
 	PromptMode                 string                      `json:"promptMode,omitempty"`         // user | auto
@@ -567,7 +567,7 @@ func skillNamesFromADL(def model.ADLDefinition) []string {
 // harnessAvailable reports whether the harness required by def can run on this system.
 func harnessAvailable(def model.ADLDefinition) bool {
 	switch def.Harness.Type {
-	case "claude-code", "pi", "codex", "opencode":
+	case "claude-code", "pi", "codex", "opencode", "antigravity":
 		return agent.CLIAvailable(def.Harness.Type)
 	case "api":
 		return agent.APIHarnessAvailable(def.Harness)
@@ -768,6 +768,8 @@ func cleanupDeletedSession(id string, info sessionDeleteInfo) {
 		delErr = store.DeleteCodexSession(info.workingDir, info.agentSessionID)
 	case "opencode":
 		delErr = store.DeleteOpenCodeSession(info.workingDir, info.agentSessionID)
+	case "antigravity":
+		delErr = store.DeleteAntigravitySession(info.workingDir, info.agentSessionID)
 	default:
 		delErr = store.DeleteClaudeSession(info.workingDir, info.agentSessionID)
 	}
@@ -1245,6 +1247,8 @@ func handleSessionHistory(w http.ResponseWriter, r *http.Request, sessionID stri
 		msgs, err = store.LoadCodexHistory(workingDir, agentSessionID)
 	case "opencode":
 		msgs, err = store.LoadOpenCodeHistory(workingDir, agentSessionID)
+	case "antigravity":
+		msgs, err = store.LoadAntigravityHistory(workingDir, agentSessionID)
 	default:
 		msgs, err = store.LoadClaudeHistory(workingDir, agentSessionID)
 	}
