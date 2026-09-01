@@ -6,7 +6,10 @@ import { waitForAppReady } from './helpers'
 test('health endpoint responds', async ({ request }) => {
   const res = await request.get('/health')
   expect(res.ok()).toBeTruthy()
-  expect(await res.json()).toEqual({ status: 'ok' })
+  const body = await res.json()
+  expect(body).toMatchObject({ status: 'ok' })
+  expect(typeof body.version).toBe('string')
+  expect(body.version.length).toBeGreaterThan(0)
 })
 
 test('launch page loads with prompt input and actions', async ({ page }) => {
