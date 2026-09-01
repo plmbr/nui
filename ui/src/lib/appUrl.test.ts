@@ -6,6 +6,8 @@ import {
   LAUNCH_PATH,
   SCHEDULES_PATH,
   agentGroupIdFromPath,
+  customizePath,
+  customizeTabFromSearch,
   isCustomizePath,
   isLaunchPath,
   isSchedulesPath,
@@ -46,5 +48,11 @@ describe('appUrl', () => {
     expect(isCustomizePath(CUSTOMIZE_PATH)).toBe(true)
     expect(isSchedulesPath(SCHEDULES_PATH)).toBe(true)
     expect(isSchedulesPath('/other')).toBe(false)
+  })
+
+  it('parses customize tab from search and builds customize path', () => {
+    expect(customizeTabFromSearch('?tab=mcp')).toBe('mcp')
+    expect(customizeTabFromSearch('?tab=invalid')).toBeNull()
+    expect(customizePath('env', 'vscode')).toBe('/customize?tab=env&embed=vscode')
   })
 })

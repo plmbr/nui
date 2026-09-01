@@ -34,6 +34,8 @@ import {
 } from '@/lib/thinkingBlocks'
 import { useMentionMenu } from '@/hooks/useMentionMenu'
 import { useSlashCommandMenu } from '@/hooks/useSlashCommandMenu'
+import { isEmbedHost } from '@/lib/embedHost'
+import { requestEmbedHostOpenExternal } from '@/lib/embedHostMessaging'
 import { looksLikeDiff } from '@/lib/diff'
 import { normalizeMarkdown, stripInlineCodeDelimiters } from '@/lib/markdown'
 import { getCodeBlockInfo } from '@/lib/reactNodeText'
@@ -514,7 +516,18 @@ export function ChatPanel({
           />
         ),
         a: ({ href, children, ...props }) => (
-          <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(event) => {
+              if (href && isEmbedHost()) {
+                event.preventDefault()
+                requestEmbedHostOpenExternal(href)
+              }
+            }}
+            {...props}
+          >
             {children}
           </a>
         ),

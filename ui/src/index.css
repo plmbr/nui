@@ -189,6 +189,18 @@
     --landing-title-word-gradient: linear-gradient(135deg, var(--landing-title-word-from), var(--landing-title-word-to));
 }
 
+/* VS Code extension embed — compact type sized for sidebar panels (~14px). */
+html[data-embed-host="vscode"] {
+  font-size: 14px;
+  --text-ui: 14px;
+  --text-body: 14px;
+  --text-meta: 12px;
+  --text-code: 13px;
+  --leading-body: 1.45;
+  --leading-chat: 1.5;
+  --radius: 0.375rem;
+}
+
 /* Wails desktop: VS Code–like short title bar so traffic lights and header content share one centered row. */
 html.nui-desktop {
   --app-header-height: 35px;

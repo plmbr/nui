@@ -6,7 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AgentHeader } from '@/components/AgentHeader'
 import { AppSidebar } from '@/components/AppSidebar'
 import { ConversationPanel } from '@/components/ConversationPanel'
-import { CustomizePanel, CustomizeTrigger, type CustomizeTabId } from '@/components/customize/CustomizePanel'
+import { CustomizePanel, CustomizeTrigger } from '@/components/customize/CustomizePanel'
 import { SchedulesPanel } from '@/components/SchedulesPanel'
 import { AppVersion } from '@/components/AppVersion'
 import { UpdateBanner } from '@/components/UpdateBanner'
@@ -24,6 +24,7 @@ import { applyUIActions, type UIAction } from '@/lib/uiActions'
 import {
   agentFromNewSessionSearch,
   agentGroupIdFromPath,
+  customizeTabFromSearch,
   cwdFromNewSessionSearch,
   isCreateSessionPath,
   isCustomizePath,
@@ -38,7 +39,10 @@ import {
   navigateToSession,
   navigateToSessionList,
   sessionIdFromPath,
+  type CustomizeTabId,
 } from '@/lib/appUrl'
+import { isEmbedHost } from '@/lib/embedHost'
+import { notifyEmbedHostSessionTitle } from '@/lib/embedHostMessaging'
 import { buildCreateRequestFromRecent, touchRecentSessionIds } from '@/lib/recents'
 import type { RecentAgentEntry, Session, AgentType } from '@/types'
 import { resolveSidebarWidth } from '@/lib/sidebarWidth'
@@ -54,6 +58,7 @@ export default function App() {
 
 function AppContent() {
   const { setTheme } = useTheme()
+
   const [sessions, setSessions] = useState<Session[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -199,6 +204,8 @@ function AppContent() {
       let shouldFocusLaunch = openLaunch
       if (openCustomize) {
         setCustomizeOpen(true)
+        const tabFromUrl = customizeTabFromSearch()
+        if (tabFromUrl) setCustomizeTab(tabFromUrl)
       }
       if (openSchedules) {
         setSchedulesOpen(true)
@@ -227,9 +234,11 @@ function AppContent() {
         if (nextId && !openCustomize && !openSchedules && !openNewSession && !openLaunch && !openSessionList) {
           navigateToSession(nextId, true)
         } else if (!nextId && !openCustomize && !openSchedules && !openNewSession && !openCreateSession && !openLaunch && !openSessionList) {
-          navigateToLaunch(true)
-          setLandingOpen(true)
-          shouldFocusLaunch = true
+          if (!isEmbedHost()) {
+            navigateToLaunch(true)
+            setLandingOpen(true)
+            shouldFocusLaunch = true
+          }
         }
       }
 
@@ -305,6 +314,8 @@ function AppContent() {
         setCustomizeOpen(true)
         setNewSessionOpen(false)
         setSessionListGroupId(null)
+        const tabFromUrl = customizeTabFromSearch()
+        if (tabFromUrl) setCustomizeTab(tabFromUrl)
         return
       }
 
@@ -383,6 +394,11 @@ function AppContent() {
       ? findOrCreateSessionGroup(sessionListGroupId, sessions, agentTypes)
       : null
 
+  const handleCustomizeTabChange = useCallback((tab: CustomizeTabId) => {
+    setCustomizeTab(tab)
+    navigateToCustomize(tab, true)
+  }, [])
+
   const handleOpenCustomize = useCallback(() => {
     setCustomizeTab('general')
     setSchedulesOpen(false)
@@ -390,7 +406,7 @@ function AppContent() {
     setLandingOpen(false)
     setSessionListGroupId(null)
     setCustomizeOpen(true)
-    navigateToCustomize()
+    navigateToCustomize('general')
   }, [])
 
   const handleOpenSchedules = useCallback(() => {
@@ -634,6 +650,50 @@ function AppContent() {
     await loadSessions()
   }, [loadSessions])
 
+  const embedHost = isEmbedHost()
+
+  useEffect(() => {
+    if (!embedHost || !selected) return
+    notifyEmbedHostSessionTitle(selected.id, sessionDisplayName(selected))
+  }, [
+    embedHost,
+    selected?.id,
+    selected?.name,
+    selected?.scheduleId,
+    selected?.scheduleName,
+    selected?.createdAt,
+  ])
+
+  if (embedHost && appReady) {
+    return (
+      <TooltipProvider>
+        <div className="flex h-screen min-h-0 flex-col overflow-hidden bg-background">
+          {customizeOpen ? (
+            <CustomizePanel
+              onClose={handleCloseCustomize}
+              onAgentTypesChanged={handleAgentTypesChanged}
+              tab={customizeTab}
+              onTabChange={handleCustomizeTabChange}
+            />
+          ) : selected ? (
+            <ConversationPanel
+              key={selected.id}
+              session={selected}
+              initialPrompt={initialPrompt}
+              hideInput={effectiveHideInput}
+              promptMode={promptMode}
+              defaultPrompt={selectedAgent?.defaultPrompt}
+              promptSuggestions={selectedAgent?.promptSuggestions}
+              slashCommands={selectedAgent?.skills}
+            />
+          ) : (
+            <div className="empty-state">Loading session…</div>
+          )}
+        </div>
+      </TooltipProvider>
+    )
+  }
+
   return (
     <TooltipProvider>
       {!appReady ? (
@@ -716,7 +776,7 @@ function AppContent() {
                 onClose={handleCloseCustomize}
                 onAgentTypesChanged={handleAgentTypesChanged}
                 tab={customizeTab}
-                onTabChange={setCustomizeTab}
+                onTabChange={handleCustomizeTabChange}
               />
             ) : newSessionOpen ? (
               <NewSessionPanel

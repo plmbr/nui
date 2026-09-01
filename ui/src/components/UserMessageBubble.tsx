@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Check, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { copyTextToClipboard } from '@/lib/clipboard'
 
 interface Props {
   content: string
@@ -14,13 +15,10 @@ export function UserMessageBubble({ content }: Props) {
   const handleCopy = async () => {
     if (!content) return
 
-    try {
-      await navigator.clipboard.writeText(content)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Clipboard access may be denied in some contexts.
-    }
+    const copied = await copyTextToClipboard(content)
+    if (!copied) return
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 2000)
   }
 
   return (

@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { Check, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { copyTextToClipboard } from '@/lib/clipboard'
 
 interface Props extends React.HTMLAttributes<HTMLPreElement> {
   children?: React.ReactNode
@@ -16,13 +17,10 @@ export function CodeBlock({ children, className, ...props }: Props) {
     const text = preRef.current?.textContent ?? ''
     if (!text) return
 
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Clipboard access may be denied in some contexts.
-    }
+    const copied = await copyTextToClipboard(text)
+    if (!copied) return
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 2000)
   }
 
   return (

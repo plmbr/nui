@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { api } from '@/api'
+import { isEmbedHost } from '@/lib/embedHost'
+import { isExternalThemeActive, requestEmbedHostTheme } from '@/lib/externalTheme'
 import {
   DEFAULT_UI_THEME,
   preferredModeForTheme,
@@ -57,14 +59,24 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const supportsLight = themeSupportsMode(uiThemeDef, 'light')
   const canToggleMode = supportsDark && supportsLight
 
+  const embedHost = isEmbedHost()
+
   // Apply color mode + visual theme to DOM; keep localStorage as fast-path cache
   useEffect(() => {
+    document.documentElement.dataset.uiTheme = uiTheme
+    if (embedHost) {
+      if (!isExternalThemeActive()) {
+        document.documentElement.classList.toggle('dark', theme === 'dark')
+        document.documentElement.style.colorScheme = theme
+      }
+      requestEmbedHostTheme()
+      return
+    }
     document.documentElement.classList.toggle('dark', theme === 'dark')
     document.documentElement.style.colorScheme = theme
-    document.documentElement.dataset.uiTheme = uiTheme
     localStorage.setItem('theme', theme)
     localStorage.setItem('uiTheme', uiTheme)
-  }, [theme, uiTheme])
+  }, [embedHost, theme, uiTheme])
 
   // On mount: reconcile with server (source of truth)
   useEffect(() => {
@@ -78,9 +90,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         )
         setUIThemeState(nextUI)
         setThemeState(nextMode)
+        if (embedHost) {
+          requestEmbedHostTheme()
+        }
       })
       .catch(() => {})
-  }, [])
+  }, [embedHost])
 
   function setTheme(t: ColorMode) {
     if (!themeSupportsMode(uiThemeDef, t)) return

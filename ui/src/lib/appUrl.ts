@@ -1,5 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
+import { embedHostQueryValue } from '@/lib/embedHost'
+
 export const LAUNCH_PATH = '/launch'
 export const SCHEDULES_PATH = '/schedules'
 export const CUSTOMIZE_PATH = '/customize'
@@ -83,32 +85,77 @@ function setPath(path: string, replace: boolean): void {
   }
 }
 
+function withEmbedParam(path: string): string {
+  const embed = embedHostQueryValue()
+  if (!embed) return path
+  const q = path.indexOf('?')
+  if (q === -1) return `${path}?embed=${embed}`
+  const params = new URLSearchParams(path.slice(q + 1))
+  params.set('embed', embed)
+  return `${path.slice(0, q)}?${params.toString()}`
+}
+
 export function navigateToSession(id: string, replace = false): void {
-  setPath(sessionPath(id), replace)
+  setPath(withEmbedParam(sessionPath(id)), replace)
 }
 
 export function navigateToSessionList(agentGroupId: string, replace = false): void {
-  setPath(sessionListPath(agentGroupId), replace)
+  setPath(withEmbedParam(sessionListPath(agentGroupId)), replace)
 }
 
-export function navigateToCustomize(replace = false): void {
-  setPath(CUSTOMIZE_PATH, replace)
+export type CustomizeTabId =
+  | 'general'
+  | 'env'
+  | 'extensions'
+  | 'mcp'
+  | 'skills'
+  | 'memory'
+  | 'agents'
+
+const CUSTOMIZE_TAB_IDS = new Set<CustomizeTabId>([
+  'general',
+  'env',
+  'extensions',
+  'mcp',
+  'skills',
+  'memory',
+  'agents',
+])
+
+export function customizeTabFromSearch(search = window.location.search): CustomizeTabId | null {
+  const tab = new URLSearchParams(search).get('tab')?.trim()
+  if (!tab || !CUSTOMIZE_TAB_IDS.has(tab as CustomizeTabId)) return null
+  return tab as CustomizeTabId
+}
+
+export function customizePath(tab?: CustomizeTabId, embed?: string): string {
+  const params = new URLSearchParams()
+  if (tab) params.set('tab', tab)
+  if (embed) params.set('embed', embed)
+  const query = params.toString()
+  return `${CUSTOMIZE_PATH}${query ? `?${query}` : ''}`
+}
+
+export function navigateToCustomize(tab?: CustomizeTabId, replace = false, embed?: string): void {
+  setPath(customizePath(tab, embed ?? embedHostQueryValue()), replace)
 }
 
 export function navigateToSchedules(replace = false): void {
-  setPath(SCHEDULES_PATH, replace)
+  setPath(withEmbedParam(SCHEDULES_PATH), replace)
 }
 
 export function navigateToNewSession(opts?: { agent?: string; cwd?: string }, replace = false): void {
   const params = new URLSearchParams()
   if (opts?.agent?.trim()) params.set('agent', opts.agent.trim())
   if (opts?.cwd?.trim()) params.set('cwd', opts.cwd.trim())
+  const embed = embedHostQueryValue()
+  if (embed) params.set('embed', embed)
   const query = params.toString()
   setPath(`${NEW_SESSION_PATH}${query ? `?${query}` : ''}`, replace)
 }
 
 export function navigateToLaunch(replace = false): void {
-  setPath(LAUNCH_PATH, replace)
+  setPath(withEmbedParam(LAUNCH_PATH), replace)
 }
 
 export function navigateToHome(replace = false): void {

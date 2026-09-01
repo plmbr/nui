@@ -3,6 +3,7 @@
 import { Settings, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { isEmbedHost } from '@/lib/embedHost'
 import { GeneralTab } from '@/components/customize/GeneralTab'
 import { EnvVarsTab } from '@/components/customize/EnvVarsTab'
 import { ExtensionsTab } from '@/components/customize/ExtensionsTab'
@@ -33,8 +34,11 @@ interface Props {
 }
 
 export function CustomizePanel({ onClose, onAgentTypesChanged, tab, onTabChange }: Props) {
+  const hideHeader = isEmbedHost()
+
   return (
     <div className="customize-panel flex flex-1 flex-col overflow-hidden">
+      {!hideHeader && (
       <div className="conversation-header justify-between">
         <div className="flex items-center gap-2 min-w-0">
           <Settings className="size-4 shrink-0 text-muted-foreground" />
@@ -44,6 +48,7 @@ export function CustomizePanel({ onClose, onAgentTypesChanged, tab, onTabChange 
           <X className="size-4" />
         </Button>
       </div>
+      )}
 
       <div className="flex flex-1 min-h-0 flex-col md:flex-row">
         <nav className="customize-tabs shrink-0 flex flex-row gap-1 overflow-x-auto border-b bg-muted/20 p-2 md:w-44 md:flex-col md:overflow-x-visible md:border-b-0 md:border-r">

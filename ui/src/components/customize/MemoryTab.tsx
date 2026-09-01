@@ -6,6 +6,7 @@ import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { Button } from '@/components/ui/button'
 import { SearchInput } from '@/components/SearchInput'
 import { api } from '@/api'
+import { copyTextToClipboard } from '@/lib/clipboard'
 import { selectableAgentTypes } from '@/lib/agentTypes'
 import { filterBySearchQuery } from '@/lib/searchFilter'
 import type { AgentType, MemoryAgentEntry, MemoryMode, MemorySummary } from '@/types'
@@ -159,13 +160,10 @@ export function MemoryTab() {
   }
 
   const copyPath = async (path: string) => {
-    try {
-      await navigator.clipboard.writeText(path)
-      setCopiedPath(path)
-      window.setTimeout(() => setCopiedPath(null), 2000)
-    } catch {
-      // Clipboard may be denied.
-    }
+    const copied = await copyTextToClipboard(path)
+    if (!copied) return
+    setCopiedPath(path)
+    window.setTimeout(() => setCopiedPath(null), 2000)
   }
 
   const confirmDelete = async () => {
