@@ -88,8 +88,17 @@ func TestHandleOrchestratorSearchAgents_requiresQuery(t *testing.T) {
 }
 
 func TestFormatLauncherSearchCandidates(t *testing.T) {
-	setupTestServerEnv(t)
-	out := formatLauncherSearchCandidates("claude code")
+	candidates := []AgentTypeInfo{
+		{
+			ID:          "claude-code",
+			Label:       "Claude Code",
+			Description: "Claude Code running as a local subprocess",
+			Tags:        []string{"builtin", "cli"},
+			Available:   true,
+		},
+	}
+	hits := searchOrchestratorAgentsFrom("claude code", 5, candidates)
+	out := formatLauncherSearchCandidatesFromHits(hits)
 	if out == "" {
 		t.Fatal("expected candidate section")
 	}

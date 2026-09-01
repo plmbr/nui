@@ -259,7 +259,11 @@ func formatLauncherSearchCandidates(userPrompt string) string {
 	if userPrompt == "" {
 		return ""
 	}
-	hits := searchOrchestratorAgents(userPrompt, 5)
+	return formatLauncherSearchCandidatesFromHits(searchOrchestratorAgents(userPrompt, 5))
+}
+
+// formatLauncherSearchCandidatesFromHits renders ranked search hits for the launcher prompt.
+func formatLauncherSearchCandidatesFromHits(hits []map[string]any) string {
 	if len(hits) == 0 {
 		return ""
 	}
