@@ -1414,28 +1414,40 @@ html.nui-desktop {
   }
 
   .mention-menu {
-    @apply absolute bottom-full left-0 z-50 mb-2 max-h-64 w-[min(15rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-md;
+    @apply absolute bottom-full left-0 z-50 mb-2 max-h-64 w-[min(15rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border bg-popover p-1 text-left text-popover-foreground shadow-md;
+  }
+
+  .mention-menu--launcher {
+    @apply w-[min(22rem,calc(100vw-2rem))];
   }
 
   .mention-menu__back {
     @apply mb-1 flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground;
   }
 
+  .mention-menu__header,
   .mention-menu__crumb {
-    @apply px-2 pb-1 text-muted-foreground;
+    @apply px-2 pb-1 text-left text-muted-foreground;
     font-size: var(--text-meta);
   }
 
   .mention-menu__empty {
-    @apply px-2 py-2 text-sm text-muted-foreground;
+    @apply px-2 py-2 text-left text-sm text-muted-foreground;
   }
 
   .mention-menu__item {
-    @apply flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none;
+    @apply flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm outline-none transition-colors;
   }
 
+  .mention-menu__item:hover,
   .mention-menu__item--active {
-    @apply bg-accent text-accent-foreground;
+    background: var(--secondary);
+    color: var(--secondary-foreground);
+  }
+
+  .mention-menu__item:hover .mention-menu__icon,
+  .mention-menu__item--active .mention-menu__icon {
+    color: var(--secondary-foreground);
   }
 
   .mention-menu__icon {

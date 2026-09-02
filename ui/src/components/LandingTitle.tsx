@@ -18,8 +18,9 @@ const SLOGANS: readonly (readonly string[])[] = [
 ]
 
 const WORD_MS = 1200
+const INITIAL_BLANK_MS = 450
 
-type Phase = number | 'logo'
+type Phase = 'blank' | number | 'logo'
 
 function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined'
@@ -46,12 +47,13 @@ export function LandingTitle({ disableAnimation }: LandingTitleProps) {
       return
     }
 
-    setPhase(0)
+    setPhase('blank')
     const timers: number[] = []
+    timers.push(window.setTimeout(() => setPhase(0), INITIAL_BLANK_MS))
     for (let i = 1; i < words.length; i++) {
-      timers.push(window.setTimeout(() => setPhase(i), i * WORD_MS))
+      timers.push(window.setTimeout(() => setPhase(i), INITIAL_BLANK_MS + i * WORD_MS))
     }
-    timers.push(window.setTimeout(() => setPhase('logo'), words.length * WORD_MS))
+    timers.push(window.setTimeout(() => setPhase('logo'), INITIAL_BLANK_MS + words.length * WORD_MS))
 
     return () => {
       for (const id of timers) window.clearTimeout(id)

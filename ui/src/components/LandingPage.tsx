@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowUp, Loader2, Plus, Settings } from 'lucide-react'
 import { LandingTitle } from '@/components/LandingTitle'
+import { MentionMenu } from '@/components/MentionMenu'
 import { PlumeriaFlower } from '@/components/PlumeriaFlower'
 import { PlumeriaRandomBackdrop } from '@/components/PlumeriaBackdrop'
 import { RecentsSection } from '@/components/RecentsSection'
 import { Button } from '@/components/ui/button'
 import { api } from '@/api'
 import { useTheme } from '@/contexts/theme'
+import { useLauncherAgentMentionMenu } from '@/hooks/useLauncherAgentMentionMenu'
 import type { AgentType, RecentAgentEntry, Session } from '@/types'
 
 export interface OrchestrateAmbiguity {
@@ -67,6 +69,15 @@ export function LandingPage({
   const [ambiguity, setAmbiguity] = useState<OrchestrateAmbiguity | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [disableSloganAnimation, setDisableSloganAnimation] = useState<boolean | undefined>(undefined)
+  const busy = loading || creatingAgent !== null || pickingAgent !== null
+
+  const mention = useLauncherAgentMentionMenu({
+    agentTypes,
+    input: prompt,
+    setInput: setPrompt,
+    inputRef: promptRef,
+    disabled: busy,
+  })
 
   useEffect(() => {
     api.settings
@@ -131,6 +142,7 @@ export function LandingPage({
   }, [active, focusToken])
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mention.handleKeyDown(e)) return
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       void submit()
@@ -150,8 +162,6 @@ export function LandingPage({
     }
   }
 
-  const busy = loading || creatingAgent !== null || pickingAgent !== null
-
   return (
     <div className="landing-page">
       {showFlowers && (
@@ -162,6 +172,19 @@ export function LandingPage({
           <LandingTitle disableAnimation={disableSloganAnimation} />
 
           <div className="landing-page__prompt">
+            <MentionMenu
+              open={mention.open}
+              items={mention.items}
+              breadcrumb={mention.breadcrumb}
+              activeIndex={mention.activeIndex}
+              loading={mention.loading}
+              parent=""
+              header="Agents"
+              className="mention-menu--launcher"
+              onSelect={mention.applySelection}
+              onBack={() => {}}
+              onHover={mention.setActiveIndex}
+            />
             <textarea
               ref={promptRef}
               className="landing-page__prompt-input"
@@ -178,6 +201,14 @@ export function LandingPage({
               autoCapitalize="off"
               disabled={busy}
               aria-label="Launch prompt"
+              aria-autocomplete={mention.open ? 'list' : undefined}
+              aria-expanded={mention.open}
+              aria-controls={mention.open ? 'mention-menu' : undefined}
+              aria-activedescendant={
+                mention.open && mention.items.length > 0
+                  ? `mention-option-${mention.activeIndex}`
+                  : undefined
+              }
             />
             <button
               type="button"

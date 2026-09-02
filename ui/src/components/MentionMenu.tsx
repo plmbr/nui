@@ -1,6 +1,8 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { ChevronLeft, File, Folder, Puzzle } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { useEffect, useRef } from 'react'
+import { ChevronLeft, File, Folder, Puzzle, Bot } from 'lucide-react'
 import type { MentionBreadcrumb, MentionItem } from '@/types'
 
 interface Props {
@@ -13,11 +15,14 @@ interface Props {
   onSelect: (item: MentionItem) => void
   onBack: () => void
   onHover: (index: number) => void
+  header?: string
+  className?: string
 }
 
 function itemIcon(item: MentionItem) {
   if (item.icon === 'folder') return Folder
   if (item.icon === 'extension') return Puzzle
+  if (item.icon === 'agent') return Bot
   return File
 }
 
@@ -31,15 +36,26 @@ export function MentionMenu({
   onSelect,
   onBack,
   onHover,
+  header,
+  className,
 }: Props) {
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const active = menuRef.current?.querySelector<HTMLElement>('.mention-menu__item--active')
+    active?.scrollIntoView({ block: 'nearest' })
+  }, [activeIndex, open])
+
   if (!open) return null
 
   const showBack = parent !== ''
 
   return (
     <div
+      ref={menuRef}
       id="mention-menu"
-      className="mention-menu"
+      className={cn('mention-menu', className)}
       role="listbox"
       aria-label="Mention suggestions"
       aria-busy={loading}
@@ -54,11 +70,15 @@ export function MentionMenu({
           Back
         </button>
       )}
-      {breadcrumb.length > 1 && (
+      {header ? (
+        <div className="mention-menu__header" aria-hidden>
+          {header}
+        </div>
+      ) : breadcrumb.length > 1 ? (
         <div className="mention-menu__crumb" aria-hidden>
           {breadcrumb.slice(1).map((c) => c.label).join(' / ')}
         </div>
-      )}
+      ) : null}
       {loading && items.length === 0 ? (
         <div className="mention-menu__empty">Loading…</div>
       ) : items.length === 0 ? (
@@ -66,16 +86,17 @@ export function MentionMenu({
       ) : (
         items.map((item, index) => {
           const Icon = itemIcon(item)
+          const active = index === activeIndex
           return (
             <div
               key={`${item.value}-${index}`}
               id={`mention-option-${index}`}
               role="option"
-              aria-selected={index === activeIndex}
-              className={[
+              aria-selected={active}
+              className={cn(
                 'mention-menu__item',
-                index === activeIndex ? 'mention-menu__item--active' : '',
-              ].join(' ')}
+                active && 'mention-menu__item--active',
+              )}
               onMouseDown={(e) => {
                 e.preventDefault()
                 onSelect(item)

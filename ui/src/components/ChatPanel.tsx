@@ -139,6 +139,7 @@ function scrollMessageToTop(container: HTMLElement, message: HTMLElement) {
 interface Props {
   session: Session
   initialPrompt?: string
+  skipBootstrap?: boolean
   hideInput?: boolean
   promptMode?: 'user' | 'auto'
   defaultPrompt?: string
@@ -149,6 +150,7 @@ interface Props {
 export function ChatPanel({
   session,
   initialPrompt,
+  skipBootstrap,
   hideInput,
   promptMode = 'user',
   defaultPrompt,
@@ -316,7 +318,7 @@ export function ChatPanel({
   }, [isRunning, hideInput])
 
   useEffect(() => {
-    if (initialPromptSentRef.current || isLoading || isRunning) return
+    if (skipBootstrap || initialPromptSentRef.current || isLoading || isRunning) return
     if (messages.length > 0) return
 
     if (promptMode === 'auto') {
@@ -334,6 +336,7 @@ export function ChatPanel({
     markScrollAnchor()
     sendMessage(bootstrapPrompt)
   }, [
+    skipBootstrap,
     initialPrompt,
     defaultPrompt,
     promptMode,

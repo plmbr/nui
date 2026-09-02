@@ -68,6 +68,21 @@ func handleOrchestrate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if result, ok, err := tryMentionAgentLaunch(prompt, workingDir); err != nil {
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	} else if ok {
+		sidebarClosed := false
+		setBootstrap(result.Session.ID, result.Prompt, &sidebarClosed, false)
+		sess := result.Session
+		writeJSON(w, http.StatusCreated, orchestrateResponse{
+			Session:           &sess,
+			Prompt:            result.Prompt,
+			SelectedAgentType: result.Session.AgentType,
+		})
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
 	defer cancel()
 

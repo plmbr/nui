@@ -19,6 +19,7 @@ import { SessionsListPanel } from '@/components/SessionsListPanel'
 import { ThemeProvider, useTheme } from '@/contexts/theme'
 import { api } from '@/api'
 import { groupSessionsByAgentType, defaultAgentTypeForGroup, findOrCreateSessionGroup } from '@/lib/sessionGroups'
+import { isLauncherAgentOnlyMention } from '@/lib/launcherAgentMentions'
 import { clearSessionChat, probeActiveRuns, subscribeOpenSession, subscribeUIAction } from '@/lib/sessionChatStore'
 import { applyUIActions, type UIAction } from '@/lib/uiActions'
 import {
@@ -64,6 +65,7 @@ function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sidebarWidth, setSidebarWidth] = useState(resolveSidebarWidth())
   const [initialPrompt, setInitialPrompt] = useState<string | undefined>()
+  const [skipBootstrapPrompt, setSkipBootstrapPrompt] = useState(false)
   const [hideInput, setHideInput] = useState(false)
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([])
   const [customizeOpen, setCustomizeOpen] = useState(false)
@@ -349,6 +351,7 @@ function AppContent() {
       if (!id || !sessionsRef.current.some((s) => s.id === id)) return
       setSelectedId(id)
       setInitialPrompt(undefined)
+      setSkipBootstrapPrompt(false)
       setHideInput(false)
       api.state.update({ lastSessionId: id }).catch(() => {})
       touchRecentSession(id)
@@ -366,6 +369,7 @@ function AppContent() {
     setSessionListGroupId(null)
     setSelectedId(id)
     setInitialPrompt(undefined)
+    setSkipBootstrapPrompt(false)
     setHideInput(false)
     navigateToSession(id)
     api.state.update({ lastSessionId: id }).catch(() => {})
@@ -545,6 +549,7 @@ function AppContent() {
   }, [handleSelect])
 
   const handleLaunchWithPrompt = useCallback(async (prompt: string) => {
+    const mentionOnly = isLauncherAgentOnlyMention(prompt)
     const result = await api.orchestrate({ prompt })
     if (result.ambiguous && result.candidates?.length) {
       return {
@@ -566,7 +571,8 @@ function AppContent() {
     setLandingOpen(false)
     setSessionListGroupId(null)
     setSelectedId(result.session.id)
-    setInitialPrompt(result.prompt || undefined)
+    setSkipBootstrapPrompt(mentionOnly && !result.prompt?.trim())
+    setInitialPrompt(result.prompt?.trim() || undefined)
     setHideInput(false)
     navigateToSession(result.session.id)
     api.state.update({ lastSessionId: result.session.id }).catch(() => {})
@@ -680,6 +686,7 @@ function AppContent() {
               key={selected.id}
               session={selected}
               initialPrompt={initialPrompt}
+              skipBootstrap={skipBootstrapPrompt}
               hideInput={effectiveHideInput}
               promptMode={promptMode}
               defaultPrompt={selectedAgent?.defaultPrompt}
@@ -808,6 +815,7 @@ function AppContent() {
                 key={selected.id}
                 session={selected}
                 initialPrompt={initialPrompt}
+                skipBootstrap={skipBootstrapPrompt}
                 hideInput={effectiveHideInput}
                 promptMode={promptMode}
                 defaultPrompt={selectedAgent?.defaultPrompt}
