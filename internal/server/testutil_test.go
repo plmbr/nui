@@ -93,6 +93,27 @@ harness:
 	}
 }
 
+func installTestAutoAgent(t *testing.T, home string) {
+	t.Helper()
+	agentsDir := filepath.Join(home, ".nui", "agents")
+	if err := os.MkdirAll(agentsDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	content := `adl: "1.0"
+id: auto-agent
+name: Auto Agent
+promptMode: auto
+defaultPrompt: Run the default task.
+harness:
+  type: remote
+  host: 127.0.0.1
+  port: 9090
+`
+	if err := os.WriteFile(filepath.Join(agentsDir, "auto-agent.yaml"), []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func stubHarnessRun(reply string) agent.HarnessRunHook {
 	return func(ctx context.Context, req agent.RunRequest, events chan<- agent.Event) error {
 		if reply == "" {

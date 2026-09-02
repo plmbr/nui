@@ -3,8 +3,6 @@
 package server
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -35,15 +33,20 @@ func TestParseOrchestratorAgentMention(t *testing.T) {
 }
 
 func TestTryMentionAgentLaunch(t *testing.T) {
-	setupTestServerEnv(t)
-	result, ok, err := tryMentionAgentLaunch("@claude-code fix flaky test", t.TempDir())
+	home := withTempHome(t)
+	resetAllServerState(t)
+	if err := initStore(); err != nil {
+		t.Fatal(err)
+	}
+	installTestRemoteAgent(t, home)
+	result, ok, err := tryMentionAgentLaunch("@test-remote fix flaky test", t.TempDir())
 	if err != nil {
 		t.Fatalf("tryMentionAgentLaunch: %v", err)
 	}
 	if !ok {
 		t.Fatal("expected mention launch")
 	}
-	if result.Session.AgentType != "claude-code" {
+	if result.Session.AgentType != "test-remote" {
 		t.Fatalf("agentType = %q", result.Session.AgentType)
 	}
 	if result.Prompt != "fix flaky test" {
@@ -57,21 +60,7 @@ func TestTryMentionAgentLaunch_autoPrompt(t *testing.T) {
 	if err := initStore(); err != nil {
 		t.Fatal(err)
 	}
-	agentsDir := filepath.Join(home, ".nui", "agents")
-	if err := os.MkdirAll(agentsDir, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	content := `adl: "1.0"
-id: auto-agent
-name: Auto Agent
-promptMode: auto
-defaultPrompt: Run the default task.
-harness:
-  type: claude-code
-`
-	if err := os.WriteFile(filepath.Join(agentsDir, "auto-agent.yaml"), []byte(content), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	installTestAutoAgent(t, home)
 	result, ok, err := tryMentionAgentLaunch("@auto-agent", t.TempDir())
 	if err != nil {
 		t.Fatalf("tryMentionAgentLaunch: %v", err)
@@ -90,21 +79,7 @@ func TestTryMentionAgentLaunch_autoAgentUsesDefaultPrompt(t *testing.T) {
 	if err := initStore(); err != nil {
 		t.Fatal(err)
 	}
-	agentsDir := filepath.Join(home, ".nui", "agents")
-	if err := os.MkdirAll(agentsDir, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	content := `adl: "1.0"
-id: auto-agent
-name: Auto Agent
-promptMode: auto
-defaultPrompt: Run the default task.
-harness:
-  type: claude-code
-`
-	if err := os.WriteFile(filepath.Join(agentsDir, "auto-agent.yaml"), []byte(content), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	installTestAutoAgent(t, home)
 	result, ok, err := tryMentionAgentLaunch("@auto-agent:[Auto Agent]", t.TempDir())
 	if err != nil {
 		t.Fatalf("tryMentionAgentLaunch: %v", err)
@@ -123,21 +98,7 @@ func TestTryMentionAgentLaunch_autoAgentIgnoresUserText(t *testing.T) {
 	if err := initStore(); err != nil {
 		t.Fatal(err)
 	}
-	agentsDir := filepath.Join(home, ".nui", "agents")
-	if err := os.MkdirAll(agentsDir, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	content := `adl: "1.0"
-id: auto-agent
-name: Auto Agent
-promptMode: auto
-defaultPrompt: Run the default task.
-harness:
-  type: claude-code
-`
-	if err := os.WriteFile(filepath.Join(agentsDir, "auto-agent.yaml"), []byte(content), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	installTestAutoAgent(t, home)
 	result, ok, err := tryMentionAgentLaunch("@auto-agent:[Auto Agent] user override", t.TempDir())
 	if err != nil {
 		t.Fatalf("tryMentionAgentLaunch: %v", err)
@@ -181,15 +142,20 @@ func TestFindAgentByMentionID(t *testing.T) {
 }
 
 func TestTryMentionAgentLaunch_respectsPromptMode(t *testing.T) {
-	setupTestServerEnv(t)
-	result, ok, err := tryMentionAgentLaunch("@claude-code", t.TempDir())
+	home := withTempHome(t)
+	resetAllServerState(t)
+	if err := initStore(); err != nil {
+		t.Fatal(err)
+	}
+	installTestRemoteAgent(t, home)
+	result, ok, err := tryMentionAgentLaunch("@test-remote", t.TempDir())
 	if err != nil {
 		t.Fatalf("tryMentionAgentLaunch: %v", err)
 	}
 	if !ok {
 		t.Fatal("expected mention launch")
 	}
-	if result.Session.AgentType != "claude-code" {
+	if result.Session.AgentType != "test-remote" {
 		t.Fatalf("agentType = %q", result.Session.AgentType)
 	}
 }
