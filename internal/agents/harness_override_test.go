@@ -109,3 +109,20 @@ func TestHarnessTypeFromConfig(t *testing.T) {
 		t.Fatalf("got %v", cfg)
 	}
 }
+
+func TestApplySessionHarnessOverrideProvider(t *testing.T) {
+	def := model.ADLDefinition{
+		ID:      "ide",
+		Harness: model.ADLHarness{Type: "claude-code", Model: "m1"},
+	}
+	got, err := ApplySessionHarnessOverride(def, map[string]any{
+		AgentConfigKeyHarnessProvider: "anthropic",
+		"model":                       "claude-sonnet-4-6",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Harness.Type != "api" || got.Harness.Provider != "anthropic" {
+		t.Fatalf("harness = %+v", got.Harness)
+	}
+}

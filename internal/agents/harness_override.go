@@ -12,12 +12,24 @@ import (
 // AgentConfigKeyHarnessType is the session agentConfig key for a harness.type override.
 const AgentConfigKeyHarnessType = "harnessType"
 
+// AgentConfigKeyHarnessProvider switches the harness to type=api with the given provider.
+const AgentConfigKeyHarnessProvider = "harnessProvider"
+
 // HarnessTypeFromConfig reads an optional harness.type override from session agentConfig.
 func HarnessTypeFromConfig(cfg map[string]any) string {
 	if cfg == nil {
 		return ""
 	}
 	v, _ := cfg[AgentConfigKeyHarnessType].(string)
+	return strings.TrimSpace(v)
+}
+
+// HarnessProviderFromConfig reads an optional api harness provider override.
+func HarnessProviderFromConfig(cfg map[string]any) string {
+	if cfg == nil {
+		return ""
+	}
+	v, _ := cfg[AgentConfigKeyHarnessProvider].(string)
 	return strings.TrimSpace(v)
 }
 
@@ -81,7 +93,12 @@ func ApplyHarnessOverride(def model.ADLDefinition, override string) (model.ADLDe
 	return def, nil
 }
 
-// ApplySessionHarnessOverride applies agentConfig harnessType to the definition.
+// ApplySessionHarnessOverride applies agentConfig harness overrides to the definition.
 func ApplySessionHarnessOverride(def model.ADLDefinition, agentConfig map[string]any) (model.ADLDefinition, error) {
+	if provider := HarnessProviderFromConfig(agentConfig); provider != "" {
+		def.Harness.Type = "api"
+		def.Harness.Provider = provider
+		return def, nil
+	}
 	return ApplyHarnessOverride(def, HarnessTypeFromConfig(agentConfig))
 }

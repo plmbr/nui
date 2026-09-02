@@ -221,3 +221,47 @@ description: A test extension
 		t.Fatalf("entry = %+v", entries[0])
 	}
 }
+
+func TestLoadRegistryExtraConfigDirUserWins(t *testing.T) {
+	home := t.TempDir()
+	extra := filepath.Join(t.TempDir(), "extra-config")
+	extraExt := filepath.Join(extra, "extensions", "shared-pack")
+	userExt := filepath.Join(home, ".nui", "extensions", "shared-pack")
+	for _, spec := range []struct {
+		dir     string
+		version string
+	}{
+		{extraExt, "1.0.0"},
+		{userExt, "2.0.0"},
+	} {
+		if err := os.MkdirAll(spec.dir, 0755); err != nil {
+			t.Fatal(err)
+		}
+		manifest := `apiVersion: nui.plmbr.dev/extension/v1
+name: shared-pack
+version: ` + spec.version + `
+displayName: Pack
+`
+		if err := os.WriteFile(filepath.Join(spec.dir, "extension.yaml"), []byte(manifest), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Setenv("HOME", home)
+	t.Setenv("NUI_EXTRA_CONFIG_DIRS", extra)
+
+	reg, err := extensions.LoadRegistry()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ext, ok := reg.Get("shared-pack")
+	if !ok {
+		t.Fatal("shared-pack not loaded")
+	}
+	if ext.Manifest.Version != "2.0.0" {
+		t.Fatalf("version = %q want user override", ext.Manifest.Version)
+	}
+	if !ext.Writable {
+		t.Fatal("expected writable user extension")
+	}
+}

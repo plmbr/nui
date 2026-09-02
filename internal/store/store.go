@@ -274,7 +274,7 @@ func loadADLDefinitionsFromDir(dir string) []model.ADLDefinition {
 	return defs
 }
 
-// LoadADLDefinitions returns system + user ADL agents (user wins on same id).
+// LoadADLDefinitions returns extra + system + user ADL agents (later wins on same id).
 func LoadADLDefinitions() ([]model.ADLDefinition, error) {
 	byID := map[string]model.ADLDefinition{}
 	order := []string{}
@@ -292,14 +292,13 @@ func LoadADLDefinitions() ([]model.ADLDefinition, error) {
 		}
 	}
 
-	if SystemDirExists() {
-		add(loadADLDefinitionsFromDir(filepath.Join(SystemDir(), "agents")))
-	}
-	userAgents, err := AgentsDir()
+	agentDirs, err := AgentConfigDirs()
 	if err != nil {
 		return nil, err
 	}
-	add(loadADLDefinitionsFromDir(userAgents))
+	for _, dir := range agentDirs {
+		add(loadADLDefinitionsFromDir(dir))
+	}
 
 	out := make([]model.ADLDefinition, 0, len(order))
 	for _, id := range order {

@@ -160,7 +160,8 @@ Interactive AG-UI chat does not yet support mid-stream offset replay. A disconne
 | Secrets | JSON | `~/.nui/secrets.json` (0600) | Done — managed API credentials + free-form global env; Customize → Env vars. Merged with system secrets when present |
 | Extension env | JSON | `~/.nui/extension-env.json` (0600) | Done — per-extension env maps; Customize → Extensions → Env. Merged with system extension-env when present |
 | Data dir override | env | `NUI_DATA_DIR` | Writable user tree (default `~/.nui`) |
-| System config | env/dir | `NUI_SYSTEM_CONFIG` / `/etc/nui` | Read-only admin defaults (settings, secrets, extension-env, mcp-servers, agents) |
+| Extra config dirs | env / flag | `NUI_EXTRA_CONFIG_DIRS` / `nui server --config-dir` | Supplemental read-only roots (`agents/`, `extensions/`); user data wins on conflicts |
+| System config | env/dir | `NUI_SYSTEM_CONFIG` / `/etc/nui` | Read-only admin defaults (settings, secrets, extension-env, mcp-servers, agents, extensions) |
 | Per-session harness config | dir | `~/.nui/sessions/<session-id>/` | Done — removed on session delete |
 | Isolated workspaces | dir | `~/.nui/workspaces/<session-id>/` | Done — removed on session delete |
 | Chat uploads | files | `$TMPDIR/nui-uploads/<session-id>/` | Done — removed on session delete |

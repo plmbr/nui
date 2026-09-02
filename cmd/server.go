@@ -12,6 +12,7 @@ import (
 
 	"nui/internal/nuiclient"
 	"nui/internal/server"
+	"nui/internal/store"
 
 	"github.com/spf13/cobra"
 )
@@ -28,6 +29,7 @@ var (
 	theme            string
 	defaultAgentType string
 	defaultHarness   string
+	configDirs       []string
 )
 
 var uiFS func() fs.FS
@@ -58,6 +60,10 @@ var serverCmd = &cobra.Command{
 			return attachToRunningServer(ctx, port, opts)
 		}
 
+		for _, dir := range configDirs {
+			store.AppendExtraConfigDir(dir)
+		}
+
 		fmt.Printf("Starting web server on port %d...\n", port)
 		return server.Start(port, uiFS(), opts)
 	},
@@ -75,6 +81,7 @@ func init() {
 	serverCmd.Flags().StringVar(&theme, "theme", "", "UI theme: light or dark (saved to ~/.nui/settings.json)")
 	serverCmd.Flags().StringVar(&defaultAgentType, "default-agent", "", "Default ADL agent id for new sessions (saved to ~/.nui/settings.json)")
 	serverCmd.Flags().StringVar(&defaultHarness, "default-harness", "", "Default harness for internal agents (e.g. api/anthropic, claude-code; saved to ~/.nui/settings.json)")
+	serverCmd.Flags().StringArrayVar(&configDirs, "config-dir", nil, "Additional read-only config directory (repeatable; loads agents/ and extensions/ subdirs)")
 	rootCmd.AddCommand(serverCmd)
 }
 

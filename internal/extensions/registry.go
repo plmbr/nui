@@ -18,6 +18,7 @@ import (
 type Extension struct {
 	Dir      string
 	Manifest Manifest
+	Writable bool
 
 	Harnesses        []HarnessEntry
 	MCPServers       []model.ADLMCPServer
@@ -61,13 +62,13 @@ type Registry struct {
 // Default is the process-wide extension registry, set at server startup.
 var Default *Registry
 
-// LoadRegistry scans ~/.nui/extensions/*/extension.yaml and resolves contribution lists.
+// LoadRegistry scans configured extension directories and resolves contribution lists.
 func LoadRegistry() (*Registry, error) {
-	dir, err := store.ExtensionsDir()
+	dirs, err := store.ExtensionConfigDirs()
 	if err != nil {
 		return nil, err
 	}
-	reg, err := scanExtensions(dir)
+	reg, err := loadRegistryFromDirs(dirs)
 	if err != nil {
 		return nil, err
 	}
@@ -75,13 +76,32 @@ func LoadRegistry() (*Registry, error) {
 	return reg, nil
 }
 
-func scanExtensions(dir string) (*Registry, error) {
+func loadRegistryFromDirs(dirs []string) (*Registry, error) {
+	reg := &Registry{
+		extensions:   map[string]*Extension{},
+		mentionCache: newMentionClientCache(),
+		storageCache: newStorageClientCache(),
+	}
+	userExt, _ := store.ExtensionsDir()
+	for _, dir := range dirs {
+		writable := dir == userExt
+		if err := scanExtensionsInto(reg, dir, writable); err != nil {
+			return nil, err
+		}
+	}
+	logRegistrySummary(reg)
+	return reg, nil
+}
+
+func scanExtensionsInto(reg *Registry, dir string, writable bool) error {
 	fmt.Fprintf(os.Stderr, "[extensions] scanning %s\n", dir)
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, err
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
 	}
-	reg := &Registry{extensions: map[string]*Extension{}, mentionCache: newMentionClientCache(), storageCache: newStorageClientCache()}
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
@@ -94,11 +114,15 @@ func scanExtensions(dir string) (*Registry, error) {
 			fmt.Fprintf(os.Stderr, "[extensions] skip %q: %v\n", e.Name(), err)
 			continue
 		}
+		ext.Writable = writable
 		reg.extensions[ext.Manifest.Name] = ext
 		logExtensionLoaded(ext)
 	}
-	logRegistrySummary(reg)
-	return reg, nil
+	return nil
+}
+
+func scanExtensions(dir string) (*Registry, error) {
+	return loadRegistryFromDirs([]string{dir})
 }
 
 func logExtensionLoaded(ext *Extension) {
@@ -351,15 +375,15 @@ func namespaceAgent(def *model.ADLDefinition, extName string) {
 	def.ID = AgentAgentID(extName, localID)
 }
 
-// Reload rescans the extensions directory.
+// Reload rescans configured extension directories.
 func (r *Registry) Reload() error {
 	fmt.Fprintln(os.Stderr, "[extensions] reloading")
 	r.Shutdown()
-	dir, err := store.ExtensionsDir()
+	dirs, err := store.ExtensionConfigDirs()
 	if err != nil {
 		return err
 	}
-	next, err := scanExtensions(dir)
+	next, err := loadRegistryFromDirs(dirs)
 	if err != nil {
 		return err
 	}
@@ -554,6 +578,7 @@ type ExtensionInfo struct {
 	DisplayName string   `json:"displayName,omitempty"`
 	Description string   `json:"description,omitempty"`
 	Disabled    bool     `json:"disabled"`
+	Writable    bool     `json:"writable,omitempty"`
 	Harnesses   []string `json:"harnesses,omitempty"`
 	MCPServers         []string             `json:"mcpServers,omitempty"`
 	MCPServerConfigs   []model.ADLMCPServer `json:"mcpServerConfigs,omitempty"`
@@ -594,6 +619,7 @@ func (r *Registry) Info() []ExtensionInfo {
 			DisplayName: ext.Manifest.DisplayName,
 			Description: ext.Manifest.Description,
 			Disabled:    disabled[name],
+			Writable:    ext.Writable,
 		}
 		for _, h := range ext.Harnesses {
 			info.Harnesses = append(info.Harnesses, h.ID)
