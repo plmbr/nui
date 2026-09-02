@@ -75,7 +75,7 @@ func tryMentionAgentLaunch(prompt, workingDir string) (orchestrateRunResult, boo
 	if !ok {
 		return orchestrateRunResult{}, false, nil
 	}
-	candidates := orchestratorLaunchableAgents(listAgentTypes())
+	candidates := orchestratorMentionableAgents(listAgentTypes())
 	agent, found := findAgentByMentionID(mention, candidates)
 	if !found {
 		return orchestrateRunResult{}, false, nil

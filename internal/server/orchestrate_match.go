@@ -79,6 +79,19 @@ func orchestratorLaunchableAgents(all []AgentTypeInfo) []AgentTypeInfo {
 	return orchestratorListableAgents(all)
 }
 
+// orchestratorMentionableAgents returns routing targets for explicit @agent-id mentions.
+// Unlike orchestratorLaunchableAgents, unavailable agents are included: the user named the id.
+func orchestratorMentionableAgents(all []AgentTypeInfo) []AgentTypeInfo {
+	var out []AgentTypeInfo
+	for _, info := range all {
+		if !agents.IsOrchestratorRoutingTarget(info.ID) {
+			continue
+		}
+		out = append(out, info)
+	}
+	return out
+}
+
 func resolveAgentLaunchPrompt(agent AgentTypeInfo, override string) string {
 	if p := strings.TrimSpace(override); p != "" {
 		return p
