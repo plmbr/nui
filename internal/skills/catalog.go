@@ -127,8 +127,29 @@ func recordEntry(e Entry) error {
 	return saveManifest(m)
 }
 
+func installed(name string) bool {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return false
+	}
+	m, err := loadManifest()
+	if err == nil {
+		if _, ok := m.Skills[name]; ok {
+			return true
+		}
+	}
+	entryDir, err := store.SkillEntryDir(name)
+	if err != nil {
+		return false
+	}
+	if _, ok := skillDirInEntry(entryDir); ok {
+		return true
+	}
+	return false
+}
+
 // InstallLocal copies a local skill directory into ~/.nui/skills/<name>/skill/.
-func InstallLocal(name, srcPath string) (string, error) {
+func InstallLocal(name, srcPath string, overwrite bool) (string, error) {
 	src, err := localSkillDir(srcPath)
 	if err != nil {
 		return "", err
@@ -139,6 +160,9 @@ func InstallLocal(name, srcPath string) (string, error) {
 	}
 	if name == "" {
 		return "", fmt.Errorf("skill name is required")
+	}
+	if installed(name) && !overwrite {
+		return "", fmt.Errorf("already exists: %q", name)
 	}
 	dst, err := cacheSkillDir(name)
 	if err != nil {
@@ -158,7 +182,7 @@ func InstallLocal(name, srcPath string) (string, error) {
 }
 
 // InstallContent writes inline SKILL.md content into the catalog.
-func InstallContent(name, content string) (string, error) {
+func InstallContent(name, content string, overwrite bool) (string, error) {
 	if strings.TrimSpace(content) == "" {
 		return "", fmt.Errorf("skill content is required")
 	}
@@ -169,6 +193,9 @@ func InstallContent(name, content string) (string, error) {
 		if err != nil {
 			return "", err
 		}
+	}
+	if installed(name) && !overwrite {
+		return "", fmt.Errorf("already exists: %q", name)
 	}
 	dst, err := cacheSkillDir(name)
 	if err != nil {
@@ -187,7 +214,7 @@ func InstallContent(name, content string) (string, error) {
 }
 
 // InstallGit clones a repo and copies the skill subdirectory into the catalog.
-func InstallGit(name, gitURL, repoPath, version string) (string, error) {
+func InstallGit(name, gitURL, repoPath, version string, overwrite bool) (string, error) {
 	gitURL = strings.TrimSpace(gitURL)
 	repoPath = strings.TrimSpace(repoPath)
 	if gitURL == "" {
@@ -207,6 +234,9 @@ func InstallGit(name, gitURL, repoPath, version string) (string, error) {
 	}
 	if name == "" {
 		return "", fmt.Errorf("skill name is required")
+	}
+	if installed(name) && !overwrite {
+		return "", fmt.Errorf("already exists: %q", name)
 	}
 
 	skillDir, err := ensureGitSkill(name, gitURL, repoPath, version)

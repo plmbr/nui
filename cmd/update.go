@@ -3,10 +3,8 @@
 package cmd
 
 import (
-	"bufio"
 	"fmt"
 	"os"
-	"strings"
 
 	"nui/internal/appversion"
 	"nui/internal/update"
@@ -112,14 +110,4 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "Installed %s to %s\n", st.CurrentVersion, exe)
 	fmt.Fprintln(cmd.OutOrStdout(), "Restart any running `nui server` processes to pick up the new version.")
 	return nil
-}
-
-func confirm(cmd *cobra.Command, prompt string) (bool, error) {
-	fmt.Fprintf(cmd.OutOrStdout(), "%s [y/N] ", prompt)
-	line, err := bufio.NewReader(cmd.InOrStdin()).ReadString('\n')
-	if err != nil && !strings.Contains(err.Error(), "EOF") {
-		return false, err
-	}
-	line = strings.TrimSpace(strings.ToLower(line))
-	return line == "y" || line == "yes", nil
 }

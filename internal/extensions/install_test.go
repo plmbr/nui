@@ -16,7 +16,7 @@ func TestInstallFromDirectory(t *testing.T) {
 	t.Setenv("HOME", home)
 
 	src := filepath.Join("..", "..", "dev", "extension-examples", "corp-pack")
-	name, err := extensions.Install(src)
+	name, err := extensions.Install(src, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestInstallFromZip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	name, err := extensions.Install(zipPath)
+	name, err := extensions.Install(zipPath, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestInstallAndRemove(t *testing.T) {
 	t.Setenv("HOME", home)
 
 	src := filepath.Join("..", "..", "dev", "extension-examples", "corp-pack")
-	if _, err := extensions.Install(src); err != nil {
+	if _, err := extensions.Install(src, true); err != nil {
 		t.Fatal(err)
 	}
 	if err := extensions.Remove("corp-pack"); err != nil {

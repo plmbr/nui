@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var extensionCreateYes bool
+
 var extensionCreateCmd = &cobra.Command{
 	Use:   "create [id]",
 	Short: "Scaffold a programmatic extension package",
@@ -22,11 +24,22 @@ var extensionCreateCmd = &cobra.Command{
 		if dir == "" {
 			dir = id
 		}
+		nonEmpty, err := dirExistsNonEmpty(dir)
+		if err != nil {
+			return err
+		}
+		if nonEmpty {
+			ok, err := confirmDirOverwrite(cmd, extensionCreateYes, dir)
+			if err != nil || !ok {
+				return err
+			}
+		}
 		return scaffoldExtension(id, lang, dir)
 	},
 }
 
 func init() {
+	extensionCreateCmd.Flags().BoolVarP(&extensionCreateYes, "yes", "y", false, "overwrite without prompting")
 	extensionCreateCmd.Flags().String("lang", "python", "language: python, npm, go")
 	extensionCreateCmd.Flags().String("dir", "", "output directory (default: extension id)")
 	extensionCmd.AddCommand(extensionCreateCmd)

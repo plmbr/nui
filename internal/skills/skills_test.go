@@ -98,7 +98,7 @@ func TestInstallLocalAndResolveRef(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if added, err := InstallLocal("code-style", src); err != nil {
+	if added, err := InstallLocal("code-style", src, true); err != nil {
 		t.Fatal(err)
 	} else if added != "code-style" {
 		t.Fatalf("added name = %q, want code-style", added)
@@ -153,7 +153,7 @@ func TestInstallLocalDefaultName(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	added, err := InstallLocal("", src)
+	added, err := InstallLocal("", src, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +176,7 @@ func TestInstallLocalDefaultNameFromSKILLFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	added, err := InstallLocal("", skillFile)
+	added, err := InstallLocal("", skillFile, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +209,7 @@ func TestInstallContentDefaultName(t *testing.T) {
 	t.Setenv("HOME", filepath.Join(tmp, "home"))
 
 	content := "---\nname: greeting\n---\nSay hi.\n"
-	added, err := InstallContent("", content)
+	added, err := InstallContent("", content, true)
 	if err != nil {
 		t.Fatal(err)
 	}

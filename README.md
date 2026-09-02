@@ -123,10 +123,12 @@ nui server --open       # open browser with a new session
 nui server --no-browser # headless daemon (no browser)
 nui run -a claude-code -m "Review README" --wait  # headless run
 nui run -m "Summarize" --spawn --wait             # auto-start server if needed
-nui agent list|add|remove|deploy|deployers
+nui agent list|add|remove|deploy|deployers  # add accepts -y to overwrite
 nui agent eval run -a my-agent  # run ADL eval cases against a running server
-nui extension add|list|remove|create  # manage / scaffold extensions
-nui skills add|list|remove  # manage skills catalog
+nui extension add|list|remove|create|env  # manage / scaffold extensions
+nui extension env list|get|set|unset <ext>  # per-extension env vars
+nui skills add|list|remove  # manage skills catalog (-y to overwrite)
+nui env list|get|set|unset  # global env vars (~/.nui/secrets.json)
 nui memory list|show|edit  # persistent memory files
 nui schedule list|add|enable|disable|delete|run-now  # recurring runs
 nui harness-sdk reinstall  # copy Python SDK to ~/.nui/harness-sdk/

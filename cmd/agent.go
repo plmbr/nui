@@ -21,6 +21,8 @@ var agentCmd = &cobra.Command{
 	Short: "Manage and run nui agents",
 }
 
+var agentAddYes bool
+
 var agentAddCmd = &cobra.Command{
 	Use:   "add [url-or-path]",
 	Short: "Install an ADL agent YAML into ~/.nui/agents/",
@@ -37,7 +39,9 @@ Git repository (single yaml at repo root):
   nui agent add https://github.com/example/my-agent.git`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		id, err := agents.Install(args[0])
+		id, err := installWithOverwrite(cmd, agentAddYes, "agent", "", func(overwrite bool) (string, error) {
+			return agents.Install(args[0], overwrite)
+		})
 		if err != nil {
 			return err
 		}
@@ -161,6 +165,7 @@ var agentDeployersCmd = &cobra.Command{
 }
 
 func init() {
+	agentAddCmd.Flags().BoolVarP(&agentAddYes, "yes", "y", false, "overwrite without prompting")
 	agentListCmd.Flags().StringVar(&agentListURL, "url", "", "nui server base URL (default NUI_URL or http://127.0.0.1:8080)")
 	agentCmd.AddCommand(NewRunCmd(), NewScheduleCmd(), agentListCmd, agentAddCmd, agentRemoveCmd, agentDeployCmd, agentDeployersCmd, agentEvalCmd)
 	rootCmd.AddCommand(agentCmd)

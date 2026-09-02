@@ -17,12 +17,16 @@ var extensionCmd = &cobra.Command{
 	Short: "Manage nui extensions",
 }
 
+var extensionAddYes bool
+
 var extensionAddCmd = &cobra.Command{
 	Use:   "add [url-or-path]",
 	Short: "Install an extension from a git URL, directory, or zip file",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		name, err := extensions.Install(args[0])
+		name, err := installWithOverwrite(cmd, extensionAddYes, "extension", "", func(overwrite bool) (string, error) {
+			return extensions.Install(args[0], overwrite)
+		})
 		if err != nil {
 			return err
 		}
@@ -74,6 +78,7 @@ var extensionRemoveCmd = &cobra.Command{
 }
 
 func init() {
+	extensionAddCmd.Flags().BoolVarP(&extensionAddYes, "yes", "y", false, "overwrite without prompting")
 	extensionCmd.AddCommand(extensionAddCmd, extensionListCmd, extensionRemoveCmd)
 	rootCmd.AddCommand(extensionCmd)
 }

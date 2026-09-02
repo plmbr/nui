@@ -24,7 +24,7 @@ harness:
 		t.Fatal(err)
 	}
 
-	id, err := Install(src)
+	id, err := Install(src, true)
 	if err != nil {
 		t.Fatalf("Install: %v", err)
 	}

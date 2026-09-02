@@ -17,15 +17,15 @@ import (
 
 // Install copies an extension from a git URL, local directory, or zip file into
 // ~/.nui/extensions/<name>/.
-func Install(source string) (string, error) {
+func Install(source string, overwrite bool) (string, error) {
 	source = normalizeSource(source)
 	if installType, _ := parsePackageSource(source); installType != "" {
-		return installProgrammaticPackage(source)
+		return installProgrammaticPackage(source, overwrite)
 	}
 	if info, err := os.Stat(source); err == nil && info.IsDir() {
 		if _, err := os.Stat(filepath.Join(source, manifestName)); os.IsNotExist(err) {
 			if detectPackageType(source) != "" {
-				return installProgrammaticFromDir(source)
+				return installProgrammaticFromDir(source, overwrite)
 			}
 		}
 	}
@@ -38,10 +38,10 @@ func Install(source string) (string, error) {
 	}
 	if _, err := os.Stat(filepath.Join(root, manifestName)); err != nil {
 		if detectPackageType(root) != "" {
-			return installProgrammaticFromDir(root)
+			return installProgrammaticFromDir(root, overwrite)
 		}
 	}
-	return installFromDir(root)
+	return installFromDir(root, overwrite)
 }
 
 // Remove deletes an installed extension by id (manifest name).
@@ -97,7 +97,7 @@ func resolveInstallSource(source string) (root string, cleanup func(), err error
 	return "", nil, fmt.Errorf("source %q: expected a directory or .zip file", source)
 }
 
-func installFromDir(srcRoot string) (string, error) {
+func installFromDir(srcRoot string, overwrite bool) (string, error) {
 	manifest, err := loadManifestForInstall(srcRoot)
 	if err != nil {
 		return "", err
@@ -107,6 +107,9 @@ func installFromDir(srcRoot string) (string, error) {
 		return "", err
 	}
 	dst := filepath.Join(extDir, manifest.Name)
+	if _, err := os.Stat(dst); err == nil && !overwrite {
+		return "", fmt.Errorf("already exists: %q", manifest.Name)
+	}
 	if err := os.RemoveAll(dst); err != nil {
 		return "", err
 	}

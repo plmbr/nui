@@ -18,7 +18,7 @@ import (
 
 // Install copies an ADL agent YAML from a local path or git URL into ~/.nui/agents/.
 // Returns the installed agent id.
-func Install(source string) (string, error) {
+func Install(source string, overwrite bool) (string, error) {
 	content, err := loadAgentYAML(source)
 	if err != nil {
 		return "", err
@@ -42,6 +42,9 @@ func Install(source string) (string, error) {
 		return "", err
 	}
 	path := filepath.Join(dir, filename)
+	if _, err := os.Stat(path); err == nil && !overwrite {
+		return "", fmt.Errorf("already exists: %q", model.ADLAgentID(def))
+	}
 	if err := os.WriteFile(path, content, 0644); err != nil {
 		return "", err
 	}

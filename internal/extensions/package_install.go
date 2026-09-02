@@ -38,7 +38,7 @@ type PackageMetadata struct {
 	RuntimeCmd  []string
 }
 
-func installProgrammaticPackage(source string) (string, error) {
+func installProgrammaticPackage(source string, overwrite bool) (string, error) {
 	installType, pkgRef := parsePackageSource(source)
 	if installType == "" {
 		return "", fmt.Errorf("unsupported package source %q (use npm:, pip:, or go:)", source)
@@ -58,6 +58,9 @@ func installProgrammaticPackage(source string) (string, error) {
 		return "", err
 	}
 	dst := filepath.Join(extDir, meta.ID)
+	if _, err := os.Stat(dst); err == nil && !overwrite {
+		return "", fmt.Errorf("already exists: %q", meta.ID)
+	}
 	if err := os.RemoveAll(dst); err != nil {
 		return "", err
 	}
@@ -376,7 +379,7 @@ func detectInstalledEntry(installType, pkgRoot string, meta PackageMetadata) (st
 	return "", fmt.Errorf("could not detect package entry in %q", pkgRoot)
 }
 
-func installProgrammaticFromDir(srcRoot string) (string, error) {
+func installProgrammaticFromDir(srcRoot string, overwrite bool) (string, error) {
 	meta, err := readPackageMetadataFromDir(srcRoot)
 	if err != nil {
 		return "", err
@@ -389,6 +392,9 @@ func installProgrammaticFromDir(srcRoot string) (string, error) {
 		return "", err
 	}
 	dst := filepath.Join(extDir, meta.ID)
+	if _, err := os.Stat(dst); err == nil && !overwrite {
+		return "", fmt.Errorf("already exists: %q", meta.ID)
+	}
 	if err := os.RemoveAll(dst); err != nil {
 		return "", err
 	}

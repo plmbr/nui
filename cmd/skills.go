@@ -17,6 +17,8 @@ var skillsCmd = &cobra.Command{
 	Short: "Manage agent skills in the nui catalog",
 }
 
+var skillsAddYes bool
+
 var skillsAddCmd = &cobra.Command{
 	Use:   "add [url-or-path]",
 	Short: "Add a skill to ~/.nui/skills/",
@@ -44,7 +46,9 @@ Inline content (name from SKILL.md frontmatter when omitted):
 
 		switch {
 		case content != "":
-			added, err := skills.InstallContent(name, content)
+			added, err := installWithOverwrite(cmd, skillsAddYes, "skill", name, func(overwrite bool) (string, error) {
+				return skills.InstallContent(name, content, overwrite)
+			})
 			if err != nil {
 				return err
 			}
@@ -71,14 +75,18 @@ Inline content (name from SKILL.md frontmatter when omitted):
 				if repoPath == "" {
 					return fmt.Errorf("path is required: use a GitHub tree/blob URL or --path")
 				}
-				added, err := skills.InstallGit(name, gitURL, repoPath, version)
+				added, err := installWithOverwrite(cmd, skillsAddYes, "skill", name, func(overwrite bool) (string, error) {
+					return skills.InstallGit(name, gitURL, repoPath, version, overwrite)
+				})
 				if err != nil {
 					return err
 				}
 				fmt.Fprintf(os.Stderr, "Added git skill %q\n", added)
 				return nil
 			}
-			added, err := skills.InstallLocal(name, arg)
+			added, err := installWithOverwrite(cmd, skillsAddYes, "skill", name, func(overwrite bool) (string, error) {
+				return skills.InstallLocal(name, arg, overwrite)
+			})
 			if err != nil {
 				return err
 			}
@@ -87,7 +95,9 @@ Inline content (name from SKILL.md frontmatter when omitted):
 			if repoPath == "" {
 				return fmt.Errorf("--path is required with --git")
 			}
-			added, err := skills.InstallGit(name, gitURL, repoPath, version)
+			added, err := installWithOverwrite(cmd, skillsAddYes, "skill", name, func(overwrite bool) (string, error) {
+				return skills.InstallGit(name, gitURL, repoPath, version, overwrite)
+			})
 			if err != nil {
 				return err
 			}
@@ -141,6 +151,7 @@ var skillsRemoveCmd = &cobra.Command{
 }
 
 func init() {
+	skillsAddCmd.Flags().BoolVarP(&skillsAddYes, "yes", "y", false, "overwrite without prompting")
 	skillsAddCmd.Flags().String("name", "", "Skill name in the catalog (defaults to skill directory name)")
 	skillsAddCmd.Flags().String("git", "", "Git repository URL")
 	skillsAddCmd.Flags().String("path", "", "Relative path to skill directory or SKILL.md in repo")

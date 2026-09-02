@@ -265,6 +265,8 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 - [x] `nui memory list|show|edit` CLI
 - [x] Persistent memory (`~/.nui/memory/`) with UI toggles and agent write path
 - [x] `nui extension add|list|remove|create` CLI
+- [x] `nui env list|get|set|unset` and `nui extension env` CLI
+- [x] Overwrite confirmation (`-y`) on `agent add`, `extension add`, `skills add`, `extension create`
 - [x] ADL `aiAssets.mcpServers` → session harness config
 - [x] Remote MCP OAuth in Settings (`/api/mcp-oauth/*`)
 
