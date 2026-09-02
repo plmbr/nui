@@ -695,8 +695,21 @@ html.nui-desktop {
   }
 
   /* ─── App shell ──────────────────────────────────────────────── */
+  .app-shell {
+    @apply flex h-screen w-full flex-col overflow-hidden;
+  }
+
+  .app-shell.group\/sidebar-wrapper {
+    min-height: 100vh;
+    min-height: 100svh;
+  }
+
+  .app-chrome {
+    @apply relative z-50 shrink-0;
+  }
+
   .app-header {
-    @apply fixed top-0 left-0 right-0 z-50 flex shrink-0 items-center gap-2 border-b px-3 md:gap-3 md:px-4;
+    @apply relative flex shrink-0 items-center gap-2 border-b px-3 md:gap-3 md:px-4;
     height: calc(var(--app-header-height) + env(safe-area-inset-top, 0px));
     padding-top: env(safe-area-inset-top, 0px);
     background: color-mix(in srgb, var(--background) 80%, transparent);
@@ -712,6 +725,14 @@ html.nui-desktop {
   }
 
   html.nui-desktop .app-header :is(a, button, input, textarea, select, label, [role='button'], [data-slot]) {
+    --wails-draggable: no-drag;
+  }
+
+  html.nui-desktop .update-banners {
+    --wails-draggable: drag;
+  }
+
+  html.nui-desktop .update-banners :is(button, [role='button']) {
     --wails-draggable: no-drag;
   }
 
@@ -769,8 +790,7 @@ html.nui-desktop {
   }
 
   .app-body {
-    @apply relative z-[1] flex h-screen w-full overflow-hidden;
-    padding-top: calc(var(--app-header-height) + env(safe-area-inset-top, 0px));
+    @apply relative z-[1] flex min-h-0 flex-1 w-full overflow-hidden;
   }
 
   /* ─── Plumeria backdrop ─────────────────────────────────────── */
@@ -843,10 +863,11 @@ html.nui-desktop {
   }
 
   .app-sidebar [data-slot="sidebar-container"] {
-    top: var(--app-header-height);
-    bottom: auto;
-    height: calc(100svh - var(--app-header-height));
-    max-height: calc(100svh - var(--app-header-height));
+    position: absolute !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    height: 100% !important;
+    max-height: 100% !important;
   }
 
   .app-sidebar [data-slot="sidebar-inner"] {
@@ -1032,32 +1053,51 @@ html.nui-desktop {
     }
   }
 
-  .update-banner {
-    @apply flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-2 text-sm;
+  .update-banners {
+    @apply flex w-full shrink-0 flex-col border-b border-border bg-muted/20;
   }
 
-  .update-banner__text {
-    @apply flex items-center gap-2 min-w-0 flex-1;
+  .update-banner {
+    @apply flex w-full items-center gap-2 px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm;
+    border-bottom: 1px solid color-mix(in oklch, var(--border) 60%, transparent);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .update-banner__main {
+    @apply flex min-w-0 flex-1 items-center gap-2;
+  }
+
+  .update-banner__badge {
+    @apply shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide;
+    background: color-mix(in oklch, var(--primary) 14%, transparent);
+    color: color-mix(in oklch, var(--primary) 72%, var(--foreground));
   }
 
   .update-banner__message {
-    @apply min-w-0 line-clamp-2 break-words;
+    @apply min-w-0 truncate text-muted-foreground;
   }
 
   .update-banner__actions {
-    @apply flex items-center gap-1.5 shrink-0;
+    @apply flex shrink-0 items-center gap-1;
   }
 
   .update-banner__btn {
-    @apply inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50;
+    @apply inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50;
+  }
+
+  .update-banner__btn-label {
+    @apply hidden sm:inline;
   }
 
   .update-banner__btn--ghost {
-    @apply border-transparent bg-transparent hover:bg-muted;
+    @apply hidden border-transparent bg-transparent hover:bg-muted sm:inline-flex;
   }
 
   .update-banner__icon-btn {
-    @apply inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground;
+    @apply inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50;
   }
 
   /* ─── Customize panel ────────────────────────────────────────── */

@@ -9,8 +9,7 @@ import { ConversationPanel } from '@/components/ConversationPanel'
 import { CustomizePanel, CustomizeTrigger } from '@/components/customize/CustomizePanel'
 import { SchedulesPanel } from '@/components/SchedulesPanel'
 import { AppVersion } from '@/components/AppVersion'
-import { UpdateBanner } from '@/components/UpdateBanner'
-import { DesktopAppUpdateBanner } from '@/components/DesktopAppUpdateBanner'
+import { UpdateBanners } from '@/components/UpdateBanners'
 import { ThemeSwitch } from '@/components/ThemeSwitch'
 import { LandingPage } from '@/components/LandingPage'
 import { NuiLogo } from '@/components/NuiLogo'
@@ -706,35 +705,41 @@ function AppContent() {
       {!appReady ? (
         <div className="h-screen bg-background" />
       ) : (
-      <SidebarProvider open={sidebarOpen} onOpenChange={handleSidebarOpenChange} width={sidebarWidth}>
-        <header className="app-header">
-          <div className="app-header__leading">
-            <SidebarTrigger />
-            <button type="button" className="app-brand shrink-0" onClick={handleOpenLaunch} aria-label="nui">
-              <NuiLogo decorative />
-            </button>
-            {selected && selectedAgent && !customizeOpen && !schedulesOpen && !newSessionOpen && !sessionListGroup && !landingOpen && (
-              <div className="app-header__breadcrumb">
-                <span className="text-muted-foreground/35 hidden shrink-0 select-none md:inline" aria-hidden="true">/</span>
-                <AgentHeader
-                  name={sessionDisplayName(selected)}
-                  agent={selectedAgent}
-                  sessionId={selected.id}
-                  onNewSession={() => {
-                    if (selectedGroupId) handleOpenNewSessionForGroup(selectedGroupId)
-                  }}
-                />
-              </div>
-            )}
-          </div>
-          <div className="app-header__actions">
-            <AppVersion />
-            <ThemeSwitch />
-            <CustomizeTrigger active={customizeOpen} onOpen={handleOpenCustomize} compact />
-          </div>
-        </header>
-        <UpdateBanner />
-        <DesktopAppUpdateBanner />
+      <SidebarProvider
+        open={sidebarOpen}
+        onOpenChange={handleSidebarOpenChange}
+        width={sidebarWidth}
+        className="app-shell"
+      >
+        <div className="app-chrome">
+          <header className="app-header">
+            <div className="app-header__leading">
+              <SidebarTrigger />
+              <button type="button" className="app-brand shrink-0" onClick={handleOpenLaunch} aria-label="nui">
+                <NuiLogo decorative />
+              </button>
+              {selected && selectedAgent && !customizeOpen && !schedulesOpen && !newSessionOpen && !sessionListGroup && !landingOpen && (
+                <div className="app-header__breadcrumb">
+                  <span className="text-muted-foreground/35 hidden shrink-0 select-none md:inline" aria-hidden="true">/</span>
+                  <AgentHeader
+                    name={sessionDisplayName(selected)}
+                    agent={selectedAgent}
+                    sessionId={selected.id}
+                    onNewSession={() => {
+                      if (selectedGroupId) handleOpenNewSessionForGroup(selectedGroupId)
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="app-header__actions">
+              <AppVersion />
+              <ThemeSwitch />
+              <CustomizeTrigger active={customizeOpen} onOpen={handleOpenCustomize} compact />
+            </div>
+          </header>
+          <UpdateBanners />
+        </div>
         <div className="app-body">
           <AppSidebar
             sessions={sessions}
