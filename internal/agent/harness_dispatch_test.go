@@ -5,6 +5,8 @@ package agent
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -109,6 +111,11 @@ func TestDispatchHarness_ephemeralClearsSessionID(t *testing.T) {
 
 func TestDispatchHarness_apiRunnerUsesAPIHarness(t *testing.T) {
 	// Without credentials, API harness should fail fast with a key error — proves routing.
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".nui"), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	t.Setenv("ANTHROPIC_AUTH_TOKEN", "")
 	t.Setenv("ANTHROPIC_OAUTH_TOKEN", "")
