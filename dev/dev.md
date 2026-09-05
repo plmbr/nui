@@ -258,7 +258,7 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 - [x] Named outputs / inputs between steps
 - [x] Per-step harness override + sandbox propagation
 - [x] Durable run log + SSE reconnection
-- [x] `orchestration.type: subAgents` — adaptive chair (`run_sub_agent`)
+- [x] `orchestration.type: subAgents` — one-at-a-time adaptive chair (`run_sub_agent` / JSON protocol)
 - [x] `orchestration.type: council` — deliberative multi-member rounds
 - [x] Legacy top-level `steps` / `subAgents` / `council` rejected
 

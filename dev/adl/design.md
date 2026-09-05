@@ -48,7 +48,7 @@ All multi-agent execution is configured under `orchestration`:
 
 | `orchestration.type` | Behavior |
 |---|---|
-| `subAgents` | Adaptive chair — this agent delegates to members via `run_sub_agent` until the goal is done |
+| `subAgents` | Adaptive chair — picks **one** member at a time via `run_sub_agent`, then finishes or re-delegates |
 | `council` | Deliberation — members run scheduled rounds; this agent synthesizes the verdict |
 | `workflow` | Step DAG — topological `dependsOn` pipeline (optionally with `type: hitl` gates) |
 
@@ -78,7 +78,18 @@ orchestration:
   maxTurns: 20
 ```
 
-Chair loop budget defaults to 20 turns. See [examples/subagents-orchestrator.yaml](examples/subagents-orchestrator.yaml).
+**Execution (nui):**
+
+1. The chair (this agent) chooses **exactly one** member best suited to start (or continue) the work.
+2. That member runs alone — there is no fan-out to all members.
+3. From the result, the chair either **finishes** with the final answer or **delegates again** to the same or a different member.
+4. Repeat until the goal is done or `maxTurns` is exhausted (default 20).
+
+Member sessions are created lazily on first delegation. The UI shows only the currently running member (overview lists members that have participated).
+
+API harnesses use the `run_sub_agent` tool; CLI harnesses use a one-action-per-turn JSON protocol (`delegate` / `finish`).
+
+See [examples/subagents-orchestrator.yaml](examples/subagents-orchestrator.yaml).
 
 ### `council`
 

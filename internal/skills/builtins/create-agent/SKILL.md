@@ -63,6 +63,7 @@ orchestration:
       systemPrompt: ...
 ```
 
+For `subAgents`, the chair picks **one** member at a time, then finishes or re-delegates (same or different member) — it does not run all members in parallel.
 ## Saving
 
 - Target directory: `~/.nui/agents/`

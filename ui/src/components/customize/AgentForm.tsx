@@ -710,7 +710,7 @@ export function AgentForm({
             }}
             items={[
               { value: 'none', label: 'None' },
-              { value: 'subAgents', label: 'Sub-agents (adaptive chair)' },
+              { value: 'subAgents', label: 'Sub-agents (one at a time)' },
               { value: 'council', label: 'Council (deliberation)' },
               { value: 'workflow', label: 'Workflow (step DAG)' },
             ]}
@@ -720,7 +720,7 @@ export function AgentForm({
             </SelectTrigger>
             <SelectContent className="w-max min-w-(--anchor-width)">
               <SelectItem value="none">None</SelectItem>
-              <SelectItem value="subAgents">Sub-agents (adaptive chair)</SelectItem>
+              <SelectItem value="subAgents">Sub-agents (one at a time)</SelectItem>
               <SelectItem value="council">Council (deliberation)</SelectItem>
               <SelectItem value="workflow">Workflow (step DAG)</SelectItem>
             </SelectContent>
@@ -740,7 +740,7 @@ export function AgentForm({
           <div className="agent-form__subsection">
             <p className="text-xs text-muted-foreground">
               {form.orchestrationType === 'subAgents'
-                ? 'The chair (this agent) delegates tasks to members via run_sub_agent until the goal is done.'
+                ? 'The chair picks one member at a time via run_sub_agent, then finishes or re-delegates (same or different agent).'
                 : 'Members run deliberative rounds; this agent synthesizes the verdict.'}
             </p>
             {form.councilMembers.length > 0 && (
