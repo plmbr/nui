@@ -83,16 +83,6 @@ function BannerRow({ track, status, busy, onDownload, onApply, onLater, onDismis
             {track === 'app' ? 'Install & restart' : 'Install'}
           </button>
         )}
-        {(status.state === 'available' || status.state === 'ready') && (
-          <button
-            type="button"
-            className="update-banner__btn update-banner__btn--ghost"
-            disabled={busy}
-            onClick={onLater}
-          >
-            Later
-          </button>
-        )}
         {status.state === 'error' && (
           <button type="button" className="update-banner__btn" disabled={busy} onClick={onDismiss}>
             Dismiss
@@ -101,7 +91,7 @@ function BannerRow({ track, status, busy, onDownload, onApply, onLater, onDismis
         <button
           type="button"
           className="update-banner__icon-btn"
-          aria-label="Dismiss"
+          aria-label={status.state === 'error' ? 'Dismiss' : 'Remind me later'}
           disabled={busy}
           onClick={() => {
             if (status.state === 'error') {
@@ -129,6 +119,7 @@ export function UpdateBanners() {
   const [appBusy, setAppBusy] = useState(false)
 
   const refreshCli = useCallback(async () => {
+    if (desktop) return
     try {
       const [st, settings] = await Promise.all([
         api.update.status(),
@@ -139,7 +130,7 @@ export function UpdateBanners() {
     } catch {
       /* ignore */
     }
-  }, [])
+  }, [desktop])
 
   const refreshApp = useCallback(async () => {
     if (!appUpdaterEnabled) return
@@ -156,10 +147,11 @@ export function UpdateBanners() {
   }, [appUpdaterEnabled])
 
   useEffect(() => {
+    if (desktop) return
     void refreshCli()
     const id = window.setInterval(() => void refreshCli(), 60_000)
     return () => window.clearInterval(id)
-  }, [refreshCli])
+  }, [desktop, refreshCli])
 
   useEffect(() => {
     if (!appUpdaterEnabled) return
@@ -171,13 +163,14 @@ export function UpdateBanners() {
   }, [appUpdaterEnabled, refreshApp])
 
   useEffect(() => {
+    // Desktop only notifies for app updates; CLI updates stay in Customize → General.
+    if (desktop) return
     const t = window.setTimeout(() => {
       api.settings
         .get()
         .then((s) => {
           if (s.autoCheckUpdates === false) return
-          const opts = desktop ? { target: 'pathCli' as const } : undefined
-          return api.update.check(opts).then(setCliStatus)
+          return api.update.check().then(setCliStatus)
         })
         .catch(() => {})
     }, 4_000)
@@ -198,7 +191,8 @@ export function UpdateBanners() {
     return () => window.clearTimeout(t)
   }, [appUpdaterEnabled])
 
-  const showCli = cliStatus && shouldShow(cliStatus, skipped, cliStatus.availableVersion ?? '')
+  const showCli =
+    !desktop && cliStatus && shouldShow(cliStatus, skipped, cliStatus.availableVersion ?? '')
   const showApp =
     appStatus &&
     shouldShow(appStatus, skipped, appStatus.availableVersion ? `app:${appStatus.availableVersion}` : '')
@@ -207,7 +201,7 @@ export function UpdateBanners() {
     return null
   }
 
-  const cliApplyTarget = desktop ? 'pathCli' : 'self'
+  const cliApplyTarget = 'self' as const
 
   return (
     <div className="update-banners">
