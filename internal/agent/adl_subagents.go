@@ -58,15 +58,7 @@ func (a *ADLAgent) runSubAgents(ctx context.Context, req RunRequest, events chan
 	}
 
 	memberSessions := map[string]string{}
-	if req.EnsureCouncilMemberSession != nil {
-		for _, m := range members {
-			sid, err := req.EnsureCouncilMemberSession(m.id, m.label, m.id)
-			if err != nil {
-				return fmt.Errorf("subAgents: ensure member session %q: %w", m.id, err)
-			}
-			memberSessions[m.id] = sid
-		}
-	}
+	var completedSteps int
 
 	events <- Event{
 		Type: EventCouncilProgress,
@@ -76,20 +68,20 @@ func (a *ADLAgent) runSubAgents(ctx context.Context, req RunRequest, events chan
 			MembersTotal: len(members),
 		},
 	}
-	for _, m := range members {
-		if sid := memberSessions[m.id]; sid != "" {
-			events <- Event{
-				Type: EventCouncilProgress,
-				Council: &CouncilProgress{
-					Phase:           subAgentsPhaseMemberStarted,
-					Round:           "subAgents",
-					MemberID:        m.id,
-					MemberLabel:     m.label,
-					MemberSessionID: sid,
-					MembersTotal:    len(members),
-				},
-			}
+
+	ensureMemberSession := func(member resolvedCouncilMember) (string, error) {
+		if sid := memberSessions[member.id]; sid != "" {
+			return sid, nil
 		}
+		if req.EnsureCouncilMemberSession == nil {
+			return "", nil
+		}
+		sid, err := req.EnsureCouncilMemberSession(member.id, member.label, member.id)
+		if err != nil {
+			return "", fmt.Errorf("subAgents: ensure member session %q: %w", member.id, err)
+		}
+		memberSessions[member.id] = sid
+		return sid, nil
 	}
 
 	runMember := func(ctx context.Context, memberID, prompt string) (string, error) {
@@ -97,7 +89,10 @@ func (a *ADLAgent) runSubAgents(ctx context.Context, req RunRequest, events chan
 		if !ok {
 			return "", fmt.Errorf("unknown member %q; allowed: %s", memberID, memberIDList(members))
 		}
-		childSessionID := memberSessions[member.id]
+		childSessionID, err := ensureMemberSession(member)
+		if err != nil {
+			return "", err
+		}
 		events <- Event{
 			Type: EventCouncilProgress,
 			Council: &CouncilProgress{
@@ -107,6 +102,7 @@ func (a *ADLAgent) runSubAgents(ctx context.Context, req RunRequest, events chan
 				MemberLabel:     member.label,
 				MemberSessionID: childSessionID,
 				MembersTotal:    len(members),
+				MembersDone:     completedSteps,
 			},
 		}
 		start := time.Now()
@@ -123,6 +119,7 @@ func (a *ADLAgent) runSubAgents(ctx context.Context, req RunRequest, events chan
 					MemberSessionID: childSessionID,
 					RunID:           id,
 					MembersTotal:    len(members),
+					MembersDone:     completedSteps,
 				},
 			}
 		})
@@ -141,12 +138,14 @@ func (a *ADLAgent) runSubAgents(ctx context.Context, req RunRequest, events chan
 					MemberSessionID: childSessionID,
 					RunID:           runID,
 					MembersTotal:    len(members),
+					MembersDone:     completedSteps,
 					ElapsedMS:       elapsed,
 					Error:           err.Error(),
 				},
 			}
 			return "", err
 		}
+		completedSteps++
 		events <- Event{
 			Type: EventCouncilProgress,
 			Council: &CouncilProgress{
@@ -157,6 +156,7 @@ func (a *ADLAgent) runSubAgents(ctx context.Context, req RunRequest, events chan
 				MemberSessionID: childSessionID,
 				RunID:           runID,
 				MembersTotal:    len(members),
+				MembersDone:     completedSteps,
 				ElapsedMS:       elapsed,
 			},
 		}
@@ -228,7 +228,8 @@ func (a *ADLAgent) runSubAgentsPromptLoop(
 		msg := history.String() + "\n" + subAgentsTurnInstruction(turn, maxTurns)
 		turnReq := req
 		turnReq.Message = msg
-		collecting := &collectingEvents{upstream: events}
+		// Mute protocol JSON text — only emit a clean finish answer to the UI.
+		collecting := &collectingEvents{upstream: events, muteText: true}
 		ch := collecting.start()
 		err := a.runStep(ctx, turnReq, a.def.Harness, nil, ch)
 		collecting.finish()
@@ -238,6 +239,9 @@ func (a *ADLAgent) runSubAgentsPromptLoop(
 		action, ok := parseChairAction(collecting.text)
 		if !ok {
 			// Treat free-form final answer as finish when no structured action.
+			if t := strings.TrimSpace(collecting.text); t != "" {
+				events <- Event{Type: EventText, Content: t}
+			}
 			events <- Event{
 				Type: EventCouncilProgress,
 				Council: &CouncilProgress{
@@ -250,7 +254,7 @@ func (a *ADLAgent) runSubAgentsPromptLoop(
 		}
 		switch strings.ToLower(strings.TrimSpace(action.Action)) {
 		case "finish":
-			if ans := strings.TrimSpace(action.Answer); ans != "" && !strings.Contains(collecting.text, ans) {
+			if ans := strings.TrimSpace(action.Answer); ans != "" {
 				events <- Event{Type: EventText, Content: ans}
 			}
 			events <- Event{
@@ -323,13 +327,17 @@ func runSubAgentTool(members []resolvedCouncilMember) llm.Tool {
 
 func subAgentsChairInstructions(members []resolvedCouncilMember) string {
 	var b strings.Builder
-	b.WriteString("You are an orchestrator. Delegate work to sub-agents until the user goal is achieved.\n")
+	b.WriteString("You are an adaptive orchestrator. For each user goal:\n")
+	b.WriteString("1. Pick exactly ONE sub-agent that is best suited to start (or continue) the work.\n")
+	b.WriteString("2. Delegate a focused task to that agent only — never fan out to all agents at once.\n")
+	b.WriteString("3. Read the result, then either finish with the final answer OR delegate again to the same or a different sub-agent.\n")
+	b.WriteString("4. Repeat until the user goal is fully answered.\n\n")
 	b.WriteString("Available sub-agents:\n")
 	for _, m := range members {
 		b.WriteString(fmt.Sprintf("- %s (%s)\n", m.id, m.label))
 	}
-	b.WriteString("\nUse the run_sub_agent tool to delegate. When the goal is complete, respond with the final answer and do not call more tools.\n")
-	b.WriteString("If tools are unavailable, emit a single JSON object as your entire reply:\n")
+	b.WriteString("\nUse the run_sub_agent tool to delegate one agent at a time. When the goal is complete, respond with the final answer and do not call more tools.\n")
+	b.WriteString("If tools are unavailable, emit a single JSON object as your entire reply (one action only):\n")
 	b.WriteString(`{"action":"delegate","agent":"<id>","prompt":"<task>"}` + "\n")
 	b.WriteString(`{"action":"finish","answer":"<final answer>"}` + "\n")
 	return b.String()
@@ -337,8 +345,9 @@ func subAgentsChairInstructions(members []resolvedCouncilMember) string {
 
 func subAgentsTurnInstruction(turn, maxTurns int) string {
 	return fmt.Sprintf(
-		"Turn %d/%d. Reply with ONLY a JSON action object: "+
-			`{"action":"delegate","agent":"<id>","prompt":"<task>"} or {"action":"finish","answer":"<final answer>"}.`,
+		"Turn %d/%d. Choose the next step for ONE agent only. Reply with ONLY a JSON action object: "+
+			`{"action":"delegate","agent":"<id>","prompt":"<task>"} or {"action":"finish","answer":"<final answer>"}. `+
+			"Do not emit multiple actions. You may reuse the previous agent if that is best.",
 		turn, maxTurns,
 	)
 }
@@ -348,22 +357,34 @@ func parseChairAction(text string) (chairAction, bool) {
 	if trimmed == "" {
 		return chairAction{}, false
 	}
-	// Prefer fenced or raw JSON object in the output.
-	candidates := []string{trimmed}
+	// Walk concatenated / embedded JSON values (models sometimes emit
+	// {"action":"delegate",...}{"action":"finish",...} in one reply).
+	if action, ok := decodeChairActions(trimmed); ok {
+		return action, true
+	}
 	if start := strings.Index(trimmed, "{"); start >= 0 {
 		if end := strings.LastIndex(trimmed, "}"); end > start {
-			candidates = append([]string{trimmed[start : end+1]}, candidates...)
+			if action, ok := decodeChairActions(trimmed[start : end+1]); ok {
+				return action, true
+			}
 		}
 	}
-	for _, c := range candidates {
+	return chairAction{}, false
+}
+
+// decodeChairActions parses one or more JSON objects and returns the first
+// valid chair action (one action per turn is expected).
+func decodeChairActions(s string) (chairAction, bool) {
+	dec := json.NewDecoder(strings.NewReader(s))
+	for {
 		var action chairAction
-		if err := json.Unmarshal([]byte(c), &action); err != nil {
-			continue
+		if err := dec.Decode(&action); err != nil {
+			break
 		}
-		if strings.TrimSpace(action.Action) == "" {
-			continue
+		switch strings.ToLower(strings.TrimSpace(action.Action)) {
+		case "delegate", "finish":
+			return action, true
 		}
-		return action, true
 	}
 	return chairAction{}, false
 }

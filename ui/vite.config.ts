@@ -6,7 +6,7 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-const appVersion = readFileSync(path.resolve(__dirname, '../VERSION'), 'utf-8').trim()
+const appVersion = readFileSync(path.resolve(import.meta.dirname, '../VERSION'), 'utf-8').trim()
 
 export default defineConfig({
   define: {
@@ -20,7 +20,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
   },
   test: {

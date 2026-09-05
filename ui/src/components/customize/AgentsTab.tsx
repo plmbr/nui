@@ -129,15 +129,11 @@ export function AgentsTab({ onChanged }: Props) {
 
   useEffect(() => {
     if (optionsLoading || (!selectedFile && !creating)) return
-    if (editMode === 'form') {
-      const yaml = syncYamlFromForm(content, form, options)
-      const parsed = parseAgentYaml(yaml, options)
-      setForm(parsed.form)
-      setHasWorkflowSteps(parsed.hasWorkflowSteps)
-    } else if (content) {
-      syncFormFromContent(content)
-    }
+    if (!content) return
     // Re-resolve catalog option ids once options finish loading.
+    // Always parse from YAML content — never syncYamlFromForm(default/stale form)
+    // first, which would wipe orchestration and other fields not yet in form state.
+    syncFormFromContent(content)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [optionsLoading])
 
@@ -358,15 +354,15 @@ export function AgentsTab({ onChanged }: Props) {
   }
 
   return (
-    <div className="customize-tab-content flex flex-col gap-4 min-h-0 max-w-none">
+    <div className="customize-tab-content customize-tab-content--split flex h-full min-h-0 max-w-none flex-col gap-4 overflow-hidden">
       <p className="text-sm text-muted-foreground shrink-0">
         Agent definitions in <code className="text-xs">~/.nui/agents/</code> (ADL YAML).
       </p>
 
-      <div className="flex flex-1 min-h-0 gap-4">
+      <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
         {(!isMobile || !mobileShowEditor) && (
-        <div className="w-full shrink-0 flex flex-col gap-2 md:w-56">
-          <Button variant="outline" size="sm" className="justify-start" onClick={startCreate}>
+        <div className="flex w-full min-h-0 shrink-0 flex-col gap-2 overflow-hidden md:w-56">
+          <Button variant="outline" size="sm" className="justify-start shrink-0" onClick={startCreate}>
             <Plus className="size-3.5" />
             New agent
           </Button>
@@ -375,8 +371,9 @@ export function AgentsTab({ onChanged }: Props) {
             onChange={setAgentSearchQuery}
             placeholder="Search agents…"
             aria-label="Search agent definitions"
+            className="shrink-0"
           />
-          <ul className="flex-1 overflow-y-auto rounded-lg border divide-y">
+          <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-lg border divide-y">
             {filteredAgents.length === 0 ? (
               <li className="px-3 py-4 text-xs text-muted-foreground">
                 {agentSearchQuery.trim() ? 'No agents match your search.' : 'No agents yet.'}
@@ -401,7 +398,7 @@ export function AgentsTab({ onChanged }: Props) {
         )}
 
         {(!isMobile || mobileShowEditor) && (
-        <div className="flex-1 flex flex-col min-w-0 min-h-0 gap-3">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden">
           {editing ? (
             <>
               <div className="flex items-center justify-between gap-2 shrink-0">
@@ -445,7 +442,7 @@ export function AgentsTab({ onChanged }: Props) {
                 </div>
               )}
 
-              <div className="flex-1 overflow-y-auto min-h-0">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 {editMode === 'form' ? (
                   <AgentForm
                     form={form}

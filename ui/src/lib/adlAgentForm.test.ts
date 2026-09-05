@@ -388,6 +388,44 @@ orchestration:
     expect(form.subAgentsMaxTurns).toBe('12')
   })
 
+  it('parses subAgents with extension member ids', () => {
+    const yaml = `adl: "1.0"
+id: my-orchestrator-agent
+name: My Orchestrator Agent
+harness:
+  type: claude-code
+orchestration:
+  type: subAgents
+  members:
+    - agent: ext:example-pack/research-agent
+    - agent: hello-world
+  sessionMode: persistent
+  maxTurns: 20
+`
+    const { form } = parseAgentYaml(yaml, emptyOptions)
+    expect(form.orchestrationType).toBe('subAgents')
+    expect(form.councilMembers).toEqual([
+      'ext:example-pack/research-agent',
+      'hello-world',
+    ])
+  })
+
+  it('syncYamlFromForm with default form wipes orchestration (do not use for options refresh)', () => {
+    const yaml = `adl: "1.0"
+id: orch
+name: Orch
+harness:
+  type: claude-code
+orchestration:
+  type: subAgents
+  members:
+    - agent: hello-world
+`
+    const wiped = syncYamlFromForm(yaml, defaultAgentForm(), emptyOptions)
+    expect(wiped).not.toMatch(/orchestration:/)
+    expect(parseAgentYaml(wiped, emptyOptions).form.orchestrationType).toBe('')
+  })
+
   it('round-trips council orchestration', () => {
     const original = `adl: "1.0"
 id: triage-bot

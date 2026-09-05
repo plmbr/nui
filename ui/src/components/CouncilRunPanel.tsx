@@ -32,18 +32,43 @@ export function CouncilRunPanel({ progress }: { progress: CouncilProgressState }
   const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [childSessions, setChildSessions] = useState<Record<string, Session>>({})
 
-  const members = progress.members
+  const isSubAgents = progress.round === 'subAgents'
+  const allMembers = progress.members
+  // Sub-agents: while a member is running, show only that agent. Otherwise show
+  // agents that have participated (never the unused pool).
+  const members = useMemo(() => {
+    if (!isSubAgents) return allMembers
+    if (progress.phase === 'complete') return allMembers
+    const running = allMembers.filter((m) => m.status === 'running')
+    if (running.length > 0) return running
+    return allMembers
+  }, [allMembers, isSubAgents, progress.phase])
+
   const roundLabel = progress.round
-    ? progress.round.charAt(0).toUpperCase() + progress.round.slice(1)
+    ? progress.round === 'subAgents'
+      ? 'Sub-agents'
+      : progress.round.charAt(0).toUpperCase() + progress.round.slice(1)
     : 'Orchestration'
   const stage =
     progress.phase === 'synthesizing'
       ? 'Synthesizing'
       : progress.phase === 'delegating'
-        ? 'Delegating'
+        ? isSubAgents
+          ? 'Choosing agent…'
+          : 'Delegating'
         : progress.phase === 'complete'
           ? 'Complete'
-          : roundLabel
+          : progress.phase === 'member_started'
+            ? isSubAgents
+              ? 'Running'
+              : roundLabel
+            : roundLabel
+
+  useEffect(() => {
+    if (!isSubAgents) return
+    const running = allMembers.find((m) => m.status === 'running')
+    if (running) setActiveTab(`member:${running.id}`)
+  }, [allMembers, isSubAgents])
 
   useEffect(() => {
     for (const m of members) {
@@ -86,7 +111,7 @@ export function CouncilRunPanel({ progress }: { progress: CouncilProgressState }
 
   // When a member gets a new session id (fresh mode), drop stale cache entries.
   useEffect(() => {
-    const live = new Set(members.map((m) => m.sessionId).filter(Boolean) as string[])
+    const live = new Set(allMembers.map((m) => m.sessionId).filter(Boolean) as string[])
     setChildSessions((prev) => {
       let changed = false
       const next: Record<string, Session> = {}
@@ -96,7 +121,7 @@ export function CouncilRunPanel({ progress }: { progress: CouncilProgressState }
       }
       return changed ? next : prev
     })
-  }, [members])
+  }, [allMembers])
 
   const tabs = useMemo(() => {
     const items: { id: TabId; label: string; status?: string }[] = [
@@ -112,9 +137,13 @@ export function CouncilRunPanel({ progress }: { progress: CouncilProgressState }
     return items
   }, [members])
 
-  const activeMember = members.find((m) => activeTab === `member:${m.id}`)
+  const activeMember = allMembers.find((m) => activeTab === `member:${m.id}`)
   const activeSession =
     activeMember?.sessionId != null ? childSessions[activeMember.sessionId] : undefined
+
+  const finishedSteps = allMembers.filter(
+    (m) => m.status === 'completed' || m.status === 'failed',
+  ).length
 
   return (
     <div className="mb-3 overflow-hidden rounded-md border border-border/60 bg-muted/20">
@@ -147,18 +176,21 @@ export function CouncilRunPanel({ progress }: { progress: CouncilProgressState }
               {progress.roundIndex && progress.roundsTotal
                 ? ` · round ${progress.roundIndex}/${progress.roundsTotal}`
                 : ''}
-              {progress.membersDone != null && progress.membersTotal
+              {!isSubAgents && progress.membersDone != null && progress.membersTotal
                 ? ` · ${progress.membersDone}/${progress.membersTotal} members`
+                : ''}
+              {isSubAgents && finishedSteps > 0
+                ? ` · ${finishedSteps} step${finishedSteps === 1 ? '' : 's'}`
                 : ''}
             </p>
             {progress.estimatedCost ? (
               <p className="text-muted-foreground">{progress.estimatedCost}</p>
             ) : null}
           </div>
-          {members.length > 0 ? (
+          {allMembers.length > 0 ? (
             <ul className="space-y-1">
-              {members.map((m) => (
-                <li key={m.id}>
+              {allMembers.map((m) => (
+                <li key={`${m.id}:${m.runId ?? m.sessionId ?? ''}`}>
                   <button
                     type="button"
                     className="flex w-full items-center justify-between gap-2 rounded px-1 py-1 text-left text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -178,7 +210,9 @@ export function CouncilRunPanel({ progress }: { progress: CouncilProgressState }
               ))}
             </ul>
           ) : (
-            <p className="text-muted-foreground">Waiting for council members…</p>
+            <p className="text-muted-foreground">
+              {isSubAgents ? 'Waiting for the orchestrator to pick an agent…' : 'Waiting for council members…'}
+            </p>
           )}
         </div>
       ) : activeMember?.sessionId && activeSession ? (
@@ -195,7 +229,9 @@ export function CouncilRunPanel({ progress }: { progress: CouncilProgressState }
         <div className="px-3 py-4 text-xs text-muted-foreground">
           {activeMember
             ? `Waiting for ${activeMember.label} session…`
-            : 'Select a council member.'}
+            : isSubAgents
+              ? 'Select a sub-agent.'
+              : 'Select a council member.'}
         </div>
       )}
     </div>

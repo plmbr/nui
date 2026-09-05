@@ -325,6 +325,9 @@ type collectingEvents struct {
 	text     string
 	pipe     chan Event
 	wg       sync.WaitGroup
+	// muteText suppresses EventText forwarding while still collecting it
+	// (used by subAgents chair JSON protocol turns).
+	muteText bool
 }
 
 func (c *collectingEvents) start() chan<- Event {
@@ -335,6 +338,9 @@ func (c *collectingEvents) start() chan<- Event {
 		for ev := range c.pipe {
 			if ev.Type == EventText {
 				c.text += ev.Content
+				if c.muteText {
+					continue
+				}
 			}
 			// Forward all events except EventDone from intermediate steps
 			// so the caller controls when to emit the final done.

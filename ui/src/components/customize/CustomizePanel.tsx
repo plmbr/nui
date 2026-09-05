@@ -37,9 +37,9 @@ export function CustomizePanel({ onClose, onAgentTypesChanged, tab, onTabChange 
   const hideHeader = isEmbedHost()
 
   return (
-    <div className="customize-panel flex flex-1 flex-col overflow-hidden">
+    <div className="customize-panel flex flex-1 flex-col overflow-hidden min-h-0">
       {!hideHeader && (
-      <div className="conversation-header justify-between">
+      <div className="conversation-header justify-between shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <Settings className="size-4 shrink-0 text-muted-foreground" />
           <h1 className="text-sm font-semibold truncate">Customize</h1>
@@ -50,8 +50,8 @@ export function CustomizePanel({ onClose, onAgentTypesChanged, tab, onTabChange 
       </div>
       )}
 
-      <div className="flex flex-1 min-h-0 flex-col md:flex-row">
-        <nav className="customize-tabs shrink-0 flex flex-row gap-1 overflow-x-auto border-b bg-muted/20 p-2 md:w-44 md:flex-col md:overflow-x-visible md:border-b-0 md:border-r">
+      <div className="customize-panel__body flex flex-1 min-h-0 flex-col md:flex-row">
+        <nav className="customize-tabs shrink-0 flex flex-row gap-1 overflow-x-auto border-b bg-muted/20 p-2 md:w-44 md:flex-col md:overflow-x-hidden md:overflow-y-auto md:border-b-0 md:border-r">
           {TABS.map((item) => (
             <button
               key={item.id}
@@ -64,7 +64,12 @@ export function CustomizePanel({ onClose, onAgentTypesChanged, tab, onTabChange 
           ))}
         </nav>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <div
+          className={cn(
+            'customize-panel__main flex min-h-0 flex-1 flex-col',
+            tab === 'agents' ? 'overflow-hidden p-4 md:p-6' : 'overflow-y-auto p-4 md:p-6',
+          )}
+        >
           {tab === 'general' && <GeneralTab />}
           {tab === 'env' && <EnvVarsTab onChanged={onAgentTypesChanged} />}
           {tab === 'extensions' && <ExtensionsTab onChanged={onAgentTypesChanged} />}

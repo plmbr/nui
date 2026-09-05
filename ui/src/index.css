@@ -1103,11 +1103,19 @@ html.nui-desktop {
 
   /* ─── Customize panel ────────────────────────────────────────── */
   .customize-panel {
-    @apply bg-background;
+    @apply bg-background min-h-0;
+  }
+
+  .customize-panel__body {
+    @apply min-h-0;
+  }
+
+  .customize-panel__main {
+    @apply min-h-0;
   }
 
   .customize-tabs {
-    @apply flex flex-col gap-1;
+    @apply flex flex-col gap-1 min-h-0;
   }
 
   .customize-tab-btn {
@@ -1122,6 +1130,10 @@ html.nui-desktop {
 
   .customize-tab-content {
     @apply max-w-3xl;
+  }
+
+  .customize-tab-content--split {
+    @apply max-w-none min-h-0 overflow-hidden;
   }
 
   /* Agent definition form: section titles with indented field groups */
