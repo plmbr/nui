@@ -309,8 +309,8 @@ html.nui-desktop {
 /* Prose inline code: remove typography plugin's backtick pseudo-elements, add pill background */
 .prose :where(code):not(:where([class~="not-prose"],[class~="not-prose"] *))::before,
 .prose :where(code):not(:where([class~="not-prose"],[class~="not-prose"] *))::after,
-.agui-message--assistant .agui-message__bubble :where(code:not(pre code))::before,
-.agui-message--assistant .agui-message__bubble :where(code:not(pre code))::after,
+.agui-message--assistant > .agui-message__bubble :where(code:not(pre code))::before,
+.agui-message--assistant > .agui-message__bubble :where(code:not(pre code))::after,
 .agui-inline-code::before,
 .agui-inline-code::after {
   content: none !important;
@@ -332,7 +332,7 @@ html.nui-desktop {
 }
 
 /* Prose adds large pre margins; tool-call code blocks manage spacing themselves */
-.agui-message--assistant .agui-message__bubble :where(.tool-call__code) {
+.agui-message--assistant > .agui-message__bubble :where(.tool-call__code) {
   margin-block: 0 !important;
 }
 
@@ -862,7 +862,8 @@ html.nui-desktop {
     --sidebar-text-meta: 0.75rem;
   }
 
-  .app-sidebar [data-slot="sidebar-container"] {
+  /* className="app-sidebar" is applied on the container itself (not a parent). */
+  [data-slot="sidebar-container"].app-sidebar {
     position: absolute !important;
     top: 0 !important;
     bottom: 0 !important;
@@ -1123,6 +1124,31 @@ html.nui-desktop {
     @apply max-w-3xl;
   }
 
+  /* Agent definition form: section titles with indented field groups */
+  .agent-form__section {
+    @apply space-y-2;
+  }
+
+  .agent-form__section-header {
+    @apply space-y-0.5;
+  }
+
+  .agent-form__section-title {
+    @apply text-sm font-semibold text-foreground;
+  }
+
+  .agent-form__section-desc {
+    @apply text-xs text-muted-foreground;
+  }
+
+  .agent-form__section-body {
+    @apply space-y-3 border-l border-border/60 pl-3.5 ml-0.5;
+  }
+
+  .agent-form__subsection {
+    @apply space-y-3 rounded-md border border-border/50 bg-muted/20 px-3 py-3;
+  }
+
   /* ─── Sessions list table ────────────────────────────────────── */
   .sessions-table {
     @apply border-collapse;
@@ -1171,6 +1197,22 @@ html.nui-desktop {
   /* ─── Chat panel ────────────────────────────────────────────── */
   .agui-chat {
     @apply relative min-h-0 overflow-hidden bg-background;
+  }
+
+  .agui-chat--embedded {
+    @apply h-full bg-transparent;
+  }
+
+  .agui-chat--embedded .agui-chat__messages {
+    @apply px-2 py-3;
+  }
+
+  .agui-chat--embedded .agui-chat__empty {
+    @apply py-6;
+  }
+
+  .agui-chat--embedded .agui-chat__scroll-spacer {
+    @apply h-2;
   }
 
   .agui-chat__messages {
@@ -1237,7 +1279,8 @@ html.nui-desktop {
     @apply m-0;
   }
 
-  .agui-message--assistant .agui-message__bubble {
+  /* Direct child only: nested embedded chats must keep their own user-bubble padding. */
+  .agui-message--assistant > .agui-message__bubble {
     @apply prose max-w-none px-0 py-1;
     color: var(--chat-foreground);
     font-size: var(--text-body);
@@ -1298,25 +1341,25 @@ html.nui-desktop {
     @apply mb-0;
   }
 
-  .agui-message--assistant .agui-message__bubble :where(p, li, ul, ol, blockquote, td, th) {
+  .agui-message--assistant > .agui-message__bubble :where(p, li, ul, ol, blockquote, td, th) {
     font-size: inherit;
     line-height: inherit;
   }
 
-  .agui-message--assistant .agui-message__bubble :where(p) {
+  .agui-message--assistant > .agui-message__bubble :where(p) {
     margin-top: 0.35em;
     margin-bottom: 0.35em;
   }
 
-  .agui-message--assistant .agui-message__bubble :where(p:first-child) {
+  .agui-message--assistant > .agui-message__bubble :where(p:first-child) {
     margin-top: 0;
   }
 
-  .agui-message--assistant .agui-message__bubble :where(p:last-child) {
+  .agui-message--assistant > .agui-message__bubble :where(p:last-child) {
     margin-bottom: 0;
   }
 
-  .agui-message--assistant .agui-message__bubble :where(hr) {
+  .agui-message--assistant > .agui-message__bubble :where(hr) {
     margin-top: 0.75em;
     margin-bottom: 0.75em;
   }

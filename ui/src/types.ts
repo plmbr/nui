@@ -160,7 +160,29 @@ export interface ChatMessage {
   parts?: ChatMessagePart[]
   images?: ChatImage[]
   error?: boolean
-  routedAgentLabel?: string
+  councilProgress?: CouncilProgressState
+}
+
+export interface CouncilMemberProgress {
+  id: string
+  label: string
+  status: 'queued' | 'running' | 'completed' | 'failed'
+  sessionId?: string
+  runId?: string
+  elapsedMs?: number
+  error?: string
+}
+
+export interface CouncilProgressState {
+  phase: string
+  round?: string
+  roundIndex?: number
+  roundsTotal?: number
+  membersTotal?: number
+  membersDone?: number
+  quorum?: number
+  estimatedCost?: string
+  members: CouncilMemberProgress[]
 }
 
 export interface RecentAgentEntry {

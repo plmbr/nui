@@ -238,33 +238,38 @@ func TestHandleSessionAGUI_visualizationCustomEvent(t *testing.T) {
 	}
 }
 
-func TestHandleSessionAGUI_subAgentRoutedCustomEvent(t *testing.T) {
+func TestHandleSessionAGUI_councilProgressCustomEvent(t *testing.T) {
 	mgr := setupTestServerEnv(t)
 	mgr.SetTestHarnessRun(func(_ context.Context, _ agent.RunRequest, events chan<- agent.Event) error {
 		events <- agent.Event{
-			Type:             agent.EventSubAgentRouted,
-			RoutedAgentID:    "code-reviewer",
-			RoutedAgentLabel: "Code Reviewer",
+			Type: agent.EventCouncilProgress,
+			Council: &agent.CouncilProgress{
+				Phase:       "round_started",
+				Round:       "position",
+				RoundIndex:  1,
+				RoundsTotal: 3,
+				MembersTotal: 3,
+			},
 		}
-		events <- agent.Event{Type: agent.EventText, Content: "Review complete."}
-		events <- agent.Event{Type: agent.EventDone, SessionID: "sub-s1"}
+		events <- agent.Event{Type: agent.EventText, Content: "Verdict ready."}
+		events <- agent.Event{Type: agent.EventDone, SessionID: "council-s1"}
 		return nil
 	})
-	seedSession("sess-sub", "Test", testStubAgentType, t.TempDir())
+	seedSession("sess-council", "Test", testStubAgentType, t.TempDir())
 
-	_, events := postAGUI(t, "sess-sub", "review my PR")
-	var sawRouted bool
+	_, events := postAGUI(t, "sess-council", "convene the council")
+	var sawProgress bool
 	for _, ev := range events {
-		if ev.Type == "CUSTOM" && ev.Raw["name"] == "sub_agent_routed" {
-			sawRouted = true
+		if ev.Type == "CUSTOM" && ev.Raw["name"] == "council_progress" {
+			sawProgress = true
 			val, _ := ev.Raw["value"].(map[string]any)
-			if val["agentId"] != "code-reviewer" || val["label"] != "Code Reviewer" {
-				t.Fatalf("routed value = %+v", val)
+			if val["phase"] != "round_started" || val["round"] != "position" {
+				t.Fatalf("progress value = %+v", val)
 			}
 		}
 	}
-	if !sawRouted {
-		t.Fatalf("expected sub_agent_routed custom event, got %+v", events)
+	if !sawProgress {
+		t.Fatalf("expected council_progress custom event, got %+v", events)
 	}
 }
 

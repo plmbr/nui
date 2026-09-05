@@ -228,11 +228,14 @@ export function EvalsSection({ evals, onChange, onRunCase, runningCase }: Props)
   }
 
   return (
-    <section className="space-y-3">
-      <h3 className="text-sm font-semibold">Evals</h3>
-      <p className="text-xs text-muted-foreground">
-        Smoke tests for agent behavior. Name, prompt, and expected text are enough for most cases.
-      </p>
+    <section className="agent-form__section">
+      <div className="agent-form__section-header">
+        <h3 className="agent-form__section-title">Evals</h3>
+        <p className="agent-form__section-desc">
+          Smoke tests for agent behavior. Name, prompt, and expected text are enough for most cases.
+        </p>
+      </div>
+      <div className="agent-form__section-body">
       {evals.length > 0 && (
         <ul className="space-y-3">
           {evals.map((ev, index) => {
@@ -359,6 +362,7 @@ export function EvalsSection({ evals, onChange, onRunCase, runningCase }: Props)
         <Plus className="size-3.5" />
         Add eval
       </Button>
+      </div>
     </section>
   )
 }

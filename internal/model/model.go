@@ -37,13 +37,38 @@ type ChatMessagePart struct {
 }
 
 type ChatMessage struct {
-	ID        string            `json:"id"`
-	Role      string            `json:"role"`
-	Content   string            `json:"content"`
-	CreatedAt string            `json:"createdAt"`
-	Parts     []ChatMessagePart `json:"parts,omitempty"`
-	Images    []ChatImage       `json:"images,omitempty"`
-	Error     bool              `json:"error,omitempty"`
+	ID              string                `json:"id"`
+	Role            string                `json:"role"`
+	Content         string                `json:"content"`
+	CreatedAt       string                `json:"createdAt"`
+	Parts           []ChatMessagePart     `json:"parts,omitempty"`
+	Images          []ChatImage           `json:"images,omitempty"`
+	Error           bool                  `json:"error,omitempty"`
+	CouncilProgress *CouncilProgressState `json:"councilProgress,omitempty"`
+}
+
+// CouncilMemberProgress is one council member's status for UI tabs.
+type CouncilMemberProgress struct {
+	ID        string `json:"id"`
+	Label     string `json:"label"`
+	Status    string `json:"status"` // queued | running | completed | failed
+	SessionID string `json:"sessionId,omitempty"`
+	RunID     string `json:"runId,omitempty"`
+	ElapsedMS int64  `json:"elapsedMs,omitempty"`
+	Error     string `json:"error,omitempty"`
+}
+
+// CouncilProgressState is the aggregated council UI state persisted on assistant messages.
+type CouncilProgressState struct {
+	Phase         string                  `json:"phase"`
+	Round         string                  `json:"round,omitempty"`
+	RoundIndex    int                     `json:"roundIndex,omitempty"`
+	RoundsTotal   int                     `json:"roundsTotal,omitempty"`
+	MembersTotal  int                     `json:"membersTotal,omitempty"`
+	MembersDone   int                     `json:"membersDone,omitempty"`
+	Quorum        int                     `json:"quorum,omitempty"`
+	EstimatedCost string                  `json:"estimatedCost,omitempty"`
+	Members       []CouncilMemberProgress `json:"members"`
 }
 
 // ── ADL (Agent Definition Language) ─────────────────────────────────────────
@@ -69,10 +94,64 @@ type ADLDefinition struct {
 	HITL              ADLHITL              `yaml:"hitl"              json:"hitl,omitempty"`
 	ToolApprovals     ADLToolApprovals     `yaml:"toolApprovals"     json:"toolApprovals,omitempty"`
 	Evals             []ADLEval            `yaml:"evals"             json:"evals,omitempty"`
-	SubAgents         []string             `yaml:"subAgents"         json:"subAgents,omitempty"` // orchestrator: registry agent IDs only
-	Steps             []ADLStep            `yaml:"steps"             json:"steps,omitempty"`
+	Orchestration     *ADLOrchestration    `yaml:"orchestration"     json:"orchestration,omitempty"`
+	// Legacy top-level fields — rejected by validation (use orchestration).
+	LegacyCouncil     *ADLCouncil          `yaml:"council"           json:"-"`
+	LegacySteps       []ADLStep            `yaml:"steps"             json:"-"`
+	LegacySubAgents   []string             `yaml:"subAgents"         json:"-"`
 	Internal          bool                 `yaml:"internal"          json:"internal,omitempty"` // hidden from UI/CLI discovery
 }
+
+// Orchestration type discriminators.
+const (
+	OrchestrationTypeSubAgents = "subAgents"
+	OrchestrationTypeCouncil   = "council"
+	OrchestrationTypeWorkflow  = "workflow"
+)
+
+// ADLOrchestration configures multi-agent execution (subAgents | council | workflow).
+type ADLOrchestration struct {
+	Type string `yaml:"type" json:"type"` // subAgents | council | workflow
+
+	// Shared by subAgents and council.
+	Members       []ADLOrchestrationMember `yaml:"members"       json:"members,omitempty"`
+	SessionMode   string                   `yaml:"sessionMode"   json:"sessionMode,omitempty"`   // persistent | fresh
+	MemberTimeout string                   `yaml:"memberTimeout" json:"memberTimeout,omitempty"` // Go duration, e.g. 8m
+
+	// subAgents only.
+	MaxTurns int `yaml:"maxTurns" json:"maxTurns,omitempty"` // chair loop budget; default 20
+
+	// council only.
+	Rounds        string `yaml:"rounds"        json:"rounds,omitempty"`        // independent | independent+rebuttal | independent+rebuttal+adjudication
+	Quorum        int    `yaml:"quorum"        json:"quorum,omitempty"`
+	FailurePolicy string `yaml:"failurePolicy" json:"failurePolicy,omitempty"` // continue-with-quorum | fail
+	MaxParallel   int    `yaml:"maxParallel"   json:"maxParallel,omitempty"`
+	MaxQuestions  int    `yaml:"maxQuestions"  json:"maxQuestions,omitempty"`
+
+	// workflow only.
+	Steps []ADLStep `yaml:"steps" json:"steps,omitempty"`
+}
+
+// ADLCouncil is retained only so legacy top-level council: can be detected and rejected.
+type ADLCouncil struct {
+	Members       []ADLOrchestrationMember `yaml:"members"       json:"members"`
+	Rounds        string                   `yaml:"rounds"        json:"rounds,omitempty"`
+	SessionMode   string                   `yaml:"sessionMode"   json:"sessionMode,omitempty"`
+	Quorum        int                      `yaml:"quorum"        json:"quorum,omitempty"`
+	MemberTimeout string                   `yaml:"memberTimeout" json:"memberTimeout,omitempty"`
+	FailurePolicy string                   `yaml:"failurePolicy" json:"failurePolicy,omitempty"`
+	MaxParallel   int                      `yaml:"maxParallel"   json:"maxParallel,omitempty"`
+	MaxQuestions  int                      `yaml:"maxQuestions"  json:"maxQuestions,omitempty"`
+}
+
+// ADLOrchestrationMember references a registry agent in subAgents/council members.
+type ADLOrchestrationMember struct {
+	Agent string `yaml:"agent" json:"agent"`
+}
+
+// ADLCouncilMember is an alias for orchestration members (legacy name).
+type ADLCouncilMember = ADLOrchestrationMember
+
 
 // ADLPromptSuggestion is a quick-start prompt shown as a pill above the chat input.
 type ADLPromptSuggestion struct {
@@ -181,6 +260,7 @@ type ADLInput struct {
 type ADLStep struct {
 	Type         string       `yaml:"type"         json:"type,omitempty"` // agent (default) | hitl
 	Name         string       `yaml:"name"         json:"name"`
+	Agent        string       `yaml:"agent"        json:"agent,omitempty"` // registry agent id; inherits harness/prompt/assets
 	Harness      *ADLHarness  `yaml:"harness"      json:"harness,omitempty"`
 	SystemPrompt string       `yaml:"systemPrompt" json:"systemPrompt,omitempty"`
 	DependsOn    []string     `yaml:"dependsOn"    json:"dependsOn,omitempty"`

@@ -257,7 +257,7 @@ func handleSessions(w http.ResponseWriter, r *http.Request) {
 		list := make([]model.Session, len(sessions))
 		copy(list, sessions)
 		mu.RUnlock()
-		writeJSON(w, http.StatusOK, enrichSessions(list))
+		writeJSON(w, http.StatusOK, enrichSessions(filterPublicSessions(list)))
 
 	case http.MethodPost:
 		var req struct {
@@ -336,6 +336,7 @@ func handleBulkDeleteSessions(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(os.Stderr, "warn: save data after bulk delete: %v\n", err)
 		}
 		for _, item := range toCleanup {
+			deleteCouncilChildSessions(item.id)
 			cleanupDeletedSession(item.id, item.info)
 		}
 		notifySessionsChanged()
@@ -552,7 +553,7 @@ func skillNamesFromADL(def model.ADLDefinition) []string {
 		}
 	}
 	add(defCopy.AIAssets.Skills)
-	for _, step := range defCopy.Steps {
+	for _, step := range model.OrchestrationSteps(defCopy) {
 		add(step.AIAssets.Skills)
 	}
 	for _, name := range skills.BuiltinSkillNames() {
@@ -930,6 +931,7 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(os.Stderr, "warn: save data after delete: %v\n", err)
 		}
 		notifySessionsChanged()
+		deleteCouncilChildSessions(id)
 		cleanupDeletedSession(id, info)
 		w.WriteHeader(http.StatusNoContent)
 

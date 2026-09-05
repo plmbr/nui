@@ -12,12 +12,13 @@ import (
 )
 
 type assistantPartAccumulator struct {
-	parts        []model.ChatMessagePart
-	images       []model.ChatImage
-	pendingTools map[string]string
-	subagents    map[string]*assistantPartAccumulator
-	content      string
-	errored      bool
+	parts           []model.ChatMessagePart
+	images          []model.ChatImage
+	pendingTools    map[string]string
+	subagents       map[string]*assistantPartAccumulator
+	content         string
+	errored         bool
+	councilProgress *model.CouncilProgressState
 }
 
 func newAssistantPartAccumulator() *assistantPartAccumulator {
@@ -188,9 +189,113 @@ func (a *assistantPartAccumulator) applyEvent(ev agent.Event, mcpLookup func(str
 			MediaType: mediaType,
 			Data:      ev.ImageData,
 		})
+	case agent.EventCouncilProgress:
+		if ev.Council != nil {
+			a.applyCouncilProgress(ev.Council)
+		}
 	case agent.EventError:
 		a.errored = true
 	}
+}
+
+func (a *assistantPartAccumulator) applyCouncilProgress(ev *agent.CouncilProgress) {
+	prev := a.councilProgress
+	if prev == nil {
+		prev = &model.CouncilProgressState{Members: []model.CouncilMemberProgress{}}
+	}
+	next := &model.CouncilProgressState{
+		Phase:         prev.Phase,
+		Round:         prev.Round,
+		RoundIndex:    prev.RoundIndex,
+		RoundsTotal:   prev.RoundsTotal,
+		MembersTotal:  prev.MembersTotal,
+		MembersDone:   prev.MembersDone,
+		Quorum:        prev.Quorum,
+		EstimatedCost: prev.EstimatedCost,
+		Members:       append([]model.CouncilMemberProgress{}, prev.Members...),
+	}
+	if ev.Phase != "" {
+		next.Phase = ev.Phase
+	}
+	if ev.Round != "" {
+		next.Round = ev.Round
+	}
+	if ev.RoundIndex != 0 {
+		next.RoundIndex = ev.RoundIndex
+	}
+	if ev.RoundsTotal != 0 {
+		next.RoundsTotal = ev.RoundsTotal
+	}
+	if ev.MembersTotal != 0 {
+		next.MembersTotal = ev.MembersTotal
+	}
+	if ev.MembersDone != 0 {
+		next.MembersDone = ev.MembersDone
+	}
+	if ev.Quorum != 0 {
+		next.Quorum = ev.Quorum
+	}
+	if ev.EstimatedCost != "" {
+		next.EstimatedCost = ev.EstimatedCost
+	}
+	if ev.MemberID != "" {
+		status := "queued"
+		idx := -1
+		for i := range next.Members {
+			if next.Members[i].ID == ev.MemberID {
+				idx = i
+				status = next.Members[i].Status
+				break
+			}
+		}
+		switch ev.Phase {
+		case "member_failed":
+			status = "failed"
+		case "member_completed":
+			status = "completed"
+		case "member_started":
+			status = "running"
+		}
+		entry := model.CouncilMemberProgress{
+			ID:     ev.MemberID,
+			Label:  ev.MemberLabel,
+			Status: status,
+		}
+		if entry.Label == "" {
+			entry.Label = ev.MemberID
+		}
+		if idx >= 0 {
+			prevMember := next.Members[idx]
+			if entry.Label == ev.MemberID && prevMember.Label != "" {
+				entry.Label = prevMember.Label
+			}
+			if ev.MemberLabel != "" {
+				entry.Label = ev.MemberLabel
+			}
+			entry.SessionID = prevMember.SessionID
+			entry.RunID = prevMember.RunID
+			entry.ElapsedMS = prevMember.ElapsedMS
+			if status == "queued" {
+				entry.Status = prevMember.Status
+			}
+		}
+		if ev.MemberSessionID != "" {
+			entry.SessionID = ev.MemberSessionID
+		}
+		if ev.RunID != "" {
+			entry.RunID = ev.RunID
+		}
+		if ev.ElapsedMS != 0 {
+			entry.ElapsedMS = ev.ElapsedMS
+		}
+		entry.Error = ev.Error
+		if idx >= 0 {
+			next.Members[idx] = entry
+		} else {
+			next.Members = append(next.Members, entry)
+		}
+	}
+	a.councilProgress = next
 }
 
 func (a *assistantPartAccumulator) toolPartForCall(toolCallID string) *model.ChatMessagePart {
@@ -219,6 +324,9 @@ func (a *assistantPartAccumulator) toMessage(messageID string) model.ChatMessage
 	}
 	if len(a.images) > 0 {
 		msg.Images = a.images
+	}
+	if a.councilProgress != nil {
+		msg.CouncilProgress = a.councilProgress
 	}
 	return msg
 }

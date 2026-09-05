@@ -1,9 +1,15 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { cn } from '@/lib/utils'
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { ChevronLeft, File, Folder, Puzzle, Bot } from 'lucide-react'
 import type { MentionBreadcrumb, MentionItem } from '@/types'
+
+/** Matches `.mention-menu` max-h-64; keep in sync with index.css. */
+const MENTION_MENU_MAX_HEIGHT_PX = 256
+/** Matches `.mention-menu` mb-2 gap above the anchor. */
+const MENTION_MENU_GAP_PX = 8
+const MENTION_MENU_MIN_HEIGHT_PX = 96
 
 interface Props {
   open: boolean
@@ -26,6 +32,11 @@ function itemIcon(item: MentionItem) {
   return File
 }
 
+function headerBottomPx(): number {
+  const header = document.querySelector<HTMLElement>('.app-header')
+  return header?.getBoundingClientRect().bottom ?? 0
+}
+
 export function MentionMenu({
   open,
   items,
@@ -40,6 +51,32 @@ export function MentionMenu({
   className,
 }: Props) {
   const menuRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    if (!open) return
+    const menu = menuRef.current
+    if (!menu) return
+
+    const fitHeight = () => {
+      const anchor = menu.offsetParent
+      if (!(anchor instanceof HTMLElement)) return
+      // Menu is `bottom-full` above its positioned parent; cap so it stays below app chrome.
+      const available =
+        anchor.getBoundingClientRect().top - headerBottomPx() - MENTION_MENU_GAP_PX
+      const maxHeight = Math.max(
+        MENTION_MENU_MIN_HEIGHT_PX,
+        Math.min(MENTION_MENU_MAX_HEIGHT_PX, Math.floor(available)),
+      )
+      menu.style.maxHeight = `${maxHeight}px`
+    }
+
+    fitHeight()
+    window.addEventListener('resize', fitHeight)
+    return () => {
+      window.removeEventListener('resize', fitHeight)
+      menu.style.maxHeight = ''
+    }
+  }, [open, items.length])
 
   useEffect(() => {
     if (!open) return

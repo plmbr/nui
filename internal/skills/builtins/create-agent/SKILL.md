@@ -16,7 +16,7 @@ When no other instructions are given, convert the conversation into a new ADL ag
 3. Distill the conversation into a **systemPrompt** that captures the user's intent, constraints, and examples discussed.
 4. If the conversation implies a recurring first message, set **defaultPrompt**; otherwise omit it.
 5. Choose **harness.type** from context (default `claude-code` when unclear).
-6. Omit **aiAssets**, **steps**, and **env** unless the conversation clearly requires them.
+6. Omit **aiAssets**, **orchestration**, and **env** unless the conversation clearly requires them.
 
 Save the result as `~/.nui/agents/<id>.yaml`.
 
@@ -25,7 +25,7 @@ Save the result as `~/.nui/agents/<id>.yaml`.
 Follow any instructions in the same message after `/create-agent` or in follow-up messages. Examples:
 
 - change harness, model, or working directory behavior
-- add skills, MCP servers, or workflow steps
+- add skills, MCP servers, or orchestration (workflow steps, subAgents, or council)
 - rename the agent or adjust the system prompt
 - update an existing agent file instead of creating a new one
 
@@ -51,7 +51,17 @@ systemPrompt: |
   Instructions distilled from the conversation.
 ```
 
-Optional fields when relevant: `defaultPrompt`, `promptMode`, `workingDirInput`, `env`, `aiAssets`, `steps`.
+Optional fields when relevant: `defaultPrompt`, `promptMode`, `workingDirInput`, `env`, `aiAssets`, `orchestration`.
+
+For multi-agent agents use `orchestration` (never top-level `steps`, `subAgents`, or `council`):
+
+```yaml
+orchestration:
+  type: workflow          # or subAgents | council
+  steps:                  # when type is workflow
+    - name: review
+      systemPrompt: ...
+```
 
 ## Saving
 

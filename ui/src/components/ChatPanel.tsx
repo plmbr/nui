@@ -20,6 +20,7 @@ import { ThinkingIndicator } from '@/components/ThinkingIndicator'
 import { MentionMenu } from '@/components/MentionMenu'
 import { SlashCommandMenu } from '@/components/SlashCommandMenu'
 import { HitlPromptCard } from '@/components/HitlPromptCard'
+import { CouncilRunPanel } from '@/components/CouncilRunPanel'
 import { UserMessageBubble } from '@/components/UserMessageBubble'
 import { ToolCallGroup } from '@/components/ToolCallGroup'
 import { VisualizationFrame } from '@/components/VisualizationFrame'
@@ -145,6 +146,8 @@ interface Props {
   defaultPrompt?: string
   promptSuggestions?: PromptSuggestion[]
   slashCommands?: string[]
+  /** Compact nested pane (council member tabs). */
+  embedded?: boolean
 }
 
 export function ChatPanel({
@@ -156,6 +159,7 @@ export function ChatPanel({
   defaultPrompt,
   promptSuggestions,
   slashCommands = [],
+  embedded = false,
 }: Props) {
   const { messages, sendMessage, stopRun, isRunning, isLoading, pendingHitlRequests } = useSessionChat(session.id)
   const { uiThemeDef } = useTheme()
@@ -601,8 +605,8 @@ export function ChatPanel({
     })
 
   return (
-    <div className="agui-chat flex flex-col flex-1 min-h-0">
-      {messages.length === 0 && showFlowers && (
+    <div className={`agui-chat flex flex-col flex-1 min-h-0${embedded ? ' agui-chat--embedded' : ''}`}>
+      {messages.length === 0 && showFlowers && !embedded && (
         <PlumeriaRandomBackdrop
           count={4}
           opacityVariant="chat"
@@ -634,10 +638,8 @@ export function ChatPanel({
               <div
                 className={`agui-message__bubble${msg.error ? ' agui-message__bubble--error' : ''}`}
               >
-                {msg.routedAgentLabel ? (
-                  <p className="agui-message__sub-agent-badge text-xs text-muted-foreground mb-2">
-                    via {msg.routedAgentLabel}
-                  </p>
+                {msg.councilProgress ? (
+                  <CouncilRunPanel progress={msg.councilProgress} />
                 ) : null}
                 {msg.images?.map((img) => (
                   <img

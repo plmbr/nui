@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import type { ChatImage, ChatMessage, ChatMessagePart } from '@/types'
+import type { ChatImage, ChatMessage, ChatMessagePart, CouncilProgressState } from '@/types'
 import { extractVisualization, normalizeVisualizationParts } from '@/lib/visualization'
 
 export interface ToolCallPart {
@@ -32,6 +32,7 @@ export interface SessionChatMessage {
   parts?: AssistantPart[]
   error?: boolean
   images?: ChatImage[]
+  councilProgress?: CouncilProgressState
 }
 
 export function assistantTextContent(msg: SessionChatMessage): string {
@@ -166,6 +167,7 @@ export function apiMessagesToSessionMessages(history: ChatMessage[]): SessionCha
         parts: parts ? normalizeVisualizationParts(parts) : undefined,
         images: m.images,
         error: m.error,
+        councilProgress: m.councilProgress,
       }
     })
 }

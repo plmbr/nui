@@ -111,7 +111,37 @@ env:
 	}
 }
 
-func TestADLDefinitionYAML_subAgents(t *testing.T) {
+func TestADLDefinitionYAML_council(t *testing.T) {
+	raw := []byte(`adl: "1.0"
+id: software-engineering-council
+name: Software Engineering Council
+harness:
+  type: claude-code
+orchestration:
+  type: council
+  members:
+    - agent: hello-world
+    - agent: code-reviewer
+  rounds: independent+rebuttal
+  quorum: 2
+`)
+
+	var def ADLDefinition
+	if err := yaml.Unmarshal(raw, &def); err != nil {
+		t.Fatal(err)
+	}
+	if def.Orchestration == nil || len(def.Orchestration.Members) != 2 {
+		t.Fatalf("orchestration: %+v", def.Orchestration)
+	}
+	if def.Orchestration.Members[0].Agent != "hello-world" {
+		t.Fatalf("members: %+v", def.Orchestration.Members)
+	}
+	if !IsCouncilAgent(def) {
+		t.Fatal("expected council agent")
+	}
+}
+
+func TestADLDefinitionYAML_legacyTopLevelRejected(t *testing.T) {
 	raw := []byte(`adl: "1.0"
 id: triage-bot
 name: Triage Bot
@@ -119,20 +149,12 @@ harness:
   type: claude-code
 subAgents:
   - hello-world
-  - code-reviewer
 `)
-
 	var def ADLDefinition
 	if err := yaml.Unmarshal(raw, &def); err != nil {
 		t.Fatal(err)
 	}
-	if len(def.SubAgents) != 2 {
-		t.Fatalf("subAgents: %v", def.SubAgents)
-	}
-	if def.SubAgents[0] != "hello-world" || def.SubAgents[1] != "code-reviewer" {
-		t.Fatalf("subAgents: %v", def.SubAgents)
-	}
-	if !IsOrchestratorAgent(def) {
-		t.Fatal("expected orchestrator")
+	if err := ValidateADLDefinition(def); err == nil {
+		t.Fatal("expected subAgents rejection")
 	}
 }

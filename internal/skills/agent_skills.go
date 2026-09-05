@@ -11,7 +11,7 @@ func AgentSkills(def model.ADLDefinition) []model.ADLSkill {
 
 	var skills []model.ADLSkill
 	skills = append(skills, defCopy.AIAssets.Skills...)
-	for _, step := range defCopy.Steps {
+	for _, step := range model.OrchestrationSteps(defCopy) {
 		skills = append(skills, step.AIAssets.Skills...)
 	}
 	return WithBuiltins(skills)

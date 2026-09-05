@@ -56,8 +56,11 @@ func TestValidateADLDefinitionStepDependsOnUnknown(t *testing.T) {
 	err := ValidateADLDefinition(ADLDefinition{
 		ID:      "wf",
 		Harness: ADLHarness{Type: "claude-code"},
-		Steps: []ADLStep{
-			{Name: "write", DependsOn: []string{"missing"}},
+		Orchestration: &ADLOrchestration{
+			Type: OrchestrationTypeWorkflow,
+			Steps: []ADLStep{
+				{Name: "write", DependsOn: []string{"missing"}},
+			},
 		},
 	})
 	if err == nil {
@@ -69,8 +72,11 @@ func TestValidateADLDefinitionHITLStepRequiresBlock(t *testing.T) {
 	err := ValidateADLDefinition(ADLDefinition{
 		ID:      "wf",
 		Harness: ADLHarness{Type: "claude-code"},
-		Steps: []ADLStep{
-			{Name: "gate", Type: "hitl"},
+		Orchestration: &ADLOrchestration{
+			Type: OrchestrationTypeWorkflow,
+			Steps: []ADLStep{
+				{Name: "gate", Type: "hitl"},
+			},
 		},
 	})
 	if err == nil {
@@ -82,8 +88,11 @@ func TestValidateADLDefinitionInputReferencesUnknownStep(t *testing.T) {
 	err := ValidateADLDefinition(ADLDefinition{
 		ID:      "wf",
 		Harness: ADLHarness{Type: "claude-code"},
-		Steps: []ADLStep{
-			{Name: "write", Inputs: []ADLInput{{From: "missing.brief"}}},
+		Orchestration: &ADLOrchestration{
+			Type: OrchestrationTypeWorkflow,
+			Steps: []ADLStep{
+				{Name: "write", Inputs: []ADLInput{{From: "missing.brief"}}},
+			},
 		},
 	})
 	if err == nil {
@@ -95,16 +104,34 @@ func TestValidateADLDefinitionWorkflowSteps(t *testing.T) {
 	err := ValidateADLDefinition(ADLDefinition{
 		ID:      "wf",
 		Harness: ADLHarness{Type: "claude-code"},
-		Steps: []ADLStep{
-			{
-				Name:    "research",
-				Outputs: []ADLOutput{{Name: "brief", Type: "text"}},
+		Orchestration: &ADLOrchestration{
+			Type: OrchestrationTypeWorkflow,
+			Steps: []ADLStep{
+				{
+					Name:    "research",
+					Outputs: []ADLOutput{{Name: "brief", Type: "text"}},
+				},
+				{
+					Name:      "write",
+					DependsOn: []string{"research"},
+					Inputs:    []ADLInput{{From: "research.brief"}},
+				},
 			},
-			{
-				Name:      "write",
-				DependsOn: []string{"research"},
-				Inputs:    []ADLInput{{From: "research.brief"}},
-			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestValidateADLDefinitionCouncilValid(t *testing.T) {
+	err := ValidateADLDefinition(ADLDefinition{
+		ID:      "council",
+		Harness: ADLHarness{Type: "claude-code"},
+		Orchestration: &ADLOrchestration{
+			Type:    OrchestrationTypeCouncil,
+			Members: []ADLOrchestrationMember{{Agent: "hello-world"}, {Agent: "code-reviewer"}},
+			Rounds:  "independent+rebuttal",
 		},
 	})
 	if err != nil {
@@ -114,32 +141,51 @@ func TestValidateADLDefinitionWorkflowSteps(t *testing.T) {
 
 func TestValidateADLDefinitionSubAgentsValid(t *testing.T) {
 	err := ValidateADLDefinition(ADLDefinition{
-		ID:        "triage",
-		Harness:   ADLHarness{Type: "claude-code"},
-		SubAgents: []string{"hello-world", "code-reviewer"},
+		ID:      "orch",
+		Harness: ADLHarness{Type: "claude-code"},
+		Orchestration: &ADLOrchestration{
+			Type:     OrchestrationTypeSubAgents,
+			Members:  []ADLOrchestrationMember{{Agent: "hello-world"}},
+			MaxTurns: 10,
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestValidateADLDefinitionSubAgentsMutuallyExclusiveWithSteps(t *testing.T) {
-	err := ValidateADLDefinition(ADLDefinition{
-		ID:        "bad",
-		Harness:   ADLHarness{Type: "claude-code"},
-		SubAgents: []string{"hello-world"},
-		Steps:     []ADLStep{{Name: "step1"}},
-	})
-	if err == nil {
-		t.Fatal("expected error")
+func TestValidateADLDefinitionLegacyTopLevelRejected(t *testing.T) {
+	if err := ValidateADLDefinition(ADLDefinition{
+		ID:            "bad",
+		Harness:       ADLHarness{Type: "claude-code"},
+		LegacyCouncil: &ADLCouncil{Members: []ADLOrchestrationMember{{Agent: "hello-world"}}},
+	}); err == nil {
+		t.Fatal("expected council rejection")
+	}
+	if err := ValidateADLDefinition(ADLDefinition{
+		ID:          "bad",
+		Harness:     ADLHarness{Type: "claude-code"},
+		LegacySteps: []ADLStep{{Name: "a"}},
+	}); err == nil {
+		t.Fatal("expected steps rejection")
+	}
+	if err := ValidateADLDefinition(ADLDefinition{
+		ID:              "bad",
+		Harness:         ADLHarness{Type: "claude-code"},
+		LegacySubAgents: []string{"hello-world"},
+	}); err == nil {
+		t.Fatal("expected subAgents rejection")
 	}
 }
 
-func TestValidateADLDefinitionSubAgentsDuplicate(t *testing.T) {
+func TestValidateADLDefinitionCouncilDuplicate(t *testing.T) {
 	err := ValidateADLDefinition(ADLDefinition{
-		ID:        "bad",
-		Harness:   ADLHarness{Type: "claude-code"},
-		SubAgents: []string{"hello-world", "hello-world"},
+		ID:      "bad",
+		Harness: ADLHarness{Type: "claude-code"},
+		Orchestration: &ADLOrchestration{
+			Type:    OrchestrationTypeCouncil,
+			Members: []ADLOrchestrationMember{{Agent: "hello-world"}, {Agent: "hello-world"}},
+		},
 	})
 	if err == nil {
 		t.Fatal("expected error")

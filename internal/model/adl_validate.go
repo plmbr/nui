@@ -33,15 +33,152 @@ func ValidateADLDefinition(def ADLDefinition) error {
 	if err := ValidateADLTags(def.Tags); err != nil {
 		return err
 	}
-	if err := validateSubAgents(def); err != nil {
+	if err := validateOrchestration(def); err != nil {
 		return err
 	}
-	if len(def.Steps) == 0 {
+	return nil
+}
+
+func validateOrchestration(def ADLDefinition) error {
+	if def.LegacyCouncil != nil {
+		return fmt.Errorf("top-level council is no longer supported; use orchestration.type: council")
+	}
+	if len(def.LegacySteps) > 0 {
+		return fmt.Errorf("top-level steps is no longer supported; use orchestration.type: workflow")
+	}
+	if len(def.LegacySubAgents) > 0 {
+		return fmt.Errorf("top-level subAgents is no longer supported; use orchestration.type: subAgents")
+	}
+	if def.Orchestration == nil {
 		return nil
 	}
+	o := def.Orchestration
+	typ := strings.TrimSpace(o.Type)
+	switch typ {
+	case OrchestrationTypeSubAgents, OrchestrationTypeCouncil, OrchestrationTypeWorkflow:
+	case "":
+		return fmt.Errorf("orchestration.type is required (subAgents, council, or workflow)")
+	default:
+		return fmt.Errorf("orchestration.type: must be subAgents, council, or workflow")
+	}
 
+	switch typ {
+	case OrchestrationTypeSubAgents:
+		return validateSubAgentsOrchestration(o)
+	case OrchestrationTypeCouncil:
+		return validateCouncilOrchestration(o)
+	case OrchestrationTypeWorkflow:
+		return validateWorkflowOrchestration(o)
+	}
+	return nil
+}
+
+func validateMemberList(members []ADLOrchestrationMember, prefix string) error {
+	if len(members) == 0 {
+		return fmt.Errorf("%s.members: at least one member is required", prefix)
+	}
+	seen := map[string]bool{}
+	for i, m := range members {
+		id := strings.TrimSpace(m.Agent)
+		if id == "" {
+			return fmt.Errorf("%s.members[%d]: agent is required", prefix, i)
+		}
+		if seen[id] {
+			return fmt.Errorf("%s.members: duplicate agent %q", prefix, id)
+		}
+		seen[id] = true
+	}
+	return nil
+}
+
+func validateSessionMode(mode, prefix string) error {
+	mode = strings.TrimSpace(mode)
+	if mode == "" {
+		return nil
+	}
+	switch mode {
+	case "persistent", "fresh":
+		return nil
+	default:
+		return fmt.Errorf("%s.sessionMode: must be persistent or fresh", prefix)
+	}
+}
+
+func validateSubAgentsOrchestration(o *ADLOrchestration) error {
+	prefix := "orchestration"
+	if err := validateMemberList(o.Members, prefix); err != nil {
+		return err
+	}
+	if err := validateSessionMode(o.SessionMode, prefix); err != nil {
+		return err
+	}
+	if o.MaxTurns < 0 {
+		return fmt.Errorf("orchestration.maxTurns: must be >= 0")
+	}
+	if len(o.Steps) > 0 {
+		return fmt.Errorf("orchestration: steps are only valid when type is workflow")
+	}
+	if strings.TrimSpace(o.Rounds) != "" || o.Quorum != 0 || strings.TrimSpace(o.FailurePolicy) != "" ||
+		o.MaxParallel != 0 || o.MaxQuestions != 0 {
+		return fmt.Errorf("orchestration: rounds/quorum/failurePolicy/maxParallel/maxQuestions are only valid when type is council")
+	}
+	return nil
+}
+
+func validateCouncilOrchestration(o *ADLOrchestration) error {
+	prefix := "orchestration"
+	if err := validateMemberList(o.Members, prefix); err != nil {
+		return err
+	}
+	if err := validateSessionMode(o.SessionMode, prefix); err != nil {
+		return err
+	}
+	if rounds := strings.TrimSpace(o.Rounds); rounds != "" {
+		switch rounds {
+		case "independent", "independent+rebuttal", "independent+rebuttal+adjudication":
+		default:
+			return fmt.Errorf("orchestration.rounds: must be independent, independent+rebuttal, or independent+rebuttal+adjudication")
+		}
+	}
+	if policy := strings.TrimSpace(o.FailurePolicy); policy != "" {
+		switch policy {
+		case "continue-with-quorum", "fail":
+		default:
+			return fmt.Errorf("orchestration.failurePolicy: must be continue-with-quorum or fail")
+		}
+	}
+	if o.Quorum < 0 {
+		return fmt.Errorf("orchestration.quorum: must be >= 0")
+	}
+	if o.MaxParallel < 0 {
+		return fmt.Errorf("orchestration.maxParallel: must be >= 0")
+	}
+	if o.MaxQuestions < 0 {
+		return fmt.Errorf("orchestration.maxQuestions: must be >= 0")
+	}
+	if o.MaxTurns != 0 {
+		return fmt.Errorf("orchestration: maxTurns is only valid when type is subAgents")
+	}
+	if len(o.Steps) > 0 {
+		return fmt.Errorf("orchestration: steps are only valid when type is workflow")
+	}
+	return nil
+}
+
+func validateWorkflowOrchestration(o *ADLOrchestration) error {
+	if len(o.Members) > 0 {
+		return fmt.Errorf("orchestration: members are only valid when type is subAgents or council")
+	}
+	if o.MaxTurns != 0 || strings.TrimSpace(o.Rounds) != "" || o.Quorum != 0 ||
+		strings.TrimSpace(o.FailurePolicy) != "" || o.MaxParallel != 0 || o.MaxQuestions != 0 ||
+		strings.TrimSpace(o.SessionMode) != "" || strings.TrimSpace(o.MemberTimeout) != "" {
+		return fmt.Errorf("orchestration: member/council fields are not valid when type is workflow")
+	}
+	if len(o.Steps) == 0 {
+		return fmt.Errorf("orchestration.steps: at least one step is required when type is workflow")
+	}
 	stepNames := map[string]bool{}
-	for _, step := range def.Steps {
+	for _, step := range o.Steps {
 		name := strings.TrimSpace(step.Name)
 		if name == "" {
 			return fmt.Errorf("step name is required")
@@ -51,8 +188,7 @@ func ValidateADLDefinition(def ADLDefinition) error {
 		}
 		stepNames[name] = true
 	}
-
-	for _, step := range def.Steps {
+	for _, step := range o.Steps {
 		if err := validateStep(step, stepNames); err != nil {
 			return err
 		}
@@ -279,27 +415,6 @@ func isDevcontainerInnerHarness(t string) bool {
 // IsDevcontainerInnerHarness reports whether t is a valid innerHarness for devcontainer.
 func IsDevcontainerInnerHarness(t string) bool {
 	return isDevcontainerInnerHarness(strings.TrimSpace(t))
-}
-
-func validateSubAgents(def ADLDefinition) error {
-	if len(def.SubAgents) == 0 {
-		return nil
-	}
-	if len(def.Steps) > 0 {
-		return fmt.Errorf("subAgents cannot be combined with workflow steps")
-	}
-	seen := map[string]bool{}
-	for i, id := range def.SubAgents {
-		id = strings.TrimSpace(id)
-		if id == "" {
-			return fmt.Errorf("subAgents[%d]: agent id is required", i)
-		}
-		if seen[id] {
-			return fmt.Errorf("subAgents: duplicate agent id %q", id)
-		}
-		seen[id] = true
-	}
-	return nil
 }
 
 func splitStepOutputRef(ref string) (stepName, outputName string) {

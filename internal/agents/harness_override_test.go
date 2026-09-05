@@ -60,12 +60,15 @@ func TestApplyHarnessOverrideAllowlisted(t *testing.T) {
 			Env:     map[string]string{"A": "1"},
 		},
 		AllowedHarnesses: []string{"pi", "codex"},
-		Steps: []model.ADLStep{
-			{
-				Name:    "research",
-				Harness: &model.ADLHarness{Type: "opencode", Model: "step-model"},
+		Orchestration: &model.ADLOrchestration{
+			Type: model.OrchestrationTypeWorkflow,
+			Steps: []model.ADLStep{
+				{
+					Name:    "research",
+					Harness: &model.ADLHarness{Type: "opencode", Model: "step-model"},
+				},
+				{Name: "write"},
 			},
-			{Name: "write"},
 		},
 	}
 	got, err := ApplyHarnessOverride(def, "pi")
@@ -79,12 +82,13 @@ func TestApplyHarnessOverrideAllowlisted(t *testing.T) {
 		t.Fatalf("expected other harness fields preserved, got %+v", got.Harness)
 	}
 	// Per-step explicit harness must not be rewritten.
-	if got.Steps[0].Harness == nil || got.Steps[0].Harness.Type != "opencode" {
-		t.Fatalf("step harness mutated: %+v", got.Steps[0].Harness)
+	steps := model.OrchestrationSteps(got)
+	if steps[0].Harness == nil || steps[0].Harness.Type != "opencode" {
+		t.Fatalf("step harness mutated: %+v", steps[0].Harness)
 	}
 	// Steps without harness still inherit top-level (now overridden) at runtime.
-	if got.Steps[1].Harness != nil {
-		t.Fatalf("unexpected step harness: %+v", got.Steps[1].Harness)
+	if steps[1].Harness != nil {
+		t.Fatalf("unexpected step harness: %+v", steps[1].Harness)
 	}
 }
 

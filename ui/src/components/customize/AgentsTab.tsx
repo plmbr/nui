@@ -85,7 +85,6 @@ export function AgentsTab({ onChanged }: Props) {
   const [content, setContent] = useState('')
   const [form, setForm] = useState<AgentFormModel>(defaultAgentForm())
   const [hasWorkflowSteps, setHasWorkflowSteps] = useState(false)
-  const [hasSubAgents, setHasSubAgents] = useState(false)
   const [editMode, setEditMode] = useState<EditMode>('form')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -120,7 +119,6 @@ export function AgentsTab({ onChanged }: Props) {
       const parsed = parseAgentYaml(yaml, options)
       setForm(parsed.form)
       setHasWorkflowSteps(parsed.hasWorkflowSteps)
-      setHasSubAgents(parsed.hasSubAgents)
       if (parsed.parseError) {
         setError('YAML could not be parsed; form shows last known values.')
       }
@@ -136,7 +134,6 @@ export function AgentsTab({ onChanged }: Props) {
       const parsed = parseAgentYaml(yaml, options)
       setForm(parsed.form)
       setHasWorkflowSteps(parsed.hasWorkflowSteps)
-      setHasSubAgents(parsed.hasSubAgents)
     } else if (content) {
       syncFormFromContent(content)
     }
@@ -185,7 +182,6 @@ export function AgentsTab({ onChanged }: Props) {
       setContent(merged)
       const parsed = parseAgentYaml(merged, options)
       setHasWorkflowSteps(parsed.hasWorkflowSteps)
-      setHasSubAgents(parsed.hasSubAgents)
     } else if (mode === 'form' && editMode === 'yaml') {
       setError(null)
       syncFormFromContent(content)
@@ -277,7 +273,6 @@ export function AgentsTab({ onChanged }: Props) {
     setEditMode('form')
     setForm(defaultAgentForm())
     setHasWorkflowSteps(false)
-    setHasSubAgents(false)
     setContent(NEW_AGENT_TEMPLATE)
     setNewFilename('my-agent.yaml')
   }
@@ -456,7 +451,6 @@ export function AgentsTab({ onChanged }: Props) {
                     form={form}
                     options={options}
                     hasWorkflowSteps={hasWorkflowSteps}
-                    hasSubAgents={hasSubAgents}
                     editingAgentId={form.id}
                     onChange={handleFormChange}
                     onRunEvalCase={

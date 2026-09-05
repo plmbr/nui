@@ -52,3 +52,48 @@ func appendNuiAgentMCP(servers []model.ADLMCPServer, agentID string) ([]model.AD
 	}
 	return append(servers, srv), nil
 }
+
+const builtinNuiMCPRef = "builtin:nui"
+const nuiGeneralMCPName = "nui"
+
+// expandBuiltinNuiMCPRefs resolves ref: builtin:nui to the general nui MCP (nui mcp).
+func expandBuiltinNuiMCPRefs(servers []model.ADLMCPServer) []model.ADLMCPServer {
+	if len(servers) == 0 {
+		return servers
+	}
+	out := make([]model.ADLMCPServer, 0, len(servers))
+	for _, s := range servers {
+		if strings.TrimSpace(s.Ref) != builtinNuiMCPRef {
+			out = append(out, s)
+			continue
+		}
+		exe, err := nuiExecutable()
+		if err != nil {
+			out = append(out, s)
+			continue
+		}
+		name := strings.TrimSpace(s.Name)
+		if name == "" {
+			name = nuiGeneralMCPName
+		}
+		env := map[string]string{}
+		for k, v := range s.Env {
+			env[k] = v
+		}
+		if _, ok := env[EnvnuiAPIURL]; !ok {
+			env[EnvnuiAPIURL] = defaultnuiAPIURL()
+		}
+		// Also accept NUI_URL as used by the council workaround.
+		if _, ok := env["NUI_URL"]; !ok {
+			env["NUI_URL"] = defaultnuiAPIURL()
+		}
+		out = append(out, model.ADLMCPServer{
+			Name:    name,
+			Command: exe,
+			Args:    []string{"mcp"},
+			Type:    "stdio",
+			Env:     env,
+		})
+	}
+	return out
+}

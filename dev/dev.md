@@ -70,8 +70,8 @@ flowchart TB
 
 ADL design documentation and example YAML files live in this repository under [`dev/adl/`](adl/).
 
-- [design.md](adl/design.md) — schema, semantics, harness types
-- [examples/](adl/examples/) — sample agent and workflow YAML
+- [design.md](adl/design.md) — schema, semantics, harness types, orchestration
+- [examples/](adl/examples/) — sample agent, workflow, subAgents, and council YAML
 
 In nui, place agent YAML in `~/.nui/agents/` to make them selectable under **Installed agents**. Sandbox config flows: ADL `harness.sandbox` → `harnessBuiltinConfig()` → `Manager.getBuiltinAgent()` → agent struct `Sandbox` field.
 
@@ -252,12 +252,15 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 - [x] User ADL in `~/.nui/agents/*.yaml`
 - [x] Docker/remote reachability check on session create
 
-### Phase 2 — ADL workflows ✅
+### Phase 2 — ADL workflows & orchestration ✅
 - [x] ADL YAML schema + parser
-- [x] Multi-step DAG (`dependsOn`, topo sort)
+- [x] `orchestration.type: workflow` — multi-step DAG (`dependsOn`, topo sort)
 - [x] Named outputs / inputs between steps
 - [x] Per-step harness override + sandbox propagation
 - [x] Durable run log + SSE reconnection
+- [x] `orchestration.type: subAgents` — adaptive chair (`run_sub_agent`)
+- [x] `orchestration.type: council` — deliberative multi-member rounds
+- [x] Legacy top-level `steps` / `subAgents` / `council` rejected
 
 ### Phase 3 — External integrations
 - [x] ADL `skill` references (SKILL.md) → session harness config

@@ -63,13 +63,22 @@ export function useAgentFormOptions() {
         }
       }
 
-      const mcpOptions: MCPOption[] = mcpRes.mcpServers.map((s) => ({
-        id: `user:${s.name}`,
-        label: s.name,
-        group: 'User MCP servers',
-        name: s.name,
-        server: s,
-      }))
+      const mcpOptions: MCPOption[] = [
+        {
+          id: 'builtin:nui',
+          label: 'nui (builtin MCP)',
+          group: 'Built-in',
+          name: 'nui',
+          ref: 'builtin:nui',
+        },
+        ...mcpRes.mcpServers.map((s) => ({
+          id: `user:${s.name}`,
+          label: s.name,
+          group: 'User MCP servers',
+          name: s.name,
+          server: s,
+        })),
+      ]
 
       for (const ext of extensions) {
         if (ext.disabled) continue

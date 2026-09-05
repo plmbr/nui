@@ -7,13 +7,15 @@ version: 0.1.0
 harness:
   type: claude-code
 
-steps:
-  - name: review
-    harness:
-      type: claude-code
-    systemPrompt: Review the codebase and list issues. Do not edit files.
-  - name: fix
-    harness:
-      type: claude-code
-    dependsOn: [review]
-    systemPrompt: Apply fixes for the issues found in the review step.
+orchestration:
+  type: workflow
+  steps:
+    - name: review
+      harness:
+        type: claude-code
+      systemPrompt: Review the codebase and list issues. Do not edit files.
+    - name: fix
+      harness:
+        type: claude-code
+      dependsOn: [review]
+      systemPrompt: Apply fixes for the issues found in the review step.

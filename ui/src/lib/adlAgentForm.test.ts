@@ -159,21 +159,25 @@ name: My Agent
 harness:
   type: claude-code
   sandbox: bubblewrap
-steps:
-  - name: review
-    type: agent
+orchestration:
+  type: workflow
+  steps:
+    - name: review
+      type: agent
 `
     const form = {
       ...defaultAgentForm(),
       id: 'my-agent',
       name: 'Renamed Agent',
       description: 'Updated from form',
+      orchestrationType: 'workflow' as const,
     }
     const synced = syncYamlFromForm(original, form, emptyOptions)
     expect(synced).toContain('name: Renamed Agent')
     expect(synced).toContain('description: Updated from form')
     expect(synced).toContain('sandbox: bubblewrap')
     expect(synced).toContain('steps:')
+    expect(synced).toContain('type: workflow')
   })
 
   it('parseAgentYaml reports parseError for invalid YAML', () => {
@@ -346,49 +350,103 @@ evals:
   })
 })
 
-describe('adlAgentForm subAgents', () => {
-  it('parses subAgents from YAML', () => {
+describe('adlAgentForm orchestration', () => {
+  it('parses council orchestration from YAML', () => {
     const yaml = `adl: "1.0"
 id: triage-bot
 name: Triage Bot
 harness:
   type: claude-code
-subAgents:
-  - hello-world
-  - code-reviewer
+orchestration:
+  type: council
+  members:
+    - agent: hello-world
+    - agent: code-reviewer
+  rounds: independent+rebuttal
+`
+    const { form, hasCouncil } = parseAgentYaml(yaml, emptyOptions)
+    expect(hasCouncil).toBe(true)
+    expect(form.orchestrationType).toBe('council')
+    expect(form.councilMembers).toEqual(['hello-world', 'code-reviewer'])
+  })
+
+  it('parses subAgents orchestration', () => {
+    const yaml = `adl: "1.0"
+id: orch
+name: Orch
+harness:
+  type: claude-code
+orchestration:
+  type: subAgents
+  members:
+    - agent: hello-world
+  maxTurns: 12
 `
     const { form, hasSubAgents } = parseAgentYaml(yaml, emptyOptions)
     expect(hasSubAgents).toBe(true)
-    expect(form.subAgents).toEqual(['hello-world', 'code-reviewer'])
+    expect(form.orchestrationType).toBe('subAgents')
+    expect(form.subAgentsMaxTurns).toBe('12')
   })
 
-  it('round-trips subAgents', () => {
+  it('round-trips council orchestration', () => {
     const original = `adl: "1.0"
 id: triage-bot
 name: Triage Bot
 harness:
   type: claude-code
-subAgents:
-  - hello-world
+orchestration:
+  type: council
+  members:
+    - agent: hello-world
 `
     const { form } = parseAgentYaml(original, emptyOptions)
     const merged = mergeFormIntoAgentYaml(original, form, emptyOptions)
     const { form: reparsed } = parseAgentYaml(merged, emptyOptions)
-    expect(reparsed.subAgents).toEqual(['hello-world'])
+    expect(reparsed.orchestrationType).toBe('council')
+    expect(reparsed.councilMembers).toEqual(['hello-world'])
+    expect(merged).toContain('orchestration:')
+    expect(merged).not.toMatch(/^council:/m)
   })
 
-  it('removes subAgents when cleared in form', () => {
+  it('removes orchestration when type cleared', () => {
     const original = `adl: "1.0"
 id: triage-bot
 name: Triage Bot
 harness:
   type: claude-code
-subAgents:
-  - hello-world
+orchestration:
+  type: council
+  members:
+    - agent: hello-world
 `
     const { form } = parseAgentYaml(original, emptyOptions)
-    const merged = mergeFormIntoAgentYaml(original, { ...form, subAgents: [] }, emptyOptions)
-    expect(merged).not.toContain('subAgents:')
+    const merged = mergeFormIntoAgentYaml(
+      original,
+      { ...form, orchestrationType: '', councilMembers: [] },
+      emptyOptions,
+    )
+    expect(merged).not.toContain('orchestration:')
+  })
+
+  it('preserves workflow steps under orchestration', () => {
+    const original = `adl: "1.0"
+id: wf
+name: WF
+harness:
+  type: claude-code
+orchestration:
+  type: workflow
+  steps:
+    - name: review
+      harness:
+        type: claude-code
+`
+    const { form, hasWorkflowSteps } = parseAgentYaml(original, emptyOptions)
+    expect(hasWorkflowSteps).toBe(true)
+    expect(form.orchestrationType).toBe('workflow')
+    const merged = mergeFormIntoAgentYaml(original, { ...form, name: 'WF2' }, emptyOptions)
+    expect(merged).toContain('type: workflow')
+    expect(merged).toContain('name: review')
   })
 })
 

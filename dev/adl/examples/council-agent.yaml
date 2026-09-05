@@ -1,0 +1,23 @@
+adl: "1.0"
+id: software-engineering-council
+name: Software Engineering Council
+description: Deliberative multi-agent council — independent positions, rebuttals, chair synthesis.
+version: 0.1.0
+
+harness:
+  type: claude-code
+
+orchestration:
+  type: council
+  members:
+    - agent: claude-code
+    - agent: codex
+  rounds: independent+rebuttal
+  sessionMode: persistent
+  quorum: 2
+  memberTimeout: 8m
+  failurePolicy: continue-with-quorum
+
+systemPrompt: >-
+  You are the council chair. Synthesize member outputs into a clear verdict with
+  vote, disagreements, minority report, confidence, and sources.

@@ -308,14 +308,14 @@ func handleSessionAGUI(w http.ResponseWriter, r *http.Request, sessionID string)
 					"data":      ev.ImageData,
 				},
 			})
-		case agent.EventSubAgentRouted:
+		case agent.EventCouncilProgress:
+			if ev.Council == nil {
+				continue
+			}
 			writeAGUIEventIfConnected(reqCtx, w, flusher, map[string]any{
-				"type": "CUSTOM",
-				"name": "sub_agent_routed",
-				"value": map[string]any{
-					"agentId": ev.RoutedAgentID,
-					"label":   ev.RoutedAgentLabel,
-				},
+				"type":  "CUSTOM",
+				"name":  "council_progress",
+				"value": ev.Council,
 			})
 		case agent.EventHITLRequest:
 			if req, err := coordinator().Get(runCtx, ev.Content); err == nil {

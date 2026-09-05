@@ -66,8 +66,18 @@ export interface AgentFormModel {
   toolApprovalTools: string[]
   hitlMode: HitlMode
   evals: FormEval[]
-  subAgents: string[]
+  orchestrationType: OrchestrationType
+  councilMembers: string[]
+  councilRounds: CouncilRounds
+  councilQuorum: string
+  councilSessionMode: CouncilSessionMode
+  councilMemberTimeout: string
+  subAgentsMaxTurns: string
 }
+
+export type OrchestrationType = '' | 'subAgents' | 'council' | 'workflow'
+export type CouncilRounds = '' | 'independent' | 'independent+rebuttal' | 'independent+rebuttal+adjudication'
+export type CouncilSessionMode = '' | 'persistent' | 'fresh'
 
 export interface AgentFormOptions {
   harnesses: HarnessOption[]
@@ -111,6 +121,7 @@ export interface MCPOption {
 export interface ParsedAgentDoc {
   form: AgentFormModel
   hasWorkflowSteps: boolean
+  hasCouncil: boolean
   hasSubAgents: boolean
   parseError?: boolean
 }
@@ -152,7 +163,13 @@ export function defaultAgentForm(): AgentFormModel {
     toolApprovalTools: [],
     hitlMode: '',
     evals: [],
-    subAgents: [],
+    orchestrationType: '',
+    councilMembers: [],
+    councilRounds: 'independent+rebuttal',
+    councilQuorum: '',
+    councilSessionMode: 'persistent',
+    councilMemberTimeout: '',
+    subAgentsMaxTurns: '20',
   }
 }
 
@@ -310,18 +327,82 @@ function parseEvals(doc: Record<string, unknown>): FormEval[] {
   return raw.map((e) => parseFormEval(e)).filter(Boolean) as FormEval[]
 }
 
-function parseSubAgents(doc: Record<string, unknown>): string[] {
-  const raw = doc.subAgents
-  if (!Array.isArray(raw)) return []
-  return raw.map((item) => String(item).trim()).filter(Boolean)
-}
-
-function hasMultiStepPipeline(steps: unknown[] | undefined): boolean {
-  if (!Array.isArray(steps) || steps.length === 0) return false
-  if (steps.length > 1) return true
-  const step = steps[0]
-  if (!step || typeof step !== 'object') return false
-  return String((step as Record<string, unknown>).type ?? '').trim() === 'hitl'
+function parseOrchestration(doc: Record<string, unknown>): {
+  type: OrchestrationType
+  members: string[]
+  rounds: CouncilRounds
+  quorum: string
+  sessionMode: CouncilSessionMode
+  memberTimeout: string
+  maxTurns: string
+  hasCouncil: boolean
+  hasSubAgents: boolean
+  hasWorkflowSteps: boolean
+} {
+  const empty = {
+    type: '' as OrchestrationType,
+    members: [],
+    rounds: 'independent+rebuttal' as CouncilRounds,
+    quorum: '',
+    sessionMode: 'persistent' as CouncilSessionMode,
+    memberTimeout: '',
+    maxTurns: '20',
+    hasCouncil: false,
+    hasSubAgents: false,
+    hasWorkflowSteps: false,
+  }
+  const raw = doc.orchestration as Record<string, unknown> | undefined
+  if (!raw || typeof raw !== 'object') {
+    return empty
+  }
+  const typeRaw = String(raw.type ?? '').trim()
+  let type: OrchestrationType = ''
+  if (typeRaw === 'subAgents' || typeRaw === 'council' || typeRaw === 'workflow') {
+    type = typeRaw
+  }
+  const membersRaw = raw.members
+  const members: string[] = []
+  if (Array.isArray(membersRaw)) {
+    for (const item of membersRaw) {
+      if (typeof item === 'string') {
+        const id = item.trim()
+        if (id) members.push(id)
+        continue
+      }
+      if (item && typeof item === 'object') {
+        const id = String((item as Record<string, unknown>).agent ?? '').trim()
+        if (id) members.push(id)
+      }
+    }
+  }
+  const roundsRaw = String(raw.rounds ?? '').trim()
+  let rounds: CouncilRounds = 'independent+rebuttal'
+  if (
+    roundsRaw === 'independent' ||
+    roundsRaw === 'independent+rebuttal' ||
+    roundsRaw === 'independent+rebuttal+adjudication'
+  ) {
+    rounds = roundsRaw
+  }
+  const sessionRaw = String(raw.sessionMode ?? '').trim()
+  let sessionMode: CouncilSessionMode = 'persistent'
+  if (sessionRaw === 'persistent' || sessionRaw === 'fresh') {
+    sessionMode = sessionRaw
+  }
+  const steps = raw.steps as unknown[] | undefined
+  const hasWorkflowSteps = type === 'workflow' && Array.isArray(steps) && steps.length > 0
+  return {
+    type,
+    members,
+    rounds,
+    quorum: raw.quorum != null ? String(raw.quorum) : '',
+    sessionMode,
+    memberTimeout: String(raw.memberTimeout ?? ''),
+    maxTurns: raw.maxTurns != null ? String(raw.maxTurns) : '20',
+    hasCouncil: type === 'council' && members.length > 0,
+    hasSubAgents: type === 'subAgents' && members.length > 0,
+    hasWorkflowSteps,
+  }
 }
 
 /** Read supported form fields from YAML without modifying the source text. */
@@ -330,20 +411,23 @@ export function parseAgentYaml(content: string, options: AgentFormOptions): Pars
   try {
     doc = parse(content) as Record<string, unknown> | null
   } catch {
-    return { form: defaultAgentForm(), hasWorkflowSteps: false, hasSubAgents: false, parseError: true }
+    return {
+      form: defaultAgentForm(),
+      hasWorkflowSteps: false,
+      hasCouncil: false,
+      hasSubAgents: false,
+      parseError: true,
+    }
   }
   if (!doc || typeof doc !== 'object') {
-    return { form: defaultAgentForm(), hasWorkflowSteps: false, hasSubAgents: false }
+    return { form: defaultAgentForm(), hasWorkflowSteps: false, hasCouncil: false, hasSubAgents: false }
   }
 
   const harness = doc.harness as Record<string, unknown> | undefined
   const toolApprovals = doc.toolApprovals as Record<string, unknown> | undefined
   const hitl = doc.hitl as Record<string, unknown> | undefined
   const { skills: skillsRaw, mcpServers: mcpRaw } = aiAssetsLists(doc)
-  const steps = doc.steps as unknown[] | undefined
-  const hasWorkflowSteps = hasMultiStepPipeline(steps)
-  const subAgents = parseSubAgents(doc)
-  const hasSubAgents = subAgents.length > 0
+  const orch = parseOrchestration(doc)
 
   const form: AgentFormModel = {
     id: String(doc.id ?? doc.name ?? 'my-agent'),
@@ -369,10 +453,20 @@ export function parseAgentYaml(content: string, options: AgentFormOptions): Pars
     toolApprovalTools: parseStringList(toolApprovals?.tools),
     hitlMode: parseHitlMode(hitl?.mode),
     evals: parseEvals(doc),
-    subAgents,
+    orchestrationType: orch.type,
+    councilMembers: orch.members,
+    councilRounds: orch.rounds,
+    councilQuorum: orch.quorum,
+    councilSessionMode: orch.sessionMode,
+    councilMemberTimeout: orch.memberTimeout,
+    subAgentsMaxTurns: orch.maxTurns,
   }
-
-  return { form, hasWorkflowSteps, hasSubAgents }
+  return {
+    form,
+    hasWorkflowSteps: orch.hasWorkflowSteps,
+    hasCouncil: orch.hasCouncil,
+    hasSubAgents: orch.hasSubAgents,
+  }
 }
 
 function resolveHarnessOption(optionId: string, options: HarnessOption[]): HarnessOption | undefined {
@@ -671,20 +765,104 @@ export function mergeFormIntoAgentYaml(
   mergeToolApprovals(root, form)
   mergeHitl(root, form)
   mergeEvals(root, form)
-  mergeSubAgents(root, form)
+  mergeOrchestration(root, form, originalContent)
 
   if (!root.has('version')) root.set('version', '0.1.0')
 
   return doc.toString()
 }
 
-function mergeSubAgents(root: YAMLMap, form: AgentFormModel) {
-  const ids = form.subAgents.map((id) => id.trim()).filter(Boolean)
-  if (ids.length === 0) {
-    root.delete('subAgents')
+function mergeOrchestration(root: YAMLMap, form: AgentFormModel, originalContent: string) {
+  root.delete('council')
+  root.delete('steps')
+  root.delete('subAgents')
+
+  const type = form.orchestrationType
+  if (!type) {
+    root.delete('orchestration')
     return
   }
-  root.set('subAgents', ids)
+
+  // Preserve existing workflow steps from original YAML when type is workflow.
+  let preservedSteps: unknown = undefined
+  try {
+    const origDoc = parse(originalContent) as Record<string, unknown> | null
+    const orch = origDoc?.orchestration as Record<string, unknown> | undefined
+    if (orch && Array.isArray(orch.steps)) {
+      preservedSteps = orch.steps
+    } else if (Array.isArray(origDoc?.steps)) {
+      preservedSteps = origDoc.steps
+    }
+  } catch {
+    /* ignore */
+  }
+
+  const orch = ensureMap(root, 'orchestration')
+  orch.set('type', type)
+
+  if (type === 'workflow') {
+    orch.delete('members')
+    orch.delete('rounds')
+    orch.delete('quorum')
+    orch.delete('sessionMode')
+    orch.delete('memberTimeout')
+    orch.delete('maxTurns')
+    orch.delete('failurePolicy')
+    orch.delete('maxParallel')
+    orch.delete('maxQuestions')
+    if (preservedSteps !== undefined) {
+      orch.set('steps', preservedSteps)
+    } else if (!orch.has('steps')) {
+      orch.set('steps', [])
+    }
+    return
+  }
+
+  orch.delete('steps')
+  const ids = form.councilMembers.map((id) => id.trim()).filter(Boolean)
+  orch.set(
+    'members',
+    ids.map((agent) => ({ agent })),
+  )
+  if (form.councilSessionMode) {
+    orch.set('sessionMode', form.councilSessionMode)
+  } else {
+    orch.delete('sessionMode')
+  }
+  const timeout = form.councilMemberTimeout.trim()
+  if (timeout) orch.set('memberTimeout', timeout)
+  else orch.delete('memberTimeout')
+
+  if (type === 'subAgents') {
+    orch.delete('rounds')
+    orch.delete('quorum')
+    orch.delete('failurePolicy')
+    orch.delete('maxParallel')
+    orch.delete('maxQuestions')
+    const turns = form.subAgentsMaxTurns.trim()
+    if (turns) {
+      const n = Number(turns)
+      if (!Number.isNaN(n)) orch.set('maxTurns', n)
+    } else {
+      orch.delete('maxTurns')
+    }
+    return
+  }
+
+  // council
+  orch.delete('maxTurns')
+  if (form.councilRounds) {
+    orch.set('rounds', form.councilRounds)
+  } else {
+    orch.delete('rounds')
+  }
+  const quorum = form.councilQuorum.trim()
+  if (quorum) {
+    const n = Number(quorum)
+    if (!Number.isNaN(n)) orch.set('quorum', n)
+  } else {
+    orch.delete('quorum')
+  }
 }
 
 /** Generate YAML for a brand-new agent (no original file). */

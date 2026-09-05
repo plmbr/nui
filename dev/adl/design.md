@@ -25,8 +25,9 @@ The notes below are a nui-focused summary. When in doubt, prefer the ADL repo.
 | `hitl` | no | Human-in-the-loop mode and channels |
 | `toolApprovals` | no | Allow/deny tool policies |
 | `evals` | no | Test cases for `nui agent eval run` |
-| `subAgents` | no | Orchestrator: delegate to other agent IDs |
-| `steps` | no | Multi-step workflow DAG |
+| `orchestration` | no | Multi-agent modes: `subAgents`, `council`, or `workflow` |
+
+Legacy top-level `steps`, `subAgents`, and `council` are **rejected**. Use `orchestration` instead.
 
 ## Harness types
 
@@ -40,6 +41,76 @@ The notes below are a nui-focused summary. When in doubt, prefer the ADL repo.
 | `ext:<extension>/<harness-id>` | Extension harness (stdio/tcp/http) |
 
 See [harness-design.md](../harness-design.md) for wire protocols. Sample YAML: [examples/](examples/) (nui-local) or [ADL/examples](https://github.com/plmbr/ADL/tree/main/examples).
+
+## Orchestration
+
+All multi-agent execution is configured under `orchestration`:
+
+| `orchestration.type` | Behavior |
+|---|---|
+| `subAgents` | Adaptive chair — this agent delegates to members via `run_sub_agent` until the goal is done |
+| `council` | Deliberation — members run scheduled rounds; this agent synthesizes the verdict |
+| `workflow` | Step DAG — topological `dependsOn` pipeline (optionally with `type: hitl` gates) |
+
+### Shared member fields (`subAgents` / `council`)
+
+```yaml
+orchestration:
+  type: council          # or subAgents
+  members:
+    - agent: hello-world
+    - agent: code-reviewer
+  sessionMode: persistent   # persistent | fresh
+  memberTimeout: 8m
+```
+
+- `members[].agent` — registry agent ids only (builtins, `~/.nui/agents/`, `ext:…`)
+- Orchestration agents cannot nest as members or workflow step agents of another orchestration agent
+
+### `subAgents`
+
+```yaml
+orchestration:
+  type: subAgents
+  members:
+    - agent: claude-code
+    - agent: codex
+  maxTurns: 20
+```
+
+Chair loop budget defaults to 20 turns. See [examples/subagents-orchestrator.yaml](examples/subagents-orchestrator.yaml).
+
+### `council`
+
+```yaml
+orchestration:
+  type: council
+  members:
+    - agent: claude-code
+    - agent: codex
+  rounds: independent+rebuttal   # independent | independent+rebuttal | independent+rebuttal+adjudication
+  quorum: 2
+  failurePolicy: continue-with-quorum   # or fail
+```
+
+See [examples/council-agent.yaml](examples/council-agent.yaml).
+
+### `workflow`
+
+```yaml
+orchestration:
+  type: workflow
+  steps:
+    - name: review
+      harness:
+        type: claude-code
+      systemPrompt: Review the codebase and list issues.
+    - name: fix
+      dependsOn: [review]
+      systemPrompt: Apply fixes for the issues found in the review step.
+```
+
+Steps run sequentially in topological order. Each user chat turn re-runs the full DAG. See [examples/workflow-agent.yaml](examples/workflow-agent.yaml).
 
 ## Validation
 

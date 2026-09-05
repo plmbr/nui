@@ -16,6 +16,7 @@ import {
   type ToolCallPart,
   updateToolPart,
 } from '@/lib/chatMessageUtils'
+import { mergeCouncilProgress, type CouncilProgressEvent } from '@/lib/councilProgress'
 import { deriveSessionProgress, encodeSessionProgress, type SessionProgress } from '@/lib/sessionProgress'
 import {
   applySubagentTextChunk,
@@ -492,6 +493,13 @@ function applyAgentEvent(
             ],
           }
         }
+        case 'council_progress': {
+          if (!ev.council) return m
+          return {
+            ...m,
+            councilProgress: mergeCouncilProgress(m.councilProgress, ev.council as CouncilProgressEvent),
+          }
+        }
         case 'error':
           return applyAssistantError(m, ev.error ?? '')
         default:
@@ -500,6 +508,9 @@ function applyAgentEvent(
     })
     return { messages, pendingTools, pendingToolArgBuffers }
   })
+  if (ev.type === 'council_progress' && ev.council?.memberSessionId) {
+    void attachCouncilMemberSession(ev.council.memberSessionId, ev.council.runId, sessionId)
+  }
 }
 
 function attachRunEvents(sessionId: string, runId: string) {
@@ -662,6 +673,92 @@ export async function ensureSessionChatLoaded(sessionId: string): Promise<void> 
     await reconnectActiveRun(sessionId)
   }
   await reloadPendingHitl(sessionId)
+}
+
+const councilChildrenByParent = new Map<string, Set<string>>()
+
+function registerCouncilChild(parentSessionId: string, childSessionId: string) {
+  let set = councilChildrenByParent.get(parentSessionId)
+  if (!set) {
+    set = new Set()
+    councilChildrenByParent.set(parentSessionId, set)
+  }
+  set.add(childSessionId)
+}
+
+/** Load a council member child session and attach to a live run when runId is known. */
+export async function attachCouncilMemberSession(
+  sessionId: string,
+  runId?: string,
+  parentSessionId?: string,
+): Promise<void> {
+  const id = sessionId.trim()
+  if (!id) return
+  if (parentSessionId) {
+    registerCouncilChild(parentSessionId, id)
+  }
+  await ensureSessionChatLoaded(id)
+  const entry = getOrCreateEntry(id)
+  if (entry.isRunning) {
+    if (runId && entry.activeRunId !== runId) {
+      // Prefer the latest announced run.
+      entry.subscription?.unsubscribe()
+      entry.subscription = null
+      entry.activeRunId = null
+      entry.isRunning = false
+    } else {
+      return
+    }
+  }
+  if (runId) {
+    if (entry.messages.length === 0) {
+      await reloadMessages(id)
+    }
+    let assistantMsgId = entry.assistantMsgId
+    const last = entry.messages[entry.messages.length - 1]
+    if (!assistantMsgId) {
+      if (last?.role === 'assistant') {
+        assistantMsgId = last.id
+      } else {
+        assistantMsgId = uuidv4()
+        entry.messages = [
+          ...entry.messages,
+          { id: assistantMsgId, role: 'assistant', content: '', parts: [] },
+        ]
+      }
+    }
+    entry.assistantMsgId = assistantMsgId
+    entry.activeRunId = runId
+    entry.isRunning = true
+    clearPendingToolState(entry)
+    emitSession(id)
+    attachRunEvents(id, runId)
+    await reloadPendingHitl(id)
+    return
+  }
+  await reconnectActiveRun(id)
+}
+
+export function clearSessionChat(sessionId: string) {
+  const children = councilChildrenByParent.get(sessionId)
+  councilChildrenByParent.delete(sessionId)
+  if (children) {
+    for (const childId of [...children]) {
+      clearSessionChat(childId)
+    }
+  }
+  for (const [parent, set] of councilChildrenByParent) {
+    if (set.delete(sessionId) && set.size === 0) {
+      councilChildrenByParent.delete(parent)
+    }
+  }
+  aguiFinishedRuns.delete(sessionId)
+  const entry = entries.get(sessionId)
+  if (!entry) return
+  entry.subscription?.unsubscribe()
+  entries.delete(sessionId)
+  emitRunning()
+  emitProgress()
 }
 
 export async function stopRun(sessionId: string): Promise<void> {
@@ -993,14 +1090,20 @@ function startSend(sessionId: string, text: string) {
           handleHitlCustomEvent(sessionId, e.value)
           return
         }
-        if (e.name === 'sub_agent_routed') {
-          const { label } = e.value as { agentId?: string; label?: string }
-          if (!label) return
+        if (e.name === 'council_progress') {
+          const value = e.value as CouncilProgressEvent
           setEntry(sessionId, (ent) => ({
-            messages: ent.messages.map((m) =>
-              m.id === assistantMsgId ? { ...m, routedAgentLabel: label } : m,
-            ),
+            messages: ent.messages.map((m) => {
+              if (m.id !== assistantMsgId) return m
+              return {
+                ...m,
+                councilProgress: mergeCouncilProgress(m.councilProgress, value),
+              }
+            }),
           }))
+          if (value.memberSessionId) {
+            void attachCouncilMemberSession(value.memberSessionId, value.runId, sessionId)
+          }
           return
         }
         if (e.name === 'open_session') {
@@ -1107,14 +1210,4 @@ function startSend(sessionId: string, text: string) {
   entry.subscription = sub
   registerSessionRun(sessionId, () => stopRun(sessionId))
   emitSession(sessionId)
-}
-
-export function clearSessionChat(sessionId: string) {
-  aguiFinishedRuns.delete(sessionId)
-  const entry = entries.get(sessionId)
-  if (!entry) return
-  entry.subscription?.unsubscribe()
-  entries.delete(sessionId)
-  emitRunning()
-  emitProgress()
 }

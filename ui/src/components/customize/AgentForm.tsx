@@ -21,6 +21,7 @@ import {
   type FormSkill,
   type HitlMode,
   type KeyValue,
+  type OrchestrationType,
   type ToolApprovalPolicy,
   slugFromName,
 } from '@/lib/adlAgentForm'
@@ -30,7 +31,6 @@ interface Props {
   form: AgentFormModel
   options: AgentFormOptions
   hasWorkflowSteps?: boolean
-  hasSubAgents?: boolean
   editingAgentId?: string
   onChange: (form: AgentFormModel) => void
   onRunEvalCase?: (name: string) => void
@@ -55,6 +55,26 @@ function FieldLabel({
       {children}
       {required && <> <RequiredMark /></>}
     </Label>
+  )
+}
+
+function FormSection({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <section className="agent-form__section">
+      <div className="agent-form__section-header">
+        <h3 className="agent-form__section-title">{title}</h3>
+        {description ? <p className="agent-form__section-desc">{description}</p> : null}
+      </div>
+      <div className="agent-form__section-body">{children}</div>
+    </section>
   )
 }
 
@@ -161,7 +181,6 @@ export function AgentForm({
   form,
   options,
   hasWorkflowSteps,
-  hasSubAgents,
   editingAgentId,
   onChange,
   onRunEvalCase,
@@ -188,33 +207,28 @@ export function AgentForm({
     patch({ mcpServers: next })
   }
 
-  const addSubAgent = (agentId: string) => {
-    if (!agentId || form.subAgents.includes(agentId)) return
-    patch({ subAgents: [...form.subAgents, agentId] })
+  const addCouncilMember = (agentId: string) => {
+    if (!agentId || form.councilMembers.includes(agentId)) return
+    patch({ councilMembers: [...form.councilMembers, agentId] })
   }
 
   const selectableAgents = options.agents.filter(
-    (a) => a.id !== editingAgentId && !form.subAgents.includes(a.id),
+    (a) => a.id !== editingAgentId && !form.councilMembers.includes(a.id),
   )
 
   return (
     <div className="agent-form space-y-6 max-w-2xl">
       {hasWorkflowSteps && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
-          This agent has pipeline steps defined in YAML. The form edits top-level fields only; steps
-          are preserved when you save.
-        </div>
-      )}
-      {hasSubAgents && hasWorkflowSteps && (
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-          This agent defines both sub-agents and pipeline steps. Only one orchestration mode is
-          supported — remove steps or sub-agents in YAML.
+          This agent has workflow steps under orchestration. The form edits top-level fields only;
+          steps are preserved when you save — switch to YAML to edit the step DAG.
         </div>
       )}
 
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Identity</h3>
-        <p className="text-xs text-muted-foreground">At least one of ID or Name is required.</p>
+      <FormSection
+        title="Identity"
+        description="At least one of ID or Name is required."
+      >
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <FieldLabel htmlFor="agent-id" required>ID</FieldLabel>
@@ -262,10 +276,9 @@ export function AgentForm({
             Comma-separated labels for filtering in the new-session UI.
           </p>
         </div>
-      </section>
+      </FormSection>
 
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Harness</h3>
+      <FormSection title="Harness">
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <FieldLabel required>Harness type</FieldLabel>
@@ -296,111 +309,118 @@ export function AgentForm({
         </div>
 
         {harnessType === 'api' && (
-          <div className="space-y-1.5 max-w-md">
-            <FieldLabel required>API provider</FieldLabel>
-            <Select
-              value={form.apiProvider}
-              onValueChange={(v) => patch({ apiProvider: v ?? 'anthropic' })}
-              items={[
-                { value: 'anthropic', label: 'Anthropic' },
-                { value: 'openai', label: 'OpenAI' },
-                { value: 'gemini', label: 'Gemini' },
-                { value: 'openrouter', label: 'OpenRouter' },
-                { value: 'ollama', label: 'Ollama' },
-              ]}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="anthropic">Anthropic</SelectItem>
-                <SelectItem value="openai">OpenAI</SelectItem>
-                <SelectItem value="gemini">Gemini</SelectItem>
-                <SelectItem value="openrouter">OpenRouter</SelectItem>
-                <SelectItem value="ollama">Ollama</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="agent-form__subsection">
+            <div className="space-y-1.5 max-w-md">
+              <FieldLabel required>API provider</FieldLabel>
+              <Select
+                value={form.apiProvider}
+                onValueChange={(v) => patch({ apiProvider: v ?? 'anthropic' })}
+                items={[
+                  { value: 'anthropic', label: 'Anthropic' },
+                  { value: 'openai', label: 'OpenAI' },
+                  { value: 'gemini', label: 'Gemini' },
+                  { value: 'openrouter', label: 'OpenRouter' },
+                  { value: 'ollama', label: 'Ollama' },
+                ]}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="anthropic">Anthropic</SelectItem>
+                  <SelectItem value="openai">OpenAI</SelectItem>
+                  <SelectItem value="gemini">Gemini</SelectItem>
+                  <SelectItem value="openrouter">OpenRouter</SelectItem>
+                  <SelectItem value="ollama">Ollama</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
 
         {harnessType === 'devcontainer' && (
-          <div className="space-y-1.5 max-w-md">
-            <FieldLabel required>Inner harness</FieldLabel>
-            <p className="text-xs text-muted-foreground">
-              CLI harness to run inside the nui-managed dev container.
-            </p>
-            <Select
-              value={form.innerHarness}
-              onValueChange={(v) => patch({ innerHarness: v ?? 'claude-code' })}
-              items={[
-                { value: 'claude-code', label: 'Claude Code' },
-                { value: 'pi', label: 'Pi' },
-                { value: 'codex', label: 'Codex' },
-                { value: 'opencode', label: 'OpenCode' },
-              ]}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="claude-code">Claude Code</SelectItem>
-                <SelectItem value="pi">Pi</SelectItem>
-                <SelectItem value="codex">Codex</SelectItem>
-                <SelectItem value="opencode">OpenCode</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="agent-form__subsection">
+            <div className="space-y-1.5 max-w-md">
+              <FieldLabel required>Inner harness</FieldLabel>
+              <p className="text-xs text-muted-foreground">
+                CLI harness to run inside the nui-managed dev container.
+              </p>
+              <Select
+                value={form.innerHarness}
+                onValueChange={(v) => patch({ innerHarness: v ?? 'claude-code' })}
+                items={[
+                  { value: 'claude-code', label: 'Claude Code' },
+                  { value: 'pi', label: 'Pi' },
+                  { value: 'codex', label: 'Codex' },
+                  { value: 'opencode', label: 'OpenCode' },
+                ]}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="claude-code">Claude Code</SelectItem>
+                  <SelectItem value="pi">Pi</SelectItem>
+                  <SelectItem value="codex">Codex</SelectItem>
+                  <SelectItem value="opencode">OpenCode</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
 
         {harnessType === 'docker' && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="docker-image" required>Container image</FieldLabel>
-              <Input
-                id="docker-image"
-                value={form.dockerImage}
-                onChange={(e) => patch({ dockerImage: e.target.value })}
-                placeholder="nui-echo-agent"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="container-port" required>Container port</FieldLabel>
-              <Input
-                id="container-port"
-                value={form.containerPort}
-                onChange={(e) => patch({ containerPort: e.target.value })}
-                placeholder="9090"
-              />
+          <div className="agent-form__subsection">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <FieldLabel htmlFor="docker-image" required>Container image</FieldLabel>
+                <Input
+                  id="docker-image"
+                  value={form.dockerImage}
+                  onChange={(e) => patch({ dockerImage: e.target.value })}
+                  placeholder="nui-echo-agent"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <FieldLabel htmlFor="container-port" required>Container port</FieldLabel>
+                <Input
+                  id="container-port"
+                  value={form.containerPort}
+                  onChange={(e) => patch({ containerPort: e.target.value })}
+                  placeholder="9090"
+                />
+              </div>
             </div>
           </div>
         )}
 
         {harnessType === 'remote' && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="remote-host" required>Host</FieldLabel>
-              <Input
-                id="remote-host"
-                value={form.remoteHost}
-                onChange={(e) => patch({ remoteHost: e.target.value })}
-                placeholder="127.0.0.1"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <FieldLabel htmlFor="remote-port" required>Port</FieldLabel>
-              <Input
-                id="remote-port"
-                value={form.remotePort}
-                onChange={(e) => patch({ remotePort: e.target.value })}
-                placeholder="9090"
-              />
+          <div className="agent-form__subsection">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <FieldLabel htmlFor="remote-host" required>Host</FieldLabel>
+                <Input
+                  id="remote-host"
+                  value={form.remoteHost}
+                  onChange={(e) => patch({ remoteHost: e.target.value })}
+                  placeholder="127.0.0.1"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <FieldLabel htmlFor="remote-port" required>Port</FieldLabel>
+                <Input
+                  id="remote-port"
+                  value={form.remotePort}
+                  onChange={(e) => patch({ remotePort: e.target.value })}
+                  placeholder="9090"
+                />
+              </div>
             </div>
           </div>
         )}
-      </section>
+      </FormSection>
 
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Prompt</h3>
+      <FormSection title="Prompt">
         <div className="space-y-1.5">
           <Label htmlFor="system-prompt">System prompt</Label>
           <Textarea
@@ -445,16 +465,14 @@ export function AgentForm({
             placeholder="Review the README and suggest improvements"
           />
         </div>
-      </section>
+      </FormSection>
 
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Session</h3>
+      <FormSection
+        title="Session"
+        description="When enabled, users choose a project directory when creating a session. Otherwise nui uses an isolated workspace that is removed when the session is deleted."
+      >
         <div className="space-y-1.5">
           <Label>Working directory</Label>
-          <p className="text-xs text-muted-foreground">
-            When enabled, users choose a project directory when creating a session.
-            Otherwise nui uses an isolated workspace that is removed when the session is deleted.
-          </p>
           <Select
             value={form.workingDirInput ? 'true' : 'false'}
             onValueChange={(v) => patch({ workingDirInput: v === 'true' })}
@@ -472,10 +490,9 @@ export function AgentForm({
             </SelectContent>
           </Select>
         </div>
-      </section>
+      </FormSection>
 
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Safety &amp; approvals</h3>
+      <FormSection title="Safety & approvals">
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Tool approval policy</Label>
@@ -540,31 +557,32 @@ export function AgentForm({
           </div>
         </div>
         {(form.toolApprovalPolicy === 'allowlist' || form.toolApprovalPolicy === 'denylist') && (
-          <div className="space-y-1.5">
-            <FieldLabel htmlFor="tool-approval-tools" required>Tool list</FieldLabel>
-            <p className="text-xs text-muted-foreground">
-              One tool name per line (e.g. Bash, Write, Read, mcp__nui-hitl__*).
-            </p>
-            <Textarea
-              id="tool-approval-tools"
-              value={form.toolApprovalTools.join('\n')}
-              onChange={(e) => {
-                const toolApprovalTools = e.target.value
-                  .split('\n')
-                  .map((line) => line.trim())
-                  .filter(Boolean)
-                patch({ toolApprovalTools })
-              }}
-              rows={4}
-              placeholder={'Bash\nWrite\nEdit'}
-              className="font-mono text-xs"
-            />
+          <div className="agent-form__subsection">
+            <div className="space-y-1.5">
+              <FieldLabel htmlFor="tool-approval-tools" required>Tool list</FieldLabel>
+              <p className="text-xs text-muted-foreground">
+                One tool name per line (e.g. Bash, Write, Read, mcp__nui-hitl__*).
+              </p>
+              <Textarea
+                id="tool-approval-tools"
+                value={form.toolApprovalTools.join('\n')}
+                onChange={(e) => {
+                  const toolApprovalTools = e.target.value
+                    .split('\n')
+                    .map((line) => line.trim())
+                    .filter(Boolean)
+                  patch({ toolApprovalTools })
+                }}
+                rows={4}
+                placeholder={'Bash\nWrite\nEdit'}
+                className="font-mono text-xs"
+              />
+            </div>
           </div>
         )}
-      </section>
+      </FormSection>
 
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Skills</h3>
+      <FormSection title="Skills">
         {form.skills.length > 0 && (
           <ul className="space-y-2">
             {form.skills.map((skill, index) => {
@@ -615,10 +633,9 @@ export function AgentForm({
         ) : (
           <p className="text-xs text-muted-foreground">No skills available. Install skills or enable extensions.</p>
         )}
-      </section>
+      </FormSection>
 
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold">MCP servers</h3>
+      <FormSection title="MCP servers">
         {form.mcpServers.length > 0 && (
           <ul className="space-y-2">
             {form.mcpServers.map((server, index) => {
@@ -674,56 +691,192 @@ export function AgentForm({
             No MCP servers available. Add servers under Customize → MCP servers or enable extensions.
           </p>
         )}
-      </section>
+      </FormSection>
 
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Sub-agents</h3>
-        <p className="text-xs text-muted-foreground">
-          Orchestrator agents route each user message to the best matching sub-agent. Agent names and
-          descriptions come from the registry.
-        </p>
-        {form.subAgents.length > 0 && (
-          <ul className="space-y-2">
-            {form.subAgents.map((agentId) => {
-              const opt = options.agents.find((a) => a.id === agentId)
-              return (
-                <li key={agentId} className="flex items-center gap-2 rounded-md border px-3 py-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{opt?.label ?? agentId}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {opt?.description || agentId}
-                    </p>
+      <FormSection
+        title="Orchestration"
+        description="Optional multi-agent mode. Leave as None for a single agent."
+      >
+        <div className="space-y-1.5 w-full max-w-md">
+          <FieldLabel>Type</FieldLabel>
+          <Select
+            value={form.orchestrationType || 'none'}
+            onValueChange={(v) => {
+              const next = (v === 'none' ? '' : v) as OrchestrationType
+              patch({
+                orchestrationType: next,
+                councilMembers: next === 'workflow' || next === '' ? [] : form.councilMembers,
+              })
+            }}
+            items={[
+              { value: 'none', label: 'None' },
+              { value: 'subAgents', label: 'Sub-agents (adaptive chair)' },
+              { value: 'council', label: 'Council (deliberation)' },
+              { value: 'workflow', label: 'Workflow (step DAG)' },
+            ]}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="w-max min-w-(--anchor-width)">
+              <SelectItem value="none">None</SelectItem>
+              <SelectItem value="subAgents">Sub-agents (adaptive chair)</SelectItem>
+              <SelectItem value="council">Council (deliberation)</SelectItem>
+              <SelectItem value="workflow">Workflow (step DAG)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {form.orchestrationType === 'workflow' && (
+          <div className="agent-form__subsection">
+            <p className="text-xs text-muted-foreground">
+              Edit <code className="text-[11px]">orchestration.steps</code> in YAML mode. Form save
+              preserves existing steps.
+            </p>
+          </div>
+        )}
+
+        {(form.orchestrationType === 'subAgents' || form.orchestrationType === 'council') && (
+          <div className="agent-form__subsection">
+            <p className="text-xs text-muted-foreground">
+              {form.orchestrationType === 'subAgents'
+                ? 'The chair (this agent) delegates tasks to members via run_sub_agent until the goal is done.'
+                : 'Members run deliberative rounds; this agent synthesizes the verdict.'}
+            </p>
+            {form.councilMembers.length > 0 && (
+              <ul className="space-y-2">
+                {form.councilMembers.map((agentId) => {
+                  const opt = options.agents.find((a) => a.id === agentId)
+                  return (
+                    <li key={agentId} className="flex items-center gap-2 rounded-md border px-3 py-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{opt?.label ?? agentId}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {opt?.description || agentId}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          patch({ councilMembers: form.councilMembers.filter((id) => id !== agentId) })
+                        }
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+            {selectableAgents.length > 0 ? (
+              <SearchableSelect
+                onValueChange={addCouncilMember}
+                resetOnSelect
+                items={selectableAgents.map((item) => ({
+                  id: item.id,
+                  label: item.label,
+                  group: item.group,
+                  description: item.description,
+                }))}
+                placeholder="Add member…"
+                searchPlaceholder="Search agents…"
+              />
+            ) : (
+              <p className="text-xs text-muted-foreground">No other agents available to add.</p>
+            )}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <FieldLabel>Member memory</FieldLabel>
+                <Select
+                  value={form.councilSessionMode || 'persistent'}
+                  onValueChange={(v) =>
+                    patch({
+                      councilSessionMode: v as AgentFormModel['councilSessionMode'],
+                    })
+                  }
+                  items={[
+                    { value: 'persistent', label: 'Remember prior rounds' },
+                    { value: 'fresh', label: 'Start clean each run' },
+                  ]}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="w-max min-w-(--anchor-width)">
+                    <SelectItem value="persistent">Remember prior rounds</SelectItem>
+                    <SelectItem value="fresh">Start clean each run</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <FieldLabel htmlFor="member-timeout">Member timeout</FieldLabel>
+                <Input
+                  id="member-timeout"
+                  value={form.councilMemberTimeout}
+                  onChange={(e) => patch({ councilMemberTimeout: e.target.value })}
+                  placeholder="8m"
+                />
+              </div>
+              {form.orchestrationType === 'subAgents' && (
+                <div className="space-y-1.5">
+                  <FieldLabel htmlFor="max-turns">Max turns</FieldLabel>
+                  <Input
+                    id="max-turns"
+                    value={form.subAgentsMaxTurns}
+                    onChange={(e) => patch({ subAgentsMaxTurns: e.target.value })}
+                    placeholder="20"
+                  />
+                </div>
+              )}
+              {form.orchestrationType === 'council' && (
+                <>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <FieldLabel>Deliberation</FieldLabel>
+                    <Select
+                      value={form.councilRounds || 'independent+rebuttal'}
+                      onValueChange={(v) =>
+                        patch({
+                          councilRounds: v as AgentFormModel['councilRounds'],
+                        })
+                      }
+                      items={[
+                        { value: 'independent', label: 'One pass' },
+                        { value: 'independent+rebuttal', label: 'Answer, then critique' },
+                        {
+                          value: 'independent+rebuttal+adjudication',
+                          label: 'Answer, critique, then resolve disputes',
+                        },
+                      ]}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="w-max min-w-(--anchor-width)">
+                        <SelectItem value="independent">One pass</SelectItem>
+                        <SelectItem value="independent+rebuttal">Answer, then critique</SelectItem>
+                        <SelectItem value="independent+rebuttal+adjudication">
+                          Answer, critique, then resolve disputes
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => patch({ subAgents: form.subAgents.filter((id) => id !== agentId) })}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </li>
-              )
-            })}
-          </ul>
+                  <div className="space-y-1.5">
+                    <FieldLabel htmlFor="council-quorum">Quorum</FieldLabel>
+                    <Input
+                      id="council-quorum"
+                      value={form.councilQuorum}
+                      onChange={(e) => patch({ councilQuorum: e.target.value })}
+                      placeholder="2"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         )}
-        {selectableAgents.length > 0 ? (
-          <SearchableSelect
-            onValueChange={addSubAgent}
-            resetOnSelect
-            items={selectableAgents.map((item) => ({
-              id: item.id,
-              label: item.label,
-              group: item.group,
-              description: item.description,
-            }))}
-            placeholder="Add sub-agent…"
-            searchPlaceholder="Search agents…"
-          />
-        ) : (
-          <p className="text-xs text-muted-foreground">No other agents available to add.</p>
-        )}
-      </section>
+      </FormSection>
 
       <EvalsSection
         evals={form.evals}
@@ -732,15 +885,14 @@ export function AgentForm({
         runningCase={runningEvalCase}
       />
 
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Environment</h3>
+      <FormSection title="Environment">
         <KeyValueList
           label="Env vars"
           description="Applied to the agent process."
           entries={form.env}
           onChange={(env) => patch({ env })}
         />
-      </section>
+      </FormSection>
     </div>
   )
 }

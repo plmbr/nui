@@ -5,6 +5,7 @@ package agent
 import (
 	"context"
 
+	"nui/internal/llm"
 	"nui/internal/model"
 )
 
@@ -20,7 +21,7 @@ const (
 	EventToolCallResult  EventType = "tool_call_result"
 	EventImage           EventType = "image"
 	EventHITLRequest     EventType = "hitl_request"
-	EventSubAgentRouted  EventType = "sub_agent_routed"
+	EventCouncilProgress EventType = "council_progress"
 )
 
 type Event struct {
@@ -35,8 +36,26 @@ type Event struct {
 	ParentToolCallID string `json:"parentToolCallId,omitempty"`
 	ImageData      string    `json:"imageData,omitempty"`
 	ImageMediaType string    `json:"imageMediaType,omitempty"`
-	RoutedAgentID    string `json:"routedAgentId,omitempty"`
-	RoutedAgentLabel string `json:"routedAgentLabel,omitempty"`
+	// Council carries progress for multi-agent deliberation (JSON payload in Content when Type is EventCouncilProgress).
+	Council *CouncilProgress `json:"council,omitempty"`
+}
+
+// CouncilProgress is emitted during council rounds for UI progress strips.
+type CouncilProgress struct {
+	Phase            string `json:"phase"`                   // round_started | member_started | member_completed | member_failed | synthesizing | complete
+	Round            string `json:"round,omitempty"`         // position | rebuttal | adjudication | synthesis
+	RoundIndex       int    `json:"roundIndex,omitempty"`
+	RoundsTotal      int    `json:"roundsTotal,omitempty"`
+	MemberID         string `json:"memberId,omitempty"`
+	MemberLabel      string `json:"memberLabel,omitempty"`
+	MemberSessionID  string `json:"memberSessionId,omitempty"` // managed child nui session
+	RunID            string `json:"runId,omitempty"`           // child run id for live attach
+	MembersTotal     int    `json:"membersTotal,omitempty"`
+	MembersDone      int    `json:"membersDone,omitempty"`
+	Quorum           int    `json:"quorum,omitempty"`
+	ElapsedMS        int64  `json:"elapsedMs,omitempty"`
+	Error            string `json:"error,omitempty"`
+	EstimatedCost    string `json:"estimatedCost,omitempty"` // rough estimate string for UI
 }
 
 // EphemeralAgentSuffix is appended to a nui session id for one-off harness runs that must
@@ -76,12 +95,21 @@ type RunRequest struct {
 	// Ephemeral runs use a separate harness agent instance and never resume SessionID.
 	// Docker sandbox harnesses honor this via the HTTP "ephemeral" flag on a shared container.
 	Ephemeral bool
-	// ResolveADL looks up registry agent definitions (orchestrator sub-agent routing).
+	// ResolveADL looks up registry agent definitions (council members / step agents).
 	ResolveADL ADLResolver
-	// SubAgentHarnessSession returns the harness resume session id for a sub-agent.
-	SubAgentHarnessSession func(subAgentID string) string
-	// OnSubAgentHarnessSession persists a sub-agent harness session id after a delegated run.
-	OnSubAgentHarnessSession func(subAgentID, harnessSessionID string)
+	// MemberHarnessSession returns the harness resume session id for a council member.
+	MemberHarnessSession func(memberID string) string
+	// OnMemberHarnessSession persists a council member harness session id after a run.
+	OnMemberHarnessSession func(memberID, harnessSessionID string)
+	// EnsureCouncilMemberSession creates or reuses a managed child nui session for a member.
+	EnsureCouncilMemberSession func(memberID, label, agentType string) (childSessionID string, err error)
+	// RunCouncilMemberSession starts a tracked run on a child session and waits for completion.
+	// onStarted is invoked with the run id as soon as the run is registered (before wait).
+	RunCouncilMemberSession func(ctx context.Context, childSessionID, message string, onStarted func(runID string)) (output, runID string, err error)
+	// ExtraTools are native LLM tools merged into the api harness tool loop (not MCP).
+	ExtraTools []llm.Tool
+	// HandleExtraTool executes a native ExtraTools call. Return ok=false to fall through to MCP.
+	HandleExtraTool func(ctx context.Context, name string, args map[string]any) (result string, ok bool, err error)
 	// History is prior chat turns for harnesses that manage context in nui (api harness).
 	History []model.ChatMessage
 	// MCPServers are session-scoped MCP servers for the api harness tool loop.

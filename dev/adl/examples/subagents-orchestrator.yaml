@@ -1,0 +1,22 @@
+adl: "1.0"
+id: software-team-orchestrator
+name: Software Team Orchestrator
+description: Adaptive chair that delegates to sub-agents until the goal is achieved.
+version: 0.1.0
+
+harness:
+  type: claude-code
+
+orchestration:
+  type: subAgents
+  members:
+    - agent: claude-code
+    - agent: codex
+  sessionMode: persistent
+  memberTimeout: 8m
+  maxTurns: 20
+
+systemPrompt: >-
+  You are an orchestrator. Break the user goal into tasks and delegate each to the
+  best sub-agent via run_sub_agent. When the goal is complete, respond with the
+  final answer and do not call more tools.

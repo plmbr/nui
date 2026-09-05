@@ -46,40 +46,58 @@ func TestIsMultiStepWorkflow(t *testing.T) {
 	if IsMultiStepWorkflow(ADLDefinition{Harness: ADLHarness{Type: "claude-code"}}) {
 		t.Fatal("single-step agent should not be multi-step workflow")
 	}
-	if IsMultiStepWorkflow(ADLDefinition{
+	if !IsMultiStepWorkflow(ADLDefinition{
 		Harness: ADLHarness{Type: "claude-code"},
-		Steps:   []ADLStep{{Name: "a"}},
+		Orchestration: &ADLOrchestration{
+			Type:  OrchestrationTypeWorkflow,
+			Steps: []ADLStep{{Name: "a"}},
+		},
 	}) {
-		t.Fatal("single explicit step should not be multi-step workflow")
+		t.Fatal("expected workflow when type is workflow with steps")
 	}
 	if !IsMultiStepWorkflow(ADLDefinition{
 		Harness: ADLHarness{Type: "claude-code"},
-		Steps:   []ADLStep{{Name: "a"}, {Name: "b"}},
+		Orchestration: &ADLOrchestration{
+			Type:  OrchestrationTypeWorkflow,
+			Steps: []ADLStep{{Name: "a"}, {Name: "b"}},
+		},
 	}) {
 		t.Fatal("expected multi-step when more than one step")
 	}
-	if !IsMultiStepWorkflow(ADLDefinition{
+}
+
+func TestIsCouncilAgent(t *testing.T) {
+	if IsCouncilAgent(ADLDefinition{Harness: ADLHarness{Type: "claude-code"}}) {
+		t.Fatal("single-step agent should not be council")
+	}
+	if !IsCouncilAgent(ADLDefinition{
 		Harness: ADLHarness{Type: "claude-code"},
-		Steps:   []ADLStep{{Name: "gate", Type: "hitl", HITL: &ADLStepHITL{Kind: "approval", Title: "Approve"}}},
+		Orchestration: &ADLOrchestration{
+			Type:    OrchestrationTypeCouncil,
+			Members: []ADLOrchestrationMember{{Agent: "hello-world"}},
+		},
 	}) {
-		t.Fatal("expected multi-step when a HITL gate step is present")
+		t.Fatal("expected council when members present")
+	}
+	if !SkipsHarnessSessionPersistence(ADLDefinition{
+		Harness: ADLHarness{Type: "claude-code"},
+		Orchestration: &ADLOrchestration{
+			Type:    OrchestrationTypeCouncil,
+			Members: []ADLOrchestrationMember{{Agent: "hello-world"}},
+		},
+	}) {
+		t.Fatal("council should skip top-level harness session persistence")
 	}
 }
 
-func TestIsOrchestratorAgent(t *testing.T) {
-	if IsOrchestratorAgent(ADLDefinition{Harness: ADLHarness{Type: "claude-code"}}) {
-		t.Fatal("single-step agent should not be orchestrator")
-	}
-	if !IsOrchestratorAgent(ADLDefinition{
-		Harness:   ADLHarness{Type: "claude-code"},
-		SubAgents: []string{"hello-world"},
+func TestIsSubAgentsOrchestration(t *testing.T) {
+	if !IsSubAgentsOrchestration(ADLDefinition{
+		Harness: ADLHarness{Type: "claude-code"},
+		Orchestration: &ADLOrchestration{
+			Type:    OrchestrationTypeSubAgents,
+			Members: []ADLOrchestrationMember{{Agent: "hello-world"}},
+		},
 	}) {
-		t.Fatal("expected orchestrator when subAgents present")
-	}
-	if !SkipsHarnessSessionPersistence(ADLDefinition{
-		Harness:   ADLHarness{Type: "claude-code"},
-		SubAgents: []string{"hello-world"},
-	}) {
-		t.Fatal("orchestrator should skip top-level harness session persistence")
+		t.Fatal("expected subAgents orchestration")
 	}
 }

@@ -38,75 +38,155 @@ func (a *ADLAgent) RunEphemeral(ctx context.Context, req RunRequest, events chan
 }
 
 func (a *ADLAgent) Run(ctx context.Context, req RunRequest, events chan<- Event) error {
-	if model.IsOrchestratorAgent(a.def) {
-		return a.runOrchestrator(ctx, req, events)
+	switch {
+	case model.IsCouncilAgent(a.def):
+		return a.runCouncil(ctx, req, events)
+	case model.IsSubAgentsOrchestration(a.def):
+		return a.runSubAgents(ctx, req, events)
+	case model.IsMultiStepWorkflow(a.def):
+		return a.runWorkflow(ctx, req, events)
+	default:
+		return a.runStep(ctx, req, a.def.Harness, nil, events)
 	}
+}
 
-	steps := a.def.Steps
+func (a *ADLAgent) runWorkflow(ctx context.Context, req RunRequest, events chan<- Event) error {
+	steps := model.OrchestrationSteps(a.def)
 	if len(steps) == 0 {
-		// Single-step definition — run the top-level harness directly.
 		return a.runStep(ctx, req, a.def.Harness, nil, events)
 	}
 
-	sorted, err := topoSort(steps)
+	waves, err := topoWaves(steps)
 	if err != nil {
 		return err
 	}
 
-	// stepOutputs holds accumulated text output from each step (named outputs supported).
 	stepOutputs := newStepOutputStore()
-
-	for i, step := range sorted {
+	stepIndex := 0
+	totalSteps := len(steps)
+	for _, wave := range waves {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-
-		// Emit step header for multi-step pipelines.
-		if len(sorted) > 1 {
-			events <- Event{Type: EventText, Content: fmt.Sprintf("\n**Step %d/%d: %s**\n\n", i+1, len(sorted), step.Name)}
-		}
-
-		if step.Type == "hitl" {
-			out, err := a.runHITLStep(ctx, req, step, stepOutputs, events)
+		if len(wave) == 1 {
+			stepIndex++
+			text, err := a.executeWorkflowStep(ctx, req, wave[0], stepIndex, totalSteps, stepOutputs, events)
 			if err != nil {
 				return err
 			}
-			stepOutputs.setRaw(step.Name, out)
+			stepOutputs.set(wave[0], text)
 			continue
 		}
 
-		harness := a.def.Harness
-		if step.Harness != nil {
-			harness = *step.Harness
+		type stepResult struct {
+			step model.ADLStep
+			text string
+			err  error
 		}
-		systemPrompt := a.def.SystemPrompt
-		if step.SystemPrompt != "" {
-			systemPrompt = step.SystemPrompt
+		results := make([]stepResult, len(wave))
+		var wg sync.WaitGroup
+		for i, step := range wave {
+			wg.Add(1)
+			go func(i int, step model.ADLStep) {
+				defer wg.Done()
+				sink := &collectingEvents{}
+				ch := sink.start()
+				text, err := a.executeWorkflowStep(ctx, req, step, stepIndex+i+1, totalSteps, stepOutputs, ch)
+				sink.finish()
+				if strings.TrimSpace(text) == "" {
+					text = sink.text
+				}
+				results[i] = stepResult{step: step, text: text, err: err}
+			}(i, step)
 		}
+		wg.Wait()
+		stepIndex += len(wave)
+		for _, r := range results {
+			if r.err != nil {
+				return r.err
+			}
+			stepOutputs.set(r.step, r.text)
+			if totalSteps > 1 {
+				events <- Event{Type: EventText, Content: fmt.Sprintf("\n**Step: %s** (parallel)\n\n%s\n", r.step.Name, r.text)}
+			}
+		}
+	}
+	return nil
+}
 
-		msg := buildStepMessage(req.Message, step, stepOutputs)
-
-		stepReq := RunRequest{
-			NuiSessionID:    a.projectID,
-			RunID:            req.RunID,
-			WorkingDir:       req.WorkingDir,
-			Message:          msg,
-			SystemPrompt:     systemPrompt,
-			UserScopeHarness: req.UserScopeHarness,
-		}
-
-		// Collect this step's output so downstream steps can reference it.
-		collecting := &collectingEvents{upstream: events}
-		stepEvents := collecting.start()
-		if err := a.runStep(ctx, stepReq, harness, &step, stepEvents); err != nil {
-			collecting.finish()
-			return err
-		}
-		collecting.finish()
-		stepOutputs.set(step, collecting.text)
+func (a *ADLAgent) executeWorkflowStep(
+	ctx context.Context,
+	req RunRequest,
+	step model.ADLStep,
+	stepIndex, totalSteps int,
+	stepOutputs stepOutputStore,
+	events chan<- Event,
+) (string, error) {
+	if totalSteps > 1 {
+		events <- Event{Type: EventText, Content: fmt.Sprintf("\n**Step %d/%d: %s**\n\n", stepIndex, totalSteps, step.Name)}
+	}
+	if step.Type == "hitl" {
+		return a.runHITLStep(ctx, req, step, stepOutputs, events)
 	}
 
-	return nil
+	harness, systemPrompt, stepDef, err := a.resolveStepExecution(req, step)
+	if err != nil {
+		return "", err
+	}
+	msg := buildStepMessage(req.Message, step, stepOutputs)
+	stepReq := RunRequest{
+		NuiSessionID:     a.projectID,
+		RunID:            req.RunID,
+		WorkingDir:       req.WorkingDir,
+		Message:          msg,
+		SystemPrompt:     systemPrompt,
+		UserScopeHarness: req.UserScopeHarness,
+		ResolveADL:       req.ResolveADL,
+		AgentConfig:      req.AgentConfig,
+	}
+	collecting := &collectingEvents{upstream: events}
+	stepEvents := collecting.start()
+	runAgent := a
+	if stepDef != nil {
+		runAgent = NewADLAgent(*stepDef, a.projectID, a.manager)
+	}
+	if err := runAgent.runStep(ctx, stepReq, harness, &step, stepEvents); err != nil {
+		collecting.finish()
+		return collecting.text, err
+	}
+	collecting.finish()
+	return collecting.text, nil
+}
+
+func (a *ADLAgent) resolveStepExecution(req RunRequest, step model.ADLStep) (model.ADLHarness, string, *model.ADLDefinition, error) {
+	harness := a.def.Harness
+	systemPrompt := a.def.SystemPrompt
+	if step.Harness != nil {
+		harness = *step.Harness
+	}
+	if step.SystemPrompt != "" {
+		systemPrompt = step.SystemPrompt
+	}
+	agentID := strings.TrimSpace(step.Agent)
+	if agentID == "" {
+		return harness, systemPrompt, nil, nil
+	}
+	if req.ResolveADL == nil {
+		return harness, systemPrompt, nil, fmt.Errorf("step %q references agent %q but ResolveADL is not configured", step.Name, agentID)
+	}
+	def, ok := req.ResolveADL(agentID)
+	if !ok {
+		return harness, systemPrompt, nil, fmt.Errorf("step %q: unknown agent %q", step.Name, agentID)
+	}
+	harness = def.Harness
+	if step.Harness != nil {
+		harness = *step.Harness
+	}
+	systemPrompt = def.SystemPrompt
+	if step.SystemPrompt != "" {
+		systemPrompt = step.SystemPrompt
+	}
+	return harness, systemPrompt, &def, nil
 }
 
 // runStep resolves the harness and runs the agent for a single step.
@@ -172,6 +252,20 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 
 // topoSort returns steps in dependency order using Kahn's algorithm.
 func topoSort(steps []model.ADLStep) ([]model.ADLStep, error) {
+	waves, err := topoWaves(steps)
+	if err != nil {
+		return nil, err
+	}
+	var sorted []model.ADLStep
+	for _, wave := range waves {
+		sorted = append(sorted, wave...)
+	}
+	return sorted, nil
+}
+
+// topoWaves groups steps into waves where each wave's members have no unmet dependencies
+// and may run concurrently.
+func topoWaves(steps []model.ADLStep) ([][]model.ADLStep, error) {
 	index := map[string]int{}
 	for i, s := range steps {
 		index[s.Name] = i
@@ -187,35 +281,42 @@ func topoSort(steps []model.ADLStep) ([]model.ADLStep, error) {
 		}
 	}
 
-	queue := []int{}
-	for i, d := range inDegree {
-		if d == 0 {
-			queue = append(queue, i)
-		}
+	remaining := make([]bool, len(steps))
+	for i := range remaining {
+		remaining[i] = true
 	}
 
-	var sorted []model.ADLStep
-	for len(queue) > 0 {
-		cur := queue[0]
-		queue = queue[1:]
-		sorted = append(sorted, steps[cur])
-		// Find steps that depend on this one.
-		for i, s := range steps {
-			for _, dep := range s.DependsOn {
-				if dep == steps[cur].Name {
-					inDegree[i]--
-					if inDegree[i] == 0 {
-						queue = append(queue, i)
+	var waves [][]model.ADLStep
+	placed := 0
+	for placed < len(steps) {
+		var wave []model.ADLStep
+		var waveIdx []int
+		for i, d := range inDegree {
+			if remaining[i] && d == 0 {
+				wave = append(wave, steps[i])
+				waveIdx = append(waveIdx, i)
+			}
+		}
+		if len(wave) == 0 {
+			return nil, fmt.Errorf("ADL steps contain a cycle")
+		}
+		for _, i := range waveIdx {
+			remaining[i] = false
+			placed++
+			for j, s := range steps {
+				if !remaining[j] {
+					continue
+				}
+				for _, dep := range s.DependsOn {
+					if dep == steps[i].Name {
+						inDegree[j]--
 					}
 				}
 			}
 		}
+		waves = append(waves, wave)
 	}
-
-	if len(sorted) != len(steps) {
-		return nil, fmt.Errorf("ADL steps contain a cycle")
-	}
-	return sorted, nil
+	return waves, nil
 }
 
 // collectingEvents pipes events through to an upstream channel while capturing text output.
@@ -237,7 +338,7 @@ func (c *collectingEvents) start() chan<- Event {
 			}
 			// Forward all events except EventDone from intermediate steps
 			// so the caller controls when to emit the final done.
-			if ev.Type != EventDone {
+			if ev.Type != EventDone && c.upstream != nil {
 				c.upstream <- ev
 			}
 		}

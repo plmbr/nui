@@ -13,9 +13,12 @@ import (
 
 func TestValidateOrchestratorRefsBuiltin(t *testing.T) {
 	err := ValidateOrchestratorRefs(model.ADLDefinition{
-		ID:        "triage",
-		Harness:   model.ADLHarness{Type: "claude-code"},
-		SubAgents: []string{"claude-code"},
+		ID:      "council",
+		Harness: model.ADLHarness{Type: "claude-code"},
+		Orchestration: &model.ADLOrchestration{
+			Type:    model.OrchestrationTypeCouncil,
+			Members: []model.ADLOrchestrationMember{{Agent: "claude-code"}},
+		},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -24,9 +27,12 @@ func TestValidateOrchestratorRefsBuiltin(t *testing.T) {
 
 func TestValidateOrchestratorRefsSelfReference(t *testing.T) {
 	err := ValidateOrchestratorRefs(model.ADLDefinition{
-		ID:        "triage",
-		Harness:   model.ADLHarness{Type: "claude-code"},
-		SubAgents: []string{"triage"},
+		ID:      "council",
+		Harness: model.ADLHarness{Type: "claude-code"},
+		Orchestration: &model.ADLOrchestration{
+			Type:    model.OrchestrationTypeCouncil,
+			Members: []model.ADLOrchestrationMember{{Agent: "council"}},
+		},
 	})
 	if err == nil {
 		t.Fatal("expected self-reference error")
@@ -35,16 +41,19 @@ func TestValidateOrchestratorRefsSelfReference(t *testing.T) {
 
 func TestValidateOrchestratorRefsUnknown(t *testing.T) {
 	err := ValidateOrchestratorRefs(model.ADLDefinition{
-		ID:        "triage",
-		Harness:   model.ADLHarness{Type: "claude-code"},
-		SubAgents: []string{"no-such-agent-xyz"},
+		ID:      "council",
+		Harness: model.ADLHarness{Type: "claude-code"},
+		Orchestration: &model.ADLOrchestration{
+			Type:    model.OrchestrationTypeCouncil,
+			Members: []model.ADLOrchestrationMember{{Agent: "no-such-agent-xyz"}},
+		},
 	})
 	if err == nil {
 		t.Fatal("expected unknown agent error")
 	}
 }
 
-func TestValidateOrchestratorRefsCycle(t *testing.T) {
+func TestValidateOrchestratorRefsNestedOrchestrationRejected(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	dir, err := store.AgentsDir()
@@ -54,32 +63,29 @@ func TestValidateOrchestratorRefsCycle(t *testing.T) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	writeAgent := func(name, id, sub string) {
-		content := `adl: "1.0"
-id: ` + id + `
-name: ` + name + `
+	content := `adl: "1.0"
+id: nested-council
+name: Nested
 harness:
   type: claude-code
+orchestration:
+  type: council
+  members:
+    - agent: claude-code
 `
-		if sub != "" {
-			content += `subAgents:
-  - ` + sub + `
-`
-		}
-		path := filepath.Join(dir, id+".yaml")
-		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-			t.Fatal(err)
-		}
+	if err := os.WriteFile(filepath.Join(dir, "nested-council.yaml"), []byte(content), 0644); err != nil {
+		t.Fatal(err)
 	}
-	writeAgent("Agent A", "agent-a", "agent-b")
-	writeAgent("Agent B", "agent-b", "agent-a")
 
 	err = ValidateOrchestratorRefs(model.ADLDefinition{
-		ID:        "orchestrator",
-		Harness:   model.ADLHarness{Type: "claude-code"},
-		SubAgents: []string{"agent-a"},
+		ID:      "outer",
+		Harness: model.ADLHarness{Type: "claude-code"},
+		Orchestration: &model.ADLOrchestration{
+			Type:    model.OrchestrationTypeCouncil,
+			Members: []model.ADLOrchestrationMember{{Agent: "nested-council"}},
+		},
 	})
 	if err == nil {
-		t.Fatal("expected cycle error")
+		t.Fatal("expected nested orchestration error")
 	}
 }

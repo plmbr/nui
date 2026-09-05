@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"nui/internal/nuiclient"
@@ -58,9 +60,10 @@ func registerTools(server *mcp.Server, client *nuiclient.Client) {
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"name":        map[string]any{"type": "string"},
-				"agent_type":  map[string]any{"type": "string"},
-				"working_dir": map[string]any{"type": "string"},
+				"name":         map[string]any{"type": "string"},
+				"agent_type":   map[string]any{"type": "string"},
+				"working_dir":  map[string]any{"type": "string"},
+				"agent_config": map[string]any{"type": "object"},
 			},
 			"required": []string{},
 		},
@@ -76,9 +79,10 @@ func registerTools(server *mcp.Server, client *nuiclient.Client) {
 		}
 		name := stringArg(args, "name")
 		sess, err := client.CreateSession(ctx, nuiclient.CreateSessionRequest{
-			Name:       name,
-			AgentType:  agentType,
-			WorkingDir: defaultWorkingDir(stringArg(args, "working_dir")),
+			Name:        name,
+			AgentType:   agentType,
+			WorkingDir:  defaultWorkingDir(stringArg(args, "working_dir")),
+			AgentConfig: mapArg(args, "agent_config"),
 		})
 		if err != nil {
 			return toolError(err)
@@ -92,11 +96,13 @@ func registerTools(server *mcp.Server, client *nuiclient.Client) {
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"agent_type":  map[string]any{"type": "string"},
-				"message":     map[string]any{"type": "string"},
-				"working_dir": map[string]any{"type": "string"},
-				"session_id":  map[string]any{"type": "string"},
-				"wait":        map[string]any{"type": "boolean"},
+				"agent_type":   map[string]any{"type": "string"},
+				"message":      map[string]any{"type": "string"},
+				"working_dir":  map[string]any{"type": "string"},
+				"session_id":   map[string]any{"type": "string"},
+				"name":         map[string]any{"type": "string", "description": "Session name when creating a new session"},
+				"agent_config": map[string]any{"type": "object", "description": "Session agentConfig (e.g. userScopeHarnessConfig)"},
+				"wait":         map[string]any{"type": "boolean"},
 			},
 		},
 	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -116,8 +122,10 @@ func registerTools(server *mcp.Server, client *nuiclient.Client) {
 				return toolError(fmt.Errorf("working directory required"))
 			}
 			sess, err := client.CreateSession(ctx, nuiclient.CreateSessionRequest{
-				AgentType:  agentType,
-				WorkingDir: wd,
+				Name:        stringArg(args, "name"),
+				AgentType:   agentType,
+				WorkingDir:  wd,
+				AgentConfig: mapArg(args, "agent_config"),
 			})
 			if err != nil {
 				return toolError(err)
@@ -151,6 +159,7 @@ func registerTools(server *mcp.Server, client *nuiclient.Client) {
 			out["status"] = rec.Status
 			out["output"] = rec.Output
 			out["error"] = rec.Error
+			out["final"] = compactRunFinal(rec)
 		}
 
 		return toolJSON(out)
@@ -158,12 +167,16 @@ func registerTools(server *mcp.Server, client *nuiclient.Client) {
 
 	server.AddTool(&mcp.Tool{
 		Name:        "get_run_events",
-		Description: "Stream run events until the run finishes (returns final status)",
+		Description: "Stream or poll run events. Supports timeout_seconds, after_seq, max_events, and max_bytes.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"session_id": map[string]any{"type": "string"},
-				"run_id":     map[string]any{"type": "string"},
+				"session_id":      map[string]any{"type": "string"},
+				"run_id":          map[string]any{"type": "string"},
+				"timeout_seconds": map[string]any{"type": "number"},
+				"after_seq":       map[string]any{"type": "string", "description": "Last-Event-ID / cursor for resuming"},
+				"max_events":      map[string]any{"type": "number"},
+				"max_bytes":       map[string]any{"type": "number"},
 			},
 			"required": []string{"session_id", "run_id"},
 		},
@@ -171,22 +184,62 @@ func registerTools(server *mcp.Server, client *nuiclient.Client) {
 		args := parseArgs(req)
 		sessionID := stringArg(args, "session_id")
 		runID := stringArg(args, "run_id")
+		afterSeq := stringArg(args, "after_seq")
+		maxEvents := intArg(args, "max_events")
+		maxBytes := intArg(args, "max_bytes")
+		timeoutSec := intArg(args, "timeout_seconds")
+
+		streamCtx := ctx
+		cancel := func() {}
+		if timeoutSec > 0 {
+			streamCtx, cancel = context.WithTimeout(ctx, time.Duration(timeoutSec)*time.Second)
+		}
+		defer cancel()
+
 		var events []json.RawMessage
-		rec, err := client.StreamRunEvents(ctx, sessionID, runID, "", func(data []byte) {
+		var totalBytes int
+		var truncated bool
+		var lastSeq string
+		rec, err := client.StreamRunEvents(streamCtx, sessionID, runID, afterSeq, func(data []byte) {
+			if maxEvents > 0 && len(events) >= maxEvents {
+				truncated = true
+				return
+			}
+			if maxBytes > 0 && totalBytes+len(data) > maxBytes {
+				truncated = true
+				return
+			}
 			events = append(events, append(json.RawMessage(nil), data...))
+			totalBytes += len(data)
+			lastSeq = string(data) // best-effort; clients may prefer GetRun for recovery
 		})
-		if err != nil {
+		if err != nil && streamCtx.Err() == nil {
 			return toolError(err)
 		}
-		return toolJSON(map[string]any{
-			"run":    rec,
-			"events": events,
-		})
+		if rec.Status == "" {
+			if r, gerr := client.GetRun(ctx, sessionID, runID); gerr == nil {
+				rec = r
+			}
+		}
+		out := map[string]any{
+			"run":            rec,
+			"events":         events,
+			"final":          compactRunFinal(rec),
+			"truncated":     truncated,
+			"eventCount":     len(events),
+			"byteCount":      totalBytes,
+			"timedOut":       streamCtx.Err() != nil,
+			"recoveryHint":   "use get_run for compact final output if the event stream overflowed",
+		}
+		if lastSeq != "" {
+			out["lastSeq"] = afterSeq
+		}
+		return toolJSON(out)
 	})
 
 	server.AddTool(&mcp.Tool{
 		Name:        "get_run",
-		Description: "Get status and output for a run",
+		Description: "Get status and compact final output for a run",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -201,7 +254,134 @@ func registerTools(server *mcp.Server, client *nuiclient.Client) {
 		if err != nil {
 			return toolError(err)
 		}
-		return toolJSON(rec)
+		return toolJSON(map[string]any{
+			"run":   rec,
+			"final": compactRunFinal(rec),
+		})
+	})
+
+	server.AddTool(&mcp.Tool{
+		Name:        "get_run_snapshot",
+		Description: "Non-blocking snapshot of run status and compact final output",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"session_id": map[string]any{"type": "string"},
+				"run_id":     map[string]any{"type": "string"},
+			},
+			"required": []string{"session_id", "run_id"},
+		},
+	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := parseArgs(req)
+		rec, err := client.GetRun(ctx, stringArg(args, "session_id"), stringArg(args, "run_id"))
+		if err != nil {
+			return toolError(err)
+		}
+		return toolJSON(map[string]any{
+			"status": rec.Status,
+			"final":  compactRunFinal(rec),
+			"error":  rec.Error,
+			"runId":  rec.RunID,
+		})
+	})
+
+	server.AddTool(&mcp.Tool{
+		Name:        "wait_for_runs",
+		Description: "Wait for multiple runs to finish; returns compact aggregate status",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"runs": map[string]any{
+					"type": "array",
+					"items": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"session_id": map[string]any{"type": "string"},
+							"run_id":     map[string]any{"type": "string"},
+						},
+						"required": []string{"session_id", "run_id"},
+					},
+				},
+				"timeout_seconds": map[string]any{"type": "number"},
+			},
+			"required": []string{"runs"},
+		},
+	}, func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := parseArgs(req)
+		rawRuns, _ := args["runs"].([]any)
+		timeoutSec := intArg(args, "timeout_seconds")
+		waitCtx := ctx
+		cancel := func() {}
+		if timeoutSec > 0 {
+			waitCtx, cancel = context.WithTimeout(ctx, time.Duration(timeoutSec)*time.Second)
+		}
+		defer cancel()
+
+		type runRef struct {
+			SessionID string
+			RunID     string
+		}
+		var refs []runRef
+		for _, item := range rawRuns {
+			m, ok := item.(map[string]any)
+			if !ok {
+				continue
+			}
+			refs = append(refs, runRef{
+				SessionID: stringArg(m, "session_id"),
+				RunID:     stringArg(m, "run_id"),
+			})
+		}
+		if len(refs) == 0 {
+			return toolError(fmt.Errorf("runs required"))
+		}
+
+		results := make([]map[string]any, len(refs))
+		var wg sync.WaitGroup
+		for i, ref := range refs {
+			wg.Add(1)
+			go func(i int, ref runRef) {
+				defer wg.Done()
+				rec, err := client.WaitRun(waitCtx, ref.SessionID, ref.RunID, 500*time.Millisecond)
+				entry := map[string]any{
+					"sessionId": ref.SessionID,
+					"runId":     ref.RunID,
+				}
+				if err != nil {
+					entry["error"] = err.Error()
+					entry["timedOut"] = waitCtx.Err() != nil
+					if r, gerr := client.GetRun(ctx, ref.SessionID, ref.RunID); gerr == nil {
+						entry["status"] = r.Status
+						entry["final"] = compactRunFinal(r)
+					}
+				} else {
+					entry["status"] = rec.Status
+					entry["final"] = compactRunFinal(rec)
+					entry["error"] = rec.Error
+				}
+				results[i] = entry
+			}(i, ref)
+		}
+		wg.Wait()
+
+		completed, failed, pending := 0, 0, 0
+		for _, r := range results {
+			switch strings.TrimSpace(fmt.Sprint(r["status"])) {
+			case "completed":
+				completed++
+			case "failed", "cancelled":
+				failed++
+			default:
+				pending++
+			}
+		}
+		return toolJSON(map[string]any{
+			"runs":      results,
+			"completed": completed,
+			"failed":    failed,
+			"pending":   pending,
+			"timedOut":  waitCtx.Err() != nil,
+		})
 	})
 
 	server.AddTool(&mcp.Tool{
@@ -222,6 +402,22 @@ func registerTools(server *mcp.Server, client *nuiclient.Client) {
 		}
 		return toolJSON(map[string]bool{"ok": true})
 	})
+}
+
+func compactRunFinal(rec nuiclient.RunRecord) map[string]any {
+	out := strings.TrimSpace(rec.Output)
+	const max = 32_000
+	truncated := false
+	if len(out) > max {
+		out = out[:max] + "…"
+		truncated = true
+	}
+	return map[string]any{
+		"status":    rec.Status,
+		"output":    out,
+		"error":     rec.Error,
+		"truncated": truncated,
+	}
 }
 
 func emptyObjectSchema() map[string]any {
@@ -251,34 +447,43 @@ func parseArgs(req *mcp.CallToolRequest) map[string]any {
 }
 
 func stringArg(args map[string]any, key string) string {
-	if args == nil {
-		return ""
-	}
 	v, ok := args[key]
-	if !ok {
+	if !ok || v == nil {
 		return ""
 	}
-	s, _ := v.(string)
-	return strings.TrimSpace(s)
+	switch t := v.(type) {
+	case string:
+		return strings.TrimSpace(t)
+	default:
+		return strings.TrimSpace(fmt.Sprint(t))
+	}
+}
+
+func mapArg(args map[string]any, key string) map[string]any {
+	v, ok := args[key]
+	if !ok || v == nil {
+		return nil
+	}
+	m, ok := v.(map[string]any)
+	if !ok {
+		return nil
+	}
+	return m
 }
 
 func toolJSON(v any) (*mcp.CallToolResult, error) {
-	data, err := json.MarshalIndent(v, "", "  ")
+	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
-		return nil, err
+		return toolError(err)
 	}
 	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{Text: string(data)},
-		},
+		Content: []mcp.Content{&mcp.TextContent{Text: string(b)}},
 	}, nil
 }
 
 func toolError(err error) (*mcp.CallToolResult, error) {
 	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{Text: err.Error()},
-		},
+		Content: []mcp.Content{&mcp.TextContent{Text: err.Error()}},
 		IsError: true,
 	}, nil
 }

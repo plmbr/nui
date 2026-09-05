@@ -23,6 +23,23 @@ export interface AgentRunEvent {
   toolArgs?: string
   imageData?: string
   imageMediaType?: string
+  /** Present when type is council_progress (run event log). */
+  council?: {
+    phase?: string
+    round?: string
+    roundIndex?: number
+    roundsTotal?: number
+    memberId?: string
+    memberLabel?: string
+    memberSessionId?: string
+    runId?: string
+    membersTotal?: number
+    membersDone?: number
+    quorum?: number
+    elapsedMs?: number
+    error?: string
+    estimatedCost?: string
+  }
 }
 
 export interface RunFinishedPayload {

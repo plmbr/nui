@@ -221,6 +221,7 @@ func buildHarnessDeps(sessionID string, def model.ADLDefinition, step *model.ADL
 }
 
 func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID string, def model.ADLDefinition, agentConfig map[string]any) (HarnessDeps, error) {
+	deps.MCPServers = expandBuiltinNuiMCPRefs(deps.MCPServers)
 	if reg != nil {
 		var pending []extensions.PendingCustomMCPServer
 		var err error

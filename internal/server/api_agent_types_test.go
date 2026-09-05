@@ -259,14 +259,17 @@ func TestAgentTypeInfoFromDef_skills(t *testing.T) {
 				{Name: "commit-helper", Ref: "commit-helper"},
 			},
 		},
-		Steps: []model.ADLStep{{
-			AIAssets: model.ADLAIAssets{
-				Skills: []model.ADLSkill{
-					{Name: "step-skill", Path: "./skills/step-skill"},
-					{Name: "code-review", Path: "./skills/code-review"},
+		Orchestration: &model.ADLOrchestration{
+			Type: model.OrchestrationTypeWorkflow,
+			Steps: []model.ADLStep{{
+				AIAssets: model.ADLAIAssets{
+					Skills: []model.ADLSkill{
+						{Name: "step-skill", Path: "./skills/step-skill"},
+						{Name: "code-review", Path: "./skills/code-review"},
+					},
 				},
-			},
-		}},
+			}},
+		},
 	}
 	info := agentTypeInfoFromDef(def, false)
 	want := []string{"code-review", "commit-helper", "step-skill", "create-agent", "visualize"}

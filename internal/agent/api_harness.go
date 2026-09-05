@@ -53,6 +53,9 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 			mcpTools = mcpClient.Tools()
 			tools = mcpToolsToLLM(mcpTools)
 		}
+		if len(req.ExtraTools) > 0 {
+			tools = append(tools, req.ExtraTools...)
+		}
 	}
 
 	if catalog := mcpToolCatalogSystemPrompt(mcpTools); catalog != "" {
@@ -161,12 +164,31 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 				continue
 			}
 
-			resultText, err := mcpClient.CallTool(ctx, toolName, args)
-			if err != nil {
-				resultText = "error: " + err.Error()
+			resultText := ""
+			var callErr error
+			handled := false
+			if req.HandleExtraTool != nil {
+				var ok bool
+				resultText, ok, callErr = req.HandleExtraTool(ctx, toolName, args)
+				handled = ok
+			}
+			if !handled {
+				if mcpClient == nil {
+					resultText = "error: no tool backend for " + toolName
+				} else {
+					resultText, callErr = mcpClient.CallTool(ctx, toolName, args)
+					if callErr != nil {
+						resultText = "error: " + callErr.Error()
+					}
+				}
+			} else if callErr != nil {
+				resultText = "error: " + callErr.Error()
 			}
 			events <- Event{Type: EventToolCallResult, ToolCallID: tc.ID, ToolName: toolName, Content: resultText}
-			if viz.IsVisualizationTool(toolName) && err == nil {
+			if viz.IsVisualizationTool(toolName) && callErr == nil && handled {
+				executedViz = true
+			}
+			if viz.IsVisualizationTool(toolName) && !handled && callErr == nil {
 				executedViz = true
 			}
 			messages = append(messages, llm.Message{
