@@ -250,7 +250,7 @@ CI runs on every pull request and push to `main`:
 
 - Go tests (`go test -coverprofile=coverage.out . ./cmd/... ./internal/...`)
 - harness-sdk pytest (`pytest harness-sdk`)
-- UI lint, build, and Vitest unit tests (with coverage artifacts)
+- UI `npm ci`, lint, build, and Vitest unit tests (with coverage artifacts)
 - Playwright end-to-end tests
 - Binary size budget check
 - Desktop (Wails) builds for darwin (amd64/arm64), windows (amd64), and linux (amd64/arm64)

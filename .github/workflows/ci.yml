@@ -47,10 +47,10 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: ui/package.json
+          cache-dependency-path: ui/package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Lint
         run: npm run lint
@@ -111,7 +111,7 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: ui/package.json
+          cache-dependency-path: ui/package-lock.json
 
       - uses: actions/setup-python@v5
         with:
@@ -124,7 +124,7 @@ jobs:
 
       - name: Install UI dependencies
         working-directory: ui
-        run: npm install
+        run: npm ci
 
       - name: harness-sdk pytest
         run: python3 -m pip install pytest && python3 -m pytest harness-sdk

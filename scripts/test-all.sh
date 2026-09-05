@@ -19,6 +19,9 @@ fi
 echo "==> Binary size check"
 "$ROOT/scripts/check-binary-size.sh"
 
+echo "==> UI install (npm ci, matches CI)"
+(cd "$ROOT/ui" && npm ci)
+
 echo "==> UI lint + build + unit tests"
 (cd "$ROOT/ui" && npm run lint && npm run build && npm run test:coverage)
 

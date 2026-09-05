@@ -43,11 +43,11 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: ui/package.json
+          cache-dependency-path: ui/package-lock.json
 
       - name: Install UI dependencies
         working-directory: ui
-        run: npm install
+        run: npm ci
 
       - name: Validate VERSION matches release tag
         run: |
@@ -168,11 +168,11 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: ui/package.json
+          cache-dependency-path: ui/package-lock.json
 
       - name: Install UI dependencies
         working-directory: ui
-        run: npm install
+        run: npm ci
 
       - name: Build UI
         working-directory: ui
