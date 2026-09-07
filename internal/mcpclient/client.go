@@ -76,6 +76,12 @@ func (c *Client) ConnectServers(ctx context.Context, servers []model.ADLMCPServe
 		if name == "" {
 			continue
 		}
+		c.mu.RLock()
+		_, already := c.sessions[name]
+		c.mu.RUnlock()
+		if already {
+			continue
+		}
 		session, err := c.connectWithTimeout(ctx, srv, defaultConnectTimeout)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s connect %q: %v\n", c.logPrefix, name, err)

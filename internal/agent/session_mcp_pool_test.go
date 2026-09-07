@@ -15,9 +15,13 @@ func TestGetOrConnectSessionMCP_reusesClient(t *testing.T) {
 
 	servers := []model.ADLMCPServer{{Name: "empty", Command: "/nonexistent", Args: []string{}}}
 	client1, _ := mgr.GetOrConnectSessionMCP(context.Background(), "sess-1", servers)
-	client2, _ := mgr.GetOrConnectSessionMCP(context.Background(), "sess-1", servers)
+	client2, failures := mgr.GetOrConnectSessionMCP(context.Background(), "sess-1", servers)
 	if client1 != client2 {
 		t.Fatal("expected same client instance for unchanged server list")
+	}
+	// Reuse still retries missing servers (nonexistent keeps failing).
+	if len(failures) == 0 {
+		t.Fatal("expected connect failures on reuse retry")
 	}
 }
 

@@ -29,7 +29,10 @@ func (m *Manager) GetOrConnectSessionMCP(ctx context.Context, sessionID string, 
 	if entry, ok := m.mcpClients[sessionID]; ok && entry.configHash == hash && entry.client != nil {
 		client := entry.client
 		m.mcpMu.Unlock()
-		return client, nil
+		// Retry servers that failed on an earlier connect (ConnectServers skips
+		// names already connected). Avoids permanently stranding a session after
+		// a transient stdio handshake failure.
+		return client, client.ConnectServers(ctx, servers)
 	}
 	if entry, ok := m.mcpClients[sessionID]; ok && entry.client != nil {
 		entry.client.Close()

@@ -8,14 +8,17 @@ import (
 )
 
 func TestRunMCPSubcommandRecognizesBuiltins(t *testing.T) {
-	cases := []string{"viz-mcp", "agent-mcp", "hitl-mcp", "orchestrator-mcp", "mcp"}
+	cases := []string{
+		"viz-mcp", "agent-mcp", "hitl-mcp", "orchestrator-mcp",
+		"skills-mcp", "fs-mcp", "bash-mcp", "mcp",
+	}
 	for _, name := range cases {
-		// Don't actually Run* (blocks on stdio) — only check dispatch recognition
-		// via a dry parse of the switch by ensuring unknown is false and known
-		// would be handled. We call with empty context cancel immediately...
-		// Instead verify the command name is in the handled set.
+		// Don't actually Run* (blocks on stdio) — only check dispatch recognition.
 		if !isMCPSubcommand(name) {
 			t.Fatalf("expected %q to be an MCP subcommand", name)
+		}
+		if !looksLikeMCPSubcommand(name) {
+			t.Fatalf("expected %q to look like an MCP subcommand", name)
 		}
 	}
 	if isMCPSubcommand("server") {
@@ -23,6 +26,9 @@ func TestRunMCPSubcommandRecognizesBuiltins(t *testing.T) {
 	}
 	if isMCPSubcommand("") {
 		t.Fatal("empty should not be MCP subcommand")
+	}
+	if !looksLikeMCPSubcommand("future-mcp") {
+		t.Fatal("*-mcp should look like MCP even when not yet implemented")
 	}
 }
 

@@ -35,8 +35,9 @@ own server there (it does not attach to an already-running `nui server`).
 Override the scan start with `NUI_PORT`.
 
 Harnesses spawn built-in MCP servers via `os.Executable()` (`viz-mcp`,
-`agent-mcp`, `hitl-mcp`, `orchestrator-mcp`). The desktop binary handles those
-args on stdio before opening the GUI so MCP works without a separate `nui` CLI.
+`agent-mcp`, `hitl-mcp`, `orchestrator-mcp`, `skills-mcp`, `fs-mcp`,
+`bash-mcp`). The desktop binary handles those args on stdio before opening the
+GUI so MCP works without a separate `nui` CLI.
 
 On macOS, Finder/Dock launches inherit a stripped `PATH`. At startup the app
 merges the login-shell `PATH` and common install dirs (`~/.local/bin`, Homebrew,

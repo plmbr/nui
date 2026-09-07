@@ -52,6 +52,37 @@ func TestClientConnectNuiViz(t *testing.T) {
 	}
 }
 
+func TestConnectServersSkipsAlreadyConnected(t *testing.T) {
+	script := filepath.Clean(filepath.Join("..", "..", "dev", "harness-examples", "mock", "e2e_mcp_stdio_server.py"))
+	if _, err := os.Stat(script); err != nil {
+		t.Skipf("mock mcp server: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	client := New()
+	defer client.Close()
+	servers := []model.ADLMCPServer{{
+		Name:    "e2e",
+		Command: "python3",
+		Args:    []string{script},
+	}}
+	if failures := client.ConnectServers(ctx, servers); len(failures) != 0 {
+		t.Fatalf("first ConnectServers: %v", failures)
+	}
+	n := len(client.Tools())
+	if n == 0 {
+		t.Fatal("expected tools after first connect")
+	}
+	if failures := client.ConnectServers(ctx, servers); len(failures) != 0 {
+		t.Fatalf("second ConnectServers: %v", failures)
+	}
+	if got := len(client.Tools()); got != n {
+		t.Fatalf("tools after skip = %d, want %d (should not duplicate)", got, n)
+	}
+}
+
 func TestClientConnectE2EMCP(t *testing.T) {
 	script := filepath.Clean(filepath.Join("..", "..", "dev", "harness-examples", "mock", "e2e_mcp_stdio_server.py"))
 	if _, err := os.Stat(script); err != nil {
