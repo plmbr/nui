@@ -11,54 +11,19 @@ import (
 	"nui/internal/llm"
 )
 
-// shouldAnswerInPlainText reports whether the user expects a direct text reply
-// instead of ask_user prompts or show_visualization.
+// shouldAnswerInPlainText reports whether the user message looks like something
+// that should not trigger ask_user / visualization salvage retries.
 func shouldAnswerInPlainText(msg string) bool {
-	s := normalizeUserUtterance(msg)
+	s := strings.ToLower(strings.TrimSpace(msg))
 	if s == "" {
 		return false
 	}
-	switch s {
-	case "hi", "hello", "hey", "hmm", "thanks", "thank you", "yo", "sup", "howdy":
+	switch strings.TrimRight(s, "!.?") {
+	case "hi", "hello", "hey", "thanks", "thank you", "yo":
 		return true
 	}
 	if looksLikeCapabilityQuestion(s) || looksLikeFactualQuestion(s) || looksLikeSimpleMathQuestion(s) {
 		return true
-	}
-	return false
-}
-
-func normalizeUserUtterance(msg string) string {
-	s := strings.ToLower(strings.TrimSpace(msg))
-	s = strings.TrimRight(s, " \t!.?~😊🙂👋")
-	return strings.TrimSpace(s)
-}
-
-// isGreetingOnly reports short social messages that must never trigger host tools.
-func isGreetingOnly(msg string) bool {
-	switch normalizeUserUtterance(msg) {
-	case "hi", "hello", "hey", "hmm", "thanks", "thank you", "yo", "sup", "howdy":
-		return true
-	default:
-		return false
-	}
-}
-
-func userRequestedHostAction(msg string) bool {
-	s := strings.ToLower(strings.TrimSpace(msg))
-	if s == "" {
-		return false
-	}
-	keywords := []string{
-		"run ", "execute ", "pwd", " ls", "ls ", "bash", "shell", "terminal",
-		"read ", "write ", "edit ", "open ", "cat ", "glob", "list files", "list dir",
-		"working directory", "cwd", "mkdir", "rm ", "git ", "npm ", "skill",
-		"save agent", "update memory",
-	}
-	for _, kw := range keywords {
-		if strings.Contains(s, kw) {
-			return true
-		}
 	}
 	return false
 }
@@ -147,6 +112,8 @@ func looksLikeSimpleMathQuestion(s string) bool {
 	return false
 }
 
+// filterSpuriousAskUser drops ask_user tool calls for Ollama when the user did not
+// ask for a choice prompt (models sometimes open HITL cards unprompted).
 func filterSpuriousAskUser(calls []llm.ToolCall, userMessage, provider string) (filtered, removed []llm.ToolCall) {
 	if strings.TrimSpace(provider) != "ollama" {
 		return calls, nil
@@ -166,48 +133,6 @@ func filterSpuriousAskUser(calls []llm.ToolCall, userMessage, provider string) (
 		filtered = append(filtered, tc)
 	}
 	return filtered, removed
-}
-
-// filterSpuriousHostTools drops bash/fs/skills exploration tool calls when the user
-// only wanted plain text (greetings, capability Q&A, etc.). Ollama small models often
-// "warm up" with pwd/ls/read despite prompts.
-func filterSpuriousHostTools(calls []llm.ToolCall, userMessage, provider string) (filtered, removed []llm.ToolCall) {
-	if strings.TrimSpace(provider) != "ollama" {
-		return calls, nil
-	}
-	if userRequestedHostAction(userMessage) {
-		return calls, nil
-	}
-	if !shouldAnswerInPlainText(userMessage) && !isGreetingOnly(userMessage) {
-		return calls, nil
-	}
-	if len(calls) == 0 {
-		return calls, nil
-	}
-	filtered = make([]llm.ToolCall, 0, len(calls))
-	for _, tc := range calls {
-		if isSpuriousHostExplorationTool(tc.Function.Name) {
-			removed = append(removed, tc)
-			continue
-		}
-		filtered = append(filtered, tc)
-	}
-	return filtered, removed
-}
-
-func isSpuriousHostExplorationTool(toolName string) bool {
-	name := strings.ToLower(strings.TrimSpace(toolName))
-	name = strings.TrimPrefix(name, "mcp__")
-	if i := strings.LastIndex(name, "__"); i >= 0 {
-		name = name[i+2:]
-	}
-	switch name {
-	case "bash", "read", "glob", "write", "edit", "list_skills", "load_skill",
-		"save_agent", "update_memory", "request_approval":
-		return true
-	default:
-		return false
-	}
 }
 
 func salvageAskUserText(removed []llm.ToolCall) string {

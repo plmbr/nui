@@ -10,15 +10,15 @@ import (
 
 func TestIsInformationalUserMessage(t *testing.T) {
 	cases := map[string]bool{
-		"what can u do":     true,
-		"what can u fo":     true,
-		"What can you do?":  true,
-		"who are you":       true,
-		"what is 2+2":       true,
-		"what is the capital of France": true,
-		"hello":             true,
-		"hi":                true,
-		"build me a chart":  false,
+		"what can u do":                   true,
+		"what can u fo":                   true,
+		"What can you do?":                true,
+		"who are you":                     true,
+		"what is 2+2":                     true,
+		"what is the capital of France":   true,
+		"hello":                           true,
+		"hi":                              true,
+		"build me a chart":                false,
 		"which color do you prefer for the logo?": false,
 	}
 	for msg, want := range cases {
@@ -55,36 +55,15 @@ func TestFilterSpuriousAskUser_nonOllamaKeepsAskUser(t *testing.T) {
 	}
 }
 
-func TestFilterSpuriousHostTools_ollamaGreeting(t *testing.T) {
-	calls := []llm.ToolCall{
-		{Function: llm.FunctionCall{Name: "nui-fs__read", Arguments: `{}`}},
-		{Function: llm.FunctionCall{Name: "nui-bash__bash", Arguments: `{"command":"pwd"}`}},
-		{Function: llm.FunctionCall{Name: "nui-viz__show_visualization", Arguments: `{"html":"<p>x</p>"}`}},
+func TestSalvageAskUserText(t *testing.T) {
+	removed := []llm.ToolCall{
+		{Function: llm.FunctionCall{
+			Name:      "ask_user",
+			Arguments: `{"message":"I can help with many tasks. Which would you like?"}`,
+		}},
 	}
-	filtered, removed := filterSpuriousHostTools(calls, "hi!", "ollama")
-	if len(removed) != 2 {
-		t.Fatalf("removed = %#v", removed)
-	}
-	if len(filtered) != 1 || filtered[0].Function.Name != "nui-viz__show_visualization" {
-		t.Fatalf("filtered = %#v", filtered)
-	}
-}
-
-func TestFilterSpuriousHostTools_keepsBashWhenAsked(t *testing.T) {
-	calls := []llm.ToolCall{
-		{Function: llm.FunctionCall{Name: "nui-bash__bash", Arguments: `{"command":"pwd"}`}},
-	}
-	filtered, removed := filterSpuriousHostTools(calls, "run pwd", "ollama")
-	if len(filtered) != 1 || len(removed) != 0 {
-		t.Fatalf("filtered=%#v removed=%#v", filtered, removed)
-	}
-}
-
-func TestIsGreetingOnly(t *testing.T) {
-	if !isGreetingOnly("Hi!") || !isGreetingOnly("hello") {
-		t.Fatal("expected greetings")
-	}
-	if isGreetingOnly("run pwd") {
-		t.Fatal("run pwd is not a greeting")
+	got := salvageAskUserText(removed)
+	if got != "I can help with many tasks. Which would you like?" {
+		t.Fatalf("salvage = %q", got)
 	}
 }

@@ -32,15 +32,14 @@ func RunFS(ctx context.Context) error {
 
 func registerFSTools(server *mcp.Server) {
 	server.AddTool(&mcp.Tool{
-		Name: "read",
-		Description: "Read a file's contents from the host filesystem. Paths may be absolute, ~/..., or relative to NUI_WORKING_DIR. " +
-			"Do not use for shell commands (pwd, ls, …) or directories — use nui-bash bash instead.",
+		Name:        "read",
+		Description: "Read a file from the host filesystem. Paths may be absolute, ~/..., or relative to NUI_WORKING_DIR.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"path": map[string]any{
 					"type":        "string",
-					"description": "File path to read (not a directory; not a shell command)",
+					"description": "File path to read",
 				},
 				"offset": map[string]any{
 					"type":        "integer",

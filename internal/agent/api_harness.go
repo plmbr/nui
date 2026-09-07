@@ -124,7 +124,6 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 			req.Message,
 			a.Harness.Provider,
 		)
-		filtered, _ = filterSpuriousHostTools(filtered, req.Message, a.Harness.Provider)
 		assistant.ToolCalls = filtered
 		if len(assistant.ToolCalls) == 0 {
 			text := strings.TrimSpace(streamedText)
@@ -218,11 +217,6 @@ func (a *APIHarnessAgent) streamCompletion(
 	events chan<- Event,
 ) (llm.Message, string, error) {
 	if a.Harness.DisableTools {
-		tools = nil
-	}
-	// Small Ollama models often invent tool calls for greetings; omit tools entirely
-	// so the first reply is plain text.
-	if strings.TrimSpace(a.Harness.Provider) == "ollama" && isGreetingOnly(userMessage) {
 		tools = nil
 	}
 	params := llm.CompletionParams{
@@ -343,12 +337,9 @@ func (a *APIHarnessAgent) streamCompletion(
 
 	var removedAskUser []llm.ToolCall
 	var removedViz []llm.ToolCall
-	var removedHost []llm.ToolCall
 	calls, removedViz = filterSpuriousVisualization(calls, userMessage, a.Harness.Provider)
 	calls = filterExecutableToolCalls(calls)
 	calls, removedAskUser = filterSpuriousAskUser(calls, userMessage, a.Harness.Provider)
-	calls, removedHost = filterSpuriousHostTools(calls, userMessage, a.Harness.Provider)
-	_ = removedHost
 	if strings.TrimSpace(streamedContent) == "" {
 		if strings.TrimSpace(a.Harness.Provider) != "ollama" && len(removedAskUser) > 0 {
 			streamedContent = salvageAskUserText(removedAskUser)

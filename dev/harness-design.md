@@ -161,7 +161,7 @@ For API agents, nui also injects **`nui-skills`**, **`nui-fs`**, and **`nui-bash
 - Host FS/shell: paths may be absolute or relative to `NUI_WORKING_DIR` (session working dir).
 - HITL: `read` / `glob` / `list_skills` / `load_skill` / `show_visualization` auto-approve; other tools require UI approval (even with harness `permissions: bypass`).
 - Gemini: strip unsupported JSON Schema keywords from tool parameters; echo `thoughtSignature` on function-call parts.
-- Ollama: omit tools for greeting-only turns; filter spurious host-tool calls on plain-text Q&A.
+- Ollama: short prompts for native tool calling; filter unsolicited ask_user / visualization calls.
 
 ## 5. Standalone reference examples (not wired)
 

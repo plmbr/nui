@@ -244,7 +244,7 @@ Source: `internal/mcpserver/`. Injection lives in `ExpandHarnessDeps` (`internal
 - Skills: metadata catalog in the system prompt; full body via `load_skill`. Skill dirs materialize under `~/.nui/sessions/<id>/skills/`.
 - Approvals: safe reads auto-approve; mutating tools HITL-gate even under `permissions: bypass`. `toolApprovals.policy: all` skips the gate.
 - Gemini: schemas sanitized for functionDeclarations; `thoughtSignature` preserved on tool turns.
-- Ollama: plain-text greetings avoid tool calls; extra tool-routing prompts.
+- Ollama: light tool-format / viz / ask_user prompts; drop unsolicited ask_user and viz tool calls.
 
 ### Known limitations
 

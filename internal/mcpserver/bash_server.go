@@ -35,15 +35,14 @@ func RunBash(ctx context.Context) error {
 
 func registerBashTools(server *mcp.Server) {
 	server.AddTool(&mcp.Tool{
-		Name: "bash",
-		Description: "Run a shell command on the host only when the user asks (pwd, ls, cat, scripts, git, …). " +
-			"Default cwd is NUI_WORKING_DIR. Requires human approval. Do not use for greetings or to explore unprompted.",
+		Name:        "bash",
+		Description: "Run a shell command on the host. Default cwd is NUI_WORKING_DIR. May require human approval.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"command": map[string]any{
 					"type":        "string",
-					"description": "Shell command to run, e.g. pwd or ls -la",
+					"description": "Shell command to run",
 				},
 				"cwd": map[string]any{
 					"type":        "string",

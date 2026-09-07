@@ -7,27 +7,17 @@ import "strings"
 const ollamaToolsSystemPromptAppendix = `
 ## Tool calling (Ollama)
 
-Use the native tool/function calling API for every tool invocation. Never print JSON such as {"name": "...", "parameters": {...}} in assistant text — not even for ask_user.
+Use the native tool/function calling API for tool invocations. Do not print tool-call JSON in assistant text.
 
-**Default: do not call any tools.** Reply in plain text unless the user clearly needs a tool.
+Prefer answering directly when no tool is needed. Use tools when they help fulfill the user's request.
 
-For greetings ("hi", "hello"), thanks, small talk, capability questions, math, and general Q&A: answer in plain text with **zero** tool calls. Do not run pwd, ls, glob, load_skill, or any other tool to "explore" or warm up.
-
-Only call **nui-bash__bash** when the user explicitly asks to run a shell command (for example "run pwd", "ls", "echo hi"). Never call **nui-fs__read** for shell commands, "pwd", or directory paths like "/".
-
-Never call **ask_user** to quiz the user, offer demos, or ask what they want next.
-
-**show_visualization** is only when the user explicitly asks for a chart, graph, plot, table, or dashboard. Never wrap a plain text answer in HTML or call **show_visualization** for definitions, geography, or Q&A.
-
-When a chart is explicitly requested, call **show_visualization** on **nui-viz** with complete self-contained HTML in the **html** field. Use valid JSON with properly escaped quotes inside HTML attribute values. Every script tag must be properly closed.
+Call **show_visualization** on **nui-viz** only for charts, graphs, plots, tables, or dashboards the user asked for. Pass complete self-contained HTML in **html** with valid JSON escaping and closed script tags.
 `
 
 const ollamaHitlSystemPromptAppendix = `
 ## Human in the loop (Ollama)
 
-Do **not** use **ask_user** on **nui-hitl** unless the user explicitly asked you to choose between options (for example: "which do you prefer, A or B?").
-
-Never use ask_user for greetings, capability questions, demos, or follow-up quizzes. Describe capabilities in plain text instead of prompting the user to pick a demo.
+Use **ask_user** on **nui-hitl** when you need the user to choose among options or provide input the tools cannot supply. Prefer a normal text reply when you can answer without blocking on a prompt card.
 `
 
 func appendOllamaToolsSystemPrompt(systemPrompt string) string {

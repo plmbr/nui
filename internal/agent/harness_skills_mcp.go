@@ -65,12 +65,10 @@ func appendNuiSkillsMCP(servers []model.ADLMCPServer, sessionID, workingDir stri
 const apiToolsSystemPromptAppendix = `
 ## nui API tools (skills, filesystem, bash)
 
-- **Default: no tools.** Greetings and ordinary chat get a plain-text reply with zero tool calls — do not run bash/fs/skills to explore the workspace first.
-- Skill catalog in this prompt lists **name + description** only. When a skill is relevant to the user's request, call **load_skill** on **nui-skills** to load full instructions and the absolute **skillRoot**.
-- Shell commands (**pwd**, **ls**, **cat**, scripts, git, etc.): only when the user asks — call **bash** on **nui-bash** with a **command** string. Do not use **nui-fs** **read** for shell commands or directories.
-- Files: **nui-fs** **read** / **glob** / **write** / **edit**. **read** is for file contents only (not directories, not shell).
-- Prefer these tools over inventing scripts when work is needed. Report tool results honestly — never invent sandbox or permission messages.
-- Mutating filesystem ops and bash require human approval in the nui UI.
+- Skill catalog in this prompt lists **name + description** only. When a skill is relevant, call **load_skill** on **nui-skills** for full instructions and the absolute **skillRoot**.
+- Host shell: **bash** on **nui-bash** (default cwd **NUI_WORKING_DIR**).
+- Host files: **nui-fs** **read** / **glob** / **write** / **edit** (paths absolute, ~/…, or relative to **NUI_WORKING_DIR**). **read** is for files, not directories.
+- Report tool results honestly. Mutating filesystem ops and bash may require human approval in the nui UI.
 `
 
 func appendAPIToolsSystemPrompt(systemPrompt string) string {

@@ -30,7 +30,6 @@ func mcpToolCatalogSystemPrompt(tools []mcpclient.Tool) string {
 
 	var b strings.Builder
 	b.WriteString("## MCP servers and tools (this session)\n\n")
-	b.WriteString("Tools below are available when needed. Do **not** call them for greetings or chat that needs no host action. ")
 	b.WriteString("When the user asks which MCP servers or tools are available, list the **exact server names and tool names** below. ")
 	b.WriteString("Do not invent server or tool names that are not listed below.\n\n")
 	for _, server := range servers {
