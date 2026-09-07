@@ -211,6 +211,7 @@ func PrepareSessionHarnessConfig(sessionID string, def model.ADLDefinition, reg 
 		harnessType = "claude-code"
 	}
 	deps.Sandbox = def.Harness.Sandbox
+	deps.UserScope = effectiveUserScopeHarness(harnessType, UserScopeHarnessConfig(agentConfig))
 	_, err = ProvisionHarnessConfig(sessionID, harnessType, deps)
 	return err
 }

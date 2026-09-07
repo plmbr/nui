@@ -3,6 +3,7 @@
 package agent
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,6 +21,15 @@ func (codexHarnessProvisioner) provision(configDir string, deps HarnessDeps) err
 	if err := writeCodexSystemPrompt(configDir, deps.SystemPrompt); err != nil {
 		return err
 	}
+	if !deps.UserScope && deps.seedsUserConfig() {
+		if err := linkCodexAuthFromUser(configDir); err != nil {
+			if errors.Is(err, errNoHarnessCredentials) {
+				warnMissingHarnessCredentials(err)
+			} else {
+				return err
+			}
+		}
+	}
 	if err := installHarnessSkills("codex", configDir, deps.WorkingDir, deps.Skills); err != nil {
 		return fmt.Errorf("install skills: %w", err)
 	}
@@ -36,6 +46,24 @@ func (codexHarnessProvisioner) provision(configDir string, deps HarnessDeps) err
 		"rulesDir":         "rules",
 		"configEnv":        envCodexHome,
 	})
+}
+
+// linkCodexAuthFromUser symlinks the user's Codex login credentials into the
+// session config dir so isolated CODEX_HOME sessions stay authenticated.
+func linkCodexAuthFromUser(configDir string) error {
+	srcDir, err := userCodexHome()
+	if err != nil {
+		return err
+	}
+	same, err := sameDir(srcDir, configDir)
+	if err != nil || same {
+		return err
+	}
+	return linkAuthFileOrWarn(
+		filepath.Join(srcDir, "auth.json"),
+		filepath.Join(configDir, "auth.json"),
+		envCodexHome,
+	)
 }
 
 func writeCodexSystemPrompt(configDir, systemPrompt string) error {

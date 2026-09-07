@@ -3,11 +3,16 @@
 package agent
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+// errNoHarnessCredentials means an isolated session config dir has no usable
+// login credentials to seed from the user's harness home.
+var errNoHarnessCredentials = errors.New("no harness credentials found for isolated config dir")
 
 const piAgentSubdir = "pi-agent"
 
@@ -63,6 +68,15 @@ func userClaudeConfigDir() (string, error) {
 		return "", err
 	}
 	return filepath.Join(home, ".claude"), nil
+}
+
+// userCodexHome is the default Codex home directory (~/.codex).
+func userCodexHome() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".codex"), nil
 }
 
 // userPiAgentDir is the default Pi agent directory (~/.pi/agent), the value
@@ -150,4 +164,27 @@ func linkFileIfMissing(src, dst string) error {
 		return nil
 	}
 	return os.Symlink(src, dst)
+}
+
+// linkAuthFileOrWarn links src -> dst. Unlike linkFileIfMissing, a missing source
+// is reported as errNoHarnessCredentials so callers can warn or fall back.
+func linkAuthFileOrWarn(src, dst, configEnv string) error {
+	if _, err := os.Stat(src); err != nil {
+		return fmt.Errorf("%w: %s is isolated but %s is missing", errNoHarnessCredentials, configEnv, src)
+	}
+	if _, err := os.Stat(dst); err == nil {
+		return nil
+	}
+	if err := os.Symlink(src, dst); err != nil {
+		return err
+	}
+	return nil
+}
+
+// warnMissingHarnessCredentials logs a non-fatal credential gap for isolated configs.
+func warnMissingHarnessCredentials(err error) {
+	if err == nil {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "warn: %v\n", err)
 }

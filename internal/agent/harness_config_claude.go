@@ -4,6 +4,7 @@ package agent
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,6 +15,12 @@ import (
 )
 
 const claudeSystemPromptFile = "CLAUDE.md"
+
+// readClaudeKeychainCredentials is overridden on darwin to read the macOS Keychain.
+// Default is a no-op so tests can inject a blob on any platform.
+var readClaudeKeychainCredentials = func() ([]byte, error) {
+	return nil, errNoHarnessCredentials
+}
 
 type claudeHarnessProvisioner struct{}
 
@@ -27,9 +34,13 @@ func (claudeHarnessProvisioner) provision(configDir string, deps HarnessDeps) er
 	if err := writeClaudeSessionSettings(configDir, deps); err != nil {
 		return err
 	}
-	if !deps.UserScope {
+	if !deps.UserScope && deps.seedsUserConfig() {
 		if err := linkClaudeAuthFromUser(configDir); err != nil {
-			return err
+			if errors.Is(err, errNoHarnessCredentials) {
+				warnMissingHarnessCredentials(err)
+			} else {
+				return err
+			}
 		}
 	}
 	if err := installHarnessSkills("claude-code", configDir, deps.WorkingDir, deps.Skills); err != nil {
@@ -45,28 +56,43 @@ func (claudeHarnessProvisioner) provision(configDir string, deps HarnessDeps) er
 	})
 }
 
-// linkClaudeAuthFromUser symlinks the user's Claude login credentials into the
+// linkClaudeAuthFromUser places the user's Claude login credentials into the
 // session config dir so isolated CLAUDE_CONFIG_DIR sessions stay authenticated.
+// Prefers ~/.claude/.credentials.json; on macOS falls back to the Keychain item
+// "Claude Code-credentials" when that file is absent.
 func linkClaudeAuthFromUser(configDir string) error {
 	srcDir, err := userClaudeConfigDir()
 	if err != nil {
 		return err
 	}
-	absConfig, err := filepath.Abs(configDir)
-	if err != nil {
+	same, err := sameDir(srcDir, configDir)
+	if err != nil || same {
 		return err
 	}
-	absSrc, err := filepath.Abs(srcDir)
-	if err != nil {
-		return err
+
+	src := filepath.Join(srcDir, ".credentials.json")
+	dst := filepath.Join(configDir, ".credentials.json")
+	if _, statErr := os.Stat(src); statErr == nil {
+		return linkAuthFileOrWarn(src, dst, envClaudeConfigDir)
 	}
-	if absConfig == absSrc {
+	if err := materializeClaudeKeychainCredentials(dst); err != nil {
+		return fmt.Errorf("%w: %s is isolated but %s is missing (and no Keychain credentials on this platform)",
+			errNoHarnessCredentials, envClaudeConfigDir, src)
+	}
+	return nil
+}
+
+// materializeClaudeKeychainCredentials writes a Keychain (or test-injected)
+// credential blob into the isolated session config dir at 0600.
+func materializeClaudeKeychainCredentials(dst string) error {
+	if _, err := os.Stat(dst); err == nil {
 		return nil
 	}
-	return linkFileIfMissing(
-		filepath.Join(srcDir, ".credentials.json"),
-		filepath.Join(configDir, ".credentials.json"),
-	)
+	blob, err := readClaudeKeychainCredentials()
+	if err != nil || len(blob) == 0 || !json.Valid(blob) {
+		return errNoHarnessCredentials
+	}
+	return os.WriteFile(dst, append(blob, '\n'), 0o600)
 }
 
 func writeClaudeSystemPrompt(configDir, systemPrompt string) error {

@@ -4,6 +4,7 @@ package agent
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -149,6 +150,119 @@ func TestProvisionClaudeHarnessConfigSkipsCredentialsWhenUserScope(t *testing.T)
 	}
 	if _, err := os.Lstat(filepath.Join(configDir, ".credentials.json")); err == nil {
 		t.Fatal("expected no credential symlink when user scope is enabled")
+	}
+}
+
+func TestProvisionClaudeHarnessConfigMaterializesKeychainCredentials(t *testing.T) {
+	tmp := t.TempDir()
+	home := filepath.Join(tmp, "home")
+	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", home)
+
+	blob := []byte(`{"claudeAiOauth":{"accessToken":"test-token"}}`)
+	orig := readClaudeKeychainCredentials
+	readClaudeKeychainCredentials = func() ([]byte, error) { return blob, nil }
+	t.Cleanup(func() { readClaudeKeychainCredentials = orig })
+
+	configDir, err := ProvisionHarnessConfig("keychain-session", "claude-code", HarnessDeps{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	credDst := filepath.Join(configDir, ".credentials.json")
+	got, err := os.ReadFile(credDst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), "test-token") {
+		t.Fatalf(".credentials.json = %q", string(got))
+	}
+	info, err := os.Stat(credDst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm()&0o077 != 0 {
+		t.Fatalf("credentials mode = %o, want 0600", info.Mode().Perm())
+	}
+}
+
+func TestProvisionCodexHarnessConfigLinksAuth(t *testing.T) {
+	tmp := t.TempDir()
+	home := filepath.Join(tmp, "home")
+	codexHome := filepath.Join(home, ".codex")
+	if err := os.MkdirAll(codexHome, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(codexHome, "auth.json"), []byte(`{"tokens":{"access_token":"codex-token"}}`+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", home)
+
+	configDir, err := ProvisionHarnessConfig("codex-auth-session", "codex", HarnessDeps{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	authDst := filepath.Join(configDir, "auth.json")
+	data, err := os.ReadFile(authDst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "codex-token") {
+		t.Fatalf("auth.json = %q", string(data))
+	}
+}
+
+func TestProvisionCodexHarnessConfigSkipsAuthWhenUserScope(t *testing.T) {
+	tmp := t.TempDir()
+	home := filepath.Join(tmp, "home")
+	codexHome := filepath.Join(home, ".codex")
+	if err := os.MkdirAll(codexHome, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(codexHome, "auth.json"), []byte(`{"tokens":{}}`+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", home)
+
+	configDir, err := ProvisionHarnessConfig("codex-user-scope", "codex", HarnessDeps{UserScope: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(configDir, "auth.json")); err == nil {
+		t.Fatal("expected no auth.json symlink when user scope is enabled")
+	}
+}
+
+func TestProvisionCodexHarnessConfigSkipsAuthInDockerSandbox(t *testing.T) {
+	tmp := t.TempDir()
+	home := filepath.Join(tmp, "home")
+	codexHome := filepath.Join(home, ".codex")
+	if err := os.MkdirAll(codexHome, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(codexHome, "auth.json"), []byte(`{"tokens":{}}`+"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", home)
+
+	configDir, err := ProvisionHarnessConfig("codex-docker", "codex", HarnessDeps{Sandbox: "docker"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(configDir, "auth.json")); err == nil {
+		t.Fatal("expected no host auth symlink for docker sandbox")
+	}
+}
+
+func TestLinkAuthFileOrWarnMissingSource(t *testing.T) {
+	tmp := t.TempDir()
+	err := linkAuthFileOrWarn(filepath.Join(tmp, "missing.json"), filepath.Join(tmp, "dst.json"), envCodexHome)
+	if !errors.Is(err, errNoHarnessCredentials) {
+		t.Fatalf("err = %v, want errNoHarnessCredentials", err)
+	}
+	if !strings.Contains(err.Error(), envCodexHome) {
+		t.Fatalf("error should name config env: %v", err)
 	}
 }
 

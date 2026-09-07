@@ -99,9 +99,8 @@ func effectiveHarnessConfigBindDir(harnessType, sessionConfigDir string, userSco
 			return dir
 		}
 	case "codex":
-		home, err := os.UserHomeDir()
-		if err == nil {
-			return filepath.Join(home, ".codex")
+		if dir, err := userCodexHome(); err == nil {
+			return dir
 		}
 	}
 	return ""
