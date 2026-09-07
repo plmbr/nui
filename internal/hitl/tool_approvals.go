@@ -46,6 +46,28 @@ func IsQuestionTool(toolName string) bool {
 	}
 }
 
+// IsSafeAPIWorkspaceTool reports whether toolName is a read-only API workspace/skills
+// tool (or pure UI display) that the API harness may auto-approve without HITL.
+func IsSafeAPIWorkspaceTool(toolName string) bool {
+	switch bareToolName(toolName) {
+	case "read", "glob", "list_skills", "load_skill", "show_visualization":
+		return true
+	default:
+		return false
+	}
+}
+
+// RequiresHostToolApproval reports whether toolName is a mutating host FS/bash tool.
+// The API harness gates all non-safe tools; this helper remains for other callers.
+func RequiresHostToolApproval(toolName string) bool {
+	switch bareToolName(toolName) {
+	case "bash", "write", "edit":
+		return true
+	default:
+		return false
+	}
+}
+
 func bareToolName(toolName string) string {
 	name := strings.TrimSpace(toolName)
 	name = strings.TrimPrefix(name, "mcp__")

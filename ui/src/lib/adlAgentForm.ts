@@ -96,9 +96,11 @@ export interface AgentOption {
 export interface HarnessOption {
   id: string
   label: string
-  group: 'Built-in' | 'Extension'
+  group: 'CLI' | 'API' | 'Built-in' | 'Extension'
   harnessType: string
   sandbox?: string
+  /** When harnessType is api, fixed provider for this option (e.g. anthropic). */
+  apiProvider?: string
 }
 
 export interface SkillOption {
@@ -126,17 +128,36 @@ export interface ParsedAgentDoc {
   parseError?: boolean
 }
 
-const BUILTIN_HARNESSES: HarnessOption[] = [
-  { id: 'builtin:claude-code', label: 'Claude Code', group: 'Built-in', harnessType: 'claude-code', sandbox: 'none' },
-  { id: 'builtin:pi', label: 'Pi', group: 'Built-in', harnessType: 'pi', sandbox: 'none' },
-  { id: 'builtin:codex', label: 'Codex', group: 'Built-in', harnessType: 'codex', sandbox: 'none' },
-  { id: 'builtin:opencode', label: 'OpenCode', group: 'Built-in', harnessType: 'opencode', sandbox: 'none' },
-  { id: 'builtin:antigravity', label: 'Antigravity', group: 'Built-in', harnessType: 'antigravity', sandbox: 'none' },
-  { id: 'builtin:api', label: 'API (LLM provider)', group: 'Built-in', harnessType: 'api' },
+const CLI_HARNESSES: HarnessOption[] = [
+  { id: 'builtin:claude-code', label: 'Claude Code', group: 'CLI', harnessType: 'claude-code', sandbox: 'none' },
+  { id: 'builtin:pi', label: 'Pi', group: 'CLI', harnessType: 'pi', sandbox: 'none' },
+  { id: 'builtin:codex', label: 'Codex', group: 'CLI', harnessType: 'codex', sandbox: 'none' },
+  { id: 'builtin:opencode', label: 'OpenCode', group: 'CLI', harnessType: 'opencode', sandbox: 'none' },
+  { id: 'builtin:antigravity', label: 'Antigravity', group: 'CLI', harnessType: 'antigravity', sandbox: 'none' },
+]
+
+/** Per-provider API harnesses (same refs as settings defaultHarness: api/<provider>). */
+const API_HARNESS_PROVIDERS = ['anthropic', 'openai', 'gemini', 'openrouter', 'ollama'] as const
+
+const API_HARNESSES: HarnessOption[] = [
+  { id: 'builtin:api/anthropic', label: 'Claude API', group: 'API', harnessType: 'api', apiProvider: 'anthropic' },
+  { id: 'builtin:api/openai', label: 'OpenAI', group: 'API', harnessType: 'api', apiProvider: 'openai' },
+  { id: 'builtin:api/gemini', label: 'Gemini', group: 'API', harnessType: 'api', apiProvider: 'gemini' },
+  { id: 'builtin:api/openrouter', label: 'OpenRouter', group: 'API', harnessType: 'api', apiProvider: 'openrouter' },
+  { id: 'builtin:api/ollama', label: 'Ollama', group: 'API', harnessType: 'api', apiProvider: 'ollama' },
+]
+
+const CONTAINER_HARNESSES: HarnessOption[] = [
   { id: 'builtin:devcontainer', label: 'Dev container', group: 'Built-in', harnessType: 'devcontainer' },
   { id: 'builtin:docker', label: 'Docker (HTTP/SSE container)', group: 'Built-in', harnessType: 'docker' },
   { id: 'builtin:remote', label: 'Remote (HTTP/SSE server)', group: 'Built-in', harnessType: 'remote' },
 ]
+
+const BUILTIN_HARNESSES: HarnessOption[] = [...CLI_HARNESSES, ...API_HARNESSES, ...CONTAINER_HARNESSES]
+
+function isKnownAPIHarnessProvider(provider: string): boolean {
+  return (API_HARNESS_PROVIDERS as readonly string[]).includes(provider)
+}
 
 export function defaultAgentForm(): AgentFormModel {
   return {
@@ -173,8 +194,33 @@ export function defaultAgentForm(): AgentFormModel {
   }
 }
 
-export function buildHarnessOptions(agentTypes: Array<{ id: string; label: string; source?: string; harness: string }>): HarnessOption[] {
+export function buildHarnessOptions(
+  agentTypes: Array<{
+    id: string
+    label: string
+    source?: string
+    harness: string
+    provider?: string
+    available?: boolean
+    isBuiltin?: boolean
+  }>,
+): HarnessOption[] {
   const options = [...BUILTIN_HARNESSES]
+  // Prefer live labels from API builtin agent-types only (anthropic/openai/…).
+  // Never use the nui orchestrator — its harness.provider mirrors defaultHarness and
+  // would overwrite e.g. OpenAI's label with "nui".
+  for (const t of agentTypes) {
+    if (!t.isBuiltin || t.harness !== 'api') continue
+    if (t.id === 'nui' || t.id === 'nui-orchestrator') continue
+    const provider = (t.provider?.trim() || t.id).trim()
+    // Builtin API agents use id === provider (anthropic, openai, …).
+    if (!isKnownAPIHarnessProvider(provider) || t.id !== provider) continue
+    const id = apiHarnessOptionId(provider)
+    const idx = options.findIndex((o) => o.id === id)
+    if (idx >= 0) {
+      options[idx] = { ...options[idx], label: t.label, apiProvider: provider }
+    }
+  }
   const seen = new Set(options.map((o) => o.id))
   for (const t of agentTypes) {
     if (t.source !== 'extension') continue
@@ -190,6 +236,12 @@ export function buildHarnessOptions(agentTypes: Array<{ id: string; label: strin
     })
   }
   return options
+}
+
+/** Resolve harness option id for an api provider (e.g. openai → builtin:api/openai). */
+export function apiHarnessOptionId(provider: string): string {
+  const p = provider.trim() || 'anthropic'
+  return `builtin:api/${p}`
 }
 
 function mapToEntries(obj: Record<string, string> | undefined): KeyValue[] {
@@ -216,10 +268,18 @@ function harnessOptionIdFromDoc(
     const id = `ext:${type.slice(4)}`
     return options.find((o) => o.harnessType === type)?.id ?? id
   }
-  if (type === 'docker' || type === 'remote' || type === 'api' || type === 'devcontainer') {
+  if (type === 'api') {
+    const provider = String(harness?.provider ?? 'anthropic').trim() || 'anthropic'
+    const id = apiHarnessOptionId(provider)
+    return options.find((o) => o.id === id)?.id ?? id
+  }
+  if (type === 'docker' || type === 'remote' || type === 'devcontainer') {
     return `builtin:${type}`
   }
-  return options.find((o) => o.harnessType === type && o.group === 'Built-in')?.id ?? `builtin:${type}`
+  return (
+    options.find((o) => o.harnessType === type && (o.group === 'CLI' || o.group === 'Built-in'))?.id ??
+    `builtin:${type}`
+  )
 }
 
 function findSkillOption(skill: Record<string, unknown>, options: SkillOption[]): FormSkill | null {
@@ -503,7 +563,8 @@ function mergeHarness(root: YAMLMap, form: AgentFormModel, options: HarnessOptio
   }
 
   if (harnessType === 'api') {
-    setMapKey(harness, 'provider', form.apiProvider.trim() || 'anthropic')
+    const provider = (selected?.apiProvider ?? form.apiProvider).trim() || 'anthropic'
+    setMapKey(harness, 'provider', provider)
     setMapKey(harness, 'model', form.harnessModel.trim() || undefined)
     for (const key of ['innerHarness', 'image', 'containerPort', 'host', 'port']) harness.delete(key)
     return

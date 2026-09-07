@@ -9,7 +9,13 @@ const ollamaToolsSystemPromptAppendix = `
 
 Use the native tool/function calling API for every tool invocation. Never print JSON such as {"name": "...", "parameters": {...}} in assistant text — not even for ask_user.
 
-Answer greetings, factual questions, math, and capability questions directly in plain text. Never call **ask_user** to quiz the user, offer demos, or ask what they want next.
+**Default: do not call any tools.** Reply in plain text unless the user clearly needs a tool.
+
+For greetings ("hi", "hello"), thanks, small talk, capability questions, math, and general Q&A: answer in plain text with **zero** tool calls. Do not run pwd, ls, glob, load_skill, or any other tool to "explore" or warm up.
+
+Only call **nui-bash__bash** when the user explicitly asks to run a shell command (for example "run pwd", "ls", "echo hi"). Never call **nui-fs__read** for shell commands, "pwd", or directory paths like "/".
+
+Never call **ask_user** to quiz the user, offer demos, or ask what they want next.
 
 **show_visualization** is only when the user explicitly asks for a chart, graph, plot, table, or dashboard. Never wrap a plain text answer in HTML or call **show_visualization** for definitions, geography, or Q&A.
 

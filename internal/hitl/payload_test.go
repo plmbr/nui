@@ -147,3 +147,19 @@ func TestSalvageAskUserMessage(t *testing.T) {
 		t.Fatalf("salvage = %q", got)
 	}
 }
+
+func TestNormalizePayloadToolArgsAlias(t *testing.T) {
+	payload := NormalizePayload(map[string]any{
+		"title":    "Approve tool call",
+		"message":  `Allow tool "nui-bash__bash"?`,
+		"toolName": "nui-bash__bash",
+		"toolArgs": map[string]any{"command": "pwd"},
+	})
+	if _, ok := payload["questions"]; ok {
+		t.Fatalf("approval payload should not synthesize questions: %#v", payload)
+	}
+	input, ok := payload["toolInput"].(map[string]any)
+	if !ok || input["command"] != "pwd" {
+		t.Fatalf("toolInput = %#v", payload["toolInput"])
+	}
+}

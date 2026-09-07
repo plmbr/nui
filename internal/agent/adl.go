@@ -216,6 +216,8 @@ func (a *ADLAgent) runStep(ctx context.Context, req RunRequest, harness model.AD
 	req.ConfigDir = configDir
 	if titleSystemPrompt != "" {
 		req.SystemPrompt = titleSystemPrompt
+	} else if harness.Type == "api" {
+		req.SystemPrompt = APISystemPromptFromDeps(deps)
 	} else {
 		req.SystemPrompt = deps.SystemPrompt
 	}

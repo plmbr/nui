@@ -16,6 +16,9 @@ const apiSystemPromptFile = "NUI_API_SYSTEM.md"
 type apiHarnessProvisioner struct{}
 
 func (apiHarnessProvisioner) provision(configDir string, deps HarnessDeps) error {
+	if err := installHarnessSkills("api", configDir, deps.WorkingDir, deps.Skills); err != nil {
+		return err
+	}
 	prompt := assembleAPISystemPrompt(deps)
 	if err := writeAPISystemPrompt(configDir, prompt); err != nil {
 		return err
@@ -43,7 +46,7 @@ func assembleAPISystemPrompt(deps HarnessDeps) string {
 		b.WriteString(body)
 		b.WriteString("\n\n")
 	}
-	if appendix := skills.PromptAppendix(skills.Context{WorkingDir: deps.WorkingDir}, deps.Skills); appendix != "" {
+	if appendix := skills.MetadataAppendix(skills.Context{WorkingDir: deps.WorkingDir}, deps.Skills); appendix != "" {
 		b.WriteString(appendix)
 		b.WriteString("\n\n")
 	}

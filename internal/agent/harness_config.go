@@ -256,6 +256,13 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 		if err != nil {
 			return deps, err
 		}
+		if !apiHarnessDisablesTools(def.Harness) {
+			deps.MCPServers, err = appendAPIWorkspaceMCPs(deps.MCPServers, sessionID, deps.WorkingDir)
+			if err != nil {
+				return deps, err
+			}
+			deps.SystemPrompt = appendAPIToolsSystemPrompt(deps.SystemPrompt)
+		}
 		deps.Skills = skills.WithBuiltins(deps.Skills)
 		deps.MCPServers = mcpoauth.ResolveServers(deps.MCPServers)
 		return deps, nil
@@ -269,6 +276,13 @@ func ExpandHarnessDeps(deps HarnessDeps, reg *extensions.Registry, sessionID str
 		deps.MCPServers, err = appendNuiAgentMCP(deps.MCPServers, model.ADLAgentID(def))
 		if err != nil {
 			return deps, err
+		}
+		if def.Harness.Type == "api" {
+			deps.MCPServers, err = appendAPIWorkspaceMCPs(deps.MCPServers, sessionID, deps.WorkingDir)
+			if err != nil {
+				return deps, err
+			}
+			deps.SystemPrompt = appendAPIToolsSystemPrompt(deps.SystemPrompt)
 		}
 	}
 	if !(def.Harness.Type == "api" && strings.TrimSpace(def.Harness.Provider) == "ollama") && !apiHarnessDisablesTools(def.Harness) {

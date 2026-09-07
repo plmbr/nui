@@ -90,6 +90,81 @@ func TestStreamCompletion_disableToolsOmitsToolParams(t *testing.T) {
 	}
 }
 
+func TestStreamCompletion_ollamaStyleSeparateToolCallChunks(t *testing.T) {
+	// Ollama emits one complete tool call per NDJSON chunk, each as a 1-element
+	// array, distinguished by function.index / ToolCall.Index.
+	provider := &mockStreamProvider{
+		chunks: []llm.ChatCompletionChunk{
+			{Choices: []llm.ChunkChoice{{
+				Delta: llm.ChunkDelta{ToolCalls: []llm.ToolCall{{
+					ID:    "call_aaa",
+					Type:  "function",
+					Index: 0,
+					Function: llm.FunctionCall{
+						Name:      "list_skills",
+						Arguments: `{}`,
+					},
+				}}},
+			}}},
+			{Choices: []llm.ChunkChoice{{
+				Delta: llm.ChunkDelta{ToolCalls: []llm.ToolCall{{
+					ID:    "call_bbb",
+					Type:  "function",
+					Index: 1,
+					Function: llm.FunctionCall{
+						Name:      "bash",
+						Arguments: `{"command":"echo hi"}`,
+					},
+				}}},
+			}}},
+			{Choices: []llm.ChunkChoice{{FinishReason: llm.FinishReasonToolCalls}}},
+		},
+	}
+	agent := &APIHarnessAgent{Harness: model.ADLHarness{Type: "api", Provider: "ollama"}}
+	events := make(chan Event, 16)
+	assistant, _, err := agent.streamCompletion(
+		context.Background(),
+		provider,
+		"llama3.2:latest",
+		nil,
+		[]llm.Tool{
+			{Type: "function", Function: llm.Function{Name: "list_skills"}},
+			{Type: "function", Function: llm.Function{Name: "bash"}},
+		},
+		"use tools",
+		events,
+	)
+	close(events)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(assistant.ToolCalls) != 2 {
+		t.Fatalf("tool calls = %#v, want 2 distinct calls", assistant.ToolCalls)
+	}
+	byName := map[string]llm.ToolCall{}
+	for _, tc := range assistant.ToolCalls {
+		byName[tc.Function.Name] = tc
+	}
+	if byName["list_skills"].ID != "call_aaa" {
+		t.Fatalf("list_skills = %+v", byName["list_skills"])
+	}
+	if byName["bash"].ID != "call_bbb" || byName["bash"].Function.Arguments != `{"command":"echo hi"}` {
+		t.Fatalf("bash = %+v", byName["bash"])
+	}
+}
+
+func TestToolCallStreamIndex(t *testing.T) {
+	if got := toolCallStreamIndex(llm.ToolCall{Index: 1}, 0); got != 1 {
+		t.Fatalf("index field = %d", got)
+	}
+	if got := toolCallStreamIndex(llm.ToolCall{}, 2); got != 2 {
+		t.Fatalf("slice fallback = %d", got)
+	}
+	if got := toolCallStreamIndex(llm.ToolCall{}, 0); got != 0 {
+		t.Fatalf("zero = %d", got)
+	}
+}
+
 func TestStreamCompletion_nativeAskUserBlockedOnOllama(t *testing.T) {
 	provider := &mockStreamProvider{
 		chunks: []llm.ChatCompletionChunk{{

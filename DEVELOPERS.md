@@ -233,8 +233,18 @@ Or via HTTP: `POST /api/agents/:id/evals/run`. Implementation: `internal/eval/ru
 | `nui-viz` | `nui viz-mcp` | `show_visualization` (inline charts in chat) |
 | `nui-agent` | `nui agent-mcp` | `save_agent`, `update_memory` |
 | `nui-orchestrator` | `nui orchestrator-mcp` | `list_agents`, `launch_session` (injected for the `nui` master agent) |
+| `nui-skills` | `nui skills-mcp` | `list_skills`, `load_skill` (**API harness only**) |
+| `nui-fs` | `nui fs-mcp` | `read`, `glob`, `write`, `edit` (**API harness only**) |
+| `nui-bash` | `nui bash-mcp` | `bash` (**API harness only**) |
 
-Source: `internal/mcpserver/`. Harness config injects these when HITL, visualization, memory, or orchestrator features are enabled (`internal/agent/harness_config*.go`, `harness_internal.go`).
+Source: `internal/mcpserver/`. Injection lives in `ExpandHarnessDeps` (`internal/agent/harness_config.go`, `harness_skills_mcp.go`, `harness_fs.go`, `harness_bash.go`).
+
+**API harness notes:**
+
+- Skills: metadata catalog in the system prompt; full body via `load_skill`. Skill dirs materialize under `~/.nui/sessions/<id>/skills/`.
+- Approvals: safe reads auto-approve; mutating tools HITL-gate even under `permissions: bypass`. `toolApprovals.policy: all` skips the gate.
+- Gemini: schemas sanitized for functionDeclarations; `thoughtSignature` preserved on tool turns.
+- Ollama: plain-text greetings avoid tool calls; extra tool-routing prompts.
 
 ### Known limitations
 

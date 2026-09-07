@@ -10,9 +10,12 @@ import (
 )
 
 const (
-	nuiHitlMCPName  = "nui-hitl"
+	nuiHitlMCPName   = "nui-hitl"
 	nuiVizMCPName    = "nui-viz"
-	nuiAgentMCPName = "nui-agent"
+	nuiAgentMCPName  = "nui-agent"
+	nuiSkillsMCPName = "nui-skills"
+	nuiFSMCPName     = "nui-fs"
+	nuiBashMCPName   = "nui-bash"
 )
 
 // ServerKey returns the canonical key for token storage.
@@ -38,7 +41,7 @@ func canonicalURL(raw string) string {
 func IsBuiltin(srv model.ADLMCPServer) bool {
 	name := strings.TrimSpace(srv.Name)
 	switch name {
-	case nuiHitlMCPName, nuiVizMCPName, nuiAgentMCPName:
+	case nuiHitlMCPName, nuiVizMCPName, nuiAgentMCPName, nuiSkillsMCPName, nuiFSMCPName, nuiBashMCPName:
 		return true
 	default:
 		return strings.HasPrefix(name, "ext-")

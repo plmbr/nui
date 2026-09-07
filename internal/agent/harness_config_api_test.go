@@ -14,17 +14,18 @@ func TestAssembleAPISystemPromptIncludesBuiltinSkills(t *testing.T) {
 		SystemPrompt: "Base prompt.",
 		Skills:       nil,
 	})
-	if !strings.Contains(prompt, "## nui skills") {
-		t.Fatalf("prompt missing skills section: %q", prompt)
+	if !strings.Contains(prompt, "## Available skills") {
+		t.Fatalf("prompt missing skills catalog: %q", prompt)
 	}
 	if !strings.Contains(prompt, "create-agent") {
 		t.Fatal("expected create-agent skill in prompt")
 	}
-	if !strings.Contains(prompt, "save_agent") {
-		t.Fatal("expected save_agent instructions in prompt")
+	if !strings.Contains(prompt, "load_skill") {
+		t.Fatal("expected load_skill guidance in catalog")
 	}
-	if !strings.Contains(prompt, "show_visualization") {
-		t.Fatal("expected visualize skill in prompt")
+	// Progressive disclosure: full skill bodies are not inlined.
+	if strings.Contains(prompt, "### Skill: create-agent") {
+		t.Fatal("did not expect full skill body in API system prompt")
 	}
 }
 
@@ -53,16 +54,22 @@ func TestExpandHarnessDeps_apiDisableToolsOmitsBuiltinMCP(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, srv := range expanded.MCPServers {
-		if srv.Name == "nui-viz" || srv.Name == nuiAgentMCPName {
+		if srv.Name == "nui-viz" || srv.Name == nuiAgentMCPName ||
+			srv.Name == nuiSkillsMCPName || srv.Name == nuiFSMCPName || srv.Name == nuiBashMCPName {
 			t.Fatalf("unexpected builtin MCP when disableTools is set: %+v", srv)
 		}
 	}
 	if strings.Contains(expanded.SystemPrompt, "show_visualization") {
 		t.Fatal("disableTools api harness should not get viz system prompt")
 	}
+	if strings.Contains(expanded.SystemPrompt, "nui API tools") {
+		t.Fatal("disableTools api harness should not get API tools system prompt")
+	}
 }
 
 func TestExpandHarnessDeps_orchestratorIncludesCreateAgentSkillAndNuiAgentMCP(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
 	expanded, err := ExpandHarnessDeps(HarnessDeps{}, nil, "nui-session", model.ADLDefinition{
 		ID:      "nui",
 		Harness: model.ADLHarness{Type: "api", Provider: "anthropic"},
@@ -82,12 +89,21 @@ func TestExpandHarnessDeps_orchestratorIncludesCreateAgentSkillAndNuiAgentMCP(t 
 	}
 	foundOrchestrator := false
 	foundAgent := false
+	foundSkills := false
+	foundFS := false
+	foundBash := false
 	for _, srv := range expanded.MCPServers {
 		switch srv.Name {
 		case nuiOrchestratorMCPName:
 			foundOrchestrator = true
 		case nuiAgentMCPName:
 			foundAgent = true
+		case nuiSkillsMCPName:
+			foundSkills = true
+		case nuiFSMCPName:
+			foundFS = true
+		case nuiBashMCPName:
+			foundBash = true
 		}
 	}
 	if !foundOrchestrator {
@@ -96,16 +112,21 @@ func TestExpandHarnessDeps_orchestratorIncludesCreateAgentSkillAndNuiAgentMCP(t 
 	if !foundAgent {
 		t.Fatal("expected nui-agent MCP for save_agent")
 	}
+	if !foundSkills || !foundFS || !foundBash {
+		t.Fatal("expected nui-skills/fs/bash MCP for orchestrator api harness")
+	}
 	prompt := assembleAPISystemPrompt(expanded)
 	if !strings.Contains(prompt, "create-agent") {
 		t.Fatalf("prompt missing create-agent skill: %q", prompt)
 	}
-	if !strings.Contains(prompt, "save_agent") {
-		t.Fatal("expected save_agent instructions in prompt")
+	if !strings.Contains(prompt, "load_skill") {
+		t.Fatal("expected progressive skill guidance in prompt")
 	}
 }
 
 func TestExpandHarnessDeps_apiIncludesNuiAgentMCP(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
 	deps := HarnessDeps{}
 	expanded, err := ExpandHarnessDeps(deps, nil, "api-session", model.ADLDefinition{
 		Harness: model.ADLHarness{Type: "api", Provider: "anthropic"},
@@ -115,12 +136,24 @@ func TestExpandHarnessDeps_apiIncludesNuiAgentMCP(t *testing.T) {
 	}
 	foundViz := false
 	foundAgent := false
+	foundSkills := false
+	foundFS := false
+	foundBash := false
 	for _, srv := range expanded.MCPServers {
-		if srv.Name == "nui-viz" {
+		switch srv.Name {
+		case "nui-viz":
 			foundViz = true
-		}
-		if srv.Name == nuiAgentMCPName {
+		case nuiAgentMCPName:
 			foundAgent = true
+		case nuiSkillsMCPName:
+			foundSkills = true
+			if srv.Env[envNuiSkillsRoot] == "" {
+				t.Fatal("nui-skills missing NUI_SKILLS_ROOT")
+			}
+		case nuiFSMCPName:
+			foundFS = true
+		case nuiBashMCPName:
+			foundBash = true
 		}
 	}
 	if !foundViz {
@@ -128,6 +161,27 @@ func TestExpandHarnessDeps_apiIncludesNuiAgentMCP(t *testing.T) {
 	}
 	if !foundAgent {
 		t.Fatal("expected nui-agent MCP for api harness")
+	}
+	if !foundSkills || !foundFS || !foundBash {
+		t.Fatal("expected nui-skills/fs/bash MCP for api harness")
+	}
+	if !strings.Contains(expanded.SystemPrompt, "nui API tools") {
+		t.Fatal("expected API tools system prompt appendix")
+	}
+}
+
+func TestExpandHarnessDeps_cliOmitsAPIWorkspaceMCPs(t *testing.T) {
+	expanded, err := ExpandHarnessDeps(HarnessDeps{}, nil, "cli-session", model.ADLDefinition{
+		Harness: model.ADLHarness{Type: "claude-code"},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, srv := range expanded.MCPServers {
+		switch srv.Name {
+		case nuiSkillsMCPName, nuiFSMCPName, nuiBashMCPName:
+			t.Fatalf("cli harness should not get %s", srv.Name)
+		}
 	}
 }
 

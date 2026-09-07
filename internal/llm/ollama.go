@@ -136,18 +136,24 @@ type ollamaChatResponse struct {
 	Model     string `json:"model"`
 	CreatedAt string `json:"created_at"`
 	Message   struct {
-		Role      string `json:"role"`
-		Content   string `json:"content"`
-		Thinking  string `json:"thinking"`
-		ToolCalls []struct {
-			Function struct {
-				Name      string         `json:"name"`
-				Arguments map[string]any `json:"arguments"`
-			} `json:"function"`
-		} `json:"tool_calls"`
+		Role      string           `json:"role"`
+		Content   string           `json:"content"`
+		Thinking  string           `json:"thinking"`
+		ToolCalls []ollamaToolCall `json:"tool_calls"`
 	} `json:"message"`
 	Done       bool   `json:"done"`
 	DoneReason string `json:"done_reason"`
+}
+
+// ollamaToolCall matches current Ollama /api/chat tool_calls (id + function.index + object args).
+type ollamaToolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Index     int             `json:"index"`
+		Name      string          `json:"name"`
+		Arguments json.RawMessage `json:"arguments"`
+	} `json:"function"`
 }
 
 func ollamaToCompletion(raw *ollamaChatResponse) *ChatCompletion {
@@ -173,6 +179,7 @@ type ollamaStreamState struct {
 	id      string
 	model   string
 	created int64
+	sawTools bool
 }
 
 func (s *ollamaStreamState) handle(raw *ollamaChatResponse) ChatCompletionChunk {
@@ -184,6 +191,7 @@ func (s *ollamaStreamState) handle(raw *ollamaChatResponse) ChatCompletionChunk 
 		delta.Reasoning = &Reasoning{Content: raw.Message.Thinking}
 	}
 	if len(raw.Message.ToolCalls) > 0 {
+		s.sawTools = true
 		delta.ToolCalls = ollamaToolCalls(raw.Message.ToolCalls)
 	}
 	chunk := ChatCompletionChunk{
@@ -194,7 +202,8 @@ func (s *ollamaStreamState) handle(raw *ollamaChatResponse) ChatCompletionChunk 
 	}
 	if raw.Done {
 		finish := FinishReasonStop
-		if len(delta.ToolCalls) > 0 {
+		if s.sawTools || len(delta.ToolCalls) > 0 {
+			// Ollama often ends with done_reason=stop even after emitting tool_calls.
 			finish = FinishReasonToolCalls
 		} else if raw.DoneReason == "length" {
 			finish = FinishReasonLength
@@ -204,25 +213,59 @@ func (s *ollamaStreamState) handle(raw *ollamaChatResponse) ChatCompletionChunk 
 	return chunk
 }
 
-func ollamaToolCalls(calls []struct {
-	Function struct {
-		Name      string         `json:"name"`
-		Arguments map[string]any `json:"arguments"`
-	} `json:"function"`
-}) []ToolCall {
+func ollamaToolCalls(calls []ollamaToolCall) []ToolCall {
 	out := make([]ToolCall, 0, len(calls))
 	for i, tc := range calls {
-		args, _ := json.Marshal(tc.Function.Arguments)
+		idx := tc.Function.Index
+		if idx == 0 && i > 0 {
+			idx = i
+		}
+		id := strings.TrimSpace(tc.ID)
+		if id == "" {
+			id = fmt.Sprintf("call_%d", idx)
+		}
+		callType := strings.TrimSpace(tc.Type)
+		if callType == "" {
+			callType = "function"
+		}
 		out = append(out, ToolCall{
-			ID:   fmt.Sprintf("call_%d", i),
-			Type: "function",
+			ID:    id,
+			Type:  callType,
+			Index: idx,
 			Function: FunctionCall{
 				Name:      tc.Function.Name,
-				Arguments: string(args),
+				Arguments: ollamaArgumentsJSON(tc.Function.Arguments),
 			},
 		})
 	}
 	return out
+}
+
+func ollamaArgumentsJSON(raw json.RawMessage) string {
+	raw = json.RawMessage(strings.TrimSpace(string(raw)))
+	if len(raw) == 0 || string(raw) == "null" {
+		return "{}"
+	}
+	// Object/array args — keep as JSON object string.
+	if raw[0] == '{' || raw[0] == '[' {
+		if json.Valid(raw) {
+			return string(raw)
+		}
+		return "{}"
+	}
+	// JSON-encoded string containing JSON object.
+	var asString string
+	if err := json.Unmarshal(raw, &asString); err == nil {
+		asString = strings.TrimSpace(asString)
+		if asString == "" {
+			return "{}"
+		}
+		if json.Valid([]byte(asString)) {
+			return asString
+		}
+		return "{}"
+	}
+	return "{}"
 }
 
 func ollamaMessages(messages []Message) []map[string]any {
@@ -250,22 +293,33 @@ func ollamaMessages(messages []Message) []map[string]any {
 		if len(msg.ToolCalls) > 0 {
 			calls := make([]map[string]any, 0, len(msg.ToolCalls))
 			for _, tc := range msg.ToolCalls {
-				var args map[string]any
-				_ = json.Unmarshal([]byte(tc.Function.Arguments), &args)
-				if args == nil {
+				var args any
+				rawArgs := strings.TrimSpace(tc.Function.Arguments)
+				if rawArgs == "" {
+					args = map[string]any{}
+				} else if err := json.Unmarshal([]byte(rawArgs), &args); err != nil {
 					args = map[string]any{}
 				}
 				callType := strings.TrimSpace(tc.Type)
 				if callType == "" {
 					callType = "function"
 				}
-				calls = append(calls, map[string]any{
-					"type": callType,
-					"function": map[string]any{
-						"name":      tc.Function.Name,
-						"arguments": args,
-					},
-				})
+				fn := map[string]any{
+					"name":      tc.Function.Name,
+					"arguments": args,
+				}
+				// Preserve index when present so multi-call rounds round-trip cleanly.
+				if tc.Index > 0 || tc.ID != "" {
+					fn["index"] = tc.Index
+				}
+				call := map[string]any{
+					"type":     callType,
+					"function": fn,
+				}
+				if id := strings.TrimSpace(tc.ID); id != "" {
+					call["id"] = id
+				}
+				calls = append(calls, call)
 			}
 			m["tool_calls"] = calls
 		}

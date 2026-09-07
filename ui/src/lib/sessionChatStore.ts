@@ -326,19 +326,34 @@ async function fetchMessagesFromServer(sessionId: string): Promise<SessionChatMe
 
 function upsertHitlRequest(sessionId: string, req: HitlRequest) {
   if (!req.requestId) return
-  setEntry(sessionId, (entry) => ({
-    pendingHitl: { ...entry.pendingHitl, [req.requestId]: req },
-  }))
+  setEntry(sessionId, (entry) => {
+    const pendingHitl = { ...entry.pendingHitl }
+    if (!isPendingHitlStatus(req.status)) {
+      if (!pendingHitl[req.requestId]) return
+      delete pendingHitl[req.requestId]
+      return { pendingHitl }
+    }
+    pendingHitl[req.requestId] = req
+    return { pendingHitl }
+  })
+}
+
+function isPendingHitlStatus(status: string | undefined): boolean {
+  // Missing status is treated as pending (streamed create events often omit it).
+  if (!status || !status.trim()) return true
+  const s = status.trim().toLowerCase()
+  return s === 'pending' || s === 'delivered'
 }
 
 async function reloadPendingHitl(sessionId: string) {
   try {
     const pending = await api.hitl.listPending(sessionId)
-    if (pending.length === 0) return
-    setEntry(sessionId, (entry) => {
-      const pendingHitl = { ...entry.pendingHitl }
+    setEntry(sessionId, () => {
+      const pendingHitl: Record<string, HitlRequest> = {}
       for (const req of pending) {
-        if (req.requestId) pendingHitl[req.requestId] = req
+        if (req.requestId && isPendingHitlStatus(req.status)) {
+          pendingHitl[req.requestId] = req
+        }
       }
       return { pendingHitl }
     })

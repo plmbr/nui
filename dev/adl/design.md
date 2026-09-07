@@ -34,7 +34,7 @@ Legacy top-level `steps`, `subAgents`, and `council` are **rejected**. Use `orch
 | `harness.type` | Description |
 |---|---|
 | `claude-code`, `pi`, `codex`, `opencode` | Host subprocess (optional `sandbox`: `none`, `bubblewrap`, `docker`) |
-| `api` | In-process LLM API (`provider`, `model`, `baseUrl`, `apiKeyEnv`, `disableTools`) |
+| `api` | In-process LLM API (`provider`, `model`, `baseUrl`, `apiKeyEnv`, `disableTools`). Injects `nui-skills` / `nui-fs` / `nui-bash` unless tools disabled. |
 | `docker` | HTTP/SSE container (`image`, `containerPort`) |
 | `devcontainer` | nui-managed dev container (`innerHarness`: CLI type above) |
 | `remote` | Pre-running HTTP/SSE server (`host`, `port`) |

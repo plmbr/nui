@@ -35,6 +35,7 @@ func NormalizePayload(payload map[string]any) map[string]any {
 		delete(out, "questions")
 	}
 	synthesizeQuestionsIfEmpty(out)
+	normalizeToolInputAlias(out)
 	return out
 }
 
@@ -195,6 +196,16 @@ func extractQuestionsFromMessage(message string) (cleanMessage string, questions
 }
 
 func synthesizeQuestionsIfEmpty(out map[string]any) {
+	if kind := strings.TrimSpace(strings.ToLower(stringField(out, "kind"))); kind == "approval" || kind == "review" {
+		return
+	}
+	if stringField(out, "toolName") != "" || out["toolInput"] != nil || out["toolArgs"] != nil {
+		// Approval-style payloads should not become freeform questions.
+		if _, hasQuestions := out["questions"]; !hasQuestions {
+			normalizeToolInputAlias(out)
+			return
+		}
+	}
 	if qs, ok := out["questions"].([]any); ok && len(qs) > 0 {
 		return
 	}
@@ -203,6 +214,15 @@ func synthesizeQuestionsIfEmpty(out map[string]any) {
 			out["questions"] = []any{map[string]any{"question": s}}
 			return
 		}
+	}
+}
+
+func normalizeToolInputAlias(out map[string]any) {
+	if out["toolInput"] != nil {
+		return
+	}
+	if args, ok := out["toolArgs"].(map[string]any); ok {
+		out["toolInput"] = args
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"nui/internal/llm"
@@ -123,6 +124,7 @@ func (a *APIHarnessAgent) Run(ctx context.Context, req RunRequest, events chan<-
 			req.Message,
 			a.Harness.Provider,
 		)
+		filtered, _ = filterSpuriousHostTools(filtered, req.Message, a.Harness.Provider)
 		assistant.ToolCalls = filtered
 		if len(assistant.ToolCalls) == 0 {
 			text := strings.TrimSpace(streamedText)
@@ -218,6 +220,11 @@ func (a *APIHarnessAgent) streamCompletion(
 	if a.Harness.DisableTools {
 		tools = nil
 	}
+	// Small Ollama models often invent tool calls for greetings; omit tools entirely
+	// so the first reply is plain text.
+	if strings.TrimSpace(a.Harness.Provider) == "ollama" && isGreetingOnly(userMessage) {
+		tools = nil
+	}
 	params := llm.CompletionParams{
 		Model:    modelName,
 		Messages: messages,
@@ -255,10 +262,11 @@ func (a *APIHarnessAgent) streamCompletion(
 			}
 		}
 		for i, tc := range choice.Delta.ToolCalls {
-			acc, ok := toolCalls[i]
+			idx := toolCallStreamIndex(tc, i)
+			acc, ok := toolCalls[idx]
 			if !ok {
 				acc = &accumulatedToolCall{id: tc.ID, name: tc.Function.Name}
-				toolCalls[i] = acc
+				toolCalls[idx] = acc
 			}
 			if tc.ID != "" {
 				acc.id = tc.ID
@@ -271,6 +279,9 @@ func (a *APIHarnessAgent) streamCompletion(
 				acc.args.Reset()
 				acc.args.WriteString(updated)
 			}
+			if sig := strings.TrimSpace(tc.ThoughtSignature); sig != "" {
+				acc.thoughtSignature = sig
+			}
 		}
 		if choice.FinishReason != "" {
 			finishReason = choice.FinishReason
@@ -281,18 +292,30 @@ func (a *APIHarnessAgent) streamCompletion(
 	}
 
 	var calls []llm.ToolCall
-	for _, acc := range toolCalls {
+	indexes := make([]int, 0, len(toolCalls))
+	for idx := range toolCalls {
+		indexes = append(indexes, idx)
+	}
+	sort.Ints(indexes)
+	for _, idx := range indexes {
+		acc := toolCalls[idx]
 		if acc.name == "" {
 			continue
 		}
+		id := acc.id
+		if id == "" {
+			id = fmt.Sprintf("call_%d", idx)
+		}
 		argsStr := acc.args.String()
 		calls = append(calls, llm.ToolCall{
-			ID:   acc.id,
-			Type: "function",
+			ID:    id,
+			Type:  "function",
+			Index: idx,
 			Function: llm.FunctionCall{
 				Name:      acc.name,
 				Arguments: normalizeToolCallArguments(argsStr),
 			},
+			ThoughtSignature: acc.thoughtSignature,
 		})
 	}
 
@@ -320,9 +343,12 @@ func (a *APIHarnessAgent) streamCompletion(
 
 	var removedAskUser []llm.ToolCall
 	var removedViz []llm.ToolCall
+	var removedHost []llm.ToolCall
 	calls, removedViz = filterSpuriousVisualization(calls, userMessage, a.Harness.Provider)
 	calls = filterExecutableToolCalls(calls)
 	calls, removedAskUser = filterSpuriousAskUser(calls, userMessage, a.Harness.Provider)
+	calls, removedHost = filterSpuriousHostTools(calls, userMessage, a.Harness.Provider)
+	_ = removedHost
 	if strings.TrimSpace(streamedContent) == "" {
 		if strings.TrimSpace(a.Harness.Provider) != "ollama" && len(removedAskUser) > 0 {
 			streamedContent = salvageAskUserText(removedAskUser)
@@ -387,9 +413,23 @@ func (a *APIHarnessAgent) streamPlainTextCompletion(
 }
 
 type accumulatedToolCall struct {
-	id   string
-	name string
-	args strings.Builder
+	id               string
+	name             string
+	thoughtSignature string
+	args             strings.Builder
+}
+
+// toolCallStreamIndex picks the map key for streaming tool-call deltas.
+// OpenAI and current Ollama set ToolCall.Index; Ollama often sends one tool call per
+// chunk as a 1-element array, so using the slice position would merge distinct calls.
+func toolCallStreamIndex(tc llm.ToolCall, sliceIndex int) int {
+	if tc.Index > 0 {
+		return tc.Index
+	}
+	if sliceIndex > 0 {
+		return sliceIndex
+	}
+	return tc.Index
 }
 
 func buildAPIMessages(req RunRequest) []llm.Message {
@@ -479,9 +519,16 @@ func (a *APIHarnessAgent) approveTool(ctx context.Context, req RunRequest, event
 	if hitl.ShouldAutoApproveTool(toolName, req.ToolApprovalPolicy, req.ToolApprovalTools) {
 		return true, nil
 	}
-	if req.HarnessPermissions == hitl.PermissionsBypass {
+	// Read-only workspace/skills tools may auto-approve. Everything else (bash, write,
+	// edit, save_agent, update_memory, custom MCP, …) requires HITL even under
+	// PermissionsBypass — API agents have no CLI sandbox to fall back on.
+	if hitl.IsSafeAPIWorkspaceTool(toolName) {
 		return true, nil
 	}
+	return a.requestToolApproval(ctx, req, events, toolName, args)
+}
+
+func (a *APIHarnessAgent) requestToolApproval(ctx context.Context, req RunRequest, events chan<- Event, toolName string, args map[string]any) (bool, error) {
 	gate := orchestrationGateFn()
 	if gate == nil {
 		return false, fmt.Errorf("tool %q requires approval but HITL gate is not configured", toolName)
@@ -492,10 +539,10 @@ func (a *APIHarnessAgent) approveTool(ctx context.Context, req RunRequest, event
 		Kind:      hitl.KindApproval,
 		Routing:   hitl.Routing{Channels: []string{hitl.ChannelnuiUI}},
 		Payload: map[string]any{
-			"title":    "Approve tool call",
-			"message":  fmt.Sprintf("Allow tool %q?", toolName),
-			"toolName": toolName,
-			"toolArgs": args,
+			"title":     "Approve tool call",
+			"message":   fmt.Sprintf("Allow tool %q?", toolName),
+			"toolName":  toolName,
+			"toolInput": args,
 		},
 	})
 	if err != nil {

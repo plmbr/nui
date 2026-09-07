@@ -245,6 +245,11 @@ nui also injects built-in MCP servers into agent harnesses when configured:
 | `nui-viz` | `nui viz-mcp` | Inline chart/visualization rendering in chat |
 | `nui-agent` | `nui agent-mcp` | Save ADL agents (`save_agent`) and update memory (`update_memory`) |
 | `nui-orchestrator` | `nui orchestrator-mcp` | Launcher routing (`list_agents`, `launch_session`) for the `nui` master agent |
+| `nui-skills` | `nui skills-mcp` | Progressive skills for **API** harnesses (`list_skills`, `load_skill`) |
+| `nui-fs` | `nui fs-mcp` | Host filesystem tools for **API** harnesses (`read`, `glob`, `write`, `edit`) |
+| `nui-bash` | `nui bash-mcp` | Host shell for **API** harnesses (`bash`) |
+
+`nui-skills` / `nui-fs` / `nui-bash` are injected only for `harness.type: api` (unless `disableTools: true`). Mutating tools require UI approval; read-only discovery tools auto-approve.
 
 ## Known limitations
 

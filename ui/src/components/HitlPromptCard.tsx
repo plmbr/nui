@@ -120,11 +120,18 @@ export function HitlPromptCard({ sessionId, request }: Props) {
   async function submit(answers: Record<string, unknown>, status?: string) {
     setSubmitting(true)
     setError('')
+    // Dismiss immediately so a late hitl_request/get cannot resurrect the card.
+    dismissHitlRequest(sessionId, request.requestId)
     try {
       await api.hitl.respond(request.requestId, answers, status)
-      dismissHitlRequest(sessionId, request.requestId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit response.')
+      const message = err instanceof Error ? err.message : 'Failed to submit response.'
+      // First click already resolved the gate; a second click or race should not resurface the card.
+      if (/already resolved/i.test(message)) {
+        dismissHitlRequest(sessionId, request.requestId)
+        return
+      }
+      setError(message)
     } finally {
       setSubmitting(false)
     }

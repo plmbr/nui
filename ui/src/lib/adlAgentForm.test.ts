@@ -2,8 +2,10 @@
 
 import { describe, expect, it } from 'vitest'
 import {
+  buildHarnessOptions,
   defaultAgentForm,
   defaultFormEval,
+  formToAgentYaml,
   isConversationEval,
   mergeFormIntoAgentYaml,
   parseAgentYaml,
@@ -14,8 +16,10 @@ import {
 
 const emptyOptions: AgentFormOptions = {
   harnesses: [
-    { id: 'builtin:claude-code', label: 'Claude Code', group: 'Built-in', harnessType: 'claude-code' },
-    { id: 'builtin:api', label: 'API', group: 'Built-in', harnessType: 'api' },
+    { id: 'builtin:claude-code', label: 'Claude Code', group: 'CLI', harnessType: 'claude-code' },
+    { id: 'builtin:api/anthropic', label: 'Claude API', group: 'API', harnessType: 'api', apiProvider: 'anthropic' },
+    { id: 'builtin:api/openai', label: 'OpenAI', group: 'API', harnessType: 'api', apiProvider: 'openai' },
+    { id: 'builtin:api/gemini', label: 'Gemini', group: 'API', harnessType: 'api', apiProvider: 'gemini' },
     { id: 'builtin:devcontainer', label: 'Dev container', group: 'Built-in', harnessType: 'devcontainer' },
   ],
   skills: [],
@@ -499,7 +503,7 @@ harness:
   model: gpt-4o-mini
 `
     const { form } = parseAgentYaml(yaml, emptyOptions)
-    expect(form.harnessOptionId).toBe('builtin:api')
+    expect(form.harnessOptionId).toBe('builtin:api/openai')
     expect(form.apiProvider).toBe('openai')
     expect(form.harnessModel).toBe('gpt-4o-mini')
   })
@@ -514,10 +518,23 @@ harness:
   model: gemini-3.6-flash-medium
 `
     const { form } = parseAgentYaml(original, emptyOptions)
+    expect(form.harnessOptionId).toBe('builtin:api/gemini')
     const merged = mergeFormIntoAgentYaml(original, form, emptyOptions)
     expect(merged).toContain('type: api')
     expect(merged).toContain('provider: gemini')
     expect(merged).toContain('model: gemini-3.6-flash-medium')
+  })
+
+  it('writes provider from harness option apiProvider', () => {
+    const form = {
+      ...defaultAgentForm(),
+      harnessOptionId: 'builtin:api/openai',
+      apiProvider: 'openai',
+      harnessModel: 'gpt-4o-mini',
+    }
+    const yaml = formToAgentYaml(form, emptyOptions)
+    expect(yaml).toContain('type: api')
+    expect(yaml).toContain('provider: openai')
   })
 
   it('parses devcontainer innerHarness', () => {
@@ -545,5 +562,45 @@ harness:
     const merged = mergeFormIntoAgentYaml(original, form, emptyOptions)
     expect(merged).toContain('type: devcontainer')
     expect(merged).toContain('innerHarness: codex')
+  })
+})
+
+describe('buildHarnessOptions api providers', () => {
+  it('keeps OpenAI label when nui orchestrator uses api/openai default harness', () => {
+    const options = buildHarnessOptions([
+      {
+        id: 'nui',
+        label: 'nui',
+        harness: 'api',
+        provider: 'openai',
+        isBuiltin: true,
+        available: true,
+      },
+      {
+        id: 'openai',
+        label: 'OpenAI',
+        harness: 'api',
+        provider: 'openai',
+        isBuiltin: true,
+        available: true,
+      },
+      {
+        id: 'anthropic',
+        label: 'Claude API',
+        harness: 'api',
+        provider: 'anthropic',
+        isBuiltin: true,
+        available: true,
+      },
+    ])
+    const api = options.filter((o) => o.group === 'API')
+    expect(api.map((o) => o.label)).toEqual([
+      'Claude API',
+      'OpenAI',
+      'Gemini',
+      'OpenRouter',
+      'Ollama',
+    ])
+    expect(api.some((o) => o.label === 'nui' || o.id.includes('/nui'))).toBe(false)
   })
 })

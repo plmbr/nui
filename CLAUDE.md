@@ -67,7 +67,9 @@ In development, Vite (`:5173`) proxies `/api` to the Go server.
 | `internal/store/` | Persistence: `data.json`, `settings.json`, `state.json`, secrets, ADL YAML in `agents/`, user plugins in `~/.nui/extensions/`; optional system config via `NUI_SYSTEM_CONFIG` / `/etc/nui`; supplemental read-only dirs via `NUI_EXTRA_CONFIG_DIRS` / `nui server --config-dir` |
 | `internal/extensions/` | Extension registry: manifest scan, list sources (file/catalog RPC), harness/MCP/skill/agent contributions |
 | `internal/agents/` | Built-in ADL defs (CLI, API, `nui` master agent) |
-| `internal/agent/` | `Agent` interface, harness agents, `ADLAgent` executor, `Manager` lifecycle, `sandbox.go` (bwrap) |
+| `internal/agent/` | `Agent` interface, harness agents, `ADLAgent` executor, `Manager` lifecycle, `sandbox.go` (bwrap), API workspace MCP injection |
+| `internal/mcpserver/` | Built-in MCP stdio servers (`hitl`, `viz`, `agent`, `orchestrator`, `skills`, `fs`, `bash`) |
+| `internal/llm/` | API harness providers (Anthropic, OpenAI, Gemini, Ollama, OpenRouter) |
 
 ### Agent interface
 

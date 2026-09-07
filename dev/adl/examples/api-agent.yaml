@@ -2,6 +2,8 @@ adl: "1.0"
 
 # In-process LLM API harness (no CLI subprocess).
 # Credentials come from the host env (e.g. ANTHROPIC_API_KEY).
+# nui injects nui-skills / nui-fs / nui-bash unless disableTools: true.
+# Canonical examples: ../adl/examples/23-api-harness.yaml and 25-api-skills-workspace.yaml
 
 id: my-anthropic-agent
 name: My Anthropic Agent

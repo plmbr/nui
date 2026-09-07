@@ -119,9 +119,13 @@ type Tool struct {
 
 // ToolCall represents a tool call made by the assistant.
 type ToolCall struct {
-	ID       string       `json:"id"`
-	Type     string       `json:"type"`
+	ID       string       `json:"id,omitempty"`
+	Type     string       `json:"type,omitempty"`
+	Index    int          `json:"index,omitempty"`
 	Function FunctionCall `json:"function"`
+	// ThoughtSignature is Gemini's encrypted reasoning token for function calls.
+	// Must be echoed back verbatim on the functionCall part in subsequent turns.
+	ThoughtSignature string `json:"thought_signature,omitempty"`
 }
 
 // Reasoning represents extended thinking/reasoning content.

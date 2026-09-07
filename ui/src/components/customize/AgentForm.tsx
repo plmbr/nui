@@ -284,7 +284,13 @@ export function AgentForm({
             <FieldLabel required>Harness type</FieldLabel>
             <SelectGrouped
               value={form.harnessOptionId}
-              onValueChange={(harnessOptionId) => patch({ harnessOptionId })}
+              onValueChange={(harnessOptionId) => {
+                const next = options.harnesses.find((h) => h.id === harnessOptionId)
+                patch({
+                  harnessOptionId,
+                  ...(next?.apiProvider ? { apiProvider: next.apiProvider } : {}),
+                })
+              }}
               items={options.harnesses}
               placeholder="Select harness"
               searchPlaceholder="Search harnesses…"
@@ -308,7 +314,7 @@ export function AgentForm({
           </div>
         </div>
 
-        {harnessType === 'api' && (
+        {harnessType === 'api' && !harness?.apiProvider && (
           <div className="agent-form__subsection">
             <div className="space-y-1.5 max-w-md">
               <FieldLabel required>API provider</FieldLabel>
@@ -561,7 +567,7 @@ export function AgentForm({
             <div className="space-y-1.5">
               <FieldLabel htmlFor="tool-approval-tools" required>Tool list</FieldLabel>
               <p className="text-xs text-muted-foreground">
-                One tool name per line (e.g. Bash, Write, Read, mcp__nui-hitl__*).
+                One tool name per line (e.g. Bash, Write, Read, mcp__nui-hitl__*, mcp__nui-bash__*).
               </p>
               <Textarea
                 id="tool-approval-tools"

@@ -49,6 +49,7 @@ vi.mock('@ag-ui/client', () => ({
 import { api } from '@/api'
 import {
   clearSessionChat,
+  dismissHitlRequest,
   ensureSessionChatLoaded,
   getSessionChatSnapshot,
   sendMessage,
@@ -181,5 +182,35 @@ describe('sessionChatStore', () => {
 
     expect(seen).toEqual([{ type: 'navigate' }])
     unsub()
+  })
+
+  it('does not resurrect resolved hitl requests after dismiss', () => {
+    sendMessage('sess-1', 'run pwd')
+    lastSubscriber!.next!({
+      type: 'CUSTOM',
+      name: 'hitl_request',
+      value: {
+        requestId: 'hitl-1',
+        kind: 'approval',
+        status: 'delivered',
+        payload: { toolName: 'nui-bash__bash', toolInput: { command: 'pwd' } },
+      },
+    })
+    expect(getSessionChatSnapshot('sess-1').pendingHitl).toHaveLength(1)
+
+    dismissHitlRequest('sess-1', 'hitl-1')
+    expect(getSessionChatSnapshot('sess-1').pendingHitl).toHaveLength(0)
+
+    lastSubscriber!.next!({
+      type: 'CUSTOM',
+      name: 'hitl_request',
+      value: {
+        requestId: 'hitl-1',
+        kind: 'approval',
+        status: 'answered',
+        payload: { toolName: 'nui-bash__bash' },
+      },
+    })
+    expect(getSessionChatSnapshot('sess-1').pendingHitl).toHaveLength(0)
   })
 })

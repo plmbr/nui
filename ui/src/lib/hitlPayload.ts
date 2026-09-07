@@ -80,7 +80,18 @@ export function normalizeHitlPayload(payload?: HitlPayload): HitlPayload {
     'text',
   )
 
-  if (questions.length === 0) {
+  const toolName = pickString(base as Record<string, unknown>, 'toolName', 'tool_name')
+  const toolInput =
+    (base.toolInput && typeof base.toolInput === 'object'
+      ? (base.toolInput as Record<string, unknown>)
+      : undefined) ??
+    (typeof (base as Record<string, unknown>).toolArgs === 'object' &&
+    (base as Record<string, unknown>).toolArgs !== null
+      ? ((base as Record<string, unknown>).toolArgs as Record<string, unknown>)
+      : undefined)
+
+  // Approval payloads must not be rewritten into freeform questions.
+  if (questions.length === 0 && !toolName && !toolInput) {
     const text = message || topLevelQuestion || title
     if (text) {
       questions = [
@@ -96,6 +107,8 @@ export function normalizeHitlPayload(payload?: HitlPayload): HitlPayload {
     ...base,
     ...(message ? { message } : {}),
     ...(title ? { title } : {}),
+    ...(toolName ? { toolName } : {}),
+    ...(toolInput ? { toolInput } : {}),
     questions,
   }
 }

@@ -37,6 +37,17 @@ describe('hitlPayload', () => {
     expect(isRedundantHitlApprovalMessage('Please approve', { command: 'ls' })).toBe(false)
   })
 
+  it('maps toolArgs to toolInput and skips question synthesis for approvals', () => {
+    const payload = normalizeHitlPayload({
+      title: 'Approve tool call',
+      message: 'Allow tool "nui-bash__bash"?',
+      toolName: 'nui-bash__bash',
+      toolArgs: { command: 'pwd' },
+    } as never)
+    expect(payload.toolInput).toEqual({ command: 'pwd' })
+    expect(payload.questions ?? []).toEqual([])
+  })
+
   it('normalizes prompt-style questions and message-only payloads', () => {
     expect(
       normalizeHitlPayload({

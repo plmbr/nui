@@ -155,6 +155,14 @@ harness:
 
 Tool calling uses session-scoped MCP servers from ADL `aiAssets.mcpServers` (including extension custom tools). nui runs an in-process MCP client (`internal/mcpclient`) that connects stdio and remote servers, exposes tools to the LLM, executes the agentic tool loop, and supports MCP App UI frames for ADL-declared servers. Tool-call events match CLI harnesses.
 
+For API agents, nui also injects **`nui-skills`**, **`nui-fs`**, and **`nui-bash`** (unless `disableTools: true`):
+
+- Progressive skills: system prompt lists name+description; `load_skill` returns full `SKILL.md` and absolute `skillRoot`.
+- Host FS/shell: paths may be absolute or relative to `NUI_WORKING_DIR` (session working dir).
+- HITL: `read` / `glob` / `list_skills` / `load_skill` / `show_visualization` auto-approve; other tools require UI approval (even with harness `permissions: bypass`).
+- Gemini: strip unsupported JSON Schema keywords from tool parameters; echo `thoughtSignature` on function-call parts.
+- Ollama: omit tools for greeting-only turns; filter spurious host-tool calls on plain-text Q&A.
+
 ## 5. Standalone reference examples (not wired)
 
 The folders [`dev/harness-examples/py/`](harness-examples/py/) and [`dev/harness-examples/ts/`](harness-examples/ts/) demonstrate the TCP JSON-RPC protocol and SDK without an `extension.yaml`. They are **not** registered with nui's extension system and are not selectable as agent types. Use them to learn the wire protocol; ship production harnesses as installed extensions.
