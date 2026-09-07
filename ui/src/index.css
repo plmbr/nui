@@ -718,9 +718,13 @@ html.nui-desktop {
     transition: box-shadow 120ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Wails desktop: hidden title bar + drag the header; keep controls clickable. */
+  /* Wails desktop: hidden title bar + drag the header; keep controls clickable.
+     user-select/cursor prevent the text I-beam while dragging the window. */
   html.nui-desktop .app-header {
     --wails-draggable: drag;
+    cursor: default;
+    user-select: none;
+    -webkit-user-select: none;
     padding-left: calc(5.25rem - 10px);
   }
 
@@ -730,6 +734,9 @@ html.nui-desktop {
 
   html.nui-desktop .update-banners {
     --wails-draggable: drag;
+    cursor: default;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   html.nui-desktop .update-banners :is(button, [role='button']) {
