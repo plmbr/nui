@@ -6,12 +6,18 @@ import {
   preferredModeForTheme,
   resolveUITheme,
   themeSupportsMode,
+  UI_THEME_LIST,
 } from '@/lib/uiThemes'
 
 describe('uiThemes', () => {
-  it('defaults to hawaiian', () => {
+  it('defaults to standard', () => {
     expect(resolveUITheme(undefined).id).toBe(DEFAULT_UI_THEME)
-    expect(resolveUITheme('unknown').id).toBe('hawaiian')
+    expect(resolveUITheme('unknown').id).toBe('standard')
+    expect(DEFAULT_UI_THEME).toBe('standard')
+  })
+
+  it('lists Standard before Hawaiian in settings order', () => {
+    expect(UI_THEME_LIST.map((t) => t.id)).toEqual(['standard', 'hawaiian'])
   })
 
   it('hawaiian shows flowers and supports both modes', () => {

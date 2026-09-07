@@ -2,6 +2,7 @@
 
 import { describe, expect, it } from 'vitest'
 import {
+  allocateAgentCopyIdentity,
   buildHarnessOptions,
   defaultAgentForm,
   defaultFormEval,
@@ -9,6 +10,7 @@ import {
   isConversationEval,
   mergeFormIntoAgentYaml,
   parseAgentYaml,
+  stripAgentCopySuffix,
   syncYamlFromForm,
   usesSimpleGrader,
   type AgentFormOptions,
@@ -602,5 +604,65 @@ describe('buildHarnessOptions api providers', () => {
       'Ollama',
     ])
     expect(api.some((o) => o.label === 'nui' || o.id.includes('/nui'))).toBe(false)
+  })
+})
+
+describe('allocateAgentCopyIdentity', () => {
+  it('strips trailing -copy suffixes', () => {
+    expect(stripAgentCopySuffix('my-agent-copy')).toBe('my-agent')
+    expect(stripAgentCopySuffix('my-agent-copy2')).toBe('my-agent')
+    expect(stripAgentCopySuffix('my-agent')).toBe('my-agent')
+  })
+
+  it('allocates -copy when free', () => {
+    expect(
+      allocateAgentCopyIdentity({
+        file: 'my-agent.yaml',
+        id: 'my-agent',
+        name: 'My Agent',
+        existing: [{ file: 'my-agent.yaml', id: 'my-agent' }],
+      }),
+    ).toEqual({
+      file: 'my-agent-copy.yaml',
+      id: 'my-agent-copy',
+      name: 'My Agent-copy',
+    })
+  })
+
+  it('increments -copy1, -copy2 when needed', () => {
+    expect(
+      allocateAgentCopyIdentity({
+        file: 'my-agent.yaml',
+        id: 'my-agent',
+        name: 'My Agent',
+        existing: [
+          { file: 'my-agent.yaml', id: 'my-agent' },
+          { file: 'my-agent-copy.yaml', id: 'my-agent-copy' },
+          { file: 'my-agent-copy1.yaml', id: 'other' },
+        ],
+      }),
+    ).toEqual({
+      file: 'my-agent-copy2.yaml',
+      id: 'my-agent-copy2',
+      name: 'My Agent-copy2',
+    })
+  })
+
+  it('avoids id collisions even when filenames differ', () => {
+    expect(
+      allocateAgentCopyIdentity({
+        file: 'alpha.yaml',
+        id: 'shared',
+        name: 'Shared',
+        existing: [
+          { file: 'alpha.yaml', id: 'shared' },
+          { file: 'beta.yaml', id: 'shared-copy' },
+        ],
+      }),
+    ).toEqual({
+      file: 'alpha-copy1.yaml',
+      id: 'shared-copy1',
+      name: 'Shared-copy1',
+    })
   })
 })

@@ -1013,7 +1013,7 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		if patch.UITheme != "" {
 			if !validUITheme(patch.UITheme) {
-				http.Error(w, "uiTheme must be 'hawaiian' or 'standard'", http.StatusBadRequest)
+				http.Error(w, "uiTheme must be 'standard' or 'hawaiian'", http.StatusBadRequest)
 				return
 			}
 			current.UITheme = patch.UITheme
@@ -1065,7 +1065,7 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 			current.Theme = "light"
 		}
 		if current.UITheme == "" {
-			current.UITheme = "hawaiian"
+			current.UITheme = "standard"
 		}
 		if err := store.SaveSettings(current); err != nil {
 			http.Error(w, "failed to save settings", http.StatusInternalServerError)
@@ -1151,7 +1151,7 @@ func handleState(w http.ResponseWriter, r *http.Request) {
 
 func validUITheme(id string) bool {
 	switch id {
-	case "hawaiian", "standard":
+	case "standard", "hawaiian":
 		return true
 	default:
 		return false

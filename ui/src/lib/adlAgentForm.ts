@@ -943,6 +943,66 @@ export function slugFromName(name: string): string {
     .replace(/^-+|-+$/g, '') || 'my-agent'
 }
 
+/** Strip a trailing -copy or -copyN suffix used by agent duplication. */
+export function stripAgentCopySuffix(value: string): string {
+  const stripped = value.replace(/-copy\d*$/i, '')
+  return stripped || value
+}
+
+export interface AgentCopyIdentity {
+  file: string
+  id: string
+  name: string
+}
+
+/**
+ * Allocate a unique -copy / -copy1 / -copy2 identity for file, id, and name
+ * without overwriting existing agents.
+ */
+export function allocateAgentCopyIdentity(input: {
+  file: string
+  id: string
+  name: string
+  existing: Array<{ file: string; id: string }>
+}): AgentCopyIdentity {
+  const extMatch = input.file.match(/(\.ya?ml)$/i)
+  const ext = extMatch?.[1] ?? '.yaml'
+  const stem = input.file.replace(/\.ya?ml$/i, '')
+  const baseStem = stripAgentCopySuffix(stem) || 'agent'
+  const baseId = stripAgentCopySuffix(input.id.trim()) || baseStem
+  const baseName = stripAgentCopySuffix(input.name.trim()) || baseId
+
+  const takenStems = new Set(
+    input.existing.map((e) => e.file.replace(/\.ya?ml$/i, '').toLowerCase()),
+  )
+  const takenIds = new Set(
+    input.existing.map((e) => e.id.trim().toLowerCase()).filter(Boolean),
+  )
+
+  const isFree = (suffix: string) => {
+    const fileStem = `${baseStem}${suffix}`
+    const id = `${baseId}${suffix}`
+    return (
+      !takenStems.has(fileStem.toLowerCase()) &&
+      !takenIds.has(id.toLowerCase())
+    )
+  }
+
+  let suffix = '-copy'
+  if (!isFree(suffix)) {
+    for (let n = 1; ; n++) {
+      suffix = `-copy${n}`
+      if (isFree(suffix)) break
+    }
+  }
+
+  return {
+    file: `${baseStem}${suffix}${ext}`,
+    id: `${baseId}${suffix}`,
+    name: `${baseName}${suffix}`,
+  }
+}
+
 export function isConversationEval(ev: FormEval): boolean {
   return ev.inputMode === 'conversation'
 }

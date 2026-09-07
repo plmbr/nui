@@ -15,6 +15,14 @@ export interface UIThemeDefinition {
 }
 
 export const UI_THEMES: Record<UIThemeId, UIThemeDefinition> = {
+  standard: {
+    id: 'standard',
+    label: 'Standard',
+    description: 'Clean look without floral accents',
+    modes: ['light', 'dark'],
+    flowers: false,
+    landingPlaceholder: 'Drop a task here, or type @ to choose an agent…',
+  },
   hawaiian: {
     id: 'hawaiian',
     label: 'Hawaiian',
@@ -24,18 +32,11 @@ export const UI_THEMES: Record<UIThemeId, UIThemeDefinition> = {
     landingPlaceholder:
       'Aloha! Drop a task here, or type @ to choose an agent — nui will handle the mahi.',
   },
-  standard: {
-    id: 'standard',
-    label: 'Standard',
-    description: 'Clean look without floral accents',
-    modes: ['light', 'dark'],
-    flowers: false,
-    landingPlaceholder: 'Drop a task here, or type @ to choose an agent…',
-  },
 }
 
-export const DEFAULT_UI_THEME: UIThemeId = 'hawaiian'
-export const UI_THEME_LIST: UIThemeDefinition[] = Object.values(UI_THEMES)
+export const DEFAULT_UI_THEME: UIThemeId = 'standard'
+/** Settings order: Standard first (default), then Hawaiian. */
+export const UI_THEME_LIST: UIThemeDefinition[] = [UI_THEMES.standard, UI_THEMES.hawaiian]
 
 export function resolveUITheme(id: string | null | undefined): UIThemeDefinition {
   if (id && id in UI_THEMES) {

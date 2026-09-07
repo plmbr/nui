@@ -1,7 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { FileCode2, ChevronLeft, FlaskConical, FormInput, Plus, Rocket, Trash2 } from 'lucide-react'
+import { FileCode2, ChevronLeft, Copy, FlaskConical, FormInput, MoreHorizontal, Plus, Rocket, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,9 +14,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { AgentForm } from '@/components/customize/AgentForm'
 import {
+  allocateAgentCopyIdentity,
   defaultAgentForm,
   formToAgentYaml,
   mergeFormIntoAgentYaml,
@@ -247,6 +255,50 @@ export function AgentsTab({ onChanged }: Props) {
     }
   }
 
+  const duplicate = async (file: string) => {
+    setSaving(true)
+    setError(null)
+    try {
+      let yaml: string
+      let sourceId: string
+      let sourceName: string
+      if (selectedFile === file && !creating) {
+        yaml = editMode === 'form'
+          ? mergeFormIntoAgentYaml(content, form, options)
+          : content
+        const parsed = parseAgentYaml(yaml, options)
+        sourceId = parsed.form.id || form.id
+        sourceName = parsed.form.name || form.name
+      } else {
+        const res = await api.agents.get(file)
+        yaml = res.content
+        const parsed = parseAgentYaml(yaml, options)
+        sourceId = parsed.form.id
+        sourceName = parsed.form.name
+      }
+      const copy = allocateAgentCopyIdentity({
+        file,
+        id: sourceId,
+        name: sourceName,
+        existing: agents,
+      })
+      const parsed = parseAgentYaml(yaml, options)
+      const copyYaml = mergeFormIntoAgentYaml(
+        yaml,
+        { ...parsed.form, id: copy.id, name: copy.name },
+        options,
+      )
+      const info = await api.agents.create(copy.file, copyYaml)
+      await load()
+      onChanged?.()
+      await openAgent(info.file)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to duplicate agent')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const remove = async (file: string) => {
     setError(null)
     try {
@@ -380,16 +432,47 @@ export function AgentsTab({ onChanged }: Props) {
               </li>
             ) : (
               filteredAgents.map((agent) => (
-              <li key={agent.file}>
+              <li key={agent.file} className="group/agent-item relative flex items-stretch">
                 <button
                   type="button"
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60 data-active:bg-muted"
+                  className="min-w-0 flex-1 text-left px-3 py-2 pr-8 text-sm hover:bg-muted/60 data-active:bg-muted"
                   data-active={selectedFile === agent.file || undefined}
                   onClick={() => void openAgent(agent.file)}
                 >
                   <span className="font-medium block truncate">{agent.name}</span>
                   <span className="text-xs text-muted-foreground block truncate">{agent.file}</span>
                 </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <button
+                        type="button"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground md:opacity-0 group-hover/agent-item:opacity-100 group-focus-within/agent-item:opacity-100 aria-expanded:opacity-100"
+                        aria-label={`Options for ${agent.name}`}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    }
+                  >
+                    <MoreHorizontal className="size-3.5" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40">
+                    <DropdownMenuItem
+                      disabled={saving}
+                      onClick={() => void duplicate(agent.file)}
+                    >
+                      <Copy className="size-3.5 text-muted-foreground" />
+                      Duplicate
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive data-highlighted:bg-destructive/10 data-highlighted:text-destructive"
+                      onClick={() => setDeleteTarget(agent.file)}
+                    >
+                      <Trash2 className="size-3.5" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </li>
               ))
             )}
@@ -425,11 +508,6 @@ export function AgentsTab({ onChanged }: Props) {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <ModeToggle mode={editMode} onChange={handleModeChange} />
-                  {!creating && selectedFile && (
-                    <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(selectedFile)}>
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  )}
                 </div>
               </div>
 

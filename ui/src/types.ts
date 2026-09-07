@@ -197,7 +197,7 @@ export type UIThemeId = 'hawaiian' | 'standard'
 
 export interface Settings {
   theme: ColorMode
-  /** Visual theme; defaults to hawaiian when omitted. */
+  /** Visual theme; defaults to standard when omitted. */
   uiTheme?: UIThemeId
   /** Skip the landing-page slogan word animation before the logo. */
   disableSloganAnimation?: boolean

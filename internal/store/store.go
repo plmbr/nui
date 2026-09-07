@@ -23,7 +23,7 @@ type RecentAgentEntry struct {
 // Settings holds durable preferences (admin-seedable; user overrides).
 type Settings struct {
 	Theme                    string            `json:"theme"`                              // "light" | "dark" color mode
-	UITheme                  string            `json:"uiTheme,omitempty"`                  // visual theme id, e.g. "hawaiian" | "standard"; default hawaiian
+	UITheme                  string            `json:"uiTheme,omitempty"`                  // visual theme id, e.g. "standard" | "hawaiian"; default standard
 	DisableSloganAnimation   *bool             `json:"disableSloganAnimation,omitempty"`   // skip landing-page slogan word animation
 	DefaultAgentType         string            `json:"defaultAgentType,omitempty"`         // default agent for new sessions on launch
 	DefaultHarness           string            `json:"defaultHarness,omitempty"`           // harness for internal agents (e.g. api/anthropic, claude-code)
@@ -70,7 +70,7 @@ type Data struct {
 }
 
 func defaultSettings() Settings {
-	return Settings{Theme: "light", UITheme: "hawaiian"}
+	return Settings{Theme: "light", UITheme: "standard"}
 }
 
 func normalizeSettings(s *Settings) {
@@ -78,7 +78,7 @@ func normalizeSettings(s *Settings) {
 		s.Theme = "light"
 	}
 	if s.UITheme == "" {
-		s.UITheme = "hawaiian"
+		s.UITheme = "standard"
 	}
 }
 
