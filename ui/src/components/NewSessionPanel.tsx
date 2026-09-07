@@ -1,11 +1,12 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ChevronRight, Filter, Folder, Search, X } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Filter, Folder } from 'lucide-react'
 import { HarnessIcon } from '@/components/HarnessIcon'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SearchInput } from '@/components/SearchInput'
 import { cn } from '@/lib/utils'
 import { api } from '@/api'
 import { harnessLabel } from '@/lib/agentDisplay'
@@ -541,26 +542,13 @@ export function NewSessionPanel({
                     </h2>
                   </div>
                   <div className="relative shrink-0">
-                    <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
+                    <SearchInput
                       value={customSearch}
-                      onChange={(e) => setCustomSearch(e.target.value)}
+                      onChange={setCustomSearch}
                       placeholder="Search by name or description…"
-                      className="pl-8 pr-8"
                       aria-label="Search custom agents"
+                      autoFocus
                     />
-                    {customSearch && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        onClick={() => setCustomSearch('')}
-                        aria-label="Clear search"
-                      >
-                        <X className="size-3.5" />
-                      </Button>
-                    )}
                   </div>
                   {customSourceOptions.length > 0 && (
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 shrink-0">

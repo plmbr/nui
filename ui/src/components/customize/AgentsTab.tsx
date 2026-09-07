@@ -117,7 +117,7 @@ export function AgentsTab({ onChanged }: Props) {
   const filteredAgents = useMemo(
     () =>
       filterBySearchQuery(agents, agentSearchQuery, (agent) =>
-        [agent.name, agent.file].filter(Boolean).join(' '),
+        [agent.name, agent.description, agent.file].filter(Boolean).join(' '),
       ),
     [agents, agentSearchQuery],
   )
@@ -421,9 +421,10 @@ export function AgentsTab({ onChanged }: Props) {
           <SearchInput
             value={agentSearchQuery}
             onChange={setAgentSearchQuery}
-            placeholder="Search agents…"
+            placeholder="Search by name or description…"
             aria-label="Search agent definitions"
             className="shrink-0"
+            autoFocus
           />
           <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-lg border divide-y">
             {filteredAgents.length === 0 ? (

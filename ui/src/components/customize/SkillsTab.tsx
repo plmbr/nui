@@ -70,6 +70,7 @@ export function SkillsTab() {
             onChange={setSearchQuery}
             placeholder="Search skills…"
             aria-label="Search installed skills"
+            autoFocus
           />
           {filteredSkills.length === 0 ? (
             <p className="text-sm text-muted-foreground">No skills match your search.</p>

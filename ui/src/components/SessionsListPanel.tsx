@@ -109,6 +109,8 @@ export function SessionsListPanel({
                 onChange={setSearchQuery}
                 placeholder="Search sessions…"
                 aria-label="Search sessions in this group"
+                autoFocus
+                focusKey={group.id}
               />
               <div className="flex items-center gap-2">
                 <Button

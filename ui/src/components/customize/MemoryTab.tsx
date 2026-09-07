@@ -278,6 +278,7 @@ export function MemoryTab() {
           onChange={setAgentSearchQuery}
           placeholder="Search agents…"
           aria-label="Search agents with memory"
+          autoFocus
         />
         {filteredAgents.length === 0 ? (
           <p className="text-sm text-muted-foreground">No agents match your search.</p>

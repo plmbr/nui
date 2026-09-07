@@ -260,6 +260,7 @@ export function MCPServersTab() {
             onChange={setSearchQuery}
             placeholder="Search MCP servers…"
             aria-label="Search configured MCP servers"
+            autoFocus
           />
           {filteredServerEntries.length === 0 ? (
             <p className="text-sm text-muted-foreground">No MCP servers match your search.</p>

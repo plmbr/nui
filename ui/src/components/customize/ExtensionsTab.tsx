@@ -223,6 +223,7 @@ export function ExtensionsTab({ onChanged }: Props) {
         onChange={setSearchQuery}
         placeholder="Search extensions…"
         aria-label="Search installed extensions"
+        autoFocus
       />
       {filteredExtensions.length === 0 ? (
         <p className="text-sm text-muted-foreground">No extensions match your search.</p>

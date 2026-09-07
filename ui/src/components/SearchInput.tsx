@@ -1,5 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
+import { useLayoutEffect, useRef } from 'react'
 import { Search, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -12,6 +13,10 @@ interface Props {
   className?: string
   inputClassName?: string
   'aria-label'?: string
+  /** Focus the input when the control mounts or when focusKey changes. */
+  autoFocus?: boolean
+  /** Remount/activation token; changing it re-focuses when autoFocus is set. */
+  focusKey?: string | number
 }
 
 export function SearchInput({
@@ -22,7 +27,31 @@ export function SearchInput({
   className,
   inputClassName,
   'aria-label': ariaLabel = 'Search',
+  autoFocus = false,
+  focusKey,
 }: Props) {
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useLayoutEffect(() => {
+    if (!autoFocus) return
+
+    let cancelled = false
+    const focus = () => {
+      if (!cancelled) {
+        inputRef.current?.focus({ preventScroll: true })
+      }
+    }
+
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(focus)
+    })
+
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(frame)
+    }
+  }, [autoFocus, focusKey])
+
   return (
     <div className={cn('relative', className)}>
       <Search
@@ -30,6 +59,7 @@ export function SearchInput({
         aria-hidden
       />
       <Input
+        ref={inputRef}
         id={id}
         type="text"
         role="searchbox"
@@ -52,4 +82,3 @@ export function SearchInput({
     </div>
   )
 }
-
