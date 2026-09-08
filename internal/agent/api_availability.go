@@ -142,7 +142,7 @@ var defaultAPIProfiles = map[string]APIProviderProfile{
 }
 
 // lookupCredentialValue resolves a credential key with priority:
-// request/ADL env map → process environment → ~/.nui/secrets.json.
+// request/ADL env map → process environment → ~/.nui/env.json.
 func lookupCredentialValue(key string, env map[string]string) string {
 	key = strings.TrimSpace(key)
 	if key == "" {

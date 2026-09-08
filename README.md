@@ -90,7 +90,7 @@ Install the agent CLI you want to use and make sure it is on your `PATH`:
 | OpenRouter | `OPENROUTER_API_KEY` |
 | Ollama | none (local; optional `OLLAMA_HOST`) |
 
-**Model overrides** (process env, ADL `env`, or **Settings → Env vars** / `~/.nui/secrets.json`; session `agentConfig.model` wins):
+**Model overrides** (process env, ADL `env`, or **Settings → Env vars** / `~/.nui/env.json`; session `agentConfig.model` wins):
 
 | Agent | Model env vars (first set wins) | Default when unset |
 |---|---|---|
@@ -128,7 +128,7 @@ nui agent eval run -a my-agent  # run ADL eval cases against a running server
 nui extension add|list|remove|create|env  # manage / scaffold extensions
 nui extension env list|get|set|unset <ext>  # per-extension env vars
 nui skills add|list|remove  # manage skills catalog (-y to overwrite)
-nui env list|get|set|unset  # global env vars (~/.nui/secrets.json)
+nui env list|get|set|unset  # global env vars (~/.nui/env.json)
 nui memory list|show|edit  # persistent memory files
 nui gc [--dry-run]         # clean orphaned ~/.nui state and temp dirs
 nui schedule list|add|enable|disable|delete|run-now  # recurring runs

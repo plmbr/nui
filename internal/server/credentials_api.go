@@ -20,12 +20,12 @@ type CredentialField struct {
 	Description string `json:"description,omitempty"`
 	Group       string `json:"group"`
 	Secret      bool   `json:"secret"`
-	Value       string `json:"value"`      // value from ~/.nui/secrets.json only
+	Value       string `json:"value"`      // value from ~/.nui/env.json only
 	FromEnv     bool   `json:"fromEnv"`    // process environment currently has a value
 	Configured  bool   `json:"configured"` // available via secrets, process env, or both
 }
 
-// CustomEnvEntry is one free-form global env var from secrets.json.
+// CustomEnvEntry is one free-form global env var from env.json.
 type CustomEnvEntry struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`

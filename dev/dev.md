@@ -157,11 +157,11 @@ Interactive AG-UI chat does not yet support mid-stream offset replay. A disconne
 | Sessions + agent session IDs + UI messages | JSON | `~/.nui/data.json` | Done — rows removed on session delete |
 | Settings (preferences) | JSON | `~/.nui/settings.json` | Done (`theme`, `uiTheme`, `defaultAgentType`, `defaultHarness`, `disabledExtensions`, memory modes). System base: `/etc/nui/settings.json` or `NUI_SYSTEM_CONFIG` (user wins) |
 | UI state | JSON | `~/.nui/state.json` | Done (`lastAgentType`, `lastSessionId`, `recentSessionIds`, `recentAgents`, `sidebarOpen`, `sidebarWidth`, `recentsOpen`); `lastSessionId` cleared when that session is deleted |
-| Secrets | JSON | `~/.nui/secrets.json` (0600) | Done — managed API credentials + free-form global env; Customize → Env vars. Merged with system secrets when present |
+| Global env | JSON | `~/.nui/env.json` (0600) | Done — managed API credentials + free-form global env; Customize → Env vars. Migrated from legacy `secrets.json`. Merged with system `env.json` / `secrets.json` when present |
 | Extension env | JSON | `~/.nui/extension-env.json` (0600) | Done — per-extension env maps; Customize → Extensions → Env. Merged with system extension-env when present |
 | Data dir override | env | `NUI_DATA_DIR` | Writable user tree (default `~/.nui`) |
 | Extra config dirs | env / flag | `NUI_EXTRA_CONFIG_DIRS` / `nui server --config-dir` | Supplemental read-only roots (`agents/`, `extensions/`); user data wins on conflicts |
-| System config | env/dir | `NUI_SYSTEM_CONFIG` / `/etc/nui` | Read-only admin defaults (settings, secrets, extension-env, mcp-servers, agents, extensions) |
+| System config | env/dir | `NUI_SYSTEM_CONFIG` / `/etc/nui` | Read-only admin defaults (settings, env, extension-env, mcp-servers, agents, extensions) |
 | MCP UI Apps client | JSON | `~/.nui/mcp-ui.json` | Done — Claude-style map for chat MCP Apps (migrated from legacy `.mcp.json`) |
 | User MCP servers | JSON | `~/.nui/mcp-servers.json` | Done — Customize / ADL-shaped HTTP servers |
 | Per-session harness config | dir | `~/.nui/sessions/<session-id>/` | Done — removed on session delete |
@@ -206,7 +206,7 @@ Example ADL templates for docker/remote harness walkthroughs: `dev/harness-examp
 | `GET` | `/api/directories` | Working-dir suggestions |
 | `GET/PUT` | `/api/settings` | Preferences (partial PUT; memory modes). Reads merge system+user; writes user layer only |
 | `GET/PUT` | `/api/state` | UI restoration state (`lastSessionId`, recents, sidebar). User-only |
-| `GET/PUT` | `/api/env` | Global env (`~/.nui/secrets.json`): managed credentials + custom key/values. PUT `{ "env": {…}, "custom": {…} }` (empty value clears; custom replaces all custom keys). `/api/credentials` is an alias. Merged with system secrets on read |
+| `GET/PUT` | `/api/env` | Global env (`~/.nui/env.json`): managed credentials + custom key/values. PUT `{ "env": {…}, "custom": {…} }` (empty value clears; custom replaces all custom keys). `/api/credentials` is an alias. Merged with system env on read |
 | `GET/PUT` | `/api/credentials` | Alias of `/api/env` (backward compatible). |
 | `GET/PUT` | `/api/extensions/{name}/env` | Per-extension env (`~/.nui/extension-env.json`). PUT `{ "env": {…} }` replaces that extension’s **user** map. Reloads extension hosts. |
 | `GET` | `/api/bootstrap` | One-shot CLI bootstrap (`sessionId`, `initialPrompt`) |

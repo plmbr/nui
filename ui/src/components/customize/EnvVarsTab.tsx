@@ -207,7 +207,7 @@ export function EnvVarsTab({ onChanged }: Props) {
         <h2 className="text-sm font-semibold">Env vars</h2>
         <p className="text-xs text-muted-foreground">
           Applied to nui and processes it launches (extensions, harnesses, MCP). Values are saved to{' '}
-          <code className="text-[11px]">~/.nui/secrets.json</code> (mode 0600). Process environment
+          <code className="text-[11px]">~/.nui/env.json</code> (mode 0600). Process environment
           variables still take precedence when already set. Long-lived extension hosts reload after
           save.
         </p>

@@ -140,9 +140,9 @@ Builtin and ADL agents with `harness.type: api` run entirely inside the nui bina
 
 The Antigravity CLI harness (`harness.type: antigravity`) resolves model as: session `agentConfig.model` → `ANTIGRAVITY_MODEL` → `GEMINI_MODEL` / `GOOGLE_MODEL` → ADL default (`gemini-3.6-flash-medium`).
 
-Credential and model env resolution order: ADL/`req.Env` → process environment → `~/.nui/secrets.json` (Customize → Env vars). Desktop apps that are not launched from a terminal should set keys via Env vars. `GEMINI_MODEL` and `ANTIGRAVITY_MODEL` appear in the Env vars UI under Gemini.
+Credential and model env resolution order: ADL/`req.Env` → process environment → `~/.nui/env.json` (Customize → Env vars). Desktop apps that are not launched from a terminal should set keys via Env vars. `GEMINI_MODEL` and `ANTIGRAVITY_MODEL` appear in the Env vars UI under Gemini.
 
-Global secrets (managed + custom) and per-extension env (`~/.nui/extension-env.json`) are merged into child processes. Precedence for children: ADL/`req.Env` → fixed `NUI_*` → per-extension env → secrets.json (fill blanks) → launch process env.
+Global env (managed + custom) and per-extension env (`~/.nui/extension-env.json`) are merged into child processes. Precedence for children: ADL/`req.Env` → fixed `NUI_*` → per-extension env → env.json (fill blanks) → launch process env.
 
 ADL example:
 

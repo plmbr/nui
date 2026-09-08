@@ -78,7 +78,7 @@ var envGetCmd = &cobra.Command{
 
 var envSetCmd = &cobra.Command{
 	Use:   "set KEY=VALUE [KEY=VALUE...]",
-	Short: "Set global environment variables in ~/.nui/secrets.json",
+	Short: "Set global environment variables in ~/.nui/env.json",
 	Long: `Set one or more global environment variables.
 
 Examples:
@@ -106,7 +106,7 @@ Examples:
 
 var envUnsetCmd = &cobra.Command{
 	Use:   "unset KEY [KEY...]",
-	Short: "Remove global environment variables from ~/.nui/secrets.json",
+	Short: "Remove global environment variables from ~/.nui/env.json",
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		for _, key := range args {

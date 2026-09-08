@@ -164,7 +164,7 @@ func (m *Manager) GetOpenCodeDocker(projectID, image, workingDir, sessionConfigD
 }
 
 // GetCodexDocker launches (or reuses) a Docker container running the codex HTTP agent.
-	// Auth is forwarded via ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL from process env or ~/.nui/secrets.json.
+	// Auth is forwarded via ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL from process env or ~/.nui/env.json.
 func (m *Manager) GetCodexDocker(projectID, image, workingDir, sessionConfigDir string, userScope bool) (Agent, error) {
 	if image == "" {
 		image = "nui-codex:latest"

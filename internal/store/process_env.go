@@ -50,7 +50,7 @@ func IsReservedEnvKey(key string) bool {
 	return ok
 }
 
-// AllSecretEnv returns a copy of ~/.nui/secrets.json env (managed + custom).
+// AllSecretEnv returns a copy of ~/.nui/env.json env (managed + custom).
 func AllSecretEnv() map[string]string {
 	s, err := LoadSecrets()
 	if err != nil || len(s.Env) == 0 {
@@ -68,7 +68,7 @@ func AllSecretEnv() map[string]string {
 	return out
 }
 
-// ApplyGlobalEnvToProcess sets secrets.json values into the current process
+// ApplyGlobalEnvToProcess sets env.json values into the current process
 // only when the key is unset or blank. Existing process env always wins.
 func ApplyGlobalEnvToProcess() {
 	for k, v := range AllSecretEnv() {
@@ -80,7 +80,7 @@ func ApplyGlobalEnvToProcess() {
 }
 
 // MergeProcessEnv builds a child-process environment:
-// launch os.Environ → fill blanks from secrets.json → apply overrides (later wins).
+// launch os.Environ → fill blanks from env.json → apply overrides (later wins).
 func MergeProcessEnv(overrides ...map[string]string) []string {
 	m := environMap()
 	for k, v := range AllSecretEnv() {
@@ -100,8 +100,8 @@ func MergeProcessEnv(overrides ...map[string]string) []string {
 	return mapToEnviron(m)
 }
 
-// ExtensionProcessEnv merges global secrets, per-extension env, then extras.
-// Precedence (later wins): process → secrets (blanks) → per-extension → extras.
+// ExtensionProcessEnv merges global env, per-extension env, then extras.
+// Precedence (later wins): process → env.json (blanks) → per-extension → extras.
 func ExtensionProcessEnv(extName string, extras ...map[string]string) []string {
 	overrides := make([]map[string]string, 0, 1+len(extras))
 	if per := ExtensionEnv(extName); len(per) > 0 {

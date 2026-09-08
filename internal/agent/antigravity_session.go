@@ -386,7 +386,7 @@ func (s *persistentAntigravitySession) stopLocked() {
 
 // antigravityCmdEnv ensures GEMINI_API_KEY is present for agy when modelProvider=gemini.
 // agy only reads GEMINI_API_KEY (not GOOGLE_API_KEY); resolve from ADL env, process env,
-// or ~/.nui/secrets.json, and alias GOOGLE_API_KEY when needed.
+// or ~/.nui/env.json, and alias GOOGLE_API_KEY when needed.
 func antigravityCmdEnv(adlEnv map[string]string) map[string]string {
 	out := make(map[string]string, len(adlEnv)+1)
 	for k, v := range adlEnv {

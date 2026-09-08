@@ -52,7 +52,7 @@ func resolveAPIModel(req RunRequest, harness model.ADLHarness) string {
 
 // resolveAntigravityModel picks the model slug for the Antigravity CLI harness.
 // Priority: session agentConfig.model → ANTIGRAVITY_MODEL / GEMINI_MODEL / GOOGLE_MODEL
-// (ADL env, process env, or ~/.nui/secrets.json) → harness ADL model.
+// (ADL env, process env, or ~/.nui/env.json) → harness ADL model.
 func resolveAntigravityModel(req RunRequest, harness model.ADLHarness) string {
 	if m := modelFromAgentConfig(req); m != "" {
 		return m
