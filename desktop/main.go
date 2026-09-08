@@ -67,7 +67,7 @@ func main() {
 			TitleBar: mac.TitleBarHidden(),
 			About: &mac.AboutInfo{
 				Title:   "nui",
-				Message: "Self-hosted AI agent sessions",
+				Message: desktopAboutMessage(),
 			},
 		},
 	})

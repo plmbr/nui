@@ -4,6 +4,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 
 	"nui/internal/appversion"
@@ -24,4 +25,41 @@ func desktopAppVersion() string {
 		}
 	}
 	return appversion.Get()
+}
+
+// desktopCLIVersion returns the PATH-installed CLI version when present,
+// otherwise the bundled sidecar, then the last recorded install state.
+func desktopCLIVersion() string {
+	if dir, err := cliInstallDir(); err == nil {
+		dest := filepath.Join(dir, cliBinaryName())
+		if ver, err := readCLIVersion(dest); err == nil && ver != "" {
+			return ver
+		}
+	}
+	if bundled, err := bundledCLIPath(); err == nil {
+		if ver, err := readCLIVersion(bundled); err == nil && ver != "" {
+			return ver
+		}
+	}
+	if st, ok := loadCLIState(); ok {
+		return strings.TrimSpace(st.Version)
+	}
+	return ""
+}
+
+// desktopAboutMessage is the macOS About dialog informative text.
+func desktopAboutMessage() string {
+	return formatAboutMessage(appversion.Get(), desktopCLIVersion())
+}
+
+func formatAboutMessage(appVer, cliVer string) string {
+	appVer = strings.TrimSpace(appVer)
+	if appVer == "" {
+		appVer = "dev"
+	}
+	cliVer = strings.TrimSpace(cliVer)
+	if cliVer == "" {
+		cliVer = "unavailable"
+	}
+	return "Self-hosted AI agent sessions\n\nApp version: " + appVer + "\nCLI version: " + cliVer
 }
