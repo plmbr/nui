@@ -148,7 +148,7 @@ SSE `data:` events support `text`, `done`, `error`, and tool-call/image event ty
 | `~/.nui/sessions/<session-id>/` | Per-session harness config (MCP, skills, system prompt, `.devcontainer/`); removed on session delete |
 | `~/.nui/workspaces/<session-id>/` | Isolated working dir when ADL does not request user `workingDirInput`; removed on session delete |
 | `$TMPDIR/nui-uploads/<session-id>/` | Pasted/dropped chat attachments; removed on session delete |
-| `~/.nui/runs/<runID>.jsonl` | Durable run event logs (AG-UI + headless); removed when the owning session is deleted |
+| `~/.nui/runs/<runID>.jsonl` | Durable run event logs (AG-UI + headless); indexed in `runs/index.json`; removed when the owning session is deleted or via `nui gc` |
 | `~/.nui/hitl-requests.json` | HITL request/response envelopes; session entries removed on session delete |
 | `~/.nui/schedules.json` | Interval schedules (`lastSessionId` is a pointer only; not cleaned with sessions) |
 | `~/.nui/memory/` | Persistent user/agent memory markdown (not session-scoped) |
@@ -158,7 +158,7 @@ SSE `data:` events support `text`, `done`, `error`, and tool-call/image event ty
 | `~/.nui/opencode-sessions/` | Shared OpenCode Docker data mount (`~/.local/share/opencode` in container) |
 | Agent history files | Claude: `~/.claude/projects/<dirHash>/<id>.jsonl`; pi/codex/opencode via respective `store/*_history.go` loaders; deleted with the nui session when an agent session id is known |
 
-UI loads persisted `sessionMessages` first on session select; falls back to agent history files if empty.
+On server start (and via `nui gc`), nui garbage-collects orphaned `*.tmp` files, session/workspace dirs not in `data.json`, unindexed run logs, stale upload/update temp dirs, and stale `data.json` keys.
 
 ### API routes
 

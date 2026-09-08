@@ -59,6 +59,9 @@ func createRunRecord(sessionID, runID, message string) *RunRecord {
 	runRecords[runID] = rec
 	sessionRuns[sessionID] = append(sessionRuns[sessionID], runID)
 	runStoreMu.Unlock()
+	if err := store.RegisterSessionRun(sessionID, runID); err != nil {
+		fmt.Fprintf(os.Stderr, "warn: register run index: %v\n", err)
+	}
 	return rec
 }
 
@@ -248,7 +251,8 @@ func isRunActive(runID string) bool {
 }
 
 // purgeSessionRuns cancels an in-flight run, drops in-memory run state, and
-// deletes ~/.nui/runs/<runId>.jsonl files for the session.
+// deletes ~/.nui/runs/<runId>.jsonl files for the session (including runs
+// registered in the durable index from prior process lifetimes).
 func purgeSessionRuns(sessionID string) {
 	if sessionID == "" {
 		return
@@ -267,6 +271,10 @@ func purgeSessionRuns(sessionID string) {
 	runStoreMu.Unlock()
 
 	notifyRunListeners(listeners)
+	if err := store.RemoveSessionRunLogs(sessionID); err != nil {
+		fmt.Fprintf(os.Stderr, "warn: remove session run logs: %v\n", err)
+	}
+	// Memory-only IDs (index write failed) still need a best-effort delete.
 	for _, runID := range ids {
 		if err := store.RemoveRunLog(runID); err != nil {
 			fmt.Fprintf(os.Stderr, "warn: remove run log %s: %v\n", runID, err)

@@ -43,8 +43,43 @@ func RunLogPath(runID string) (string, error) {
 	return filepath.Join(dir, runID+".jsonl"), nil
 }
 
-// RemoveRunLog deletes ~/.nui/runs/<runID>.jsonl if it exists.
+// RemoveRunLog deletes ~/.nui/runs/<runID>.jsonl if it exists and drops it from the index.
 func RemoveRunLog(runID string) error {
+	if runID == "" {
+		return nil
+	}
+	runIndexMu.Lock()
+	defer runIndexMu.Unlock()
+	if err := removeRunLogUnlocked(runID); err != nil {
+		return err
+	}
+	idx, err := loadRunIndexLocked()
+	if err != nil {
+		return err
+	}
+	changed := false
+	for sid, ids := range idx.BySession {
+		filtered := ids[:0]
+		for _, id := range ids {
+			if id == runID {
+				changed = true
+				continue
+			}
+			filtered = append(filtered, id)
+		}
+		if len(filtered) == 0 {
+			delete(idx.BySession, sid)
+		} else {
+			idx.BySession[sid] = filtered
+		}
+	}
+	if !changed {
+		return nil
+	}
+	return saveRunIndexLocked(idx)
+}
+
+func removeRunLogUnlocked(runID string) error {
 	if runID == "" {
 		return nil
 	}

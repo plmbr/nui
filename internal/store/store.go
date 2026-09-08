@@ -316,7 +316,7 @@ func saveJSON(filename string, v any) error {
 	if err != nil {
 		return err
 	}
-	tmp, err := os.CreateTemp(dir, "*.tmp")
+	tmp, err := os.CreateTemp(dir, "nui-save-*.tmp")
 	if err != nil {
 		return err
 	}

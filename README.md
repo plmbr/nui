@@ -130,6 +130,7 @@ nui extension env list|get|set|unset <ext>  # per-extension env vars
 nui skills add|list|remove  # manage skills catalog (-y to overwrite)
 nui env list|get|set|unset  # global env vars (~/.nui/secrets.json)
 nui memory list|show|edit  # persistent memory files
+nui gc [--dry-run]         # clean orphaned ~/.nui state and temp dirs
 nui schedule list|add|enable|disable|delete|run-now  # recurring runs
 nui harness-sdk reinstall  # copy Python SDK to ~/.nui/harness-sdk/
 ```

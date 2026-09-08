@@ -74,6 +74,7 @@ func NewInstance(cfg ListenConfig) (*Instance, error) {
 		return nil, fmt.Errorf("loading store: %w", err)
 	}
 	store.ApplyGlobalEnvToProcess()
+	go runStartupGC()
 
 	if _, err := harnesssdk.InstallDir(); err != nil {
 		fmt.Fprintf(os.Stderr, "[harness-sdk] failed to install: %v\n", err)
@@ -290,6 +291,18 @@ func isWailsOrigin(origin string) bool {
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, `{"status":"ok","version":%q}`, appversion.Get())
+}
+
+func runStartupGC() {
+	result, err := store.GarbageCollect(store.GCOptions{})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[gc] %v\n", err)
+		return
+	}
+	if result.TempFiles+result.SessionDirs+result.WorkspaceDirs+result.RunLogs+result.UploadDirs+result.UpdateDirs+result.EmptyBridgeDirs+result.DataKeysPruned == 0 {
+		return
+	}
+	fmt.Fprintf(os.Stderr, "[gc] cleaned %s\n", store.FormatGCResult(result))
 }
 
 func waitForHealth(baseURL string) {
