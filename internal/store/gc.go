@@ -23,15 +23,16 @@ type GCOptions struct {
 
 // GCResult summarizes what GarbageCollect removed (or would remove).
 type GCResult struct {
-	TempFiles       int   `json:"tempFiles"`
-	SessionDirs     int   `json:"sessionDirs"`
-	WorkspaceDirs   int   `json:"workspaceDirs"`
-	RunLogs         int   `json:"runLogs"`
-	UploadDirs      int   `json:"uploadDirs"`
-	UpdateDirs      int   `json:"updateDirs"`
-	EmptyBridgeDirs int   `json:"emptyBridgeDirs"`
-	DataKeysPruned  int   `json:"dataKeysPruned"`
-	BytesFreed      int64 `json:"bytesFreed"`
+	TempFiles         int   `json:"tempFiles"`
+	SessionDirs       int   `json:"sessionDirs"`
+	WorkspaceDirs     int   `json:"workspaceDirs"`
+	RunLogs           int   `json:"runLogs"`
+	UploadDirs        int   `json:"uploadDirs"`
+	UpdateDirs        int   `json:"updateDirs"`
+	EmptyBridgeDirs   int   `json:"emptyBridgeDirs"`
+	LegacyDockerFiles int   `json:"legacyDockerFiles"`
+	DataKeysPruned    int   `json:"dataKeysPruned"`
+	BytesFreed        int64 `json:"bytesFreed"`
 }
 
 // LiveSessionIDs returns the set of session IDs currently recorded in data.json.
@@ -85,6 +86,9 @@ func GarbageCollect(opts GCOptions) (GCResult, error) {
 		return result, err
 	}
 	if err := gcEmptyBridgeDir(dir, opts, &result); err != nil {
+		return result, err
+	}
+	if err := gcLegacyDockerFiles(dir, opts, &result); err != nil {
 		return result, err
 	}
 	if err := gcStaleDataKeys(live, opts, &result); err != nil {
@@ -333,6 +337,31 @@ func gcEmptyBridgeDir(root string, opts GCOptions, result *GCResult) error {
 	return nil
 }
 
+// legacyDockerConfigFiles are former global docker snapshot/override paths under ~/.nui.
+// New launches stage these under sessions/<id>/ or a temp dir instead.
+var legacyDockerConfigFiles = []string{
+	".claude-snapshot.json",
+	".claude-settings-override.json",
+	".codex-snapshot.json",
+	".codex-settings-override.json",
+	".pi-settings-override.json",
+	".pi-snapshot.json",
+}
+
+func gcLegacyDockerFiles(root string, opts GCOptions, result *GCResult) error {
+	for _, name := range legacyDockerConfigFiles {
+		path := filepath.Join(root, name)
+		removed, err := removePath(path, opts, result)
+		if err != nil {
+			return err
+		}
+		if removed {
+			result.LegacyDockerFiles++
+		}
+	}
+	return nil
+}
+
 func gcStaleDataKeys(live map[string]struct{}, opts GCOptions, result *GCResult) error {
 	data, err := LoadData()
 	if err != nil {
@@ -426,8 +455,8 @@ func dirSize(path string, info fs.FileInfo) int64 {
 // FormatGCResult returns a one-line human summary.
 func FormatGCResult(r GCResult) string {
 	return fmt.Sprintf(
-		"temp=%d sessions=%d workspaces=%d runs=%d uploads=%d updates=%d bridge=%d dataKeys=%d freed=%s",
-		r.TempFiles, r.SessionDirs, r.WorkspaceDirs, r.RunLogs, r.UploadDirs, r.UpdateDirs, r.EmptyBridgeDirs, r.DataKeysPruned,
+		"temp=%d sessions=%d workspaces=%d runs=%d uploads=%d updates=%d bridge=%d legacyDocker=%d dataKeys=%d freed=%s",
+		r.TempFiles, r.SessionDirs, r.WorkspaceDirs, r.RunLogs, r.UploadDirs, r.UpdateDirs, r.EmptyBridgeDirs, r.LegacyDockerFiles, r.DataKeysPruned,
 		formatBytes(r.BytesFreed),
 	)
 }

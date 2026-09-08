@@ -159,7 +159,7 @@ func (m *MCPManager) readResource(ctx context.Context, serverName, uri string) (
 	}
 	client := m.clientOrNil()
 	if client == nil {
-		return "", fmt.Errorf("MCP server %q not found (configure ~/.nui/.mcp.json)", serverName)
+		return "", fmt.Errorf("MCP server %q not found (configure ~/.nui/mcp-ui.json)", serverName)
 	}
 	return client.ReadResource(ctx, serverName, uri)
 }
@@ -170,7 +170,7 @@ func (m *MCPManager) callTool(ctx context.Context, serverName, name string, args
 	}
 	client := m.clientOrNil()
 	if client == nil {
-		return nil, fmt.Errorf("MCP server %q not found (configure ~/.nui/.mcp.json)", serverName)
+		return nil, fmt.Errorf("MCP server %q not found (configure ~/.nui/mcp-ui.json)", serverName)
 	}
 	return client.CallToolStructured(ctx, serverName, name, args)
 }

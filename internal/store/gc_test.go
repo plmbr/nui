@@ -97,6 +97,13 @@ func TestGarbageCollect(t *testing.T) {
 	if err := os.WriteFile(tmpPath, []byte("leftover"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	legacyClaudeSnap := filepath.Join(dir, ".claude-snapshot.json")
+	legacyPiOverride := filepath.Join(dir, ".pi-settings-override.json")
+	for _, p := range []string{legacyClaudeSnap, legacyPiOverride} {
+		if err := os.WriteFile(p, []byte("{}"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	runsDir, err := RunsDir()
 	if err != nil {
@@ -173,6 +180,9 @@ func TestGarbageCollect(t *testing.T) {
 	if result.EmptyBridgeDirs != 1 {
 		t.Fatalf("emptyBridgeDirs = %d", result.EmptyBridgeDirs)
 	}
+	if result.LegacyDockerFiles < 2 {
+		t.Fatalf("legacyDockerFiles = %d", result.LegacyDockerFiles)
+	}
 	if result.DataKeysPruned < 2 {
 		t.Fatalf("dataKeysPruned = %d", result.DataKeysPruned)
 	}
@@ -197,6 +207,12 @@ func TestGarbageCollect(t *testing.T) {
 	}
 	if _, err := os.Stat(bridge); !os.IsNotExist(err) {
 		t.Fatal("empty bridge dir still present")
+	}
+	if _, err := os.Stat(legacyClaudeSnap); !os.IsNotExist(err) {
+		t.Fatal("legacy claude snapshot still present")
+	}
+	if _, err := os.Stat(legacyPiOverride); !os.IsNotExist(err) {
+		t.Fatal("legacy pi override still present")
 	}
 
 	data, err := LoadData()

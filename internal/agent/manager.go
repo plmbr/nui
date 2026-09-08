@@ -597,11 +597,27 @@ func snapshotJSONFile(src, dir, name string) string {
 	if !json.Valid(data) {
 		return ""
 	}
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return ""
+	}
 	dst := filepath.Join(dir, name)
 	if err := os.WriteFile(dst, data, 0644); err != nil {
 		return ""
 	}
 	return dst
+}
+
+// dockerUserConfigStagingDir returns a per-session directory for docker snapshot and
+// settings-override files. Prefers sessionConfigDir; falls back to a unique temp dir
+// so concurrent sessions never share ~/.nui global paths.
+func dockerUserConfigStagingDir(sessionConfigDir string) (string, error) {
+	if dir := strings.TrimSpace(sessionConfigDir); dir != "" {
+		if err := os.MkdirAll(dir, 0700); err != nil {
+			return "", err
+		}
+		return dir, nil
+	}
+	return os.MkdirTemp("", "nui-docker-cfg-*")
 }
 
 // loopbackAddHostArgs returns --add-host flags for any hostname in baseURL that
@@ -679,24 +695,31 @@ func (m *Manager) launchBuiltinDocker(projectID, image, workingDir, harnessType,
 		hostConfigDir := filepath.Join(home, agentConfigDir)
 		os.MkdirAll(hostConfigDir, 0700) //nolint:errcheck
 		args = append(args, "-v", hostConfigDir+":"+containerHome+"/"+agentConfigDir)
+		stagingDir, stagingErr := dockerUserConfigStagingDir(sessionConfigDir)
+		if stagingErr != nil {
+			fmt.Fprintf(os.Stderr, "warn: docker config staging dir: %v\n", stagingErr)
+		}
 		// Mount the top-level config JSON file (e.g. ~/.claude.json) if it exists.
 		// Use a snapshot copy to avoid reading a partially-written file (the host process
 		// may be actively updating it via atomic rename or in-place writes).
 		hostConfigJSON := filepath.Join(home, agentConfigDir+".json")
 		if _, statErr := os.Stat(hostConfigJSON); statErr == nil {
-			snapshotPath := snapshotJSONFile(hostConfigJSON, filepath.Join(home, ".nui"), agentConfigDir+"-snapshot.json")
+			snapshotPath := ""
+			if stagingDir != "" {
+				snapshotPath = snapshotJSONFile(hostConfigJSON, stagingDir, agentConfigDir+"-snapshot.json")
+			}
 			if snapshotPath != "" {
 				args = append(args, "-v", snapshotPath+":"+containerHome+"/"+agentConfigDir+".json:ro")
 			} else {
 				args = append(args, "-v", hostConfigJSON+":"+containerHome+"/"+agentConfigDir+".json")
 			}
 		}
-		if shadowSettings {
+		if shadowSettings && stagingDir != "" {
 			// Shadow the host's settings.json with an empty one so that host-specific
 			// hooks, env overrides, and apiKeyHelper (which may depend on host-side
 			// mTLS certificates not available in the container) do not interfere.
 			// Docker containers authenticate via ANTHROPIC_API_KEY forwarded from the host env.
-			overridePath := filepath.Join(home, ".nui", agentConfigDir+"-settings-override.json")
+			overridePath := filepath.Join(stagingDir, agentConfigDir+"-settings-override.json")
 			if writeErr := os.WriteFile(overridePath, []byte("{}"), 0644); writeErr == nil {
 				args = append(args, "-v", overridePath+":"+containerHome+"/"+agentConfigDir+"/settings.json:ro")
 			}

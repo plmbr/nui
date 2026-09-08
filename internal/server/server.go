@@ -299,7 +299,7 @@ func runStartupGC() {
 		fmt.Fprintf(os.Stderr, "[gc] %v\n", err)
 		return
 	}
-	if result.TempFiles+result.SessionDirs+result.WorkspaceDirs+result.RunLogs+result.UploadDirs+result.UpdateDirs+result.EmptyBridgeDirs+result.DataKeysPruned == 0 {
+	if result.TempFiles+result.SessionDirs+result.WorkspaceDirs+result.RunLogs+result.UploadDirs+result.UpdateDirs+result.EmptyBridgeDirs+result.LegacyDockerFiles+result.DataKeysPruned == 0 {
 		return
 	}
 	fmt.Fprintf(os.Stderr, "[gc] cleaned %s\n", store.FormatGCResult(result))

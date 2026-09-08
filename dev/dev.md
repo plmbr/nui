@@ -162,6 +162,8 @@ Interactive AG-UI chat does not yet support mid-stream offset replay. A disconne
 | Data dir override | env | `NUI_DATA_DIR` | Writable user tree (default `~/.nui`) |
 | Extra config dirs | env / flag | `NUI_EXTRA_CONFIG_DIRS` / `nui server --config-dir` | Supplemental read-only roots (`agents/`, `extensions/`); user data wins on conflicts |
 | System config | env/dir | `NUI_SYSTEM_CONFIG` / `/etc/nui` | Read-only admin defaults (settings, secrets, extension-env, mcp-servers, agents, extensions) |
+| MCP UI Apps client | JSON | `~/.nui/mcp-ui.json` | Done — Claude-style map for chat MCP Apps (migrated from legacy `.mcp.json`) |
+| User MCP servers | JSON | `~/.nui/mcp-servers.json` | Done — Customize / ADL-shaped HTTP servers |
 | Per-session harness config | dir | `~/.nui/sessions/<session-id>/` | Done — removed on session delete |
 | Isolated workspaces | dir | `~/.nui/workspaces/<session-id>/` | Done — removed on session delete |
 | Chat uploads | files | `$TMPDIR/nui-uploads/<session-id>/` | Done — removed on session delete |

@@ -152,13 +152,15 @@ SSE `data:` events support `text`, `done`, `error`, and tool-call/image event ty
 | `~/.nui/hitl-requests.json` | HITL request/response envelopes; session entries removed on session delete |
 | `~/.nui/schedules.json` | Interval schedules (`lastSessionId` is a pointer only; not cleaned with sessions) |
 | `~/.nui/memory/` | Persistent user/agent memory markdown (not session-scoped) |
+| `~/.nui/mcp-servers.json` | Customize → MCP servers (ADL-shaped; OAuth HTTP servers) |
+| `~/.nui/mcp-ui.json` | Global UI MCP Apps client config (Claude-style map; migrated from legacy `.mcp.json`) |
 | `~/.nui/agents/*.yaml` | User ADL definitions; loaded on every `GET /api/agent-types` |
 | `~/.nui/extensions/<name>/` | Backend extensions (`extension.yaml` + contribution list files); see `dev/extension-api.md` |
 | `~/.nui/connections/*.json` | Harness TCP/HTTP handshake files (`host`, `port`, `session_id`, `pid`) — harness-scoped, not per-session |
 | `~/.nui/opencode-sessions/` | Shared OpenCode Docker data mount (`~/.local/share/opencode` in container) |
 | Agent history files | Claude: `~/.claude/projects/<dirHash>/<id>.jsonl`; pi/codex/opencode via respective `store/*_history.go` loaders; deleted with the nui session when an agent session id is known |
 
-On server start (and via `nui gc`), nui garbage-collects orphaned `*.tmp` files, session/workspace dirs not in `data.json`, unindexed run logs, stale upload/update temp dirs, and stale `data.json` keys.
+On server start (and via `nui gc`), nui garbage-collects orphaned `*.tmp` files, session/workspace dirs not in `data.json`, unindexed run logs, stale upload/update temp dirs, legacy global docker snapshot/override files, and stale `data.json` keys.
 
 ### API routes
 

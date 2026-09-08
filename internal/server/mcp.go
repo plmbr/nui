@@ -10,6 +10,11 @@ import (
 	"path/filepath"
 )
 
+const (
+	mcpUIConfigFile     = "mcp-ui.json"
+	legacyMCPConfigFile = ".mcp.json"
+)
+
 type mcpCallToolRequest struct {
 	Server    string         `json:"server"`
 	Name      string         `json:"name"`
@@ -26,7 +31,46 @@ func mcpConfigPath() string {
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(home, ".nui", ".mcp.json")
+	return filepath.Join(home, ".nui", mcpUIConfigFile)
+}
+
+func legacyMCPConfigPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".nui", legacyMCPConfigFile)
+}
+
+// migrateLegacyMCPConfig renames ~/.nui/.mcp.json to mcp-ui.json when the new
+// path is missing. IDE-style .mcp.json remains reserved for editors.
+func migrateLegacyMCPConfig(newPath string) {
+	if newPath == "" {
+		return
+	}
+	if _, err := os.Stat(newPath); err == nil {
+		return
+	}
+	oldPath := legacyMCPConfigPath()
+	if oldPath == "" {
+		return
+	}
+	if _, err := os.Stat(oldPath); err != nil {
+		return
+	}
+	if err := os.Rename(oldPath, newPath); err != nil {
+		// Cross-device or busy file: copy then remove.
+		data, readErr := os.ReadFile(oldPath)
+		if readErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: migrate %s: %v\n", legacyMCPConfigFile, err)
+			return
+		}
+		if writeErr := os.WriteFile(newPath, data, 0644); writeErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: migrate %s: %v\n", legacyMCPConfigFile, writeErr)
+			return
+		}
+		_ = os.Remove(oldPath)
+	}
 }
 
 func handleMCPResource(w http.ResponseWriter, r *http.Request) {
@@ -83,13 +127,14 @@ func handleMCPCallTool(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
-// bootstrapMCPLoad ensures ~/.nui/.mcp.json exists and connects configured servers.
+// bootstrapMCPLoad ensures ~/.nui/mcp-ui.json exists and connects configured servers.
 // Called lazily on first MCP UI use, not at server startup.
 func bootstrapMCPLoad(m *MCPManager) error {
 	cfgPath := mcpConfigPath()
 	if cfgPath == "" {
 		return nil
 	}
+	migrateLegacyMCPConfig(cfgPath)
 	if _, err := os.Stat(cfgPath); err != nil {
 		if err := ensureMCPConfigFromClaude(cfgPath); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: MCP config bootstrap: %v\n", err)
@@ -130,7 +175,7 @@ func ensureMCPConfigFromClaude(nuiCfgPath string) error {
 
 func mergeExtensionMCPConfig(cfgPath string) error {
 	// Catalog extension MCP servers are provisioned into harness session config only.
-	// They must not be merged into ~/.nui/.mcp.json — invalid stubs (e.g. python3 with
+	// They must not be merged into ~/.nui/mcp-ui.json — invalid stubs (e.g. python3 with
 	// no args) block or pollute nui UI MCP startup.
 	_ = cfgPath
 	return nil
