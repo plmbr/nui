@@ -9,6 +9,7 @@ import { ConversationPanel } from '@/components/ConversationPanel'
 import { CustomizePanel, CustomizeTrigger } from '@/components/customize/CustomizePanel'
 import { SchedulesPanel } from '@/components/SchedulesPanel'
 import { AppVersion } from '@/components/AppVersion'
+import { AboutDialog } from '@/components/AboutDialog'
 import { UpdateBanners } from '@/components/UpdateBanners'
 import { ThemeSwitch } from '@/components/ThemeSwitch'
 import { LandingPage } from '@/components/LandingPage'
@@ -836,6 +837,7 @@ function AppContent() {
         </div>
       </SidebarProvider>
       )}
+      <AboutDialog />
     </TooltipProvider>
   )
 }

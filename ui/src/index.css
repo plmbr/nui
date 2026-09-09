@@ -1135,6 +1135,38 @@ html.nui-desktop {
     color: color-mix(in oklch, var(--primary) 70%, var(--foreground));
   }
 
+  .customize-website-link {
+    @apply shrink-0 whitespace-nowrap px-3 py-2 text-left text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground;
+  }
+
+  .about-dialog {
+    @apply gap-5 py-6;
+  }
+
+  .about-dialog__logo {
+    @apply mx-auto h-9 w-auto;
+  }
+
+  .about-dialog__versions {
+    @apply space-y-2 rounded-lg border border-border/60 bg-muted/30 px-3.5 py-3;
+  }
+
+  .about-dialog__row {
+    @apply flex items-baseline justify-between gap-4 text-sm;
+  }
+
+  .about-dialog__row dt {
+    @apply text-muted-foreground;
+  }
+
+  .about-dialog__row dd {
+    @apply font-medium tabular-nums text-foreground;
+  }
+
+  .about-dialog__link {
+    @apply mx-auto inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline-offset-4 outline-none ring-0 hover:underline focus:outline-none focus-visible:outline-none;
+  }
+
   .customize-tab-content {
     @apply max-w-3xl;
   }

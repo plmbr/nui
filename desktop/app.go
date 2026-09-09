@@ -11,14 +11,18 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	goruntime "runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"nui/internal/appversion"
 	"nui/internal/server"
 	"nui/ui"
 
+	"github.com/wailsapp/wails/v2/pkg/menu"
+	"github.com/wailsapp/wails/v2/pkg/menu/keys"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -149,10 +153,75 @@ func (a *App) onStartup(ctx context.Context) {
 	a.startAppUpdateChecker()
 }
 
-func (a *App) focusMainWindow() {
+const showAboutEvent = "nui:show-about"
+
+func (a *App) wailsCtx() context.Context {
 	a.mu.RLock()
-	ctx := a.ctx
-	a.mu.RUnlock()
+	defer a.mu.RUnlock()
+	return a.ctx
+}
+
+// emitShowAbout asks the webview to open the About dialog (clickable website link).
+func (a *App) emitShowAbout() {
+	ctx := a.wailsCtx()
+	if ctx == nil {
+		return
+	}
+	cliVer := strings.TrimSpace(desktopCLIVersion())
+	if cliVer == "" {
+		cliVer = "unavailable"
+	}
+	runtime.EventsEmit(ctx, showAboutEvent, map[string]string{
+		"appVersion": appversion.Get(),
+		"cliVersion": cliVer,
+		"websiteURL": desktopWebsiteURL,
+	})
+}
+
+// buildDesktopMenu wires About to the webview dialog (native About cannot host links).
+func (a *App) buildDesktopMenu() *menu.Menu {
+	about := func(_ *menu.CallbackData) {
+		go a.emitShowAbout()
+	}
+
+	m := menu.NewMenu()
+	if goruntime.GOOS == "darwin" {
+		// First submenu becomes the macOS app menu (title shown as the app name).
+		appSub := menu.NewMenu()
+		appSub.AddText("About nui", nil, about)
+		appSub.AddSeparator()
+		appSub.AddText("Hide nui", keys.CmdOrCtrl("h"), func(_ *menu.CallbackData) {
+			if ctx := a.wailsCtx(); ctx != nil {
+				runtime.Hide(ctx)
+			}
+		})
+		appSub.AddText("Show All", nil, func(_ *menu.CallbackData) {
+			if ctx := a.wailsCtx(); ctx != nil {
+				runtime.Show(ctx)
+			}
+		})
+		appSub.AddSeparator()
+		appSub.AddText("Quit nui", keys.CmdOrCtrl("q"), func(_ *menu.CallbackData) {
+			if ctx := a.wailsCtx(); ctx != nil {
+				runtime.Quit(ctx)
+			}
+		})
+		m.Append(menu.SubMenu("nui", appSub))
+	}
+
+	m.Append(menu.EditMenu())
+	m.Append(menu.WindowMenu())
+
+	if goruntime.GOOS != "darwin" {
+		help := menu.NewMenu()
+		help.AddText("About nui", nil, about)
+		m.Append(menu.SubMenu("Help", help))
+	}
+	return m
+}
+
+func (a *App) focusMainWindow() {
+	ctx := a.wailsCtx()
 	if ctx == nil {
 		return
 	}

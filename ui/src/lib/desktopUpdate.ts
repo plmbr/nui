@@ -59,6 +59,7 @@ declare global {
       }
     }
     runtime?: {
+      BrowserOpenURL?: (url: string) => void
       EventsOn?: (event: string, callback: (...args: unknown[]) => void) => () => void
       EventsOff?: (event: string) => void
     }

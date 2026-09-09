@@ -13,7 +13,7 @@ import (
 
 func TestFormatAboutMessage(t *testing.T) {
 	got := formatAboutMessage("1.2.3", "4.5.6")
-	want := "Self-hosted AI agent sessions\n\nApp version: 1.2.3\nCLI version: 4.5.6"
+	want := "Self-hosted AI agent sessions\n\nApp version: 1.2.3\nCLI version: 4.5.6\n\nhttps://nui.plmbr.dev"
 	if got != want {
 		t.Fatalf("got %q, want %q", got, want)
 	}
@@ -24,6 +24,9 @@ func TestFormatAboutMessage(t *testing.T) {
 	}
 	if !strings.Contains(got, "CLI version: unavailable") {
 		t.Fatalf("empty CLI version should be unavailable: %q", got)
+	}
+	if !strings.Contains(got, desktopWebsiteURL) {
+		t.Fatalf("missing website URL: %q", got)
 	}
 }
 

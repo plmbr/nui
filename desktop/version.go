@@ -47,6 +47,8 @@ func desktopCLIVersion() string {
 	return ""
 }
 
+const desktopWebsiteURL = "https://nui.plmbr.dev"
+
 // desktopAboutMessage is the macOS About dialog informative text.
 func desktopAboutMessage() string {
 	return formatAboutMessage(appversion.Get(), desktopCLIVersion())
@@ -61,5 +63,5 @@ func formatAboutMessage(appVer, cliVer string) string {
 	if cliVer == "" {
 		cliVer = "unavailable"
 	}
-	return "Self-hosted AI agent sessions\n\nApp version: " + appVer + "\nCLI version: " + cliVer
+	return "Self-hosted AI agent sessions\n\nApp version: " + appVer + "\nCLI version: " + cliVer + "\n\n" + desktopWebsiteURL
 }

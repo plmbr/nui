@@ -4,6 +4,7 @@ import { Settings, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { isEmbedHost } from '@/lib/embedHost'
+import { requestEmbedHostOpenExternal } from '@/lib/embedHostMessaging'
 import { GeneralTab } from '@/components/customize/GeneralTab'
 import { EnvVarsTab } from '@/components/customize/EnvVarsTab'
 import { ExtensionsTab } from '@/components/customize/ExtensionsTab'
@@ -11,6 +12,8 @@ import { MCPServersTab } from '@/components/customize/MCPServersTab'
 import { SkillsTab } from '@/components/customize/SkillsTab'
 import { MemoryTab } from '@/components/customize/MemoryTab'
 import { AgentsTab } from '@/components/customize/AgentsTab'
+
+const NUI_WEBSITE_URL = 'https://nui.plmbr.dev'
 
 const TABS = [
   { id: 'general', label: 'General' },
@@ -62,6 +65,20 @@ export function CustomizePanel({ onClose, onAgentTypesChanged, tab, onTabChange 
               {item.label}
             </button>
           ))}
+          <a
+            href={NUI_WEBSITE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="customize-website-link md:mt-auto"
+            onClick={(event) => {
+              if (isEmbedHost()) {
+                event.preventDefault()
+                requestEmbedHostOpenExternal(NUI_WEBSITE_URL)
+              }
+            }}
+          >
+            nui.plmbr.dev
+          </a>
         </nav>
 
         <div

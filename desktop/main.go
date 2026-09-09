@@ -47,6 +47,7 @@ func main() {
 			Assets:     app.UIAssets(),
 			Middleware: app.assetMiddleware,
 		},
+		Menu: app.buildDesktopMenu(),
 		Bind: []interface{}{app},
 		OnStartup: func(ctx context.Context) {
 			app.onStartup(ctx)
@@ -65,10 +66,6 @@ func main() {
 		Mac: &mac.Options{
 			// Hidden title (no NSToolbar) — traffic lights stay overlaid.
 			TitleBar: mac.TitleBarHidden(),
-			About: &mac.AboutInfo{
-				Title:   "nui",
-				Message: desktopAboutMessage(),
-			},
 		},
 	})
 	if err != nil {
