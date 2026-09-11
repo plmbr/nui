@@ -47,7 +47,31 @@ import type { SessionChatMessage } from '@/lib/chatMessageUtils'
 import { assistantTextContent } from '@/lib/chatMessageUtils'
 
 const AUTO_PROMPT_FALLBACK = 'Follow your system instructions and run.'
-const SCROLL_ANCHOR_TOP_GAP = 12
+const SCROLL_ANCHOR_TOP_GAP = 0
+
+/** One user prompt and the assistant reply/replies that follow it. */
+type ChatTurn = {
+  key: string
+  user: SessionChatMessage | null
+  assistants: SessionChatMessage[]
+}
+
+function groupMessagesIntoTurns(messages: SessionChatMessage[]): ChatTurn[] {
+  const turns: ChatTurn[] = []
+  for (const msg of messages) {
+    if (msg.role === 'user') {
+      turns.push({ key: msg.id, user: msg, assistants: [] })
+      continue
+    }
+    const last = turns[turns.length - 1]
+    if (last && last.user) {
+      last.assistants.push(msg)
+    } else {
+      turns.push({ key: msg.id, user: null, assistants: [msg] })
+    }
+  }
+  return turns
+}
 
 interface PendingAttachment {
   id: string
@@ -623,52 +647,60 @@ export function ChatPanel({
           </div>
         )}
 
-        {messages.map((msg) => {
-          const isStreaming = isRunning && msg.id === streamingAssistantId
-          const parts = msg.parts
-          const hasParts = msg.role === 'assistant' && parts && parts.length > 0
-
-          return (
-            <div
-              key={msg.id}
-              ref={setMessageRef(msg.id)}
-              className={`agui-message agui-message--${msg.role}`}
-            >
-              {msg.role === 'user' ? (
-                <UserMessageBubble content={msg.content} />
-              ) : (
+        {groupMessagesIntoTurns(messages).map((turn) => (
+          <div key={turn.key} className="agui-chat__turn">
+            {turn.user ? (
               <div
-                className={`agui-message__bubble${msg.error ? ' agui-message__bubble--error' : ''}`}
+                ref={setMessageRef(turn.user.id)}
+                className="agui-message agui-message--user"
               >
-                {msg.councilProgress ? (
-                  <CouncilRunPanel progress={msg.councilProgress} />
-                ) : null}
-                {msg.images?.map((img) => (
-                  <img
-                    key={img.id}
-                    src={imageSrc(img)}
-                    alt="Agent image"
-                    className="agui-message__image"
-                    loading="lazy"
-                  />
-                ))}
-                {hasParts ? (
-                  renderAssistantSegments(
-                    normalizeVisualizationParts(parts!),
-                    msg.id,
-                    isStreaming,
-                  )
-                ) : msg.content ? (
-                  renderTextWithThinking(msg.content, msg.id, isStreaming)
-                ) : null}
-                {isStreaming && !messageHasRenderableContent(msg) && (
-                  <ThinkingIndicator variant="streaming" />
-                )}
+                <UserMessageBubble content={turn.user.content} />
               </div>
-              )}
-            </div>
-          )
-        })}
+            ) : null}
+            {turn.assistants.map((msg) => {
+              const isStreaming = isRunning && msg.id === streamingAssistantId
+              const parts = msg.parts
+              const hasParts = parts && parts.length > 0
+
+              return (
+                <div
+                  key={msg.id}
+                  ref={setMessageRef(msg.id)}
+                  className="agui-message agui-message--assistant"
+                >
+                  <div
+                    className={`agui-message__bubble${msg.error ? ' agui-message__bubble--error' : ''}`}
+                  >
+                    {msg.councilProgress ? (
+                      <CouncilRunPanel progress={msg.councilProgress} />
+                    ) : null}
+                    {msg.images?.map((img) => (
+                      <img
+                        key={img.id}
+                        src={imageSrc(img)}
+                        alt="Agent image"
+                        className="agui-message__image"
+                        loading="lazy"
+                      />
+                    ))}
+                    {hasParts ? (
+                      renderAssistantSegments(
+                        normalizeVisualizationParts(parts!),
+                        msg.id,
+                        isStreaming,
+                      )
+                    ) : msg.content ? (
+                      renderTextWithThinking(msg.content, msg.id, isStreaming)
+                    ) : null}
+                    {isStreaming && !messageHasRenderableContent(msg) && (
+                      <ThinkingIndicator variant="streaming" />
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ))}
         {pendingHitlRequests.map((req) => (
           <div key={req.requestId} className="agui-message agui-message--assistant">
             <div className="agui-message__bubble">

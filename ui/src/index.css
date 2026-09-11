@@ -1352,10 +1352,20 @@ html.nui-desktop {
     color: transparent;
   }
 
+  /* Turn wrapper scopes sticky so only the active prompt pins (no stacking). */
+  .agui-chat__turn {
+    display: flow-root;
+  }
+
   .agui-message,
   .tool-call {
     @apply mx-auto mb-5 max-w-[760px] px-3 md:px-5;
     margin-bottom: var(--spacing);
+  }
+
+  /* Pin this turn's user prompt while its response scrolls; releases at turn end. */
+  .agui-message--user {
+    @apply sticky top-0 z-[2];
   }
 
   .agui-message__bubble {
@@ -1369,6 +1379,11 @@ html.nui-desktop {
 
   .agui-message--user .agui-message__bubble {
     @apply relative w-fit rounded-[12px] border border-primary/10 bg-user-bubble px-2.5 py-1.5 text-user-bubble-foreground whitespace-pre-wrap;
+    /* Soft halo so scrolling text doesn't collide with the bubble edge — no solid outer box. */
+    box-shadow:
+      0 0 0 4px color-mix(in oklch, var(--background) 88%, transparent),
+      0 0 12px 6px color-mix(in oklch, var(--background) 72%, transparent),
+      0 0 20px 10px color-mix(in oklch, var(--background) 40%, transparent);
   }
 
   .agui-message--user .agui-message__bubble p {
