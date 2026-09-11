@@ -210,6 +210,46 @@ html.nui-desktop {
   --app-header-height: 35px;
 }
 
+.nui-text-context-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 10rem;
+  overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  padding: 0.25rem;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
+}
+
+.nui-text-context-menu__item {
+  display: flex;
+  width: 100%;
+  cursor: default;
+  align-items: center;
+  border-radius: calc(var(--radius) - 2px);
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0.375rem 0.5rem;
+  text-align: left;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.nui-text-context-menu__item:hover:not(:disabled),
+.nui-text-context-menu__item:focus-visible:not(:disabled) {
+  /* --accent matches --popover in both themes; mix so hover is visible. */
+  background: color-mix(in oklab, var(--foreground) 12%, transparent);
+  color: var(--popover-foreground);
+}
+
+.nui-text-context-menu__item:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .dark {
 
     /* Dark — matte charcoal with soft light-nui-blue text for readability. */
@@ -1477,8 +1517,9 @@ html.nui-desktop {
     height: 1.35rem;
     width: auto;
     display: block;
-    /* Nudge up so wordmark optical center matches Generating */
-    transform: translateY(-0.12em);
+    /* Sparkles pull the SVG bbox center up; shift down so letterforms
+       line up with the Generating label. */
+    transform: translateY(-2px);
   }
 
   /* Soft, wide light band sweeping left→right */
@@ -1488,7 +1529,7 @@ html.nui-desktop {
     top: 0;
     height: 100%;
     width: auto;
-    transform: translateY(-0.12em);
+    transform: translateY(-2px);
     filter: brightness(1.45) saturate(0.9);
     pointer-events: none;
   }

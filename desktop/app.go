@@ -210,6 +210,20 @@ func (a *App) buildDesktopMenu() *menu.Menu {
 	}
 
 	m.Append(menu.EditMenu())
+
+	view := menu.NewMenu()
+	// "=" is Cmd/Ctrl+= (the usual Zoom In chord; "+" alone requires Shift).
+	view.AddText("Zoom In", keys.CmdOrCtrl("="), func(_ *menu.CallbackData) {
+		a.execPageZoom(1)
+	})
+	view.AddText("Zoom Out", keys.CmdOrCtrl("-"), func(_ *menu.CallbackData) {
+		a.execPageZoom(-1)
+	})
+	view.AddText("Actual Size", keys.CmdOrCtrl("0"), func(_ *menu.CallbackData) {
+		a.execPageZoom(0)
+	})
+	m.Append(menu.SubMenu("View", view))
+
 	m.Append(menu.WindowMenu())
 
 	if goruntime.GOOS != "darwin" {
@@ -218,6 +232,16 @@ func (a *App) buildDesktopMenu() *menu.Menu {
 		m.Append(menu.SubMenu("Help", help))
 	}
 	return m
+}
+
+// execPageZoom adjusts page zoom via injected window.__nuiZoom (see serveDesktopIndex).
+// delta: +1 zoom in, -1 zoom out, 0 reset to 100%.
+func (a *App) execPageZoom(delta int) {
+	ctx := a.wailsCtx()
+	if ctx == nil {
+		return
+	}
+	runtime.WindowExecJS(ctx, fmt.Sprintf("window.__nuiZoom&&window.__nuiZoom(%d)", delta))
 }
 
 func (a *App) focusMainWindow() {
@@ -330,6 +354,22 @@ func (a *App) serveDesktopIndex(w http.ResponseWriter) {
 		`if(a.target==='_blank'){e.preventDefault();e.stopPropagation();` +
 		`if(window.runtime&&window.runtime.BrowserOpenURL)window.runtime.BrowserOpenURL(href)}` +
 		`},true);` +
+		// Zoom .app-body only so the title bar stays native-sized.
+		`window.__nuiZoom=function(delta){` +
+		`var target=document.querySelector('.app-body');` +
+		`if(!target)return;` +
+		`var cur=parseFloat(target.style.zoom);` +
+		`if(!cur||isNaN(cur))cur=1;` +
+		`var next=delta===0?1:Math.min(3,Math.max(0.5,Math.round((cur+delta*0.1)*100)/100));` +
+		`target.style.zoom=String(next);` +
+		`};` +
+		`document.addEventListener('keydown',function(e){` +
+		`if(!(e.metaKey||e.ctrlKey)||e.altKey||e.isComposing)return;` +
+		`var k=e.key;` +
+		`if(k==='='||k==='+'){e.preventDefault();window.__nuiZoom(1);return}` +
+		`if(k==='-'||k==='_'){e.preventDefault();window.__nuiZoom(-1);return}` +
+		`if(k==='0'){e.preventDefault();window.__nuiZoom(0)}` +
+		`});` +
 		`})();</script>`
 	html := string(raw)
 	if strings.Contains(html, "<head>") {

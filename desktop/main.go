@@ -48,7 +48,10 @@ func main() {
 			Middleware: app.assetMiddleware,
 		},
 		Menu: app.buildDesktopMenu(),
-		Bind: []interface{}{app},
+		// Production builds disable the webview context menu unless opted in;
+		// needed for Copy / Select All on selected chat text and inputs.
+		EnableDefaultContextMenu: true,
+		Bind:                     []interface{}{app},
 		OnStartup: func(ctx context.Context) {
 			app.onStartup(ctx)
 		},

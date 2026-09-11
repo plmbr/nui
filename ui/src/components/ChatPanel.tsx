@@ -22,6 +22,7 @@ import { SlashCommandMenu } from '@/components/SlashCommandMenu'
 import { HitlPromptCard } from '@/components/HitlPromptCard'
 import { CouncilRunPanel } from '@/components/CouncilRunPanel'
 import { UserMessageBubble } from '@/components/UserMessageBubble'
+import { TextContextMenu } from '@/components/TextContextMenu'
 import { ToolCallGroup } from '@/components/ToolCallGroup'
 import { VisualizationFrame } from '@/components/VisualizationFrame'
 import { useTheme } from '@/contexts/theme'
@@ -613,6 +614,7 @@ export function ChatPanel({
           layoutKey={session.id}
         />
       )}
+      <TextContextMenu containerRef={messagesContainerRef}>
       <div ref={messagesContainerRef} className="agui-chat__messages">
         {messages.length === 0 && (
           <div className="agui-chat__empty">
@@ -678,6 +680,7 @@ export function ChatPanel({
           <div ref={scrollSpacerRef} className="agui-chat__scroll-spacer" aria-hidden="true" />
         )}
       </div>
+      </TextContextMenu>
 
       {!hideInput && (
       <div className="agui-chat__input-area">
