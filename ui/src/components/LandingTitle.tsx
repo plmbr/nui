@@ -18,7 +18,7 @@ const SLOGANS: readonly (readonly string[])[] = [
 ]
 
 const WORD_MS = 1200
-const INITIAL_BLANK_MS = 450
+const INITIAL_BLANK_MS = 350
 
 type Phase = 'blank' | number | 'logo'
 
@@ -32,18 +32,25 @@ function pickSlogan(): readonly string[] {
 }
 
 interface LandingTitleProps {
-  /** When true, show logo only. When false, run slogan animation. When undefined, show logo until settings load. */
+  /** When true, show logo only. When false, run slogan animation. When undefined, stay blank until settings load. */
   disableAnimation?: boolean
 }
 
 export function LandingTitle({ disableAnimation }: LandingTitleProps) {
-  const showAnimation = disableAnimation === false && !prefersReducedMotion()
+  const reducedMotion = prefersReducedMotion()
+  const showAnimation = disableAnimation === false && !reducedMotion
+  const showLogoOnly = disableAnimation === true || reducedMotion
   const [words] = useState(pickSlogan)
-  const [phase, setPhase] = useState<Phase>('logo')
+  const [phase, setPhase] = useState<Phase>('blank')
 
   useEffect(() => {
-    if (!showAnimation) {
+    if (showLogoOnly) {
       setPhase('logo')
+      return
+    }
+    if (!showAnimation) {
+      // Settings still loading — keep blank so the logo does not flash before the slogan.
+      setPhase('blank')
       return
     }
 
@@ -58,7 +65,7 @@ export function LandingTitle({ disableAnimation }: LandingTitleProps) {
     return () => {
       for (const id of timers) window.clearTimeout(id)
     }
-  }, [words, showAnimation])
+  }, [words, showAnimation, showLogoOnly])
 
   const showLogo = phase === 'logo'
   const currentWord = typeof phase === 'number' ? words[phase] : undefined
