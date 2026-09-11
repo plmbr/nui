@@ -724,11 +724,13 @@ function AppContent() {
                   <span className="text-muted-foreground/35 hidden shrink-0 select-none md:inline" aria-hidden="true">/</span>
                   <AgentHeader
                     name={sessionDisplayName(selected)}
+                    sessionName={selected.name}
                     agent={selectedAgent}
                     sessionId={selected.id}
                     onNewSession={() => {
                       if (selectedGroupId) handleOpenNewSessionForGroup(selectedGroupId)
                     }}
+                    onRename={(newName) => handleRenameSession(selected.id, newName)}
                   />
                 </div>
               )}
