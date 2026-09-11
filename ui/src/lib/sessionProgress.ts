@@ -75,7 +75,7 @@ export function deriveSessionProgress(
   }
 
   if (stripThinkingBlocks(rawText).trim()) {
-    return { kind: 'generating', label: 'Generating…' }
+    return { kind: 'generating', label: 'Generating' }
   }
 
   return { kind: 'thinking', label: 'Thinking…' }

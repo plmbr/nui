@@ -754,54 +754,56 @@ export function ChatPanel({
               )}
             </div>
           )}
-          <textarea
-            ref={inputRef}
-            className="agui-chat__input"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
-            onPaste={onPaste}
-            placeholder="Message your agent… (/ for commands, @ to mention, paste or drop images and files)"
-            rows={1}
-            spellCheck={false}
-            autoCorrect="off"
-            autoCapitalize="off"
-            disabled={isRunning || uploadingCount > 0}
-            aria-autocomplete={promptMenuOpen ? 'list' : undefined}
-            aria-expanded={promptMenuOpen}
-            aria-controls={
-              slashCommand.open
-                ? 'slash-command-menu'
-                : mention.open
-                  ? 'mention-menu'
-                  : undefined
-            }
-            aria-activedescendant={
-              slashCommand.open && slashCommand.items.length > 0
-                ? `slash-command-option-${slashCommand.activeIndex}`
-                : mention.open && mention.items.length > 0
-                  ? `mention-option-${mention.activeIndex}`
-                  : undefined
-            }
-          />
+          <div className="agui-chat__composer">
+            <textarea
+              ref={inputRef}
+              className="agui-chat__input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+              onPaste={onPaste}
+              placeholder="Message your agent… (/ for commands, @ to mention, paste or drop images and files)"
+              rows={1}
+              spellCheck={false}
+              autoCorrect="off"
+              autoCapitalize="off"
+              disabled={isRunning || uploadingCount > 0}
+              aria-autocomplete={promptMenuOpen ? 'list' : undefined}
+              aria-expanded={promptMenuOpen}
+              aria-controls={
+                slashCommand.open
+                  ? 'slash-command-menu'
+                  : mention.open
+                    ? 'mention-menu'
+                    : undefined
+              }
+              aria-activedescendant={
+                slashCommand.open && slashCommand.items.length > 0
+                  ? `slash-command-option-${slashCommand.activeIndex}`
+                  : mention.open && mention.items.length > 0
+                    ? `mention-option-${mention.activeIndex}`
+                    : undefined
+              }
+            />
+            <button
+              type="button"
+              className={isRunning ? 'agui-chat__stop' : 'agui-chat__send'}
+              onClick={isRunning ? () => void stopRun() : submit}
+              disabled={!isRunning && (!input.trim() || uploadingCount > 0)}
+              aria-label={isRunning ? 'Stop agent' : 'Send message'}
+            >
+              {isRunning ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <rect x="6" y="6" width="12" height="12" rx="1" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          className={isRunning ? 'agui-chat__stop' : 'agui-chat__send'}
-          onClick={isRunning ? () => void stopRun() : submit}
-          disabled={!isRunning && (!input.trim() || uploadingCount > 0)}
-          aria-label={isRunning ? 'Stop agent' : 'Send message'}
-        >
-          {isRunning ? (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <rect x="6" y="6" width="12" height="12" rx="1" />
-            </svg>
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-            </svg>
-          )}
-        </button>
         </div>
       </div>
       )}

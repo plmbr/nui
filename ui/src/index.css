@@ -7,6 +7,7 @@
 
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+@import "@fontsource-variable/source-sans-3";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -14,9 +15,11 @@
 
     --font-sans: "Geist Variable", "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 
+    --font-chat: "Source Sans 3 Variable", "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+
     --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
 
-    --font-heading: var(--font-sans);
+    --font-heading: var(--font-chat);
 
     --color-sidebar-ring: var(--sidebar-ring);
 
@@ -117,10 +120,10 @@
     --primary-foreground: #ffffff;
 
     --secondary: #f5f5f5;
-    --secondary-foreground: #404040;
+    --secondary-foreground: #1a1a1a;
 
     --muted: #f5f5f5;
-    --muted-foreground: #737373;
+    --muted-foreground: #525252;
 
     --accent: #fafafa;
     --accent-foreground: #0a0a0a;
@@ -158,9 +161,10 @@
     --gradient-accent: var(--brand-gradient);
 
     --user-bubble: oklch(0.96 0.01 225);
-    --user-bubble-foreground: oklch(0.30 0.04 215);
-    --chat-foreground: #404040;
-    --chat-heading: #0a0a0a;
+    --user-bubble-foreground: oklch(0.22 0.035 230);
+    /* Near-black with a faint nui blue cast for light chat */
+    --chat-foreground: oklch(0.22 0.03 230);
+    --chat-heading: oklch(0.14 0.035 235);
 
     --sidebar: #fafafa;
     --sidebar-foreground: #0a0a0a;
@@ -184,8 +188,8 @@
     --landing-send-to: color-mix(in oklch, var(--brand-gradient-to) 76%, black);
     --landing-send-fg: #ffffff;
     --landing-send-shadow: color-mix(in oklch, var(--brand-gradient-from) 38%, transparent);
-    --landing-title-word-from: #404040;
-    --landing-title-word-to: #0a0a0a;
+    --landing-title-word-from: #1a1a1a;
+    --landing-title-word-to: #050505;
     --landing-title-word-gradient: linear-gradient(135deg, var(--landing-title-word-from), var(--landing-title-word-to));
 }
 
@@ -208,63 +212,64 @@ html.nui-desktop {
 
 .dark {
 
-    /* Dark — near-black neutral surfaces with the original blue-teal accent. */
-    --background: #0a0a0a;
-    --background-subtle: #1f1f1f;
+    /* Dark — matte charcoal with soft light-nui-blue text for readability. */
+    --background: #141414;
+    --background-subtle: #1c1c1c;
 
-    --foreground: #fafafa;
+    --foreground: oklch(0.97 0.012 225);
 
-    --card: #171717;
-    --card-foreground: #fafafa;
+    --card: #1a1a1a;
+    --card-foreground: oklch(0.97 0.012 225);
 
-    --popover: #171717;
-    --popover-foreground: #fafafa;
+    --popover: #1a1a1a;
+    --popover-foreground: oklch(0.97 0.012 225);
 
-    --primary: #fafafa;
-    --primary-foreground: #0a0a0a;
+    --primary: oklch(0.97 0.012 225);
+    --primary-foreground: #141414;
 
-    --secondary: #1f1f1f;
-    --secondary-foreground: #d4d4d4;
+    --secondary: #222222;
+    --secondary-foreground: oklch(0.93 0.018 225);
 
-    --muted: #1f1f1f;
-    --muted-foreground: #a3a3a3;
+    --muted: #222222;
+    --muted-foreground: oklch(0.82 0.02 225);
 
-    --accent: #171717;
-    --accent-foreground: #fafafa;
+    --accent: #1a1a1a;
+    --accent-foreground: oklch(0.97 0.012 225);
 
     --destructive: #fca5a5;
 
-    --border: #262626;
-    --input: #404040;
-    --ring: oklch(0.70 0.10 215);
+    --border: #2a2a2a;
+    --input: #3a3a3a;
+    --ring: oklch(0.74 0.09 220);
 
-    --chart-1: oklch(0.70 0.10 215);
+    --chart-1: oklch(0.74 0.09 220);
     --chart-2: #93c5fd;
     --chart-3: #4ade80;
     --chart-4: #fbbf24;
     --chart-5: #c4b5fd;
 
     --glow: transparent;
-    --brand-gradient-from: oklch(0.72 0.14 255);
-    --brand-gradient-to: oklch(0.78 0.12 215);
+    --brand-gradient-from: oklch(0.82 0.10 245);
+    --brand-gradient-to: oklch(0.88 0.08 215);
     --brand-gradient: linear-gradient(135deg, var(--brand-gradient-from), var(--brand-gradient-to));
     --gradient-accent-from: var(--brand-gradient-from);
     --gradient-accent-to: var(--brand-gradient-to);
     --gradient-accent: var(--brand-gradient);
 
-    --user-bubble: oklch(0.285 0.018 240);
-    --user-bubble-foreground: #e5e5e5;
-    --chat-foreground: #d4d4d4;
-    --chat-heading: #e5e5e5;
+    --user-bubble: oklch(0.30 0.02 240);
+    --user-bubble-foreground: oklch(0.96 0.015 225);
+    /* Near-white with a faint nui blue cast */
+    --chat-foreground: oklch(0.98 0.018 225);
+    --chat-heading: oklch(0.98 0.012 225);
 
-    --sidebar: #171717;
-    --sidebar-foreground: #fafafa;
-    --sidebar-primary: #fafafa;
-    --sidebar-primary-foreground: #0a0a0a;
-    --sidebar-accent: #1f1f1f;
-    --sidebar-accent-foreground: #fafafa;
-    --sidebar-border: #262626;
-    --sidebar-ring: oklch(0.70 0.10 215);
+    --sidebar: #1a1a1a;
+    --sidebar-foreground: oklch(0.97 0.012 225);
+    --sidebar-primary: oklch(0.97 0.012 225);
+    --sidebar-primary-foreground: #141414;
+    --sidebar-accent: #222222;
+    --sidebar-accent-foreground: oklch(0.97 0.012 225);
+    --sidebar-border: #2a2a2a;
+    --sidebar-ring: oklch(0.80 0.08 220);
 
     --plumeria-petal-base: oklch(0.94 0.015 350);
     --plumeria-petal-mid: oklch(0.91 0.03 350);
@@ -278,8 +283,8 @@ html.nui-desktop {
     --landing-send-to: color-mix(in oklch, var(--brand-gradient-to) 52%, black);
     --landing-send-fg: #ffffff;
     --landing-send-shadow: oklch(0.18 0.04 255 / 48%);
-    --landing-title-word-from: #d4d4d4;
-    --landing-title-word-to: #fafafa;
+    --landing-title-word-from: oklch(0.94 0.018 225);
+    --landing-title-word-to: oklch(0.98 0.012 225);
     --landing-title-word-gradient: linear-gradient(135deg, var(--landing-title-word-from), var(--landing-title-word-to));
 }
 
@@ -1334,8 +1339,10 @@ html.nui-desktop {
   .agui-message--assistant > .agui-message__bubble {
     @apply prose max-w-none px-0 py-1;
     color: var(--chat-foreground);
+    font-family: var(--font-chat);
     font-size: var(--text-body);
     line-height: var(--leading-chat);
+    font-optical-sizing: auto;
     .dark & { @apply prose-invert; }
     --tw-prose-body: var(--chat-foreground);
     --tw-prose-headings: var(--chat-heading);
@@ -1344,6 +1351,11 @@ html.nui-desktop {
     --tw-prose-quotes: var(--chat-foreground);
     --tw-prose-code: var(--chat-heading);
     --tw-prose-pre-code: var(--chat-foreground);
+  }
+
+  .agui-message--assistant > .agui-message__bubble :where(h1, h2, h3, h4, h5, h6, strong, b) {
+    color: var(--chat-heading);
+    font-weight: 650;
   }
 
   .agui-message--assistant .agui-message__text-part + .agui-message__text-part {
@@ -1428,7 +1440,9 @@ html.nui-desktop {
   }
 
   .agui-thinking--streaming {
-    @apply mt-3 flex w-fit items-center gap-2.5 px-1 py-1;
+    @apply mt-3 flex w-fit items-center px-1 py-1;
+    gap: 0.55rem;
+    align-items: center;
   }
 
   .agui-thinking__dots {
@@ -1440,10 +1454,6 @@ html.nui-desktop {
     animation: agui-thinking-bounce 1.2s ease-in-out infinite;
   }
 
-  .agui-thinking--streaming .agui-thinking__dot {
-    @apply size-2;
-  }
-
   .agui-thinking__dot:nth-child(2) {
     animation-delay: 0.15s;
   }
@@ -1452,8 +1462,76 @@ html.nui-desktop {
     animation-delay: 0.3s;
   }
 
+  .agui-thinking__logo-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    height: 1.35rem;
+    line-height: 0;
+    overflow: hidden;
+  }
+
+  .agui-thinking__logo {
+    height: 1.35rem;
+    width: auto;
+    display: block;
+    /* Nudge up so wordmark optical center matches Generating */
+    transform: translateY(-0.12em);
+  }
+
+  /* Soft, wide light band sweeping left→right */
+  .agui-thinking__logo.agui-thinking__shine {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: auto;
+    transform: translateY(-0.12em);
+    filter: brightness(1.45) saturate(0.9);
+    pointer-events: none;
+  }
+
+  .agui-thinking__shine {
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      transparent 12%,
+      rgba(0, 0, 0, 0.15) 28%,
+      rgba(0, 0, 0, 0.45) 42%,
+      rgba(0, 0, 0, 0.7) 50%,
+      rgba(0, 0, 0, 0.45) 58%,
+      rgba(0, 0, 0, 0.15) 72%,
+      transparent 88%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      transparent 12%,
+      rgba(0, 0, 0, 0.15) 28%,
+      rgba(0, 0, 0, 0.45) 42%,
+      rgba(0, 0, 0, 0.7) 50%,
+      rgba(0, 0, 0, 0.45) 58%,
+      rgba(0, 0, 0, 0.15) 72%,
+      transparent 88%,
+      transparent 100%
+    );
+    -webkit-mask-size: 220% 100%;
+    mask-size: 220% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    animation: agui-thinking-shine 4.2s linear infinite;
+  }
+
   .agui-thinking__label {
-    @apply text-xs font-medium tracking-wide text-primary/80;
+    @apply relative inline-flex items-center text-xs font-medium tracking-wide;
+    font-family: var(--font-chat);
+    font-size: 0.875rem;
+    line-height: 1.35rem;
+    letter-spacing: 0.02em;
+    color: var(--chat-foreground);
   }
 
   @keyframes agui-thinking-bounce {
@@ -1464,6 +1542,28 @@ html.nui-desktop {
     30% {
       transform: translateY(-3px);
       opacity: 1;
+    }
+  }
+
+  @keyframes agui-thinking-shine {
+    0% {
+      -webkit-mask-position: 100% 0;
+      mask-position: 100% 0;
+    }
+    100% {
+      -webkit-mask-position: 0% 0;
+      mask-position: 0% 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .agui-thinking__dot,
+    .agui-thinking__shine {
+      animation: none;
+    }
+
+    .agui-thinking__shine {
+      display: none;
     }
   }
 
@@ -1491,15 +1591,29 @@ html.nui-desktop {
   }
 
   .agui-chat__input-row {
-    @apply flex items-end gap-2.5;
+    @apply flex items-end;
   }
 
   .agui-chat__input-wrap {
     @apply relative min-w-0 flex-1;
   }
 
+  .agui-chat__input-wrap--dragging .agui-chat__composer {
+    @apply ring-2 ring-primary/40;
+  }
+
+  .agui-chat__composer {
+    @apply flex items-end gap-2 rounded-xl border bg-muted/50 transition-all;
+    padding: 0.5rem 0.5rem 0.5rem 0.875rem;
+
+    &:focus-within {
+      border-color: color-mix(in oklch, var(--primary) 50%, var(--border));
+      box-shadow: 0 0 0 2px var(--glow);
+    }
+  }
+
   .agui-chat__input-wrap--dragging {
-    @apply rounded-xl ring-2 ring-primary/40;
+    /* ring applied on composer */
   }
 
   .agui-chat__attachments {
@@ -1597,14 +1711,12 @@ html.nui-desktop {
   }
 
   .agui-chat__input {
-    @apply box-border block w-full min-h-11 max-h-[180px] resize-none rounded-xl border bg-muted/50 px-3.5 py-2.5 leading-normal outline-none transition-all;
+    @apply box-border block min-w-0 flex-1 resize-none border-0 bg-transparent p-0 leading-normal outline-none;
+    min-height: 1.5rem;
+    max-height: 180px;
     font-size: var(--text-body);
+    line-height: 1.5rem;
     field-sizing: content;
-
-    &:focus {
-      border-color: color-mix(in oklch, var(--primary) 50%, var(--border));
-      box-shadow: 0 0 0 2px var(--glow);
-    }
 
     &::placeholder {
       @apply text-muted-foreground/60;
@@ -1616,7 +1728,7 @@ html.nui-desktop {
   }
 
   .agui-chat__stop {
-    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-0 text-primary-foreground transition-all;
+    @apply flex size-6 shrink-0 items-center justify-center rounded-md border-0 text-primary-foreground transition-[filter,transform,opacity];
     background: var(--destructive);
 
     &:hover:not(:disabled) {
@@ -1629,7 +1741,7 @@ html.nui-desktop {
   }
 
   .agui-chat__send {
-    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-0 text-primary-foreground transition-all;
+    @apply flex size-6 shrink-0 items-center justify-center rounded-md border-0 text-primary-foreground transition-[filter,transform,opacity];
     background: var(--gradient-accent);
 
     &:hover:not(:disabled) {

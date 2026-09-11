@@ -1,5 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
+import { NuiLogo } from '@/components/NuiLogo'
+
 interface Props {
   label?: string
   variant?: 'waiting' | 'streaming'
@@ -10,7 +12,7 @@ export function ThinkingIndicator({
   variant = 'waiting',
 }: Props) {
   const resolvedLabel =
-    label ?? (variant === 'streaming' ? 'Generating…' : 'Agent is responding')
+    label ?? (variant === 'streaming' ? 'Generating' : 'Agent is responding')
 
   return (
     <span
@@ -19,11 +21,18 @@ export function ThinkingIndicator({
       aria-live="polite"
       aria-label={resolvedLabel}
     >
-      <span className="agui-thinking__dots" aria-hidden>
-        <span className="agui-thinking__dot" />
-        <span className="agui-thinking__dot" />
-        <span className="agui-thinking__dot" />
-      </span>
+      {variant === 'streaming' ? (
+        <span className="agui-thinking__logo-wrap" aria-hidden>
+          <NuiLogo className="agui-thinking__logo" decorative />
+          <NuiLogo className="agui-thinking__logo agui-thinking__shine" decorative />
+        </span>
+      ) : (
+        <span className="agui-thinking__dots" aria-hidden>
+          <span className="agui-thinking__dot" />
+          <span className="agui-thinking__dot" />
+          <span className="agui-thinking__dot" />
+        </span>
+      )}
       {variant === 'streaming' && (
         <span className="agui-thinking__label">{resolvedLabel}</span>
       )}
