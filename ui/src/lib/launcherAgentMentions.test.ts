@@ -96,8 +96,9 @@ describe('hasCompleteLauncherAgentMention', () => {
     expect(hasCompleteLauncherAgentMention('@ext:pack/demo:[Demo Agent] fix')).toBe(true)
   })
 
-  it('detects plain mentions with trailing task text', () => {
-    expect(hasCompleteLauncherAgentMention('@claude-code fix tests')).toBe(true)
+  it('does not treat spaces as completing an in-progress mention', () => {
+    expect(hasCompleteLauncherAgentMention('@claude-code fix tests')).toBe(false)
+    expect(hasCompleteLauncherAgentMention('@Claude Code')).toBe(false)
   })
 
   it('treats in-progress mentions as incomplete', () => {
@@ -109,6 +110,36 @@ describe('detectLauncherMentionTrigger', () => {
   it('does not open when an agent is already selected', () => {
     const prompt = '@ext:pack/demo:[Demo Agent] fix tests @'
     expect(detectLauncherMentionTrigger(prompt, prompt.length)).toBeNull()
+  })
+
+  it('keeps the trigger open when the query contains spaces', () => {
+    const prompt = '@Claude Code'
+    expect(detectLauncherMentionTrigger(prompt, prompt.length)).toEqual({
+      triggerStart: 0,
+      query: 'Claude Code',
+    })
+  })
+
+  it('ends the trigger on newlines', () => {
+    const prompt = '@Claude\n'
+    expect(detectLauncherMentionTrigger(prompt, prompt.length)).toBeNull()
+  })
+})
+
+describe('listLauncherMentionItems with spaced queries', () => {
+  it('filters multi-word labels while typing a space', () => {
+    const withSpaces: AgentType[] = [
+      ...agents,
+      {
+        id: 'suite-updater',
+        label: 'Suite Updater',
+        harness: 'extension',
+        isBuiltin: false,
+        available: true,
+      },
+    ]
+    const { items } = listLauncherMentionItems(withSpaces, 'Suite Up')
+    expect(items.map((item) => item.value)).toEqual(['suite-updater'])
   })
 })
 

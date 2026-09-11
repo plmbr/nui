@@ -24,6 +24,7 @@ export function useLauncherAgentMentionMenu({
   disabled,
 }: UseLauncherAgentMentionMenuOptions) {
   const [activeIndex, setActiveIndex] = useState(0)
+  const [dismissed, setDismissed] = useState(false)
 
   const trigger = useMemo(() => {
     if (disabled) return null
@@ -31,7 +32,12 @@ export function useLauncherAgentMentionMenu({
     return detectLauncherMentionTrigger(input, cursor)
   }, [disabled, input, inputRef])
 
-  const open = trigger !== null
+  useEffect(() => {
+    // Re-arm suggestions when the @-mention starts fresh (or is cleared).
+    setDismissed(false)
+  }, [trigger?.triggerStart])
+
+  const open = trigger !== null && !dismissed
 
   const { items, breadcrumb } = useMemo(
     () => listLauncherMentionItems(agentTypes, trigger?.query ?? ''),
@@ -54,6 +60,7 @@ export function useLauncherAgentMentionMenu({
       const insertion = `${formatLauncherAgentMentionToken(item.value, item.label)} `
       const next = `${before}${insertion}${after}`
       setInput(next)
+      setDismissed(false)
       setActiveIndex(0)
       requestAnimationFrame(() => {
         const pos = before.length + insertion.length
@@ -66,7 +73,14 @@ export function useLauncherAgentMentionMenu({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (!open || items.length === 0) {
+      if (!open) return false
+
+      if (items.length === 0) {
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          setDismissed(true)
+          return true
+        }
         return false
       }
 
@@ -86,8 +100,10 @@ export function useLauncherAgentMentionMenu({
           return true
         case 'Escape':
           e.preventDefault()
+          setDismissed(true)
           return true
         default:
+          // Space stays in the input so multi-word agent names keep filtering.
           return false
       }
     },

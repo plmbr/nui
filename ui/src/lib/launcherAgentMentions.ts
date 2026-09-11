@@ -1,6 +1,6 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { detectMentionTrigger, type MentionTrigger } from '@/hooks/useMentionMenu'
+import type { MentionTrigger } from '@/hooks/useMentionMenu'
 import { isNuiAgent, selectableAgentTypes } from '@/lib/agentTypes'
 import type { AgentType, MentionBreadcrumb, MentionItem } from '@/types'
 
@@ -30,18 +30,23 @@ export function hasCompleteLauncherAgentMention(prompt: string): boolean {
   const trimmed = prompt.trimStart()
   if (!trimmed.startsWith('@')) return false
   const rest = trimmed.slice(1)
-  if (rest.includes(':[')) {
-    return rest.includes(']')
-  }
-  return /\s/.test(rest)
+  // Only a selected `@id:[label]` token closes autocomplete. Spaces may appear in agent names
+  // while the user is still filtering suggestions.
+  if (!rest.includes(':[')) return false
+  return rest.includes(']')
 }
 
 export function detectLauncherMentionTrigger(value: string, cursor: number): MentionTrigger | null {
   if (hasCompleteLauncherAgentMention(value)) return null
-  const trigger = detectMentionTrigger(value, cursor)
-  if (!trigger) return null
-  if (trigger.query.includes(':[')) return null
-  return trigger
+  const before = value.slice(0, cursor)
+  const at = before.lastIndexOf('@')
+  if (at < 0) return null
+  if (at > 0 && !/\s/.test(before[at - 1] ?? '')) return null
+  const query = before.slice(at + 1)
+  // Allow spaces in the query so multi-word agent labels keep filtering; newlines end the trigger.
+  if (query.includes('\n')) return null
+  if (query.includes(':[')) return null
+  return { triggerStart: at, query }
 }
 
 export function listLauncherMentionItems(
