@@ -141,6 +141,44 @@ func TestFindAgentByMentionID(t *testing.T) {
 	}
 }
 
+func TestMatchLeadingAgentMention(t *testing.T) {
+	candidates := []AgentTypeInfo{
+		{ID: "claude-code", Label: "Claude Code"},
+		{ID: "ext:pack/suite-updater", Label: "Suite Updater"},
+		{ID: "pi", Label: "Pi"},
+	}
+
+	agent, delegated, ok := matchLeadingAgentMention("@claude code what can you do", candidates)
+	if !ok || agent.ID != "claude-code" || delegated != "what can you do" {
+		t.Fatalf("label match = (%s, %q, %v)", agent.ID, delegated, ok)
+	}
+
+	agent, delegated, ok = matchLeadingAgentMention("@Claude Code", candidates)
+	if !ok || agent.ID != "claude-code" || delegated != "" {
+		t.Fatalf("label-only = (%s, %q, %v)", agent.ID, delegated, ok)
+	}
+
+	agent, delegated, ok = matchLeadingAgentMention("@claude-code fix tests", candidates)
+	if !ok || agent.ID != "claude-code" || delegated != "fix tests" {
+		t.Fatalf("id match = (%s, %q, %v)", agent.ID, delegated, ok)
+	}
+
+	agent, delegated, ok = matchLeadingAgentMention("@ext:pack/suite-updater:[Suite Updater] ship it", candidates)
+	if !ok || agent.ID != "ext:pack/suite-updater" || delegated != "ship it" {
+		t.Fatalf("readable token = (%s, %q, %v)", agent.ID, delegated, ok)
+	}
+
+	_, _, ok = matchLeadingAgentMention("@claude what can you do", candidates)
+	if ok {
+		t.Fatal("partial label must not match Claude Code")
+	}
+
+	_, _, ok = matchLeadingAgentMention("@not-an-agent do work", candidates)
+	if ok {
+		t.Fatal("unknown mention must not match")
+	}
+}
+
 func TestTryMentionAgentLaunch_respectsPromptMode(t *testing.T) {
 	home := withTempHome(t)
 	resetAllServerState(t)

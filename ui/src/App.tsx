@@ -549,7 +549,7 @@ function AppContent() {
   }, [handleSelect])
 
   const handleLaunchWithPrompt = useCallback(async (prompt: string) => {
-    const mentionOnly = isLauncherAgentOnlyMention(prompt)
+    const mentionOnly = isLauncherAgentOnlyMention(prompt, agentTypes)
     const result = await api.orchestrate({ prompt })
     if (result.ambiguous && result.candidates?.length) {
       return {
@@ -577,7 +577,7 @@ function AppContent() {
     navigateToSession(result.session.id)
     api.state.update({ lastSessionId: result.session.id }).catch(() => {})
     void refreshRecents()
-  }, [loadSessions, refreshRecents, dispatchUIActions])
+  }, [agentTypes, loadSessions, refreshRecents, dispatchUIActions])
 
   const handleResolveAmbiguity = useCallback(async (agentType: string, prompt: string) => {
     const session = await api.sessions.create({ agentType })

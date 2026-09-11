@@ -71,7 +71,10 @@ export function listLauncherMentionItems(
   }
 }
 
-export function parseLauncherAgentMention(prompt: string): { agentId: string; delegated: string } | null {
+export function parseLauncherAgentMention(
+  prompt: string,
+  agents: AgentType[] = [],
+): { agentId: string; delegated: string } | null {
   const trimmed = prompt.trimStart()
   if (!trimmed.startsWith('@')) return null
   const rest = trimmed.slice(1)
@@ -88,6 +91,13 @@ export function parseLauncherAgentMention(prompt: string): { agentId: string; de
     return { agentId, delegated: after.trimStart() }
   }
 
+  const launchable = launchableAgentsForMention(agents)
+  if (launchable.length > 0) {
+    const matched = matchLeadingLauncherAgent(rest, launchable)
+    if (matched) return matched
+    return null
+  }
+
   const spaceIndex = rest.search(/\s/)
   if (spaceIndex < 0) {
     const agentId = rest
@@ -99,7 +109,29 @@ export function parseLauncherAgentMention(prompt: string): { agentId: string; de
   return { agentId, delegated: rest.slice(spaceIndex + 1).trim() }
 }
 
-export function isLauncherAgentOnlyMention(prompt: string): boolean {
-  const mention = parseLauncherAgentMention(prompt)
+function matchLeadingLauncherAgent(
+  rest: string,
+  agents: AgentType[],
+): { agentId: string; delegated: string } | null {
+  const restLower = rest.toLowerCase()
+  let bestLen = -1
+  let bestId = ''
+  for (const agent of agents) {
+    for (const key of [agent.id, agent.label].filter(Boolean)) {
+      const keyLower = key.toLowerCase()
+      if (!restLower.startsWith(keyLower)) continue
+      if (rest.length > key.length && !/\s/.test(rest[key.length]!)) continue
+      if (key.length < bestLen) continue
+      if (key.length === bestLen && bestId) continue
+      bestLen = key.length
+      bestId = agent.id
+    }
+  }
+  if (bestLen < 0) return null
+  return { agentId: bestId, delegated: rest.slice(bestLen).trim() }
+}
+
+export function isLauncherAgentOnlyMention(prompt: string, agents: AgentType[] = []): boolean {
+  const mention = parseLauncherAgentMention(prompt, agents)
   return mention !== null && mention.delegated === ''
 }

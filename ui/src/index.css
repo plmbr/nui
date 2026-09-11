@@ -166,11 +166,11 @@
     --chat-foreground: oklch(0.22 0.03 230);
     --chat-heading: oklch(0.14 0.035 235);
 
-    --sidebar: #fafafa;
+    --sidebar: #f5f5f5;
     --sidebar-foreground: #0a0a0a;
     --sidebar-primary: #0a0a0a;
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #f5f5f5;
+    --sidebar-accent: #ebebeb;
     --sidebar-accent-foreground: #0a0a0a;
     --sidebar-border: #e5e5e5;
     --sidebar-ring: oklch(0.52 0.11 215);
@@ -1525,7 +1525,9 @@ html.nui-desktop {
     flex-shrink: 0;
     height: 1.35rem;
     line-height: 0;
-    overflow: hidden;
+    /* visible: translateY below shifts letterforms up; hidden clipped
+       sparkles and the tops of n/u. */
+    overflow: visible;
   }
 
   .agui-thinking__logo {
@@ -1534,7 +1536,7 @@ html.nui-desktop {
     display: block;
     /* Sparkles pull the SVG bbox center up; shift down so letterforms
        line up with the Generating label. */
-    transform: translateY(-2px);
+    transform: translateY(-3px);
   }
 
   /* Soft, wide light band sweeping left→right */
@@ -1544,7 +1546,7 @@ html.nui-desktop {
     top: 0;
     height: 100%;
     width: auto;
-    transform: translateY(-2px);
+    transform: translateY(-3px);
     filter: brightness(1.45) saturate(0.9);
     pointer-events: none;
   }

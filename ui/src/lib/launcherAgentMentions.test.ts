@@ -171,6 +171,17 @@ describe('parseLauncherAgentMention', () => {
     })
   })
 
+  it('matches multi-word labels when agents are provided', () => {
+    expect(parseLauncherAgentMention('@claude code what can you do', agents)).toEqual({
+      agentId: 'claude-code',
+      delegated: 'what can you do',
+    })
+  })
+
+  it('rejects unknown spaced mentions when agents are provided', () => {
+    expect(parseLauncherAgentMention('@claude what can you do', agents)).toBeNull()
+  })
+
   it('rejects non-leading mentions', () => {
     expect(parseLauncherAgentMention('ask @claude-code to help')).toBeNull()
   })
@@ -178,5 +189,6 @@ describe('parseLauncherAgentMention', () => {
   it('detects mention-only launcher prompts', () => {
     expect(isLauncherAgentOnlyMention('@claude-code:[Claude Code]')).toBe(true)
     expect(isLauncherAgentOnlyMention('@claude-code fix tests')).toBe(false)
+    expect(isLauncherAgentOnlyMention('@Claude Code', agents)).toBe(true)
   })
 })
