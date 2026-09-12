@@ -103,13 +103,26 @@ harness:
 		t.Fatalf("put status = %d, body: %s", rec.Code, rec.Body.String())
 	}
 
-	req = httptest.NewRequest(http.MethodDelete, "/api/agents/custom-agent.yaml", nil)
+	req = httptest.NewRequest(http.MethodPatch, "/api/agents/custom-agent.yaml", strings.NewReader(`{"file":"renamed-agent.yaml"}`))
+	rec = httptest.NewRecorder()
+	handleAgentFile(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("rename status = %d, body: %s", rec.Code, rec.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(agentsDir, "custom-agent.yaml")); !os.IsNotExist(err) {
+		t.Fatal("expected old agent file removed after rename")
+	}
+	if _, err := os.Stat(filepath.Join(agentsDir, "renamed-agent.yaml")); err != nil {
+		t.Fatalf("expected renamed agent file: %v", err)
+	}
+
+	req = httptest.NewRequest(http.MethodDelete, "/api/agents/renamed-agent.yaml", nil)
 	rec = httptest.NewRecorder()
 	handleAgentFile(rec, req)
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("delete status = %d", rec.Code)
 	}
-	if _, err := os.Stat(filepath.Join(agentsDir, "custom-agent.yaml")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(agentsDir, "renamed-agent.yaml")); !os.IsNotExist(err) {
 		t.Fatal("expected agent file removed")
 	}
 }

@@ -234,6 +234,59 @@ func handleAgentFile(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusOK, info)
 
+	case http.MethodPatch:
+		var req struct {
+			File string `json:"file"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+		newName, err := sanitizeAgentFilename(req.File)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if _, err := os.Stat(path); err != nil {
+			if os.IsNotExist(err) {
+				http.Error(w, "not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if newName == safeName {
+			info, err := agentFileInfoFromPath(path)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, info)
+			return
+		}
+		newPath, err := agentFilePath(newName)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if _, err := os.Stat(newPath); err == nil {
+			http.Error(w, "agent file already exists", http.StatusConflict)
+			return
+		} else if err != nil && !os.IsNotExist(err) {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err := os.Rename(path, newPath); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		info, err := agentFileInfoFromPath(newPath)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, info)
+
 	case http.MethodDelete:
 		if err := os.Remove(path); err != nil {
 			if os.IsNotExist(err) {

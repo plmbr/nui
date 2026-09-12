@@ -1,7 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { FileCode2, ChevronLeft, Copy, FlaskConical, FormInput, MoreHorizontal, Plus, Rocket, Trash2 } from 'lucide-react'
+import { FileCode2, ChevronLeft, Copy, FlaskConical, FormInput, MoreHorizontal, Pencil, Plus, Rocket, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -98,6 +98,9 @@ export function AgentsTab({ onChanged }: Props) {
   const [saving, setSaving] = useState(false)
   const [creating, setCreating] = useState(false)
   const [newFilename, setNewFilename] = useState('my-agent.yaml')
+  const [renaming, setRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState('')
+  const [renamingSaving, setRenamingSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [deployers, setDeployers] = useState<AgentDeployerInfo[]>([])
@@ -167,6 +170,7 @@ export function AgentsTab({ onChanged }: Props) {
 
   const openAgent = async (file: string) => {
     setError(null)
+    setRenaming(false)
     try {
       const res = await api.agents.get(file)
       setSelectedFile(file)
@@ -176,6 +180,41 @@ export function AgentsTab({ onChanged }: Props) {
       syncFormFromContent(res.content)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load agent')
+    }
+  }
+
+  const startRename = () => {
+    if (!selectedFile || creating) return
+    setRenameValue(selectedFile)
+    setRenaming(true)
+    setError(null)
+  }
+
+  const cancelRename = () => {
+    setRenaming(false)
+    setRenameValue('')
+  }
+
+  const commitRename = async () => {
+    if (!selectedFile || creating || renamingSaving) return
+    const next = renameValue.trim()
+    if (!next || next === selectedFile) {
+      cancelRename()
+      return
+    }
+    setRenamingSaving(true)
+    setError(null)
+    try {
+      const info = await api.agents.rename(selectedFile, next)
+      setSelectedFile(info.file)
+      setRenaming(false)
+      setRenameValue('')
+      await load()
+      onChanged?.()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to rename agent file')
+    } finally {
+      setRenamingSaving(false)
     }
   }
 
@@ -318,11 +357,18 @@ export function AgentsTab({ onChanged }: Props) {
   const startCreate = () => {
     setCreating(true)
     setSelectedFile(null)
+    setRenaming(false)
     setEditMode('form')
     setForm(defaultAgentForm())
     setHasWorkflowSteps(false)
     setContent(NEW_AGENT_TEMPLATE)
     setNewFilename('my-agent.yaml')
+  }
+
+  const closeMobileEditor = () => {
+    setSelectedFile(null)
+    setCreating(false)
+    setRenaming(false)
   }
 
   const agentIdForDeploy = form.id.trim() || agents.find((a) => a.file === selectedFile)?.id || ''
@@ -399,11 +445,6 @@ export function AgentsTab({ onChanged }: Props) {
 
   const editing = creating || selectedFile != null
   const mobileShowEditor = isMobile && editing
-
-  const closeMobileEditor = () => {
-    setSelectedFile(null)
-    setCreating(false)
-  }
 
   return (
     <div className="customize-tab-content customize-tab-content--split flex h-full min-h-0 max-w-none flex-col gap-4 overflow-hidden">
@@ -499,11 +540,39 @@ export function AgentsTab({ onChanged }: Props) {
                       <ChevronLeft className="size-4" />
                     </Button>
                   )}
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     {creating ? (
                       <p className="text-sm font-medium">New agent</p>
+                    ) : renaming ? (
+                      <Input
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onBlur={() => void commitRename()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            e.currentTarget.blur()
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault()
+                            cancelRename()
+                          }
+                        }}
+                        disabled={renamingSaving}
+                        autoFocus
+                        aria-label="Rename agent file"
+                        className="h-8 max-w-md font-mono text-sm"
+                      />
                     ) : (
-                      <p className="text-sm font-medium truncate">{selectedFile}</p>
+                      <button
+                        type="button"
+                        className="group/rename inline-flex max-w-full items-center gap-1.5 rounded-md px-1 -mx-1 py-0.5 text-left text-sm font-medium hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        onClick={startRename}
+                        title="Rename file"
+                        aria-label={`Rename ${selectedFile}`}
+                      >
+                        <span className="truncate font-mono">{selectedFile}</span>
+                        <Pencil className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/rename:opacity-100 group-focus-visible/rename:opacity-100" />
+                      </button>
                     )}
                   </div>
                 </div>

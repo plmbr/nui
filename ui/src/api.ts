@@ -514,6 +514,12 @@ export const api = {
         body: JSON.stringify({ content }),
       }),
 
+    rename: (file: string, newFile: string): Promise<AgentFileInfo> =>
+      request(`/agents/${encodeURIComponent(file)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ file: newFile }),
+      }),
+
     remove: (file: string): Promise<void> =>
       request(`/agents/${encodeURIComponent(file)}`, { method: 'DELETE' }),
 
