@@ -2,6 +2,7 @@
 
 import type { MentionTrigger } from '@/hooks/useMentionMenu'
 import { isNuiAgent, selectableAgentTypes } from '@/lib/agentTypes'
+import { fuzzyMatchScore } from '@/lib/fuzzyMatch'
 import type { AgentType, MentionBreadcrumb, MentionItem } from '@/types'
 
 export const LAUNCHER_AGENTS_MENTION_ROOT = 'builtin:agents'
@@ -11,13 +12,16 @@ export function launchableAgentsForMention(types: AgentType[]): AgentType[] {
   return selectableAgentTypes(types).filter((agent) => !isNuiAgent(agent))
 }
 
-function agentMatchesMentionQuery(agent: AgentType, query: string): boolean {
-  const haystack = [
-    agent.label,
-    agent.id,
-    agent.description ?? '',
-  ].join(' ').toLowerCase()
-  return haystack.includes(query)
+function agentMentionHaystack(agent: AgentType): string {
+  return [agent.label, agent.id, agent.description ?? ''].join(' ')
+}
+
+function agentMentionScore(agent: AgentType, query: string): number {
+  const labelScore = fuzzyMatchScore(query, agent.label)
+  const idScore = fuzzyMatchScore(query, agent.id)
+  const fullScore = fuzzyMatchScore(query, agentMentionHaystack(agent))
+  // Prefer label/id hits over description-only matches.
+  return Math.max(labelScore * 1.25, idScore * 1.1, fullScore)
 }
 
 export function formatLauncherAgentMentionToken(agentId: string, label: string): string {
@@ -55,16 +59,24 @@ export function listLauncherMentionItems(
 ): { items: MentionItem[]; breadcrumb: MentionBreadcrumb[] } {
   const launchable = launchableAgentsForMention(agents)
   const normalizedQuery = query.trim().toLowerCase()
-  const items = launchable
-    .filter((agent) => !normalizedQuery || agentMatchesMentionQuery(agent, normalizedQuery))
-    .sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }))
-    .slice(0, MAX_LAUNCHER_MENTION_ITEMS)
+  const ranked = launchable
     .map((agent) => ({
-      label: agent.label,
-      value: agent.id,
-      hasChildren: false,
-      icon: 'agent',
+      agent,
+      score: normalizedQuery ? agentMentionScore(agent, normalizedQuery) : 1,
     }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score
+      return a.agent.label.localeCompare(b.agent.label, undefined, { sensitivity: 'base' })
+    })
+    .slice(0, MAX_LAUNCHER_MENTION_ITEMS)
+
+  const items = ranked.map(({ agent }) => ({
+    label: agent.label,
+    value: agent.id,
+    hasChildren: false,
+    icon: 'agent' as const,
+  }))
   return {
     items,
     breadcrumb: [{ label: 'Agents', parent: LAUNCHER_AGENTS_MENTION_ROOT }],

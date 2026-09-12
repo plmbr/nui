@@ -78,6 +78,51 @@ describe('listLauncherMentionItems', () => {
     const { items } = listLauncherMentionItems(withGe, 'ge')
     expect(items.map((item) => item.value).sort()).toEqual(['baseten', 'ext:pack/demo'])
   })
+
+  it('matches non-contiguous tokens across agent names', () => {
+    const withAnalyzer: AgentType[] = [
+      ...agents,
+      {
+        id: 'postgres-query-analyzer',
+        label: 'Postgres Query Analyzer',
+        harness: 'extension',
+        isBuiltin: false,
+        available: true,
+      },
+    ]
+    const { items } = listLauncherMentionItems(withAnalyzer, 'postgres analyzer')
+    expect(items.map((item) => item.value)).toEqual(['postgres-query-analyzer'])
+  })
+
+  it('matches smashed queries without spaces', () => {
+    const withAnalyzer: AgentType[] = [
+      ...agents,
+      {
+        id: 'postgres-query-analyzer',
+        label: 'Postgres Query Analyzer',
+        harness: 'extension',
+        isBuiltin: false,
+        available: true,
+      },
+    ]
+    const { items } = listLauncherMentionItems(withAnalyzer, 'postgresanalyzer')
+    expect(items.map((item) => item.value)).toEqual(['postgres-query-analyzer'])
+  })
+
+  it('tolerates small typos in agent names', () => {
+    const withAnalyzer: AgentType[] = [
+      ...agents,
+      {
+        id: 'postgres-query-analyzer',
+        label: 'Postgres Query Analyzer',
+        harness: 'extension',
+        isBuiltin: false,
+        available: true,
+      },
+    ]
+    const { items } = listLauncherMentionItems(withAnalyzer, 'postgre analizer')
+    expect(items.map((item) => item.value)).toEqual(['postgres-query-analyzer'])
+  })
 })
 
 describe('formatLauncherAgentMentionToken', () => {
