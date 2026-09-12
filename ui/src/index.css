@@ -1379,6 +1379,7 @@ html.nui-desktop {
 
   .agui-message--user .agui-message__bubble {
     @apply relative w-fit rounded-[12px] border border-primary/10 bg-user-bubble px-2.5 py-1.5 text-user-bubble-foreground whitespace-pre-wrap;
+    font-family: var(--font-chat);
     /* Soft halo so scrolling text doesn't collide with the bubble edge — no solid outer box. */
     box-shadow:
       0 0 0 4px color-mix(in oklch, var(--background) 88%, transparent),
@@ -1743,6 +1744,7 @@ html.nui-desktop {
     @apply box-border block min-w-0 flex-1 resize-none border-0 bg-transparent p-0 leading-normal outline-none;
     min-height: 1.5rem;
     max-height: 180px;
+    font-family: var(--font-chat);
     font-size: var(--text-body);
     line-height: 1.5rem;
     field-sizing: content;
@@ -2186,7 +2188,7 @@ html.nui-desktop {
 
   @media (hover: hover) {
     .agui-code-block:hover .agui-code-block__copy,
-    .agui-message--user:hover .agui-code-block__copy,
+    .agui-message--user .agui-message__bubble:hover .agui-code-block__copy,
     .agui-code-block__copy:focus-visible {
       @apply opacity-90;
     }
