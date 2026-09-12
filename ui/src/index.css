@@ -1518,69 +1518,21 @@ html.nui-desktop {
   }
 
   .agui-thinking__logo-wrap {
-    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
     height: 1.35rem;
     line-height: 0;
-    /* visible: translateY below shifts letterforms up; hidden clipped
-       sparkles and the tops of n/u. */
-    overflow: visible;
   }
 
   .agui-thinking__logo {
     height: 1.35rem;
     width: auto;
     display: block;
-    /* Sparkles pull the SVG bbox center up; shift down so letterforms
+    /* Sparkles pull the SVG bbox center up; shift so letterforms
        line up with the Generating label. */
     transform: translateY(-3px);
-  }
-
-  /* Soft, wide light band sweeping left→right */
-  .agui-thinking__logo.agui-thinking__shine {
-    position: absolute;
-    left: 0;
-    top: 0;
-    height: 100%;
-    width: auto;
-    transform: translateY(-3px);
-    filter: brightness(1.45) saturate(0.9);
-    pointer-events: none;
-  }
-
-  .agui-thinking__shine {
-    -webkit-mask-image: linear-gradient(
-      90deg,
-      transparent 0%,
-      transparent 12%,
-      rgba(0, 0, 0, 0.15) 28%,
-      rgba(0, 0, 0, 0.45) 42%,
-      rgba(0, 0, 0, 0.7) 50%,
-      rgba(0, 0, 0, 0.45) 58%,
-      rgba(0, 0, 0, 0.15) 72%,
-      transparent 88%,
-      transparent 100%
-    );
-    mask-image: linear-gradient(
-      90deg,
-      transparent 0%,
-      transparent 12%,
-      rgba(0, 0, 0, 0.15) 28%,
-      rgba(0, 0, 0, 0.45) 42%,
-      rgba(0, 0, 0, 0.7) 50%,
-      rgba(0, 0, 0, 0.45) 58%,
-      rgba(0, 0, 0, 0.15) 72%,
-      transparent 88%,
-      transparent 100%
-    );
-    -webkit-mask-size: 220% 100%;
-    mask-size: 220% 100%;
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    animation: agui-thinking-shine 4.2s linear infinite;
   }
 
   .agui-thinking__label {
@@ -1589,7 +1541,25 @@ html.nui-desktop {
     font-size: 0.875rem;
     line-height: 1.35rem;
     letter-spacing: 0.02em;
-    color: var(--chat-foreground);
+    color: color-mix(in oklch, var(--muted-foreground) 48%, var(--background));
+  }
+
+  /* Soft highlight sweeping left→right across the label only */
+  .agui-thinking__label.agui-thinking__shine {
+    background-image: linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--muted-foreground) 48%, var(--background)) 0%,
+      color-mix(in oklch, var(--muted-foreground) 48%, var(--background)) 40%,
+      var(--chat-foreground) 50%,
+      color-mix(in oklch, var(--muted-foreground) 48%, var(--background)) 60%,
+      color-mix(in oklch, var(--muted-foreground) 48%, var(--background)) 100%
+    );
+    background-size: 220% 100%;
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: agui-thinking-shine 2.4s linear infinite;
   }
 
   @keyframes agui-thinking-bounce {
@@ -1605,12 +1575,10 @@ html.nui-desktop {
 
   @keyframes agui-thinking-shine {
     0% {
-      -webkit-mask-position: 100% 0;
-      mask-position: 100% 0;
+      background-position: 100% 0;
     }
     100% {
-      -webkit-mask-position: 0% 0;
-      mask-position: 0% 0;
+      background-position: 0% 0;
     }
   }
 
@@ -1620,8 +1588,11 @@ html.nui-desktop {
       animation: none;
     }
 
-    .agui-thinking__shine {
-      display: none;
+    .agui-thinking__label.agui-thinking__shine {
+      background: none;
+      color: color-mix(in oklch, var(--muted-foreground) 48%, var(--background));
+      -webkit-background-clip: unset;
+      background-clip: unset;
     }
   }
 

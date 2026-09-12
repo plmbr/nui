@@ -24,7 +24,6 @@ export function ThinkingIndicator({
       {variant === 'streaming' ? (
         <span className="agui-thinking__logo-wrap" aria-hidden>
           <NuiLogo className="agui-thinking__logo" decorative />
-          <NuiLogo className="agui-thinking__logo agui-thinking__shine" decorative />
         </span>
       ) : (
         <span className="agui-thinking__dots" aria-hidden>
@@ -34,7 +33,9 @@ export function ThinkingIndicator({
         </span>
       )}
       {variant === 'streaming' && (
-        <span className="agui-thinking__label">{resolvedLabel}</span>
+        <span className="agui-thinking__label agui-thinking__shine">
+          {resolvedLabel}
+        </span>
       )}
     </span>
   )
