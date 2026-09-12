@@ -47,7 +47,8 @@ import type { SessionChatMessage } from '@/lib/chatMessageUtils'
 import { assistantTextContent } from '@/lib/chatMessageUtils'
 
 const AUTO_PROMPT_FALLBACK = 'Follow your system instructions and run.'
-const SCROLL_ANCHOR_TOP_GAP = 0
+/** Keep pinned prompts a bit below the header border. */
+const SCROLL_ANCHOR_TOP_GAP = 12
 
 /** One user prompt and the assistant reply/replies that follow it. */
 type ChatTurn = {
@@ -132,9 +133,30 @@ function SuggestionPillIcon({ icon }: { icon?: string }) {
   return <Icon className="agui-chat__suggestion-pill-icon" aria-hidden />
 }
 
-function getContentHeightBelow(anchor: HTMLElement, endBefore: HTMLElement): number {
+function layoutTopWithin(container: HTMLElement, el: HTMLElement): number {
+  let top = 0
+  let node: HTMLElement | null = el
+  while (node && node !== container) {
+    top += node.offsetTop
+    const parent = node.offsetParent as HTMLElement | null
+    if (!parent || parent === container) break
+    if (!container.contains(parent)) break
+    node = parent
+  }
+  return top
+}
+
+function getContentHeightBelow(
+  container: HTMLElement,
+  anchor: HTMLElement,
+  endBefore: HTMLElement,
+): number {
   if (anchor.nextElementSibling === endBefore) return 0
-  return Math.max(0, endBefore.offsetTop - (anchor.offsetTop + anchor.offsetHeight))
+  return Math.max(
+    0,
+    layoutTopWithin(container, endBefore) -
+      (layoutTopWithin(container, anchor) + anchor.offsetHeight),
+  )
 }
 
 function updateScrollSpacer(
@@ -143,12 +165,31 @@ function updateScrollSpacer(
   spacer: HTMLElement,
 ) {
   const paddingTop = Number.parseFloat(getComputedStyle(container).paddingTop) || 0
-  const contentBelow = getContentHeightBelow(anchor, spacer)
+  const contentBelow = getContentHeightBelow(container, anchor, spacer)
   const spacerHeight = Math.max(
     0,
     container.clientHeight - anchor.offsetHeight - contentBelow - paddingTop - SCROLL_ANCHOR_TOP_GAP,
   )
   spacer.style.height = `${spacerHeight}px`
+}
+
+/** Sticky only when the reply is long enough that pinning the prompt helps. */
+function syncTurnSticky(container: HTMLElement) {
+  const viewport = container.clientHeight
+  const minReplyForSticky = Math.min(Math.max(viewport * 0.4, 160), 320)
+
+  container.querySelectorAll<HTMLElement>('.agui-chat__turn').forEach((turn) => {
+    const user = turn.querySelector<HTMLElement>('.agui-message--user')
+    let replyHeight = 0
+    turn.querySelectorAll<HTMLElement>('.agui-message--assistant').forEach((el) => {
+      replyHeight += el.offsetHeight
+      replyHeight += Number.parseFloat(getComputedStyle(el).marginBottom) || 0
+    })
+    const shouldStick = replyHeight > minReplyForSticky
+    turn.classList.toggle('agui-chat__turn--sticky', shouldStick)
+    // When sticky releases at the turn end, sit in this padding instead of on the last line.
+    turn.style.paddingBottom = shouldStick && user ? `${user.offsetHeight}px` : ''
+  })
 }
 
 function scrollMessageToTop(container: HTMLElement, message: HTMLElement) {
@@ -437,6 +478,10 @@ export function ChatPanel({
     }
     const hitlAppeared = hitlKey.length > 0 && hitlKey !== prevHitlIdsRef.current
 
+    if (container) {
+      syncTurnSticky(container)
+    }
+
     if (container && spacer) {
       const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')
       const anchorEl = lastUserMsg ? messageRefs.current.get(lastUserMsg.id) : undefined
@@ -451,6 +496,8 @@ export function ChatPanel({
           updateScrollSpacer(container, anchorEl, spacer)
         }
       }
+      // Re-evaluate after spacer height changes (short replies get a large spacer).
+      syncTurnSticky(container)
     }
 
     // Wait until messages are rendered so the HITL card is in the scrollable list.
