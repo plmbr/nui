@@ -1380,7 +1380,7 @@ html.nui-desktop {
   }
 
   .agui-message--user .agui-message__bubble {
-    @apply relative w-fit rounded-[12px] border border-primary/10 bg-user-bubble px-2.5 py-1.5 text-user-bubble-foreground whitespace-pre-wrap;
+    @apply relative w-fit rounded-lg border border-primary/10 bg-user-bubble px-2 py-0.5 text-user-bubble-foreground whitespace-pre-wrap;
     font-family: var(--font-chat);
     /* Soft halo so scrolling text doesn't collide with the bubble edge — no solid outer box. */
     box-shadow:
@@ -1391,6 +1391,36 @@ html.nui-desktop {
 
   .agui-message--user .agui-message__bubble p {
     @apply m-0;
+  }
+
+  .agui-message__copy {
+    @apply absolute top-1/2 right-0.5 z-10 size-5 -translate-y-1/2 rounded-md text-muted-foreground opacity-0 transition-opacity;
+    background-color: color-mix(in oklch, var(--user-bubble) 88%, var(--background));
+
+    &:active {
+      transform: translateY(-50%);
+    }
+  }
+
+  .agui-message__copy svg {
+    @apply size-3;
+  }
+
+  @media (hover: hover) {
+    .agui-message--user .agui-message__bubble:hover .agui-message__copy,
+    .agui-message__copy:focus-visible {
+      @apply opacity-90;
+    }
+
+    .agui-message__copy:hover {
+      @apply bg-muted text-foreground opacity-100;
+    }
+  }
+
+  @media (hover: none) {
+    .agui-message__copy {
+      @apply opacity-90;
+    }
   }
 
   /* Direct child only: nested embedded chats must keep their own user-bubble padding. */
@@ -2190,7 +2220,6 @@ html.nui-desktop {
 
   @media (hover: hover) {
     .agui-code-block:hover .agui-code-block__copy,
-    .agui-message--user .agui-message__bubble:hover .agui-code-block__copy,
     .agui-code-block__copy:focus-visible {
       @apply opacity-90;
     }

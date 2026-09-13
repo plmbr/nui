@@ -27,8 +27,8 @@ export function UserMessageBubble({ content }: Props) {
         <Button
           type="button"
           variant="ghost"
-          size="icon-sm"
-          className="agui-code-block__copy"
+          size="icon-xs"
+          className="agui-message__copy active:translate-y-[-50%]"
           onClick={handleCopy}
           aria-label={copied ? 'Copied' : 'Copy message'}
           title={copied ? 'Copied!' : 'Copy'}
