@@ -210,6 +210,23 @@ html.nui-desktop {
   --app-header-height: 35px;
 }
 
+.page-find-bar {
+  --wails-draggable: no-drag;
+  @apply fixed top-[calc(var(--app-header-height)+0.5rem)] right-3 z-[100] flex items-center gap-1 rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-lg;
+}
+
+.page-find-bar__input {
+  @apply h-7 w-48 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0;
+}
+
+.page-find-bar__count {
+  @apply min-w-14 px-1 text-right text-xs tabular-nums text-muted-foreground;
+}
+
+.page-find-bar button {
+  @apply inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-35;
+}
+
 .nui-text-context-menu {
   position: fixed;
   z-index: 1000;

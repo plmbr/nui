@@ -153,7 +153,12 @@ func (a *App) onStartup(ctx context.Context) {
 	a.startAppUpdateChecker()
 }
 
-const showAboutEvent = "nui:show-about"
+const (
+	showAboutEvent        = "nui:show-about"
+	showPageFindEvent     = "nui:show-page-find"
+	findNextPageEvent     = "nui:find-next-page"
+	findPreviousPageEvent = "nui:find-previous-page"
+)
 
 func (a *App) wailsCtx() context.Context {
 	a.mu.RLock()
@@ -176,6 +181,12 @@ func (a *App) emitShowAbout() {
 		"cliVersion": cliVer,
 		"websiteURL": desktopWebsiteURL,
 	})
+}
+
+func (a *App) emitPageFindEvent(event string) {
+	if ctx := a.wailsCtx(); ctx != nil {
+		runtime.EventsEmit(ctx, event)
+	}
 }
 
 // buildDesktopMenu wires About to the webview dialog (native About cannot host links).
@@ -212,6 +223,16 @@ func (a *App) buildDesktopMenu() *menu.Menu {
 	m.Append(menu.EditMenu())
 
 	view := menu.NewMenu()
+	view.AddText("Find…", keys.CmdOrCtrl("f"), func(_ *menu.CallbackData) {
+		go a.emitPageFindEvent(showPageFindEvent)
+	})
+	view.AddText("Find Next", keys.CmdOrCtrl("g"), func(_ *menu.CallbackData) {
+		go a.emitPageFindEvent(findNextPageEvent)
+	})
+	view.AddText("Find Previous", keys.Combo("g", keys.CmdOrCtrlKey, keys.ShiftKey), func(_ *menu.CallbackData) {
+		go a.emitPageFindEvent(findPreviousPageEvent)
+	})
+	view.AddSeparator()
 	// "=" is Cmd/Ctrl+= (the usual Zoom In chord; "+" alone requires Shift).
 	view.AddText("Zoom In", keys.CmdOrCtrl("="), func(_ *menu.CallbackData) {
 		a.execPageZoom(1)

@@ -10,6 +10,7 @@ import { CustomizePanel, CustomizeTrigger } from '@/components/customize/Customi
 import { SchedulesPanel } from '@/components/SchedulesPanel'
 import { AppVersion } from '@/components/AppVersion'
 import { AboutDialog } from '@/components/AboutDialog'
+import { PageFindBar } from '@/components/PageFindBar'
 import { UpdateBanners } from '@/components/UpdateBanners'
 import { ThemeSwitch } from '@/components/ThemeSwitch'
 import { LandingPage } from '@/components/LandingPage'
@@ -840,6 +841,7 @@ function AppContent() {
       </SidebarProvider>
       )}
       <AboutDialog />
+      <PageFindBar />
     </TooltipProvider>
   )
 }
