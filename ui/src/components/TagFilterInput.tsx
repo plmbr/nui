@@ -12,9 +12,10 @@ interface Props {
   selectedTags: string[]
   onChange: (tags: string[]) => void
   className?: string
+  showLabel?: boolean
 }
 
-export function TagFilterInput({ availableTags, selectedTags, onChange, className }: Props) {
+export function TagFilterInput({ availableTags, selectedTags, onChange, className, showLabel = true }: Props) {
   const [query, setQuery] = useState('')
   const [focused, setFocused] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -76,10 +77,16 @@ export function TagFilterInput({ availableTags, selectedTags, onChange, classNam
   }
 
   return (
-    <div className={cn('grid shrink-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5', className)}>
-      <Label htmlFor="agent-tag-filter" className="shrink-0 text-muted-foreground">
-        Tags
-      </Label>
+    <div className={cn(
+      'grid shrink-0 items-center gap-x-2 gap-y-1.5',
+      showLabel ? 'grid-cols-[auto_minmax(0,1fr)]' : 'grid-cols-1',
+      className,
+    )}>
+      {showLabel && (
+        <Label htmlFor="agent-tag-filter" className="shrink-0 text-muted-foreground">
+          Tags
+        </Label>
+      )}
       <div className="relative min-w-0">
         <Input
           ref={inputRef}

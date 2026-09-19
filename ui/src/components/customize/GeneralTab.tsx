@@ -246,17 +246,6 @@ export function GeneralTab() {
 
   return (
     <div className="customize-tab-content space-y-6">
-      {bwrapUnavailable && (
-        <div className="sandbox-warning">
-          <TriangleAlert className="size-4 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium">Sandboxing unavailable</p>
-            <p className="text-xs mt-0.5 opacity-80">
-              {capabilities!.sandbox.bwrap.error ?? 'bubblewrap (bwrap) not found'}
-            </p>
-          </div>
-        </div>
-      )}
       <div>
         <p className="text-sm font-medium mb-1">Appearance</p>
         <div className="mt-4 pl-4">
@@ -426,6 +415,17 @@ export function GeneralTab() {
           </div>
         )}
       </div>
+      {bwrapUnavailable && (
+        <div className="sandbox-warning">
+          <TriangleAlert className="size-4 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">Sandboxing unavailable</p>
+            <p className="text-xs mt-0.5 opacity-80">
+              {capabilities!.sandbox.bwrap.error ?? 'bubblewrap (bwrap) not found'}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

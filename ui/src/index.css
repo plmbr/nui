@@ -1033,7 +1033,7 @@ html.nui-desktop {
   }
 
   .app-agent-header-actions {
-    @apply flex shrink-0 items-center gap-0 opacity-100 transition-[width,opacity] duration-150 md:w-0 md:overflow-hidden md:opacity-0;
+    @apply flex shrink-0 items-center gap-0 opacity-100 transition-opacity duration-150 md:w-12 md:opacity-0;
   }
 
   .sidebar-header__action {
@@ -1642,7 +1642,7 @@ html.nui-desktop {
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    animation: agui-thinking-shine 2.4s linear infinite;
+    animation: agui-thinking-shine 1.4s linear infinite;
   }
 
   @keyframes agui-thinking-bounce {

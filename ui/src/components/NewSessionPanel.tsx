@@ -1,7 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ChevronRight, Filter, Folder } from 'lucide-react'
+import { Filter, Folder, X } from 'lucide-react'
 import { HarnessIcon } from '@/components/HarnessIcon'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -50,34 +50,10 @@ function agentMatchesSearch(agent: AgentType, query: string): boolean {
     agent.description ?? '',
     agent.harness,
     agent.sandbox ?? '',
+    ...(agent.tags ?? []),
   ].join(' ').toLowerCase()
   return haystack.includes(query)
 }
-
-const BUILTIN_TAG_CHIP_ORDER = ['nui', 'api', 'cli'] as const
-
-function builtinTagChipLabel(tag: string): string {
-  if (tag === 'api') return 'API'
-  if (tag === 'cli') return 'CLI'
-  return tag
-}
-
-function orderedBuiltinTagChips(tags: string[]): string[] {
-  const set = new Set(tags.filter((tag) => tag !== 'builtin'))
-  const ordered: string[] = []
-  for (const tag of BUILTIN_TAG_CHIP_ORDER) {
-    if (set.has(tag)) {
-      ordered.push(tag)
-      set.delete(tag)
-    }
-  }
-  for (const tag of [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))) {
-    ordered.push(tag)
-  }
-  return ordered
-}
-
-type AgentPane = 'builtin' | 'installed'
 
 export function NewSessionPanel({
   agentTypes,
@@ -88,11 +64,10 @@ export function NewSessionPanel({
 }: Props) {
   const [workingDir, setWorkingDir] = useState(initialWorkingDir ?? '')
   const [selectedId, setSelectedId] = useState('')
-  const [customSearch, setCustomSearch] = useState('')
-  const [agentPane, setAgentPane] = useState<AgentPane>('builtin')
-  const [builtinTag, setBuiltinTag] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
   const [selectedSourceKeys, setSelectedSourceKeys] = useState<Set<string>>(() => new Set())
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [extensions, setExtensions] = useState<ExtensionInfo[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -103,25 +78,12 @@ export function NewSessionPanel({
   const [directoryInputFocused, setDirectoryInputFocused] = useState(false)
   const [activeDirectoryIndex, setActiveDirectoryIndex] = useState(0)
   const suppressDirectoryLookupForValue = useRef<string | null>(null)
-  const customAgentsScrollRef = useRef<HTMLDivElement>(null)
-  const initialPaneSynced = useRef(false)
+  const agentsScrollRef = useRef<HTMLDivElement>(null)
 
-  const builtins = useMemo(
-    () => agentTypes.filter((a) => a.isBuiltin && !isNuiAgent(a)),
-    [agentTypes],
-  )
   const orderedBuiltins = useMemo(
     () => orderedBuiltinAgentsForPicker(agentTypes),
     [agentTypes],
   )
-  const builtinTagChips = useMemo(
-    () => orderedBuiltinTagChips(collectAgentTags(orderedBuiltins)),
-    [orderedBuiltins],
-  )
-  const filteredBuiltins = useMemo(() => {
-    if (!builtinTag) return orderedBuiltins
-    return filterAgentsByTags(orderedBuiltins, new Set([builtinTag]))
-  }, [orderedBuiltins, builtinTag])
   const userDefined = useMemo(
     () => sortCustomAgentsByName(
       selectableAgentTypes(agentTypes).filter((a) => !a.isBuiltin),
@@ -133,8 +95,6 @@ export function NewSessionPanel({
     const agent = agentTypes.find((a) => a.id === id)
     if (!agent?.available) return
     setSelectedId(id)
-    if (userDefined.some((a) => a.id === id)) setAgentPane('installed')
-    else if (builtins.some((a) => a.id === id) || isNuiAgent(id)) setAgentPane('builtin')
     // Match ADL harness.permissions default (bypass for antigravity/claude-code/codex).
     if (showToolApprovalsOption(agent)) {
       setHarnessPermissionsEnabled(agent.harnessPermissions !== 'bypass')
@@ -156,14 +116,7 @@ export function NewSessionPanel({
       // Plain /sessions/new always defaults to nui (built-in tab).
       return pickNewSessionAgentTypeId(agentTypes)
     })
-  }, [agentTypes, initialAgentTypeId, builtins, userDefined])
-
-  useEffect(() => {
-    if (initialPaneSynced.current || !selectedId) return
-    initialPaneSynced.current = true
-    if (userDefined.some((a) => a.id === selectedId)) setAgentPane('installed')
-    else setAgentPane('builtin')
-  }, [selectedId, userDefined])
+  }, [agentTypes, initialAgentTypeId, userDefined])
 
   useEffect(() => {
     api.extensions.list()
@@ -208,18 +161,16 @@ export function NewSessionPanel({
 
   function reset() {
     setWorkingDir('')
-    setCustomSearch('')
+    setSearch('')
     setSelectedSourceKeys(new Set())
     setSelectedTags([])
-    setBuiltinTag(null)
-    setAgentPane('builtin')
+    setFiltersOpen(false)
     setError('')
     setUserScopeHarnessConfig(false)
     setHarnessPermissionsEnabled(true)
     setHarnessOverride('')
     setDirectorySuggestions([])
     setDirectoryInputFocused(false)
-    initialPaneSynced.current = false
   }
 
   function handleClose() {
@@ -244,18 +195,39 @@ export function NewSessionPanel({
   )
   const allSourcesActive = selectedSourceKeys.size === 0
     || (allSourceKeys.length > 0 && allSourceKeys.every((key) => selectedSourceKeys.has(key)))
-  const searchQuery = customSearch.trim().toLowerCase()
+  const searchQuery = search.trim().toLowerCase()
   const sourceFilteredCustom = useMemo(
     () => filterCustomAgentsBySources(userDefined, selectedSourceKeys),
     [userDefined, selectedSourceKeys],
   )
-  const availableTags = useMemo(() => collectAgentTags(sourceFilteredCustom), [sourceFilteredCustom])
+  const tagCandidates = useMemo(
+    () => [...orderedBuiltins, ...sourceFilteredCustom],
+    [orderedBuiltins, sourceFilteredCustom],
+  )
+  const availableTags = useMemo(
+    () => collectAgentTags(tagCandidates).filter((tag) => tag !== 'builtin' && tag !== 'nui'),
+    [tagCandidates],
+  )
   const selectedTagSet = useMemo(() => new Set(selectedTags), [selectedTags])
+  const filteredBuiltins = useMemo(() => {
+    const byTags = filterAgentsByTags(orderedBuiltins, selectedTagSet)
+    return searchQuery ? byTags.filter((agent) => agentMatchesSearch(agent, searchQuery)) : byTags
+  }, [orderedBuiltins, searchQuery, selectedTagSet])
   const filteredCustom = useMemo(() => {
     const byTags = filterAgentsByTags(sourceFilteredCustom, selectedTagSet)
-    if (!searchQuery) return byTags
-    return byTags.filter((a) => agentMatchesSearch(a, searchQuery))
-  }, [searchQuery, sourceFilteredCustom, selectedTagSet])
+    return searchQuery ? byTags.filter((agent) => agentMatchesSearch(agent, searchQuery)) : byTags
+  }, [sourceFilteredCustom, searchQuery, selectedTagSet])
+  const firstSearchResult = searchQuery
+    ? filteredBuiltins[0] ?? filteredCustom[0]
+    : undefined
+
+  useEffect(() => {
+    if (!firstSearchResult || firstSearchResult.id === selectedId) return
+    setSelectedId(firstSearchResult.id)
+    if (showToolApprovalsOption(firstSearchResult)) {
+      setHarnessPermissionsEnabled(firstSearchResult.harnessPermissions !== 'bypass')
+    }
+  }, [firstSearchResult, selectedId])
 
   useEffect(() => {
     const validKeys = new Set(customSourceOptions.map((option) => option.key))
@@ -290,9 +262,11 @@ export function NewSessionPanel({
     }
     setSelectedSourceKeys(new Set(allSourceKeys))
   }
-  const showBuiltinPane = orderedBuiltins.length > 0
-  const showInstalledBrowse = userDefined.length > 0
-  const showingInstalled = agentPane === 'installed' && showInstalledBrowse
+  const showBuiltins = orderedBuiltins.length > 0
+  const showInstalled = userDefined.length > 0
+  const visibleResultCount =
+    (showBuiltins ? filteredBuiltins.length : 0) + (showInstalled ? filteredCustom.length : 0)
+  const activeFilterCount = selectedSourceKeys.size + selectedTags.length
   const directoryListOpen = directoryInputFocused && directorySuggestions.length > 0
   const showUserScope = showUserScopeOption(selectedForOptions)
   const showHarnessPermissionsOption = Boolean(
@@ -322,11 +296,11 @@ export function NewSessionPanel({
     if (!selectedId) return
     if (!userDefined.some((a) => a.id === selectedId)) return
     if (!filteredCustom.some((a) => a.id === selectedId)) return
-    const container = customAgentsScrollRef.current
+    const container = agentsScrollRef.current
     if (!container) return
     const el = container.querySelector(`[data-agent-id="${CSS.escape(selectedId)}"]`)
     el?.scrollIntoView({ block: 'nearest' })
-  }, [selectedId, userDefined, filteredCustom])
+  }, [selectedId, filteredCustom])
 
   function selectDirectory(path: string) {
     suppressDirectoryLookupForValue.current = path
@@ -404,206 +378,164 @@ export function NewSessionPanel({
   return (
     <div className="customize-panel flex flex-1 min-h-0 flex-col overflow-hidden">
       <h1 className="sr-only">New Session</h1>
-      <form onSubmit={handleSubmit} className="flex flex-1 flex-col min-h-0">
+      <form
+        onSubmit={handleSubmit}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
+          const target = event.target
+          if (!(target instanceof HTMLElement) || !target.closest('[data-agent-id]')) return
+          event.preventDefault()
+          event.currentTarget.requestSubmit()
+        }}
+        className="flex flex-1 flex-col min-h-0"
+      >
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 md:p-6">
             <div className="customize-tab-content mx-auto flex w-full min-h-0 flex-1 flex-col gap-5">
 
-            {(showBuiltinPane || showInstalledBrowse) && (
-            <div className="flex min-h-0 flex-1 flex-col gap-3">
-              {!showingInstalled && showBuiltinPane && (
-                <div className="flex min-h-0 flex-1 flex-col gap-3" aria-label="Built-in agents">
-                  {(builtinTagChips.length > 0 || showInstalledBrowse) && (
-                    <div className="flex items-center gap-3 shrink-0">
-                      {builtinTagChips.length > 0 && (
-                        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
-                          <Filter className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-                          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter built-in agents by tag">
-                            <button
-                              type="button"
-                              aria-pressed={builtinTag === null}
-                              onClick={() => setBuiltinTag(null)}
-                              className={cn(
-                                'rounded-md px-2.5 py-1 text-xs font-medium transition-colors border',
-                                builtinTag === null
-                                  ? 'border-primary bg-primary text-primary-foreground'
-                                  : 'border-border bg-background text-muted-foreground hover:bg-muted',
-                              )}
-                            >
-                              All
-                            </button>
-                            {builtinTagChips.map((tag) => {
-                              const active = builtinTag === tag
-                              return (
-                                <button
-                                  key={tag}
-                                  type="button"
-                                  aria-pressed={active}
-                                  onClick={() => setBuiltinTag(active ? null : tag)}
-                                  className={cn(
-                                    'rounded-md px-2.5 py-1 text-xs font-medium transition-colors border',
-                                    active
-                                      ? 'border-primary bg-primary text-primary-foreground'
-                                      : 'border-border bg-background text-muted-foreground hover:bg-muted',
-                                  )}
-                                >
-                                  {builtinTagChipLabel(tag)}
-                                </button>
-                              )
-                            })}
+            {(orderedBuiltins.length > 0 || userDefined.length > 0) && (
+              <div className="flex min-h-0 flex-1 flex-col gap-3" aria-label="Agent picker">
+                <div className="flex shrink-0 flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="min-w-48 flex-1">
+                      <SearchInput
+                        value={search}
+                        onChange={setSearch}
+                        placeholder="Search agents…"
+                        aria-label="Search agents"
+                        autoFocus
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter' || event.nativeEvent.isComposing) return
+                          event.preventDefault()
+                          if (searchQuery && !firstSearchResult) return
+                          event.currentTarget.form?.requestSubmit()
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="Filters"
+                      aria-expanded={filtersOpen}
+                      aria-controls="agent-filters"
+                      onClick={() => setFiltersOpen((open) => !open)}
+                      className={cn(
+                        'relative inline-flex size-9 shrink-0 items-center justify-center rounded-lg border transition-colors',
+                        filtersOpen || activeFilterCount > 0
+                          ? 'border-primary bg-primary/5 text-foreground'
+                          : 'border-input bg-background text-muted-foreground hover:bg-muted',
+                      )}
+                    >
+                      <Filter className="size-4" />
+                      {activeFilterCount > 0 && (
+                        <span className="absolute ml-7 -mt-7 min-w-4 rounded-full bg-primary px-1 text-center text-[9px] leading-4 text-primary-foreground">
+                          {activeFilterCount}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                  {filtersOpen && (
+                    <div id="agent-filters" className="flex w-full flex-col gap-4 rounded-xl border bg-muted/20 p-4">
+                      <div className="flex flex-col gap-4">
+                        {customSourceOptions.length > 0 && (
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                            <Label className="w-16 shrink-0 pt-1 text-xs text-muted-foreground">Source</Label>
+                            <div className="flex flex-1 flex-wrap gap-1.5" role="group" aria-label="Filter by agent source">
+                              <FilterChip active={allSourcesActive} onClick={toggleAllSourceFilters}>All</FilterChip>
+                              {customSourceOptions.map((option) => (
+                                <FilterChip key={option.key} active={selectedSourceKeys.has(option.key)} onClick={() => toggleSourceFilter(option.key)}>
+                                  {option.label}
+                                </FilterChip>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+                          <Label className="w-16 shrink-0 pt-2 text-xs text-muted-foreground">Tags</Label>
+                          <div className="min-w-0 flex-1">
+                            <TagFilterInput
+                              availableTags={availableTags}
+                              selectedTags={selectedTags}
+                              onChange={setSelectedTags}
+                              showLabel={false}
+                            />
                           </div>
                         </div>
-                      )}
-                      {showInstalledBrowse && (
+                      </div>
+                    </div>
+                  )}
+                  {activeFilterCount > 0 && (
+                    <div className="flex flex-wrap gap-1.5" aria-label="Active filters">
+                      {[...selectedSourceKeys].map((key) => (
+                        <ActiveFilterChip
+                          key={key}
+                          label={customSourceOptions.find((option) => option.key === key)?.label ?? key}
+                          onRemove={() => toggleSourceFilter(key)}
+                        />
+                      ))}
+                      {selectedTags.map((tag) => (
+                        <ActiveFilterChip
+                          key={tag}
+                          label={tag}
+                          onRemove={() => setSelectedTags((current) => current.filter((value) => value !== tag))}
+                        />
+                      ))}
+                      <button
+                        type="button"
+                        className="ml-1 self-center text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          setSelectedSourceKeys(new Set())
+                          setSelectedTags([])
+                        }}
+                      >
+                        Clear all
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div ref={agentsScrollRef} className="min-h-0 flex-1 overflow-y-auto pr-1" aria-label="Agent results">
+                  {visibleResultCount === 0 ? (
+                    <div className="flex min-h-40 flex-col items-center justify-center gap-3 text-center">
+                      <p className="text-sm text-muted-foreground">No agents match your search and filters.</p>
+                      {(searchQuery || activeFilterCount > 0) && (
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="ml-auto shrink-0 gap-1 text-muted-foreground hover:text-foreground"
-                          onClick={() => setAgentPane('installed')}
+                          onClick={() => {
+                            setSearch('')
+                            setSelectedSourceKeys(new Set())
+                            setSelectedTags([])
+                          }}
                         >
-                          <span>
-                            {INSTALLED_AGENTS_LABEL}
-                            <span className="font-normal"> ({userDefined.length})</span>
-                          </span>
-                          <ChevronRight className="size-4" />
+                          Clear filters
                         </Button>
                       )}
                     </div>
-                  )}
-                  <div className="min-h-0 flex-1 overflow-y-auto">
-                    {filteredBuiltins.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-2">No agents match this filter.</p>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        {filteredBuiltins.map((agent) => (
-                          <BuiltinAgentCard
-                            key={agent.id}
-                            agent={agent}
-                            selected={selectedId === agent.id}
-                            onSelect={() => selectAgent(agent.id)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {showingInstalled && (
-                <div
-                  aria-label={INSTALLED_AGENTS_LABEL}
-                  className="flex min-h-0 flex-1 flex-col gap-2"
-                >
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="gap-1.5 px-2"
-                      onClick={() => setAgentPane('builtin')}
-                    >
-                      <ArrowLeft className="size-4" />
-                      {BUILTIN_AGENTS_LABEL}
-                    </Button>
-                    <h2 className="text-sm font-medium truncate">
-                      {INSTALLED_AGENTS_LABEL}
-                      <span className="text-muted-foreground font-normal"> ({userDefined.length})</span>
-                    </h2>
-                  </div>
-                  <div className="relative shrink-0">
-                    <SearchInput
-                      value={customSearch}
-                      onChange={setCustomSearch}
-                      placeholder="Search by name or description…"
-                      aria-label="Search custom agents"
-                      autoFocus
-                    />
-                  </div>
-                  {customSourceOptions.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 shrink-0">
-                      <Label className="shrink-0 text-muted-foreground">Source</Label>
-                      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by agent source">
-                        <button
-                          type="button"
-                          aria-pressed={allSourcesActive}
-                          onClick={toggleAllSourceFilters}
-                          className={[
-                            'rounded-md px-2.5 py-1 text-xs font-medium transition-colors border',
-                            allSourcesActive
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : 'border-border bg-background text-muted-foreground hover:bg-muted',
-                          ].join(' ')}
-                        >
-                          All
-                        </button>
-                        {customSourceOptions.map((option) => {
-                          const active = selectedSourceKeys.has(option.key)
-                          return (
-                            <button
-                              key={option.key}
-                              type="button"
-                              aria-pressed={active}
-                              onClick={() => toggleSourceFilter(option.key)}
-                              className={[
-                                'rounded-md px-2.5 py-1 text-xs font-medium transition-colors border',
-                                active
-                                  ? 'border-primary bg-primary text-primary-foreground'
-                                  : 'border-border bg-background text-muted-foreground hover:bg-muted',
-                              ].join(' ')}
-                            >
-                              {option.label}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-                  <TagFilterInput
-                    availableTags={availableTags}
-                    selectedTags={selectedTags}
-                    onChange={setSelectedTags}
-                  />
-                  <div ref={customAgentsScrollRef} className="min-h-0 flex-1 overflow-y-auto">
-                    <div className="flex flex-col gap-1.5 pr-1">
-                      {filteredCustom.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-2">
-                          {searchQuery || selectedSourceKeys.size > 0 || selectedTags.length > 0
-                            ? 'No agents match your filters.'
-                            : 'No custom agents available.'}
-                        </p>
-                      ) : (
-                        filteredCustom.map((a) => (
-                          <AgentCard
-                            key={a.id}
-                            agent={a}
-                            selected={selectedId === a.id}
-                            onSelect={() => selectAgent(a.id)}
-                          />
-                        ))
+                  ) : (
+                    <div className="space-y-5">
+                      {showBuiltins && filteredBuiltins.length > 0 && (
+                        <AgentSection
+                          label={BUILTIN_AGENTS_LABEL}
+                          agents={filteredBuiltins}
+                          variant="builtin"
+                          selectedId={selectedId}
+                          onSelect={selectAgent}
+                        />
+                      )}
+                      {showInstalled && filteredCustom.length > 0 && (
+                        <AgentSection
+                          label={INSTALLED_AGENTS_LABEL}
+                          agents={filteredCustom}
+                          variant="installed"
+                          selectedId={selectedId}
+                          onSelect={selectAgent}
+                        />
                       )}
                     </div>
-                  </div>
+                  )}
                 </div>
-              )}
-
-              {!showBuiltinPane && showInstalledBrowse && !showingInstalled && (
-                <div className="flex min-h-0 flex-1 flex-col gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-between shrink-0"
-                    onClick={() => setAgentPane('installed')}
-                  >
-                    <span>
-                      {INSTALLED_AGENTS_LABEL}
-                      <span className="text-muted-foreground font-normal"> ({userDefined.length})</span>
-                    </span>
-                    <ChevronRight className="size-4 text-muted-foreground" />
-                  </Button>
-                </div>
-              )}
-            </div>
+              </div>
             )}
 
             {selected?.workingDirInput && (
@@ -761,13 +693,89 @@ export function NewSessionPanel({
   )
 }
 
-interface BuiltinAgentCardProps {
+interface AgentSectionProps {
+  label: string
+  agents: AgentType[]
+  variant: 'builtin' | 'installed'
+  selectedId: string
+  onSelect: (id: string) => void
+}
+
+function AgentSection({ label, agents, variant, selectedId, onSelect }: AgentSectionProps) {
+  return (
+    <section aria-label={label} className="space-y-2">
+      <div className="flex items-baseline gap-2">
+        <h2 className="text-sm font-semibold">{label}</h2>
+        <span className="text-xs text-muted-foreground">{agents.length}</span>
+      </div>
+      <div className={variant === 'builtin'
+        ? 'grid grid-cols-2 gap-2 sm:grid-cols-4'
+        : 'flex flex-col gap-1.5'}
+      >
+        {agents.map((agent) => (
+          variant === 'builtin' ? (
+            <BuiltinAgentCard
+              key={agent.id}
+              agent={agent}
+              selected={selectedId === agent.id}
+              onSelect={() => onSelect(agent.id)}
+            />
+          ) : (
+            <InstalledAgentRow
+              key={agent.id}
+              agent={agent}
+              selected={selectedId === agent.id}
+              onSelect={() => onSelect(agent.id)}
+            />
+          )
+        ))}
+      </div>
+    </section>
+  )
+}
+
+interface FilterChipProps {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}
+
+function FilterChip({ active, onClick, children }: FilterChipProps) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        'rounded-md border px-2.5 py-1 text-xs font-medium transition-colors',
+        active
+          ? 'border-primary bg-primary text-primary-foreground'
+          : 'border-border bg-background text-muted-foreground hover:bg-muted',
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+function ActiveFilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
+      {label}
+      <button type="button" onClick={onRemove} aria-label={`Remove filter ${label}`} className="hover:text-foreground">
+        <X className="size-3" />
+      </button>
+    </span>
+  )
+}
+
+interface AgentCardProps {
   agent: AgentType
   selected: boolean
   onSelect: () => void
 }
 
-function BuiltinAgentCard({ agent, selected, onSelect }: BuiltinAgentCardProps) {
+function BuiltinAgentCard({ agent, selected, onSelect }: AgentCardProps) {
   const kindLabel = isNuiAgent(agent)
     ? null
     : isApiBuiltinAgent(agent)
@@ -778,23 +786,24 @@ function BuiltinAgentCard({ agent, selected, onSelect }: BuiltinAgentCardProps) 
   return (
     <button
       type="button"
+      data-agent-id={agent.id}
       onClick={onSelect}
       aria-pressed={selected}
       aria-label={agent.label}
       className={cn(
-        'flex flex-col items-center gap-1.5 rounded-lg border px-2 py-3 text-center transition-colors',
+        'relative flex flex-col items-center gap-1 rounded-lg border px-2 py-2 text-center transition-colors',
         selected
           ? 'border-primary bg-primary/5 text-foreground'
           : 'border-border bg-background hover:bg-muted/60',
       )}
     >
-      <HarnessIcon harness={agent.harness} provider={agent.provider} agentId={agent.id} size="xl" />
+      <HarnessIcon harness={agent.harness} provider={agent.provider} agentId={agent.id} size="lg" />
       <span className={cn(
-        'text-xs leading-tight',
+        'text-sm leading-tight',
         selected ? 'font-medium text-foreground' : 'text-muted-foreground',
       )} aria-hidden="true">{agent.label}</span>
       {kindLabel && (
-        <span aria-hidden="true" className="rounded-full border border-border/60 bg-muted/50 px-1.5 py-px text-[10px] font-medium leading-tight text-muted-foreground">
+        <span aria-hidden="true" className="absolute right-2 top-2 rounded-full border border-border/60 bg-muted/50 px-1.5 py-px text-[10px] font-medium leading-tight text-muted-foreground">
           {kindLabel}
         </span>
       )}
@@ -802,43 +811,40 @@ function BuiltinAgentCard({ agent, selected, onSelect }: BuiltinAgentCardProps) 
   )
 }
 
-interface AgentCardProps {
-  agent: AgentType
-  selected: boolean
-  onSelect: () => void
-}
-
-function AgentCard({ agent, selected, onSelect }: AgentCardProps) {
+function InstalledAgentRow({ agent, selected, onSelect }: AgentCardProps) {
+  const visibleTags = (agent.tags ?? []).filter((tag) => tag !== 'builtin')
   return (
     <button
       type="button"
       data-agent-id={agent.id}
       onClick={onSelect}
-      className={[
+      aria-pressed={selected}
+      aria-label={agent.label}
+      className={cn(
         'flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
         selected
           ? 'border-primary bg-primary/5 text-foreground'
           : 'border-border bg-background hover:bg-muted/60',
-      ].join(' ')}
+      )}
     >
-      <HarnessIcon harness={agent.harness} provider={agent.provider} agentId={agent.id} size="lg" className="shrink-0 mt-0.5" />
+      <HarnessIcon harness={agent.harness} provider={agent.provider} agentId={agent.id} size="lg" className="mt-0.5 shrink-0" />
       <span className="flex min-w-0 flex-1 flex-col gap-1.5">
         <span className="flex items-start gap-2 min-w-0">
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-medium leading-tight">{agent.label}</span>
             {agent.description && (
-              <span className="block text-xs text-muted-foreground mt-0.5 leading-snug">
+              <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
                 {agent.description}
               </span>
             )}
           </span>
-          <span className="shrink-0 max-w-[40%] truncate rounded px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground bg-muted" title={harnessLabel(agent.harness, agent.sandbox)}>
+          <span className="max-w-[40%] shrink-0 truncate rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground" title={harnessLabel(agent.harness, agent.sandbox)}>
             {harnessLabel(agent.harness, agent.sandbox)}
           </span>
         </span>
-        {agent.tags && agent.tags.length > 0 && (
+        {visibleTags.length > 0 && (
           <span className="flex w-full flex-wrap gap-1">
-            {agent.tags.map((tag) => (
+            {visibleTags.slice(0, 3).map((tag) => (
               <span
                 key={tag}
                 className="rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground bg-muted"

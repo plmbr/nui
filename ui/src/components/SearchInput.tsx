@@ -13,6 +13,7 @@ interface Props {
   className?: string
   inputClassName?: string
   'aria-label'?: string
+  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>
   /** Focus the input when the control mounts or when focusKey changes. */
   autoFocus?: boolean
   /** Remount/activation token; changing it re-focuses when autoFocus is set. */
@@ -27,6 +28,7 @@ export function SearchInput({
   className,
   inputClassName,
   'aria-label': ariaLabel = 'Search',
+  onKeyDown,
   autoFocus = false,
   focusKey,
 }: Props) {
@@ -65,6 +67,7 @@ export function SearchInput({
         role="searchbox"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={onKeyDown}
         placeholder={placeholder}
         aria-label={ariaLabel}
         className={cn('h-8 pl-8 pr-8', inputClassName)}

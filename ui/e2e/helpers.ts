@@ -30,7 +30,7 @@ export function newSessionPanel(page: Page) {
 /** Agent picker cards only — excludes Recents rows in the same panel. */
 export function newSessionAgentButton(panel: Locator, agentLabel: string | RegExp) {
   return panel
-    .locator('[aria-label="Built-in agents"], [aria-label="Installed agents"]')
+    .locator('[aria-label="Agent results"]')
     .getByRole('button', { name: agentLabel })
 }
 
@@ -44,30 +44,11 @@ export async function ensureAgentVisibleInNewSession(page: Page, agentLabel: str
   if (await agentButton.isVisible()) {
     return
   }
-
-  const installedButton = panel.getByRole('button', { name: /Installed agents/i })
-  if (await installedButton.isVisible()) {
-    await installedButton.click()
-    if (await agentButton.isVisible()) {
-      return
-    }
-  }
-
-  const backButton = panel.getByRole('button', { name: /Built-in agents/i })
-  if (await backButton.isVisible()) {
-    await backButton.click()
-    if (await agentButton.isVisible()) {
-      return
-    }
-  }
 }
 
 export async function showBuiltinAgentsInNewSession(page: Page) {
   const panel = newSessionPanel(page)
-  const backButton = panel.getByRole('button', { name: /Built-in agents/i })
-  if (await backButton.isVisible()) {
-    await backButton.click()
-  }
+  await panel.getByRole('searchbox', { name: 'Search agents' }).fill('')
 }
 
 export async function selectAgentInNewSession(page: Page, agentLabel: string | RegExp) {
