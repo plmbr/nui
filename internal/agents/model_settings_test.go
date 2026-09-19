@@ -29,6 +29,7 @@ func TestApplyBuiltinHarnessModelSettings(t *testing.T) {
 }
 
 func TestOrchestratorAndSpecialistShareHarnessModel(t *testing.T) {
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 	settings := store.Settings{
 		DefaultHarness: "api/anthropic",
 		BuiltinHarnessModels: map[string]string{
