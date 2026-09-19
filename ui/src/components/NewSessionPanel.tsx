@@ -222,12 +222,12 @@ export function NewSessionPanel({
     : undefined
 
   useEffect(() => {
-    if (!firstSearchResult || firstSearchResult.id === selectedId) return
+    if (!firstSearchResult) return
     setSelectedId(firstSearchResult.id)
     if (showToolApprovalsOption(firstSearchResult)) {
       setHarnessPermissionsEnabled(firstSearchResult.harnessPermissions !== 'bypass')
     }
-  }, [firstSearchResult, selectedId])
+  }, [firstSearchResult])
 
   useEffect(() => {
     const validKeys = new Set(customSourceOptions.map((option) => option.key))

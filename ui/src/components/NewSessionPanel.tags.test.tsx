@@ -129,6 +129,22 @@ describe('NewSessionPanel tag filter', () => {
     })
   })
 
+  it('allows choosing another result after search selects the first match', async () => {
+    renderPanel()
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search agents' }), {
+      target: { value: 'er' },
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Local Writer' })).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reviewer' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Reviewer' })).toHaveAttribute('aria-pressed', 'true')
+    })
+  })
+
   it('selects the first visible agent when search hides the previous selection', async () => {
     renderPanel()
     expect(screen.getByRole('button', { name: 'Local Writer' })).toHaveAttribute('aria-pressed', 'true')
