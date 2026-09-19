@@ -33,23 +33,14 @@ import {
 } from '@/lib/agentTypes'
 import { BUILTIN_AGENTS_LABEL, INSTALLED_AGENTS_LABEL } from '@/lib/sessionGroups'
 import { TagFilterInput } from '@/components/TagFilterInput'
-import { RecentsSection } from '@/components/RecentsSection'
-import type { AgentType, CreateSessionRequest, ExtensionInfo, RecentAgentEntry, Session } from '@/types'
+import type { AgentType, CreateSessionRequest, ExtensionInfo, Session } from '@/types'
 
 interface Props {
   agentTypes: AgentType[]
-  sessions: Session[]
-  recentSessionIds?: string[]
-  recentAgents?: RecentAgentEntry[]
-  recentsOpen: boolean
-  onRecentsOpenChange: (open: boolean) => void
   initialAgentTypeId?: string | null
   initialWorkingDir?: string | null
   onClose: () => void
   onCreated: (session: Session) => void
-  onCreateFromRecentAgent: (entry: RecentAgentEntry) => Promise<void>
-  onOpenRecentSession: (sessionId: string) => void
-  onRecentsChange: (patch: { recentSessionIds?: string[]; recentAgents?: RecentAgentEntry[] }) => void
 }
 
 function agentMatchesSearch(agent: AgentType, query: string): boolean {
@@ -90,18 +81,10 @@ type AgentPane = 'builtin' | 'installed'
 
 export function NewSessionPanel({
   agentTypes,
-  sessions,
-  recentSessionIds,
-  recentAgents,
-  recentsOpen,
-  onRecentsOpenChange,
   initialAgentTypeId,
   initialWorkingDir,
   onClose,
   onCreated,
-  onCreateFromRecentAgent,
-  onOpenRecentSession,
-  onRecentsChange,
 }: Props) {
   const [workingDir, setWorkingDir] = useState(initialWorkingDir ?? '')
   const [selectedId, setSelectedId] = useState('')
@@ -366,19 +349,6 @@ export function NewSessionPanel({
     } else if (e.key === 'Escape') {
       e.preventDefault()
       setDirectorySuggestions([])
-    }
-  }
-
-  async function handleRecentAgentClick(entry: RecentAgentEntry) {
-    if (loading) return
-    setLoading(true)
-    setError('')
-    try {
-      await onCreateFromRecentAgent(entry)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create session.')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -762,21 +732,6 @@ export function NewSessionPanel({
             </div>
           </div>
 
-          <div className="shrink-0 border-t px-4 py-3 md:px-6">
-            <div className="customize-tab-content mx-auto w-full">
-              <RecentsSection
-                sessions={sessions}
-                agentTypes={agentTypes}
-                recentSessionIds={recentSessionIds}
-                recentAgents={recentAgents}
-                open={recentsOpen}
-                onOpenChange={onRecentsOpenChange}
-                onRecentAgentClick={(entry) => void handleRecentAgentClick(entry)}
-                onRecentSessionClick={onOpenRecentSession}
-                onRecentsChange={onRecentsChange}
-              />
-            </div>
-          </div>
         </div>
 
         <div className="shrink-0 border-t px-4 py-4 md:px-6">

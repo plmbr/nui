@@ -453,13 +453,6 @@ html.nui-desktop {
     @apply relative flex min-h-0 flex-1 items-center justify-center overflow-hidden;
   }
 
-  .landing-page__recents {
-    @apply relative z-[1] shrink-0 border-t border-border/70 bg-background/72 px-4 py-3 backdrop-blur-sm sm:px-6;
-    max-width: min(96vw, 56rem);
-    width: 100%;
-    margin-inline: auto;
-  }
-
   .landing-page__content {
     @apply relative z-[1] isolate flex w-full flex-col items-center gap-6 px-4 text-center sm:px-6;
     transform: translateY(-2vh);
@@ -686,17 +679,38 @@ html.nui-desktop {
     @apply flex w-full max-w-3xl flex-wrap items-center justify-center gap-2 pt-1;
   }
 
-  /* ─── Recents section ─────────────────────────────────────────── */
-  .recents-section {
-    @apply flex flex-col gap-2;
+  /* ─── Recents popover ─────────────────────────────────────────── */
+  .recents-popover__trigger {
+    @apply inline-flex h-9 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 data-popup-open:bg-accent data-popup-open:text-accent-foreground;
   }
 
-  .recents-section__title {
-    @apply m-0 flex w-full items-center gap-1 rounded-md px-1 py-0.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/60;
+  .recents-popover__backdrop {
+    @apply fixed inset-0 z-40 bg-background/75 backdrop-blur-[1px] transition-opacity duration-100 data-ending-style:opacity-0 data-starting-style:opacity-0;
   }
 
-  .recents-section__grid {
-    @apply grid items-start gap-4 md:grid-cols-2 md:gap-6;
+  .recents-popover {
+    @apply relative h-[min(26rem,calc(100vh-8rem))] w-[min(34rem,calc(100vw-2rem))] overflow-hidden rounded-lg border bg-popover p-3 text-popover-foreground shadow-lg outline-none;
+    @apply transition-[opacity,transform] duration-100 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0;
+  }
+
+  .recents-popover__close {
+    @apply absolute right-2 top-2 z-[1] inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50;
+  }
+
+  .recents-popover__title {
+    @apply m-0 text-sm font-semibold text-foreground;
+  }
+
+  .recents-popover__overview-title {
+    @apply px-2 pb-4 pr-10;
+  }
+
+  .recents-popover__overview {
+    @apply flex h-full min-h-0 flex-col;
+  }
+
+  .recents-popover__grid {
+    @apply grid min-h-0 flex-1 items-start gap-4 overflow-y-auto sm:grid-cols-2 sm:gap-5;
   }
 
   .recents-section__column {
@@ -727,8 +741,28 @@ html.nui-desktop {
     @apply self-start px-2 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground;
   }
 
-  .recents-dialog__list {
-    @apply max-h-[min(24rem,60vh)] overflow-x-hidden overflow-y-auto;
+  .recents-popover__detail {
+    @apply flex h-full min-h-0 flex-col gap-2;
+  }
+
+  .recents-popover__detail-header {
+    @apply flex items-center gap-1 pr-9;
+  }
+
+  .recents-popover__search {
+    @apply relative;
+  }
+
+  .recents-popover__search > svg {
+    @apply pointer-events-none absolute left-2.5 top-1/2 z-[1] -translate-y-1/2 text-muted-foreground;
+  }
+
+  .recents-popover__detail-list {
+    @apply m-0 min-h-0 flex-1 list-none overflow-x-hidden overflow-y-auto p-0;
+  }
+
+  .recents-popover__empty {
+    @apply px-2 py-3 text-sm text-muted-foreground;
   }
 
   .recents-dialog__row {

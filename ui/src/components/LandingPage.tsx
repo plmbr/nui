@@ -6,7 +6,7 @@ import { LandingTitle } from '@/components/LandingTitle'
 import { MentionMenu } from '@/components/MentionMenu'
 import { PlumeriaFlower } from '@/components/PlumeriaFlower'
 import { PlumeriaRandomBackdrop } from '@/components/PlumeriaBackdrop'
-import { RecentsSection } from '@/components/RecentsSection'
+import { RecentsPopover } from '@/components/RecentsPopover'
 import { Button } from '@/components/ui/button'
 import { api } from '@/api'
 import { useTheme } from '@/contexts/theme'
@@ -30,8 +30,6 @@ interface Props {
   agentTypes: AgentType[]
   recentSessionIds?: string[]
   recentAgents?: RecentAgentEntry[]
-  recentsOpen: boolean
-  onRecentsOpenChange: (open: boolean) => void
   onLaunchWithPrompt: (prompt: string) => Promise<OrchestrateAmbiguity | void>
   onResolveAmbiguity: (agentType: string, prompt: string) => Promise<void>
   onNewSession: () => void
@@ -48,8 +46,6 @@ export function LandingPage({
   agentTypes,
   recentSessionIds,
   recentAgents,
-  recentsOpen,
-  onRecentsOpenChange,
   onLaunchWithPrompt,
   onResolveAmbiguity,
   onNewSession,
@@ -272,6 +268,15 @@ export function LandingPage({
               <Plus className="size-4" />
               New Session
             </Button>
+            <RecentsPopover
+              sessions={sessions}
+              agentTypes={agentTypes}
+              recentSessionIds={recentSessionIds}
+              recentAgents={recentAgents}
+              onRecentAgentClick={(entry) => void handleRecentAgentClick(entry)}
+              onRecentSessionClick={onOpenSession}
+              onRecentsChange={onRecentsChange}
+            />
             <Button size="default" variant="ghost" className="gap-2 px-5" onClick={onCustomize}>
               <Settings className="size-4" />
               Customize
@@ -280,19 +285,6 @@ export function LandingPage({
         </div>
       </div>
 
-      <div className="landing-page__recents">
-        <RecentsSection
-          sessions={sessions}
-          agentTypes={agentTypes}
-          recentSessionIds={recentSessionIds}
-          recentAgents={recentAgents}
-          open={recentsOpen}
-          onOpenChange={onRecentsOpenChange}
-          onRecentAgentClick={(entry) => void handleRecentAgentClick(entry)}
-          onRecentSessionClick={onOpenSession}
-          onRecentsChange={onRecentsChange}
-        />
-      </div>
     </div>
   )
 }

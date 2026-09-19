@@ -59,7 +59,6 @@ type State struct {
 	LastSessionID    string             `json:"lastSessionId,omitempty"` // last selected session in UI
 	RecentSessionIDs []string           `json:"recentSessionIds,omitempty"`
 	RecentAgents     []RecentAgentEntry `json:"recentAgents,omitempty"`
-	RecentsOpen      *bool              `json:"recentsOpen,omitempty"`  // Recents section expanded on launch/new-session
 	SidebarOpen      *bool              `json:"sidebarOpen,omitempty"`  // desktop sidebar expanded state
 	SidebarWidth     *int               `json:"sidebarWidth,omitempty"` // desktop sidebar width in px
 }

@@ -1137,9 +1137,6 @@ func handleState(w http.ResponseWriter, r *http.Request) {
 		if patch.SidebarOpen != nil {
 			current.SidebarOpen = patch.SidebarOpen
 		}
-		if patch.RecentsOpen != nil {
-			current.RecentsOpen = patch.RecentsOpen
-		}
 		if patch.SidebarWidth != nil {
 			w := *patch.SidebarWidth
 			if w < 200 {

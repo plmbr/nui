@@ -250,8 +250,6 @@ export interface UIState {
   lastSessionId?: string
   recentSessionIds?: string[]
   recentAgents?: RecentAgentEntry[]
-  /** Recents section expanded; defaults to true when omitted. */
-  recentsOpen?: boolean
   sidebarOpen?: boolean
   sidebarWidth?: number
 }

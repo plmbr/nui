@@ -78,7 +78,6 @@ function AppContent() {
   const [sessionListGroupId, setSessionListGroupId] = useState<string | null>(null)
   const [recentSessionIds, setRecentSessionIds] = useState<string[]>([])
   const [recentAgents, setRecentAgents] = useState<RecentAgentEntry[]>([])
-  const [recentsOpen, setRecentsOpen] = useState(true)
   const [appReady, setAppReady] = useState(false)
   const initializedRef = useRef(false)
   const sessionsRef = useRef(sessions)
@@ -131,11 +130,6 @@ function AppContent() {
       api.state.update({ recentSessionIds: next }).catch(() => {})
       return next
     })
-  }, [])
-
-  const handleRecentsOpenChange = useCallback((open: boolean) => {
-    setRecentsOpen(open)
-    api.state.update({ recentsOpen: open }).catch(() => {})
   }, [])
 
   const handleRecentsChange = useCallback((patch: {
@@ -194,9 +188,6 @@ function AppContent() {
       setSidebarWidth(resolveSidebarWidth(state.sidebarWidth))
       setRecentSessionIds(state.recentSessionIds ?? [])
       setRecentAgents(state.recentAgents ?? [])
-      if (state.recentsOpen !== undefined) {
-        setRecentsOpen(state.recentsOpen)
-      }
 
       const openCustomize = isCustomizePath()
       const openSchedules = isSchedulesPath()
@@ -772,8 +763,6 @@ function AppContent() {
                 agentTypes={agentTypes}
                 recentSessionIds={recentSessionIds}
                 recentAgents={recentAgents}
-                recentsOpen={recentsOpen}
-                onRecentsOpenChange={handleRecentsOpenChange}
                 onLaunchWithPrompt={handleLaunchWithPrompt}
                 onResolveAmbiguity={handleResolveAmbiguity}
                 onNewSession={handleOpenNewSession}
@@ -797,18 +786,10 @@ function AppContent() {
             ) : newSessionOpen ? (
               <NewSessionPanel
                 agentTypes={agentTypes}
-                sessions={sessions}
-                recentSessionIds={recentSessionIds}
-                recentAgents={recentAgents}
-                recentsOpen={recentsOpen}
-                onRecentsOpenChange={handleRecentsOpenChange}
                 initialAgentTypeId={agentFromNewSessionSearch()}
                 initialWorkingDir={cwdFromNewSessionSearch()}
                 onClose={handleCloseNewSession}
                 onCreated={handleSessionCreated}
-                onCreateFromRecentAgent={handleCreateFromRecentAgent}
-                onOpenRecentSession={handleOpenRecentSession}
-                onRecentsChange={handleRecentsChange}
               />
             ) : sessionListGroup ? (
               <SessionsListPanel
