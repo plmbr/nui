@@ -143,7 +143,7 @@ SSE `data:` events support `text`, `done`, `error`, and tool-call/image event ty
 | File | Contents |
 |---|---|
 | `~/.nui/data.json` | `sessions`, `agentSessions` (nui session ID → agent session ID), `sessionMessages` (UI chat text) |
-| `~/.nui/settings.json` | Preferences: `theme`, `uiTheme`, `defaultAgentType`, `defaultHarness`, `disabledExtensions`, memory modes |
+| `~/.nui/settings.json` | Preferences: `theme`, `uiTheme`, `defaultAgentType`, `defaultHarness`, `builtinHarnessModels`, `disabledExtensions`, memory modes |
 | `~/.nui/env.json` | Global env vars / API credentials (mode 0600; migrated from legacy `secrets.json`) |
 | `~/.nui/state.json` | UI state: `lastAgentType`, `lastSessionId`, `recentSessionIds`, `recentAgents`, `sidebarOpen`, `sidebarWidth`, `recentsOpen` |
 | `~/.nui/sessions/<session-id>/` | Per-session harness config (MCP, skills, system prompt, `.devcontainer/`); removed on session delete |

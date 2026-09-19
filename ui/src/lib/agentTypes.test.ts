@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   agentSupportsHarnessPermissions,
   defaultUserScopeHarnessConfig,
+  modelConfigurableBuiltinHarnesses,
   orderedBuiltinAgentsForPicker,
   partitionBuiltinAgents,
   pickDefaultAgentTypeId,
@@ -90,6 +91,19 @@ describe('agentTypes', () => {
     expect(orderedBuiltinAgentsForPicker(agents).map((a) => a.id)).toEqual([
       'nui',
       'anthropic',
+      'claude-code',
+    ])
+  })
+
+  it('lists model-capable built-ins even when a CLI is unavailable', () => {
+    const agents: AgentType[] = [
+      { ...nuiAgent, supportsModel: true },
+      { ...claudeAgent, available: false, supportsModel: true },
+      { id: 'anthropic', label: 'Claude API', harness: 'api', provider: 'anthropic', available: true, isBuiltin: true, supportsModel: true },
+      { id: 'custom', label: 'Custom', harness: 'api', available: true, isBuiltin: false, supportsModel: true },
+    ]
+    expect(modelConfigurableBuiltinHarnesses(agents).map((harness) => harness.ref)).toEqual([
+      'api/anthropic',
       'claude-code',
     ])
   })

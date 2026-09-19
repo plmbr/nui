@@ -29,7 +29,8 @@ func TestHandleSettings_getAndPut(t *testing.T) {
 	putBody := `{
 		"defaultAgentType": "anthropic",
 		"disabledExtensions": ["corp-pack"],
-		"memoryAgentsMode": {"reviewer": "manual"}
+		"memoryAgentsMode": {"reviewer": "manual"},
+		"builtinHarnessModels": {"api/anthropic": "claude-custom"}
 	}`
 	putReq := httptest.NewRequest(http.MethodPut, "/api/settings", strings.NewReader(putBody))
 	putRec := httptest.NewRecorder()
@@ -50,6 +51,9 @@ func TestHandleSettings_getAndPut(t *testing.T) {
 	if updated.MemoryAgentsMode == nil || updated.MemoryAgentsMode["reviewer"] != "manual" {
 		t.Fatalf("MemoryAgentsMode = %+v", updated.MemoryAgentsMode)
 	}
+	if updated.BuiltinHarnessModels["api/anthropic"] != "claude-custom" {
+		t.Fatalf("BuiltinHarnessModels = %+v", updated.BuiltinHarnessModels)
+	}
 
 	saved, err := store.LoadSettings()
 	if err != nil {
@@ -57,6 +61,30 @@ func TestHandleSettings_getAndPut(t *testing.T) {
 	}
 	if saved.DefaultAgentType != "anthropic" {
 		t.Fatalf("persisted DefaultAgentType = %q", saved.DefaultAgentType)
+	}
+
+	clearReq := httptest.NewRequest(http.MethodPut, "/api/settings", strings.NewReader(`{"builtinHarnessModels":{"api/anthropic":""}}`))
+	clearRec := httptest.NewRecorder()
+	handleSettings(clearRec, clearReq)
+	if clearRec.Code != http.StatusOK {
+		t.Fatalf("clear status = %d body=%s", clearRec.Code, clearRec.Body.String())
+	}
+	var cleared store.Settings
+	if err := json.Unmarshal(clearRec.Body.Bytes(), &cleared); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := cleared.BuiltinHarnessModels["api/anthropic"]; ok {
+		t.Fatalf("effective model override was not cleared: %+v", cleared.BuiltinHarnessModels)
+	}
+}
+
+func TestHandleSettings_rejectsUnknownBuiltinHarnessModel(t *testing.T) {
+	setupTestServerEnv(t)
+	req := httptest.NewRequest(http.MethodPut, "/api/settings", strings.NewReader(`{"builtinHarnessModels":{"custom":"model"}}`))
+	rec := httptest.NewRecorder()
+	handleSettings(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
 	}
 }
 

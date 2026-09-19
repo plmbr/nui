@@ -162,13 +162,13 @@ Full reference: [`dev/dev.md`](dev/dev.md#api-surface).
 
 ### Built-in agents
 
-Ten built-in agent types: four CLI harnesses, five API harnesses, and the `nui` master agent. Select them under **Built-in** in the New Session panel (CLI and API tabs). The home launcher uses `nui` via `POST /api/orchestrate`.
+Eleven built-in agent types: five CLI harnesses, five API harnesses, and the `nui` master agent. Select them under **Built-in** in the New Session panel (CLI and API tabs). The home launcher uses `nui` via `POST /api/orchestrate`. Settings → General can persist one model override per built-in harness; blank values retain the provider, CLI, or compiled default.
 
 **Master agent:**
 
 | Name | ADL id | Role |
 |---|---|---|
-| nui | `nui` | Routes tasks to specialists (`nui-orchestrator` MCP: `list_agents`, `launch_session`) and can create agents (`create-agent` skill + `nui-agent` MCP). Legacy id alias: `nui-orchestrator`. Harness comes from settings `defaultHarness` (defaults to Anthropic API). |
+| nui | `nui` | Routes tasks to specialists (`nui-orchestrator` MCP: `list_agents`, `launch_session`) and can create agents (`create-agent` skill + `nui-agent` MCP). Legacy id alias: `nui-orchestrator`. Harness comes from `defaultHarness` and shares that harness’s `builtinHarnessModels` override. |
 
 **CLI harnesses:**
 

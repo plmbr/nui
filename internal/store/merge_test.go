@@ -16,11 +16,19 @@ func TestMergeSettingsUserWins(t *testing.T) {
 		DefaultHarness:   "claude-code",
 		MemoryUserMode:   "manual",
 		MemoryAgentsMode: map[string]string{"a": "manual"},
+		BuiltinHarnessModels: map[string]string{
+			"api/anthropic": "system-claude",
+			"api/openai":    "system-gpt",
+		},
 	}
 	user := Settings{
 		Theme:            "dark",
 		DefaultAgentType: "anthropic",
 		MemoryAgentsMode: map[string]string{"a": "auto", "b": "disabled"},
+		BuiltinHarnessModels: map[string]string{
+			"api/anthropic": "user-claude",
+			"api/openai":    "",
+		},
 	}
 	out := mergeSettings(sys, user)
 	if out.Theme != "dark" {
@@ -37,6 +45,12 @@ func TestMergeSettingsUserWins(t *testing.T) {
 	}
 	if out.MemoryAgentsMode["a"] != "auto" || out.MemoryAgentsMode["b"] != "disabled" {
 		t.Fatalf("MemoryAgentsMode = %+v", out.MemoryAgentsMode)
+	}
+	if out.BuiltinHarnessModels["api/anthropic"] != "user-claude" {
+		t.Fatalf("BuiltinHarnessModels = %+v", out.BuiltinHarnessModels)
+	}
+	if _, ok := out.BuiltinHarnessModels["api/openai"]; ok {
+		t.Fatalf("empty user model should clear system value: %+v", out.BuiltinHarnessModels)
 	}
 }
 

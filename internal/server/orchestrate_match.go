@@ -32,7 +32,9 @@ func listAgentTypes() []AgentTypeInfo {
 		if agents.IsOrchestratorAgent(def.ID) {
 			def = agents.OrchestratorDefinition(settings)
 		}
-		all = append(all, agentTypeInfoFromDef(def, true))
+		info := agentTypeInfoFromDef(def, true)
+		info.DefaultModel = agents.BuiltinHarnessDefaultModel(agents.HarnessRefForDef(def))
+		all = append(all, info)
 	}
 
 	userDefs, err := store.LoadADLDefinitions()

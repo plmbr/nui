@@ -227,68 +227,70 @@ export function EnvVarsTab({ onChanged }: Props) {
             shell environment.
           </p>
         </div>
-        {groups.map(({ group, fields: groupFields }) => (
-          <div key={group} className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              {group}
-            </h4>
-            <div className="space-y-3">
-              {groupFields.map((field) => {
-                const isSecret = field.secret
-                const shown = !!revealed[field.key]
-                const inputType = isSecret && !shown ? 'password' : 'text'
-                return (
-                  <div key={field.key} className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <Label htmlFor={`cred-${field.key}`}>{field.label}</Label>
-                      <span className="text-[11px] text-muted-foreground font-mono">{field.key}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Input
-                        id={`cred-${field.key}`}
-                        type={inputType}
-                        value={draft[field.key] ?? ''}
-                        onChange={(e) =>
-                          setDraft((prev) => ({ ...prev, [field.key]: e.target.value }))
-                        }
-                        placeholder={
-                          field.fromEnv && !(draft[field.key] ?? '')
-                            ? 'Using value from environment'
-                            : undefined
-                        }
-                        autoComplete="off"
-                        spellCheck={false}
-                        className="font-mono"
-                      />
-                      {isSecret && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon-sm"
-                          aria-label={shown ? `Hide ${field.label}` : `Show ${field.label}`}
-                          aria-pressed={shown}
-                          onClick={() =>
-                            setRevealed((prev) => ({ ...prev, [field.key]: !prev[field.key] }))
+        <div className="space-y-4 pl-4">
+          {groups.map(({ group, fields: groupFields }) => (
+            <div key={group} className="space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {group}
+              </h4>
+              <div className="space-y-3 pl-4">
+                {groupFields.map((field) => {
+                  const isSecret = field.secret
+                  const shown = !!revealed[field.key]
+                  const inputType = isSecret && !shown ? 'password' : 'text'
+                  return (
+                    <div key={field.key} className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label htmlFor={`cred-${field.key}`}>{field.label}</Label>
+                        <span className="text-[11px] text-muted-foreground font-mono">{field.key}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          id={`cred-${field.key}`}
+                          type={inputType}
+                          value={draft[field.key] ?? ''}
+                          onChange={(e) =>
+                            setDraft((prev) => ({ ...prev, [field.key]: e.target.value }))
                           }
-                        >
-                          {shown ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                        </Button>
+                          placeholder={
+                            field.fromEnv && !(draft[field.key] ?? '')
+                              ? 'Using value from environment'
+                              : undefined
+                          }
+                          autoComplete="off"
+                          spellCheck={false}
+                          className="font-mono"
+                        />
+                        {isSecret && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon-sm"
+                            aria-label={shown ? `Hide ${field.label}` : `Show ${field.label}`}
+                            aria-pressed={shown}
+                            onClick={() =>
+                              setRevealed((prev) => ({ ...prev, [field.key]: !prev[field.key] }))
+                            }
+                          >
+                            {shown ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                          </Button>
+                        )}
+                      </div>
+                      {field.description && (
+                        <p className="text-xs text-muted-foreground">{field.description}</p>
+                      )}
+                      {field.fromEnv && (
+                        <p className="text-xs text-muted-foreground">
+                          Also set in the process environment (takes precedence over the stored value).
+                        </p>
                       )}
                     </div>
-                    {field.description && (
-                      <p className="text-xs text-muted-foreground">{field.description}</p>
-                    )}
-                    {field.fromEnv && (
-                      <p className="text-xs text-muted-foreground">
-                        Also set in the process environment (takes precedence over the stored value).
-                      </p>
-                    )}
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </section>
 
       <section className="space-y-3">
@@ -300,7 +302,9 @@ export function EnvVarsTab({ onChanged }: Props) {
             reserved; extension-owned <code className="text-[11px]">NUI_*</code> names are allowed.
           </p>
         </div>
-        <CustomEnvList entries={custom} onChange={setCustom} />
+        <div className="pl-4">
+          <CustomEnvList entries={custom} onChange={setCustom} />
+        </div>
       </section>
 
       <div className="flex items-center gap-3 pt-2">

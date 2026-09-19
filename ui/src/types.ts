@@ -81,6 +81,9 @@ export interface AgentType {
   source?: 'builtin' | 'user' | 'extension'
   tags?: string[]
   available: boolean
+  supportsModel?: boolean
+  requiresModel?: boolean
+  defaultModel?: string
 }
 
 export interface HitlQuestionOption {
@@ -203,6 +206,7 @@ export interface Settings {
   disableSloganAnimation?: boolean
   defaultAgentType?: string
   defaultHarness?: string
+  builtinHarnessModels?: Record<string, string>
   disabledExtensions?: string[]
   mcpOAuthCallbackUrl?: string
   memoryUserMode?: MemoryMode

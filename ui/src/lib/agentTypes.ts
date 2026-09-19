@@ -63,6 +63,38 @@ export function orderedBuiltinAgentsForPicker(types: AgentType[]): AgentType[] {
   return [...(nui ? [nui] : []), ...api, ...cli]
 }
 
+export interface BuiltinHarnessModelOption {
+  ref: string
+  label: string
+  group: 'API' | 'CLI'
+  defaultModel?: string
+  requiresModel: boolean
+}
+
+/** Deduplicated built-in harnesses that accept an explicit model. */
+export function modelConfigurableBuiltinHarnesses(types: AgentType[]): BuiltinHarnessModelOption[] {
+  const builtins = types.filter(
+    (agent) => agent.isBuiltin && !isNuiAgent(agent) && agent.supportsModel,
+  )
+  const { api, cli } = partitionBuiltinAgents(builtins)
+  return [
+    ...api.map((agent) => ({
+      ref: `api/${agent.provider?.trim() || agent.id}`,
+      label: agent.label,
+      group: 'API' as const,
+      defaultModel: agent.defaultModel,
+      requiresModel: !!agent.requiresModel,
+    })),
+    ...cli.map((agent) => ({
+      ref: agent.harness,
+      label: agent.label,
+      group: 'CLI' as const,
+      defaultModel: agent.defaultModel,
+      requiresModel: !!agent.requiresModel,
+    })),
+  ]
+}
+
 export function pickDefaultAgentTypeId(
   types: AgentType[],
   preferredId?: string | null,

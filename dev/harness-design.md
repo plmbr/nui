@@ -130,6 +130,13 @@ TCP and HTTP extension hosts write `~/.nui/connections/<id>.json`:
 
 Builtin and ADL agents with `harness.type: api` run entirely inside the nui binary via thin HTTP clients in `internal/llm`. No CLI subprocess is required.
 
+Compiled-in model names are fallbacks. Settings → General stores optional per-harness
+overrides in `settings.json` under `builtinHarnessModels`. The `nui` orchestrator shares
+the override for its selected `defaultHarness`. Runtime precedence is session
+`agentConfig.model`, provider model environment, the persisted built-in harness override,
+then the compiled or provider-discovered fallback. User and extension ADL agents continue
+to use their authored `harness.model`.
+
 | Builtin ID | Provider | Credentials / model |
 |---|---|---|
 | `anthropic` | Anthropic | `ANTHROPIC_API_KEY` (+ optional `ANTHROPIC_BASE_URL`, `ANTHROPIC_MODEL`) |

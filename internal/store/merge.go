@@ -25,6 +25,19 @@ func mergeSettings(sys, user Settings) Settings {
 	if user.DefaultHarness != "" {
 		out.DefaultHarness = user.DefaultHarness
 	}
+	if user.BuiltinHarnessModels != nil {
+		out.BuiltinHarnessModels = make(map[string]string, len(sys.BuiltinHarnessModels)+len(user.BuiltinHarnessModels))
+		for k, v := range sys.BuiltinHarnessModels {
+			out.BuiltinHarnessModels[k] = v
+		}
+		for k, v := range user.BuiltinHarnessModels {
+			if strings.TrimSpace(v) == "" {
+				delete(out.BuiltinHarnessModels, k)
+				continue
+			}
+			out.BuiltinHarnessModels[k] = v
+		}
+	}
 	if user.DisabledExtensions != nil {
 		out.DisabledExtensions = append([]string(nil), user.DisabledExtensions...)
 	}

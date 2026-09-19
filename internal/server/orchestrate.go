@@ -427,12 +427,12 @@ func resolveAgentDefinition(agentType string) (model.ADLDefinition, bool) {
 	if !ok {
 		return model.ADLDefinition{}, false
 	}
+	settings, err := store.LoadSettings()
+	if err != nil {
+		settings = store.Settings{Theme: "light"}
+	}
 	if agents.IsOrchestratorAgent(agentType) {
-		settings, err := store.LoadSettings()
-		if err != nil {
-			settings = store.Settings{Theme: "light"}
-		}
 		return agents.OrchestratorDefinition(settings), true
 	}
-	return def, true
+	return agents.ApplyBuiltinHarnessModelSettings(def, settings), true
 }

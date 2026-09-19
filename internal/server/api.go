@@ -51,6 +51,9 @@ type AgentTypeInfo struct {
 	IsBuiltin                  bool                        `json:"isBuiltin"`
 	Source                     string                      `json:"source,omitempty"` // builtin | user | extension
 	Available                  bool                        `json:"available"`        // false when the required CLI is not installed
+	SupportsModel              bool                        `json:"supportsModel,omitempty"`
+	RequiresModel              bool                        `json:"requiresModel,omitempty"`
+	DefaultModel               string                      `json:"defaultModel,omitempty"`
 }
 
 type SandboxCapabilities struct {
@@ -402,6 +405,8 @@ func agentTypeInfoFromDef(def model.ADLDefinition, builtin bool) AgentTypeInfo {
 		AllowedHarnesses:  effectiveAllowedHarnesses(def),
 		IsBuiltin:         builtin,
 		Available:         harnessAvailable(def),
+		SupportsModel:     builtin && agents.BuiltinHarnessSupportsModel(agents.HarnessRefForDef(def)),
+		RequiresModel:     builtin && agents.HarnessRequiresModel(def.Harness),
 	}
 	if model.IsADLAutoPrompt(def) {
 		info.PromptMode = model.ADLPromptModeAuto
@@ -1030,6 +1035,19 @@ func handleSettings(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			current.DefaultHarness = patch.DefaultHarness
+		}
+		if patch.BuiltinHarnessModels != nil {
+			if current.BuiltinHarnessModels == nil {
+				current.BuiltinHarnessModels = map[string]string{}
+			}
+			for ref, selectedModel := range patch.BuiltinHarnessModels {
+				ref = strings.TrimSpace(ref)
+				if !agents.BuiltinHarnessSupportsModel(ref) {
+					http.Error(w, fmt.Sprintf("built-in harness %q does not support model selection", ref), http.StatusBadRequest)
+					return
+				}
+				current.BuiltinHarnessModels[ref] = strings.TrimSpace(selectedModel)
+			}
 		}
 		if patch.DisabledExtensions != nil {
 			current.DisabledExtensions = patch.DisabledExtensions

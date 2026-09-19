@@ -155,7 +155,7 @@ Interactive AG-UI chat does not yet support mid-stream offset replay. A disconne
 | Store | Format | Location | Status |
 |---|---|---|---|
 | Sessions + agent session IDs + UI messages | JSON | `~/.nui/data.json` | Done — rows removed on session delete |
-| Settings (preferences) | JSON | `~/.nui/settings.json` | Done (`theme`, `uiTheme`, `defaultAgentType`, `defaultHarness`, `disabledExtensions`, memory modes). System base: `/etc/nui/settings.json` or `NUI_SYSTEM_CONFIG` (user wins) |
+| Settings (preferences) | JSON | `~/.nui/settings.json` | Done (`theme`, `uiTheme`, `defaultAgentType`, `defaultHarness`, `builtinHarnessModels`, `disabledExtensions`, memory modes). System base: `/etc/nui/settings.json` or `NUI_SYSTEM_CONFIG` (user wins) |
 | UI state | JSON | `~/.nui/state.json` | Done (`lastAgentType`, `lastSessionId`, `recentSessionIds`, `recentAgents`, `sidebarOpen`, `sidebarWidth`, `recentsOpen`); `lastSessionId` cleared when that session is deleted |
 | Global env | JSON | `~/.nui/env.json` (0600) | Done — managed API credentials + free-form global env; Customize → Env vars. Migrated from legacy `secrets.json`. Merged with system `env.json` / `secrets.json` when present |
 | Extension env | JSON | `~/.nui/extension-env.json` (0600) | Done — per-extension env maps; Customize → Extensions → Env. Merged with system extension-env when present |

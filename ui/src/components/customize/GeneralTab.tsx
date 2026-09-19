@@ -6,6 +6,7 @@ import { SearchableSelect } from '@/components/SearchableSelect'
 import { api } from '@/api'
 import { useTheme } from '@/contexts/theme'
 import {
+  modelConfigurableBuiltinHarnesses,
   pickDefaultAgentTypeId,
   pickDefaultHarnessRef,
   selectableAgentTypes,
@@ -13,7 +14,7 @@ import {
 } from '@/lib/agentTypes'
 import { BUILTIN_AGENTS_LABEL, INSTALLED_AGENTS_LABEL } from '@/lib/sessionGroups'
 import { UI_THEME_LIST } from '@/lib/uiThemes'
-import type { AgentType, Capabilities, UIThemeId, UpdateStatus } from '@/types'
+import type { AgentType, Capabilities, Settings, UIThemeId, UpdateStatus } from '@/types'
 import {
   checkDesktopAppUpdate,
   downloadDesktopAppUpdate,
@@ -96,6 +97,7 @@ export function GeneralTab() {
   const [agentTypes, setAgentTypes] = useState<AgentType[]>([])
   const [defaultAgentType, setDefaultAgentType] = useState('')
   const [defaultHarness, setDefaultHarness] = useState('')
+  const [builtinHarnessModels, setBuiltinHarnessModels] = useState<Record<string, string>>({})
   const [disableSloganAnimation, setDisableSloganAnimation] = useState(false)
   const [autoCheckUpdates, setAutoCheckUpdates] = useState(true)
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus | null>(null)
@@ -115,6 +117,7 @@ export function GeneralTab() {
         setAgentTypes(types)
         setDefaultAgentType(pickDefaultAgentTypeId(types, settings.defaultAgentType))
         setDefaultHarness(pickDefaultHarnessRef(types, settings.defaultHarness))
+        setBuiltinHarnessModels(settings.builtinHarnessModels ?? {})
         setDisableSloganAnimation(settings.disableSloganAnimation ?? false)
         setAutoCheckUpdates(settings.autoCheckUpdates !== false)
         if (st) setUpdateStatus(st)
@@ -130,6 +133,18 @@ export function GeneralTab() {
   const handleDefaultHarnessChange = (ref: string) => {
     setDefaultHarness(ref)
     api.settings.update({ defaultHarness: ref }).catch(() => {})
+  }
+
+  const handleBuiltinModelChange = (ref: string, value: string) => {
+    setBuiltinHarnessModels((models) => ({ ...models, [ref]: value }))
+  }
+
+  const saveBuiltinModel = (ref: string) => {
+    const value = builtinHarnessModels[ref] ?? ''
+    const patch: Pick<Settings, 'builtinHarnessModels'> = {
+      builtinHarnessModels: { [ref]: value },
+    }
+    api.settings.update(patch).catch(() => {})
   }
 
   const handleUIThemeChange = (id: UIThemeId) => {
@@ -224,6 +239,11 @@ export function GeneralTab() {
     [agentTypes],
   )
 
+  const modelHarnesses = useMemo(
+    () => modelConfigurableBuiltinHarnesses(agentTypes),
+    [agentTypes],
+  )
+
   return (
     <div className="customize-tab-content space-y-6">
       {bwrapUnavailable && (
@@ -239,7 +259,7 @@ export function GeneralTab() {
       )}
       <div>
         <p className="text-sm font-medium mb-1">Appearance</p>
-        <div className="mt-4">
+        <div className="mt-4 pl-4">
           <p className="text-sm font-medium mb-2">Theme</p>
           <p className="text-xs text-muted-foreground mb-3">
             Use the header toggle for light and dark when the theme supports both.
@@ -269,7 +289,7 @@ export function GeneralTab() {
             })}
           </div>
         </div>
-        <label className="flex items-center gap-2 text-sm cursor-pointer mt-4">
+        <label className="flex items-center gap-2 text-sm cursor-pointer mt-4 ml-4">
           <input
             type="checkbox"
             className="size-4 rounded border-input"
@@ -286,7 +306,7 @@ export function GeneralTab() {
             ? 'Checks GitHub Releases for a newer CLI on your PATH. App updates are separate.'
             : 'Checks GitHub Releases for a newer nui CLI/server. Downloads require confirmation.'}
         </p>
-        <label className="flex items-center gap-2 text-sm cursor-pointer mb-3">
+        <label className="flex items-center gap-2 text-sm cursor-pointer mb-3 ml-4">
           <input
             type="checkbox"
             className="size-4 rounded border-input"
@@ -295,7 +315,7 @@ export function GeneralTab() {
           />
           Automatically check for updates
         </label>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 ml-4">
           <button
             type="button"
             className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
@@ -343,30 +363,67 @@ export function GeneralTab() {
           Used by the nui master agent (launcher orchestrator).
         </p>
         {harnessSelectItems.length > 0 && (
-          <SearchableSelect
-            value={defaultHarness}
-            onValueChange={handleDefaultHarnessChange}
-            items={harnessSelectItems}
-            placeholder="Select harness"
-            searchPlaceholder="Search harnesses…"
-            triggerClassName="max-w-md"
-          />
+          <div className="pl-4">
+            <SearchableSelect
+              value={defaultHarness}
+              onValueChange={handleDefaultHarnessChange}
+              items={harnessSelectItems}
+              placeholder="Select harness"
+              searchPlaceholder="Search harnesses…"
+              triggerClassName="max-w-md"
+            />
+          </div>
         )}
       </div>
       <div>
-        <p className="text-sm font-medium mb-1">Default agent</p>
+        <p className="text-sm font-medium mb-1">Built-in harness models</p>
         <p className="text-xs text-muted-foreground mb-3">
-          Used when nui creates a session on startup.
+          Optional model overrides. Leave a field empty to use the provider or CLI default.
+        </p>
+        <div className="max-w-xl space-y-3 pl-4">
+          {modelHarnesses.map((harness) => (
+            <label key={harness.ref} className="block">
+              <span className="mb-1 block text-sm">
+                {harness.label}
+                {harness.ref === defaultHarness && (
+                  <span className="text-muted-foreground"> · Default harness</span>
+                )}
+                {harness.requiresModel && (
+                  <span className="text-muted-foreground"> · required</span>
+                )}
+              </span>
+              <input
+                type="text"
+                value={builtinHarnessModels[harness.ref] ?? ''}
+                placeholder={harness.defaultModel || 'Use harness default'}
+                onChange={(event) => handleBuiltinModelChange(harness.ref, event.target.value)}
+                onBlur={() => saveBuiltinModel(harness.ref)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.currentTarget.blur()
+                }}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
+              />
+            </label>
+          ))}
+        </div>
+      </div>
+      <div>
+        <p className="text-sm font-medium mb-1">Implicit launch agent</p>
+        <p className="text-xs text-muted-foreground mb-3">
+          Used by CLI, API, MCP, and URL launches that do not specify an agent. The New
+          Session screen defaults to nui.
         </p>
         {selectableAgentTypesList.length > 0 && (
-          <SearchableSelect
-            value={defaultAgentType}
-            onValueChange={handleDefaultAgentChange}
-            items={agentSelectItems}
-            placeholder="Select agent"
-            searchPlaceholder="Search agents…"
-            triggerClassName="max-w-md"
-          />
+          <div className="pl-4">
+            <SearchableSelect
+              value={defaultAgentType}
+              onValueChange={handleDefaultAgentChange}
+              items={agentSelectItems}
+              placeholder="Select agent"
+              searchPlaceholder="Search agents…"
+              triggerClassName="max-w-md"
+            />
+          </div>
         )}
       </div>
     </div>

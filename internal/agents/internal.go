@@ -141,6 +141,7 @@ func OrchestratorDefinition(settings store.Settings) model.ADLDefinition {
 	if h, _, err := ResolveDefaultHarness(settings); err == nil {
 		def.Harness = h
 	}
+	def = ApplyBuiltinHarnessModelSettings(def, settings)
 	if t := strings.TrimSpace(def.Harness.Type); model.IsCLIHarnessType(t) {
 		def.AllowedHarnesses = []string{t}
 	} else {

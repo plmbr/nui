@@ -27,6 +27,7 @@ type Settings struct {
 	DisableSloganAnimation   *bool             `json:"disableSloganAnimation,omitempty"`   // skip landing-page slogan word animation
 	DefaultAgentType         string            `json:"defaultAgentType,omitempty"`         // default agent for new sessions on launch
 	DefaultHarness           string            `json:"defaultHarness,omitempty"`           // harness for internal agents (e.g. api/anthropic, claude-code)
+	BuiltinHarnessModels     map[string]string `json:"builtinHarnessModels,omitempty"`     // per built-in harness model override
 	DisabledExtensions       []string          `json:"disabledExtensions,omitempty"`       // extension names excluded from runtime
 	MCPOAuthCallbackURL      string            `json:"mcpOAuthCallbackUrl,omitempty"`      // optional OAuth callback base URL override
 	MemoryUserMode           string            `json:"memoryUserMode,omitempty"`           // auto | manual | disabled; default manual
