@@ -47,8 +47,8 @@ import type { SessionChatMessage } from '@/lib/chatMessageUtils'
 import { assistantTextContent } from '@/lib/chatMessageUtils'
 
 const AUTO_PROMPT_FALLBACK = 'Follow your system instructions and run.'
-/** Keep pinned prompts a bit below the header border. */
-const SCROLL_ANCHOR_TOP_GAP = 12
+/** Keep pinned prompts just below the header border. */
+const SCROLL_ANCHOR_TOP_GAP = 3
 
 /** One user prompt and the assistant reply/replies that follow it. */
 type ChatTurn = {
@@ -171,25 +171,6 @@ function updateScrollSpacer(
     container.clientHeight - anchor.offsetHeight - contentBelow - paddingTop - SCROLL_ANCHOR_TOP_GAP,
   )
   spacer.style.height = `${spacerHeight}px`
-}
-
-/** Sticky only when the reply is long enough that pinning the prompt helps. */
-function syncTurnSticky(container: HTMLElement) {
-  const viewport = container.clientHeight
-  const minReplyForSticky = Math.min(Math.max(viewport * 0.4, 160), 320)
-
-  container.querySelectorAll<HTMLElement>('.agui-chat__turn').forEach((turn) => {
-    const user = turn.querySelector<HTMLElement>('.agui-message--user')
-    let replyHeight = 0
-    turn.querySelectorAll<HTMLElement>('.agui-message--assistant').forEach((el) => {
-      replyHeight += el.offsetHeight
-      replyHeight += Number.parseFloat(getComputedStyle(el).marginBottom) || 0
-    })
-    const shouldStick = replyHeight > minReplyForSticky
-    turn.classList.toggle('agui-chat__turn--sticky', shouldStick)
-    // When sticky releases at the turn end, sit in this padding instead of on the last line.
-    turn.style.paddingBottom = shouldStick && user ? `${user.offsetHeight}px` : ''
-  })
 }
 
 function scrollMessageToTop(container: HTMLElement, message: HTMLElement) {
@@ -478,10 +459,6 @@ export function ChatPanel({
     }
     const hitlAppeared = hitlKey.length > 0 && hitlKey !== prevHitlIdsRef.current
 
-    if (container) {
-      syncTurnSticky(container)
-    }
-
     if (container && spacer) {
       const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')
       const anchorEl = lastUserMsg ? messageRefs.current.get(lastUserMsg.id) : undefined
@@ -496,8 +473,6 @@ export function ChatPanel({
           updateScrollSpacer(container, anchorEl, spacer)
         }
       }
-      // Re-evaluate after spacer height changes (short replies get a large spacer).
-      syncTurnSticky(container)
     }
 
     // Wait until messages are rendered so the HITL card is in the scrollable list.

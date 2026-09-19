@@ -1300,7 +1300,7 @@ html.nui-desktop {
   }
 
   .agui-chat--embedded .agui-chat__messages {
-    @apply px-2 py-3;
+    @apply px-2 pt-0 pb-3;
   }
 
   .agui-chat--embedded .agui-chat__empty {
@@ -1312,7 +1312,7 @@ html.nui-desktop {
   }
 
   .agui-chat__messages {
-    @apply relative z-[1] flex-1 overflow-y-auto px-0 py-6 scroll-smooth;
+    @apply relative z-[1] flex-1 overflow-y-auto px-0 pt-0 pb-6 scroll-smooth;
   }
 
   .agui-chat__scroll-spacer {
@@ -1363,11 +1363,10 @@ html.nui-desktop {
     margin-bottom: var(--spacing);
   }
 
-  /* Sticky only when .agui-chat__turn--sticky (long replies). Short replies stay in flow. */
-  .agui-chat__turn--sticky > .agui-message--user {
+  /* Keep each prompt at one stable position while its response scrolls. */
+  .agui-chat__turn > .agui-message--user {
     @apply sticky z-[2];
-    top: 0.75rem; /* match SCROLL_ANCHOR_TOP_GAP — space under header */
-    padding-bottom: 0.35rem;
+    top: 3px; /* match SCROLL_ANCHOR_TOP_GAP */
   }
 
   .agui-message__bubble {
