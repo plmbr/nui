@@ -10,6 +10,7 @@ import { SearchInput } from '@/components/SearchInput'
 import { cn } from '@/lib/utils'
 import { api } from '@/api'
 import { harnessLabel } from '@/lib/agentDisplay'
+import { fuzzyMatchScore } from '@/lib/fuzzyMatch'
 import {
   buildCustomAgentSourceOptions,
   filterCustomAgentsBySources,
@@ -43,16 +44,31 @@ interface Props {
   onCreated: (session: Session) => void
 }
 
-function agentMatchesSearch(agent: AgentType, query: string): boolean {
-  const haystack = [
+function agentSearchHaystack(agent: AgentType): string {
+  return [
     agent.label,
     agent.id,
     agent.description ?? '',
     agent.harness,
     agent.sandbox ?? '',
     ...(agent.tags ?? []),
-  ].join(' ').toLowerCase()
-  return haystack.includes(query)
+  ].join(' ')
+}
+
+function agentSearchScore(agent: AgentType, query: string): number {
+  const labelScore = fuzzyMatchScore(query, agent.label)
+  const idScore = fuzzyMatchScore(query, agent.id)
+  const fullScore = fuzzyMatchScore(query, agentSearchHaystack(agent))
+  return Math.max(labelScore * 1.25, idScore * 1.1, fullScore)
+}
+
+function rankAgentsBySearch(agents: AgentType[], query: string): AgentType[] {
+  if (!query) return agents
+  return agents
+    .map((agent) => ({ agent, score: agentSearchScore(agent, query) }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score || a.agent.label.localeCompare(b.agent.label))
+    .map(({ agent }) => agent)
 }
 
 export function NewSessionPanel({
@@ -211,11 +227,11 @@ export function NewSessionPanel({
   const selectedTagSet = useMemo(() => new Set(selectedTags), [selectedTags])
   const filteredBuiltins = useMemo(() => {
     const byTags = filterAgentsByTags(orderedBuiltins, selectedTagSet)
-    return searchQuery ? byTags.filter((agent) => agentMatchesSearch(agent, searchQuery)) : byTags
+    return rankAgentsBySearch(byTags, searchQuery)
   }, [orderedBuiltins, searchQuery, selectedTagSet])
   const filteredCustom = useMemo(() => {
     const byTags = filterAgentsByTags(sourceFilteredCustom, selectedTagSet)
-    return searchQuery ? byTags.filter((agent) => agentMatchesSearch(agent, searchQuery)) : byTags
+    return rankAgentsBySearch(byTags, searchQuery)
   }, [sourceFilteredCustom, searchQuery, selectedTagSet])
   const firstSearchResult = searchQuery
     ? filteredBuiltins[0] ?? filteredCustom[0]

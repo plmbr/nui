@@ -44,6 +44,15 @@ const agentTypes: AgentType[] = [
     source: 'extension',
     tags: ['review'],
   },
+  {
+    id: 'ext:sample-pack/nebula-v4-spark-0731',
+    label: 'Nebula V4 Spark 0731 (Acme)',
+    harness: 'extension',
+    available: true,
+    isBuiltin: false,
+    source: 'extension',
+    tags: [],
+  },
 ]
 
 function renderPanel() {
@@ -142,6 +151,18 @@ describe('NewSessionPanel tag filter', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Reviewer' })).toHaveAttribute('aria-pressed', 'true')
+    })
+  })
+
+  it('fuzzy matches multi-word labels with intervening words and minor typos', async () => {
+    renderPanel()
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search agents' }), {
+      target: { value: 'nebla spark' },
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Nebula V4 Spark 0731 (Acme)' }))
+        .toHaveAttribute('aria-pressed', 'true')
     })
   })
 
