@@ -98,7 +98,9 @@ export function AgentHeader({ name, sessionName, agent, sessionId, onNewSession,
         </Tooltip>
         {isRunning && (
           <span className="sidebar-session__status" role="status" aria-label="Running">
-            <Loader2 className="sidebar-session__status-icon" aria-hidden />
+            <span className="flex size-3.5 items-center justify-center animate-spin" aria-hidden>
+              <Loader2 className="size-3.5 text-muted-foreground" />
+            </span>
           </span>
         )}
         <span
