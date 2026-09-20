@@ -36,6 +36,8 @@ import { BUILTIN_AGENTS_LABEL, INSTALLED_AGENTS_LABEL } from '@/lib/sessionGroup
 import { TagFilterInput } from '@/components/TagFilterInput'
 import type { AgentType, CreateSessionRequest, ExtensionInfo, Session } from '@/types'
 
+const BUILTIN_AGENT_SOURCE = 'builtin'
+
 interface Props {
   agentTypes: AgentType[]
   initialAgentTypeId?: string | null
@@ -206,7 +208,7 @@ export function NewSessionPanel({
     [userDefined, extensions],
   )
   const allSourceKeys = useMemo(
-    () => customSourceOptions.map((option) => option.key),
+    () => [BUILTIN_AGENT_SOURCE, ...customSourceOptions.map((option) => option.key)],
     [customSourceOptions],
   )
   const allSourcesActive = selectedSourceKeys.size === 0
@@ -216,9 +218,11 @@ export function NewSessionPanel({
     () => filterCustomAgentsBySources(userDefined, selectedSourceKeys),
     [userDefined, selectedSourceKeys],
   )
+  const builtinSourceActive =
+    selectedSourceKeys.size === 0 || selectedSourceKeys.has(BUILTIN_AGENT_SOURCE)
   const tagCandidates = useMemo(
-    () => [...orderedBuiltins, ...sourceFilteredCustom],
-    [orderedBuiltins, sourceFilteredCustom],
+    () => [...(builtinSourceActive ? orderedBuiltins : []), ...sourceFilteredCustom],
+    [builtinSourceActive, orderedBuiltins, sourceFilteredCustom],
   )
   const availableTags = useMemo(
     () => collectAgentTags(tagCandidates).filter((tag) => tag !== 'builtin' && tag !== 'nui'),
@@ -234,7 +238,7 @@ export function NewSessionPanel({
     return rankAgentsBySearch(byTags, searchQuery)
   }, [sourceFilteredCustom, searchQuery, selectedTagSet])
   const firstSearchResult = searchQuery
-    ? filteredBuiltins[0] ?? filteredCustom[0]
+    ? (builtinSourceActive ? filteredBuiltins[0] : undefined) ?? filteredCustom[0]
     : undefined
 
   useEffect(() => {
@@ -246,7 +250,7 @@ export function NewSessionPanel({
   }, [firstSearchResult])
 
   useEffect(() => {
-    const validKeys = new Set(customSourceOptions.map((option) => option.key))
+    const validKeys = new Set([BUILTIN_AGENT_SOURCE, ...customSourceOptions.map((option) => option.key)])
     setSelectedSourceKeys((current) => {
       const next = new Set([...current].filter((key) => validKeys.has(key)))
       return next.size === current.size ? current : next
@@ -278,7 +282,7 @@ export function NewSessionPanel({
     }
     setSelectedSourceKeys(new Set(allSourceKeys))
   }
-  const showBuiltins = orderedBuiltins.length > 0
+  const showBuiltins = builtinSourceActive && orderedBuiltins.length > 0
   const showInstalled = userDefined.length > 0
   const visibleResultCount =
     (showBuiltins ? filteredBuiltins.length : 0) + (showInstalled ? filteredCustom.length : 0)
@@ -457,6 +461,12 @@ export function NewSessionPanel({
                             <Label className="w-16 shrink-0 pt-1 text-xs text-muted-foreground">Source</Label>
                             <div className="flex flex-1 flex-wrap gap-1.5" role="group" aria-label="Filter by agent source">
                               <FilterChip active={allSourcesActive} onClick={toggleAllSourceFilters}>All</FilterChip>
+                              <FilterChip
+                                active={selectedSourceKeys.has(BUILTIN_AGENT_SOURCE)}
+                                onClick={() => toggleSourceFilter(BUILTIN_AGENT_SOURCE)}
+                              >
+                                Built-in
+                              </FilterChip>
                               {customSourceOptions.map((option) => (
                                 <FilterChip key={option.key} active={selectedSourceKeys.has(option.key)} onClick={() => toggleSourceFilter(option.key)}>
                                   {option.label}
@@ -484,7 +494,9 @@ export function NewSessionPanel({
                       {[...selectedSourceKeys].map((key) => (
                         <ActiveFilterChip
                           key={key}
-                          label={customSourceOptions.find((option) => option.key === key)?.label ?? key}
+                          label={key === BUILTIN_AGENT_SOURCE
+                            ? 'Built-in'
+                            : customSourceOptions.find((option) => option.key === key)?.label ?? key}
                           onRemove={() => toggleSourceFilter(key)}
                         />
                       ))}

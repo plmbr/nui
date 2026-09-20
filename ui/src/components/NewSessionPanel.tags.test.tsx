@@ -108,6 +108,18 @@ describe('NewSessionPanel tag filter', () => {
     expect(tagSuggestions()).toEqual(['review'])
   })
 
+  it('shows built-ins only when All or Built-in source is active', async () => {
+    renderPanel()
+    await openFilters()
+    expect(screen.getByRole('button', { name: 'Nui' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sample Pack' }))
+    expect(screen.queryByRole('button', { name: 'Nui' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Built-in' }))
+    expect(screen.getByRole('button', { name: 'Nui' })).toBeInTheDocument()
+  })
+
   it('drops selected tags that no longer apply after a source change', async () => {
     renderPanel()
     await openFilters()
