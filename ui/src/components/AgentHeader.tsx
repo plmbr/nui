@@ -1,7 +1,7 @@
 // Copyright (c) Mehmet Bektas <mbektasgh@outlook.com>
 
-import { useEffect, useState } from 'react'
-import { MoreHorizontal, PanelLeft, Pencil, Plus } from 'lucide-react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
+import { Loader2, MoreHorizontal, PanelLeft, Pencil, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -21,6 +21,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useSidebar } from '@/components/ui/sidebar'
 import { harnessLabel } from '@/lib/agentDisplay'
 import { scrollToSidebarSession } from '@/lib/scrollToSidebarSession'
+import {
+  getRunningSessionsSnapshot,
+  subscribeSessionRuns,
+} from '@/lib/sessionChatStore'
 import { cn } from '@/lib/utils'
 import type { AgentType } from '@/types'
 
@@ -37,6 +41,12 @@ export function AgentHeader({ name, sessionName, agent, sessionId, onNewSession,
   const typeLabel = harnessLabel(agent.harness, agent.sandbox)
   const { isMobile, setOpen, setOpenMobile } = useSidebar()
   const newSessionLabel = `New ${agent.label} session`
+  const runningSnapshot = useSyncExternalStore(
+    subscribeSessionRuns,
+    getRunningSessionsSnapshot,
+    getRunningSessionsSnapshot,
+  )
+  const isRunning = runningSnapshot.split(',').includes(sessionId)
   const [renameOpen, setRenameOpen] = useState(false)
   const [nameValue, setNameValue] = useState(sessionName)
 
@@ -86,6 +96,11 @@ export function AgentHeader({ name, sessionName, agent, sessionId, onNewSession,
             )}
           </TooltipContent>
         </Tooltip>
+        {isRunning && (
+          <span className="sidebar-session__status" role="status" aria-label="Running">
+            <Loader2 className="sidebar-session__status-icon" aria-hidden />
+          </span>
+        )}
         <span
           className={cn(
             'app-agent-header-actions group-hover/agent-header:md:w-12 group-hover/agent-header:md:opacity-100',
