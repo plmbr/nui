@@ -14,6 +14,7 @@ import (
 	"nui/internal/agent"
 	"nui/internal/agents"
 	"nui/internal/extensions"
+	"nui/internal/hitl"
 	"nui/internal/mcpclient"
 	"nui/internal/model"
 	"nui/internal/skills"
@@ -27,6 +28,8 @@ type orchestrateRequest struct {
 	Prompt     string `json:"prompt"`
 	WorkingDir string `json:"workingDir,omitempty"`
 }
+
+var orchestratorToolApprovalPatterns = []string{"*nui-orchestrator__*"}
 
 type orchestrateCandidate struct {
 	ID          string `json:"id"`
@@ -159,6 +162,11 @@ func runOrchestrator(ctx context.Context, prompt, workingDir string) (orchestrat
 		Message:      prompt,
 		SystemPrompt: systemPrompt,
 		MCPServers:   mcpServers,
+		// The home launcher has no HITL surface. Its own orchestration tools are
+		// the intended implementation of the user's launcher request, so allow
+		// them while continuing to gate unrelated MCP and workspace mutations.
+		ToolApprovalPolicy: hitl.ToolApprovalAllowlist,
+		ToolApprovalTools:  orchestratorToolApprovalPatterns,
 	}
 
 	events := make(chan agent.Event, 128)

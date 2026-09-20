@@ -10,6 +10,7 @@ import (
 
 	"nui/internal/agent"
 	"nui/internal/agents"
+	"nui/internal/hitl"
 )
 
 func TestCreateOrchestratorSessionAllowed(t *testing.T) {
@@ -86,6 +87,23 @@ func TestOrchestratorLaunchSessionTool(t *testing.T) {
 	}
 	if !isLaunchSessionToolName("launch_session") {
 		t.Fatal("expected isLaunchSessionToolName")
+	}
+}
+
+func TestOrchestratorToolsAutoApprovedWithoutApprovingWorkspaceMutations(t *testing.T) {
+	if !hitl.ShouldAutoApproveTool(
+		"nui-orchestrator__launch_session",
+		hitl.ToolApprovalAllowlist,
+		orchestratorToolApprovalPatterns,
+	) {
+		t.Fatal("launcher orchestration tools must not wait for invisible HITL approval")
+	}
+	if hitl.ShouldAutoApproveTool(
+		"nui-workspace__write",
+		hitl.ToolApprovalAllowlist,
+		orchestratorToolApprovalPatterns,
+	) {
+		t.Fatal("workspace mutations must still require approval")
 	}
 }
 

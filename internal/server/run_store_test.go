@@ -5,6 +5,7 @@ package server
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
 	"nui/internal/agent"
@@ -38,6 +39,34 @@ func TestAppendAndReadRunEvents(t *testing.T) {
 	}
 	if len(entries) != 0 {
 		t.Fatalf("expected no entries after seq 1, got %+v", entries)
+	}
+}
+
+func TestReadRunEventsSupportsLargeEvents(t *testing.T) {
+	resetRunState()
+	dir := t.TempDir()
+	store.SetRunsDirOverride(dir)
+	t.Cleanup(func() { store.SetRunsDirOverride("") })
+	runID := "run-large-event"
+	createRunRecord("sess", runID, "large response")
+
+	content := strings.Repeat("x", 128*1024)
+	if err := appendRunEvent(runID, 1, agent.Event{
+		Type:    agent.EventToolCallResult,
+		Content: content,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	entries, err := readRunEvents(runID, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("entries = %d, want 1", len(entries))
+	}
+	if entries[0].Event.Content != content {
+		t.Fatalf("content length = %d, want %d", len(entries[0].Event.Content), len(content))
 	}
 }
 

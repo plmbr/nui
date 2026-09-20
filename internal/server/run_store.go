@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"sync"
 	"time"
@@ -212,17 +213,24 @@ func readRunEvents(runID string, afterSeq int) ([]runLogEntry, error) {
 	defer f.Close()
 
 	var out []runLogEntry
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		var entry runLogEntry
-		if err := json.Unmarshal(sc.Bytes(), &entry); err != nil {
-			continue
+	reader := bufio.NewReader(f)
+	for {
+		line, readErr := reader.ReadBytes('\n')
+		if len(line) == 0 && readErr == io.EOF {
+			break
 		}
-		if entry.Seq > afterSeq {
+		var entry runLogEntry
+		if err := json.Unmarshal(line, &entry); err == nil && entry.Seq > afterSeq {
 			out = append(out, entry)
 		}
+		if readErr != nil {
+			if readErr == io.EOF {
+				break
+			}
+			return nil, readErr
+		}
 	}
-	return out, sc.Err()
+	return out, nil
 }
 
 func subscribeRunEvents(runID string) (chan runLogEntry, func()) {
