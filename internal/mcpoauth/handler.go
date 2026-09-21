@@ -10,11 +10,12 @@ import (
 	"net/url"
 	"strings"
 
+	"nui/internal/model"
+
 	"github.com/modelcontextprotocol/go-sdk/auth"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/modelcontextprotocol/go-sdk/oauthex"
 	"golang.org/x/oauth2"
-	"nui/internal/model"
 )
 
 // ErrNeedsAuth indicates the user must complete OAuth via the nui UI.
@@ -96,9 +97,14 @@ func ConnectRemote(ctx context.Context, srv model.ADLMCPServer) (*mcp.ClientSess
 	}
 	client := mcp.NewClient(&mcp.Implementation{Name: "nui", Version: "1.0.0"}, nil)
 	transport := &mcp.StreamableClientTransport{
-		Endpoint:   url,
-		HTTPClient: HTTPClientForServer(srv),
+		Endpoint:     url,
+		HTTPClient:   HTTPClientForServer(srv),
 		OAuthHandler: HandlerForServer(srv),
+		// Many HTTP MCP gateways accept the
+		// optional standalone GET SSE and then never process the follow-up
+		// POST for notifications/initialized, so the handshake hits the
+		// connect deadline. nui only needs request/response.
+		DisableStandaloneSSE: true,
 	}
 	return client.Connect(ctx, transport, nil)
 }
