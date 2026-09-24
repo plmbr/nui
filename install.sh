@@ -6,6 +6,7 @@
 #   NUI_VERSION   Release tag (default: latest), e.g. v0.1.0
 #   NUI_INSTALL_DIR  Install directory (default: $HOME/.local/bin)
 #   GITHUB_REPO   GitHub owner/repo (default: plmbr/nui)
+#   GITHUB_TOKEN  Optional; only used if the latest tag can't be resolved via redirect
 
 set -e
 
@@ -51,16 +52,40 @@ Download a release manually:
   esac
 }
 
+# Resolves "latest" via the github.com redirect (/releases/latest -> /releases/tag/<tag>)
+# rather than api.github.com, which is limited to 60 unauthenticated requests/hour per IP.
 resolve_version() {
-  if [ "$VERSION" = "latest" ]; then
-    need_cmd curl
-    VERSION="$(
-      curl -fsSL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" \
-        | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' \
-        | head -n 1
-    )"
-    [ -n "$VERSION" ] || err "could not resolve latest release from GitHub"
+  [ "$VERSION" = "latest" ] || return 0
+
+  latest_url="https://github.com/${GITHUB_REPO}/releases/latest"
+  final_url=""
+  if command -v curl >/dev/null 2>&1; then
+    final_url="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "$latest_url" 2>/dev/null || true)"
+  elif command -v wget >/dev/null 2>&1; then
+    final_url="$(wget -S --spider --max-redirect=5 "$latest_url" 2>&1 \
+      | sed -n 's/^ *[Ll]ocation: *\([^ ]*\).*/\1/p' | tail -n 1 | tr -d '\r')"
+  else
+    err "curl or wget is required to download nui"
   fi
+
+  case "$final_url" in
+    */releases/tag/*) VERSION="${final_url##*/releases/tag/}" ;;
+  esac
+
+  if [ "$VERSION" = "latest" ] && command -v curl >/dev/null 2>&1; then
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+      api_json="$(curl -fsSL -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+        "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" 2>/dev/null || true)"
+    else
+      api_json="$(curl -fsSL "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" 2>/dev/null || true)"
+    fi
+    VERSION="$(printf '%s' "$api_json" \
+      | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n 1)"
+  fi
+
+  [ -n "$VERSION" ] && [ "$VERSION" != "latest" ] || err "could not resolve latest release from GitHub
+
+Set NUI_VERSION explicitly (e.g. NUI_VERSION=v0.1.0), or set GITHUB_TOKEN to avoid API rate limits."
 }
 
 download_file() {
