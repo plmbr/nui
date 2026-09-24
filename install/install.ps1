@@ -5,6 +5,7 @@
 #   $env:NUI_VERSION      Release tag (default: latest), e.g. v0.1.0
 #   $env:NUI_INSTALL_DIR  Install directory (default: %LOCALAPPDATA%\nui)
 #   $env:GITHUB_REPO      GitHub owner/repo (default: plmbr/nui)
+#   $env:GITHUB_TOKEN     Optional; only used if the latest tag can't be resolved via redirect
 
 $ErrorActionPreference = "Stop"
 
@@ -35,11 +36,42 @@ Download a release manually:
     }
 }
 
+# Resolves "latest" via the github.com redirect (/releases/latest -> /releases/tag/<tag>)
+# rather than api.github.com, which is limited to 60 unauthenticated requests/hour per IP.
 function Resolve-Version {
     if ($Version -ne "latest") { return }
-    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$GithubRepo/releases/latest"
+
+    try {
+        $resp = Invoke-WebRequest -Uri "https://github.com/$GithubRepo/releases/latest" -UseBasicParsing -ErrorAction Stop
+        $finalUrl = $null
+        if ($resp.BaseResponse.ResponseUri) {
+            # Windows PowerShell 5.1 (HttpWebResponse)
+            $finalUrl = $resp.BaseResponse.ResponseUri.AbsoluteUri
+        } elseif ($resp.BaseResponse.RequestMessage -and $resp.BaseResponse.RequestMessage.RequestUri) {
+            # PowerShell 7+ (HttpResponseMessage)
+            $finalUrl = $resp.BaseResponse.RequestMessage.RequestUri.AbsoluteUri
+        }
+        if ($finalUrl -match '/releases/tag/(.+)$') {
+            $script:Version = [uri]::UnescapeDataString($Matches[1])
+            return
+        }
+    } catch {
+        # fall through to the API fallback below
+    }
+
+    $headers = @{}
+    if ($env:GITHUB_TOKEN) { $headers["Authorization"] = "Bearer $($env:GITHUB_TOKEN)" }
+    try {
+        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$GithubRepo/releases/latest" -Headers $headers -ErrorAction Stop
+    } catch {
+        Fail @"
+could not resolve latest release from GitHub: $($_.Exception.Message)
+
+Set `$env:NUI_VERSION explicitly (e.g. `$env:NUI_VERSION = "v0.1.0"), or set `$env:GITHUB_TOKEN to avoid API rate limits.
+"@
+    }
     if (-not $release.tag_name) {
-        Fail "could not resolve latest release from GitHub"
+        Fail 'could not resolve latest release from GitHub. Set $env:NUI_VERSION explicitly (e.g. $env:NUI_VERSION = "v0.1.0").'
     }
     $script:Version = $release.tag_name
 }
