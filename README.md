@@ -1,6 +1,6 @@
 # nui
 
-nui is a self-hosted web UI for interactive AI agent sessions. Run agents locally in your terminal, in Docker, or on a remote server — all from one interface.
+nui is a self-hosted agent runtime: define agents declaratively in [ADL](dev/adl/design.md), run them on any harness or model — Claude Code, Codex, OpenCode, pi, Antigravity, hosted APIs, or free local models via Ollama — locally, in Docker, or on a remote server, and reach them from a web UI, the CLI, or a REST/AG-UI/MCP API. Extensions add new harnesses, tools, and storage backends without touching nui's own code.
 
 <img src="media/nui.png" alt="nui">
 
