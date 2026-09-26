@@ -9,7 +9,7 @@ permalink: /docs/developers/
 
 - Go 1.26+
 - Node.js 18+
-- Agent CLIs on `PATH` as needed: `claude`, `pi`, `codex`, `opencode`
+- Agent CLIs on `PATH` as needed: `claude`, `pi`, `codex`, `opencode`, `agy`
 - Docker (optional) — for `sandbox: docker`, custom docker-harness ADL agents, and devcontainer harnesses
 - Dev Container CLI (optional) — for `harness.type: devcontainer` (`npm install -g @devcontainers/cli`)
 

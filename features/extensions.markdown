@@ -1,11 +1,11 @@
 ---
 layout: page
 title: Extensions
-subtitle: Install harnesses, MCP servers, skills, and agents from local directories, zip files, or git URLs.
+subtitle: Install harnesses, MCP servers, skills, storage, and deployers — without forking nui.
 permalink: /features/extensions/
 ---
 
-Extensions add capabilities to nui via a manifest (`extension.yaml`) and contribution list files. Installed extensions live in `~/.nui/extensions/<name>/`.
+Extensions add capabilities to nui via a manifest (`extension.yaml`) and contribution list files. Installed extensions live in `~/.nui/extensions/<name>/`. Built-in harnesses (`claude-code`, `pi`, `codex`, `opencode`, …) use the same contribution mechanism as third-party extensions — there is no privileged path for “official” agents.
 
 **Full developer reference:** [Extension API documentation]({{ '/docs/extensions/' | relative_url }}) — manifest schema, harness SDK, HITL, storage, deployers, and worked examples.
 

@@ -1,7 +1,7 @@
 ---
 layout: page
 title: Install
-subtitle: Install the CLI, the desktop app, or both — then start chatting with your agents.
+subtitle: Install the CLI, the desktop app, or both — then run agents from the UI, CLI, API, or MCP.
 permalink: /install/
 ---
 

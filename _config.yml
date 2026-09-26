@@ -1,7 +1,7 @@
 title: nui
 description: >-
-  A self-hosted web UI for interactive AI agent sessions. Home launcher, Claude Code, pi,
-  codex, opencode, and API agents — locally, in Docker, or remote — from one interface.
+  A self-hosted agent runtime: define agents in ADL, run them on any harness or model,
+  and reach them from a web UI, CLI, REST/AG-UI, or MCP — with a platform-grade extension model.
 url: https://nui.plmbr.dev
 baseurl: /
 domain: nui.plmbr.dev

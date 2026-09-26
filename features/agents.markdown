@@ -23,8 +23,9 @@ The home screen calls `POST /api/orchestrate`. The master's harness comes from S
 | pi | `pi` | `pi --mode rpc` (JSON-RPC over stdin/stdout) |
 | codex | `codex` | `codex exec … --json` |
 | opencode | `opencode` | `opencode serve` + `opencode run --attach` |
+| Antigravity | `antigravity` | `agy` |
 
-Persistent sessions are maintained per harness — Claude Code, pi, codex, and opencode each keep their own session state across turns.
+Persistent sessions are maintained per harness — Claude Code, pi, codex, opencode, and Antigravity each keep their own session state across turns.
 
 Built-in CLI agents are **pinned** to their matching harness. Custom CLI agents can allow a subset (or all) of CLI harnesses via ADL `allowedHarnesses`; the New Session panel then offers a harness picker, and CLI accepts `--harness`.
 

@@ -1,11 +1,11 @@
 ---
 layout: page
 title: ADL agents
-subtitle: Define custom agents in YAML with a harness, system prompt, and optional sandbox.
+subtitle: Define custom agents in YAML — harness, prompt, orchestration, sandbox, and evals.
 permalink: /features/adl/
 ---
 
-The Agent Definition Language (ADL) lets you define custom agents as YAML files in `~/.nui/agents/`. Pick a harness, set a `systemPrompt`, and optionally choose a sandbox mode. Multi-step workflows are supported too when you need them.
+The Agent Definition Language (ADL) lets you define custom agents as YAML files in `~/.nui/agents/`. Pick a harness, set a `systemPrompt`, and optionally choose a sandbox mode. Orchestration types cover multi-step workflows (DAGs), adaptive sub-agents, and deliberative councils — all declarative, no orchestration code required.
 
 ## Install a custom agent
 
@@ -99,7 +99,7 @@ ADL agents can use any harness type:
 
 | Type | Description |
 |---|---|
-| `claude-code`, `pi`, `codex`, `opencode` | Built-in CLI harnesses |
+| `claude-code`, `pi`, `codex`, `opencode`, `antigravity` | Built-in CLI harnesses |
 | `api` | In-process LLM API (Anthropic, OpenAI, Gemini, etc.) |
 | `docker` | HTTP/SSE agent in a managed container |
 | `devcontainer` | nui-managed dev container |

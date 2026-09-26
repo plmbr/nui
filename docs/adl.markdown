@@ -30,6 +30,7 @@ systemPrompt: |
 | `pi` | Pi agent (`pi --mode rpc`) |
 | `codex` | OpenAI Codex CLI |
 | `opencode` | OpenCode CLI |
+| `antigravity` | Google Antigravity CLI (`agy`) |
 | `api` | In-process LLM (Anthropic, OpenAI, Gemini, OpenRouter, Ollama) |
 | `docker` | Custom HTTP/SSE harness in a Docker container |
 | `remote` | Remote HTTP/SSE harness (no lifecycle management) |

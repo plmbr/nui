@@ -1,22 +1,22 @@
 ---
 layout: page
 title: Features
-subtitle: Six capabilities nui ships today — each one a card below, each card a deeper read.
+subtitle: Define, run, access, and extend agents — six capabilities nui ships today.
 permalink: /features/
 ---
 
 <div class="feature-grid">
   <a class="card" href="{{ '/features/agents/' | relative_url }}">
     <h3 class="card__title">Built-in agents</h3>
-    <p class="card__body">The <code>nui</code> master agent (home launcher), Claude Code, pi, codex, opencode, and in-process API agents — Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.</p>
+    <p class="card__body">The <code>nui</code> master agent (home launcher), Claude Code, pi, codex, opencode, Antigravity, and in-process API agents — Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.</p>
   </a>
   <a class="card" href="{{ '/features/adl/' | relative_url }}">
     <h3 class="card__title">ADL agents</h3>
-    <p class="card__body">Define custom agents in YAML or the form editor — with eval test cases, harness, system prompt, and optional sandbox or multi-step workflow.</p>
+    <p class="card__body">Define custom agents in YAML or the form editor — with eval test cases, harness, system prompt, workflows, sub-agents, councils, and optional sandbox.</p>
   </a>
   <a class="card" href="{{ '/features/extensions/' | relative_url }}">
     <h3 class="card__title">Extensions</h3>
-    <p class="card__body">Install harnesses, MCP servers, skills, and agents from local directories, zip files, or git URLs.</p>
+    <p class="card__body">Platform-grade extensibility: harnesses, MCP servers, skills, HITL channels, storage, and deployers from a local dir, zip, or git URL — same path built-ins use.</p>
   </a>
   <a class="card" href="{{ '/features/mcp/' | relative_url }}">
     <h3 class="card__title">MCP integration</h3>
@@ -24,7 +24,7 @@ permalink: /features/
   </a>
   <a class="card" href="{{ '/features/sandbox/' | relative_url }}">
     <h3 class="card__title">Sandboxing</h3>
-    <p class="card__body">Run agents in bubblewrap sandboxes, Docker containers, or dev containers — or unsandboxed on the host.</p>
+    <p class="card__body">Run agents in bubblewrap sandboxes, Docker containers, or dev containers — or unsandboxed on the host. Trust level is an ADL field.</p>
   </a>
   <a class="card" href="{{ '/features/headless/' | relative_url }}">
     <h3 class="card__title">Headless &amp; scheduled runs</h3>

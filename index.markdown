@@ -1,19 +1,20 @@
 ---
 layout: home
 title: nui
-description: A self-hosted web UI for interactive AI agent sessions. Run agents locally, in Docker, or on a remote server — all from one interface.
+description: A self-hosted agent runtime — define agents in ADL, run them on any harness or model, and reach them from a web UI, CLI, REST/AG-UI, or MCP.
 ---
 
 <section class="hero">
   <div class="container two-col">
     <div>
-      <p class="hero__eyebrow">Self-hosted agent UI</p>
-      <h1 class="hero__headline">One interface for every agent.</h1>
+      <p class="hero__eyebrow">Self-hosted agent runtime</p>
+      <h1 class="hero__headline">Define once. Run anywhere.</h1>
       <p class="hero__sub">
-        nui is a web UI for interactive AI agent sessions. Ask the home launcher to route
-        work, or run Claude Code, pi, codex, opencode, and API agents on your machine,
-        in Docker, or on a remote server — with sessions, extensions, MCP, and custom ADL
-        agents in one place.
+        nui is a self-hosted agent runtime: define agents declaratively in ADL, run them
+        on any harness or model — Claude Code, Codex, OpenCode, pi, Antigravity, hosted
+        APIs, or free local models via Ollama — and reach them from a web UI, the CLI, or
+        a REST/AG-UI/MCP API. Extensions add new harnesses, tools, and storage without
+        touching nui's own code.
       </p>
       <div class="hero__cta">
         <a class="btn btn--primary" href="#install">Install</a>
@@ -39,6 +40,7 @@ description: A self-hosted web UI for interactive AI agent sessions. Run agents 
       <span>pi</span>
       <span>codex</span>
       <span>opencode</span>
+      <span>Antigravity</span>
       <span>Anthropic&nbsp;API</span>
       <span>OpenAI</span>
       <span>Gemini</span>
@@ -51,13 +53,13 @@ description: A self-hosted web UI for interactive AI agent sessions. Run agents 
 <section class="stripe" id="sessions">
   <div class="container stripe__grid">
     <div>
-      <p class="stripe__eyebrow">Sessions</p>
-      <h2 class="stripe__title">Chat, switch, and resume — without leaving the browser.</h2>
+      <p class="stripe__eyebrow">Access anywhere</p>
+      <h2 class="stripe__title">Web UI, CLI, API, and MCP — same backend.</h2>
       <p class="stripe__body">
-        Type a task on the home screen and the <code>nui</code> master agent routes it to
-        the right specialist — or open a session with any built-in or installed agent.
-        Send prompts, attach files, and use <code>@</code> mentions for context. Switch
-        between past sessions from the sidebar; preferences persist across reloads.
+        The chat UI is one client of the nui server, not a privileged one. Type a task on
+        the home screen and the <code>nui</code> master agent routes it to the right
+        specialist — or drive the same agents headlessly with <code>nui run</code>, over
+        REST/AG-UI, or as MCP tools from Cursor and Claude Desktop.
       </p>
       <a class="stripe__link" href="{{ '/features/' | relative_url }}">Explore features →</a>
     </div>
@@ -76,12 +78,12 @@ nui server -a claude-code -m "Review the README" -w . --open
 <section class="stripe stripe--reverse">
   <div class="container stripe__grid">
     <div>
-      <p class="stripe__eyebrow">Custom agents</p>
-      <h2 class="stripe__title">ADL agents, Docker harnesses, and extensions.</h2>
+      <p class="stripe__eyebrow">Define in ADL</p>
+      <h2 class="stripe__title">Declarative agents, workflows, councils, and evals.</h2>
       <p class="stripe__body">
         Define custom agents in YAML with the Agent Definition Language — pick a harness,
-        set a system prompt, and run locally, in sandboxes, Docker containers, or on remote
-        servers. Install extensions that contribute harnesses, MCP servers, skills, and agents.
+        set a system prompt, compose workflows or sub-agents, and run locally, in
+        sandboxes, Docker, or on remote servers. Same definition, swap the model for cost.
       </p>
       <a class="stripe__link" href="{{ '/features/adl/' | relative_url }}">ADL and custom agents →</a>
     </div>
@@ -99,6 +101,27 @@ systemPrompt: |
 </section>
 
 <section class="stripe">
+  <div class="container stripe__grid">
+    <div>
+      <p class="stripe__eyebrow">Extend everything</p>
+      <h2 class="stripe__title">Platform-grade extensions — without forking nui.</h2>
+      <p class="stripe__body">
+        Install extensions via <code>extension.yaml</code> from a local dir, zip, or git URL.
+        Contribute harnesses, MCP servers, skills, HITL channels, storage backends, and
+        deployers. Built-in harnesses use the same contribution path as third-party ones.
+      </p>
+      <a class="stripe__link" href="{{ '/features/extensions/' | relative_url }}">Extensions →</a>
+    </div>
+    <div class="stripe__media" style="padding: var(--space-5);">
+{% highlight bash %}
+nui extension add ./my-extension
+nui extension add https://github.com/example/my-extension.git
+{% endhighlight %}
+    </div>
+  </div>
+</section>
+
+<section class="stripe stripe--reverse">
   <div class="container stripe__grid">
     <div>
       <p class="stripe__eyebrow">MCP integration</p>
@@ -126,15 +149,15 @@ systemPrompt: |
   </div>
 </section>
 
-<section class="stripe stripe--reverse">
+<section class="stripe">
   <div class="container stripe__grid">
     <div>
-      <p class="stripe__eyebrow">Headless runs</p>
-      <h2 class="stripe__title">Script agent runs from the terminal or CI.</h2>
+      <p class="stripe__eyebrow">Operate like software</p>
+      <h2 class="stripe__title">Headless runs, schedules, and evals.</h2>
       <p class="stripe__body">
         Use <code>nui run</code> for headless agent execution against a running server.
-        Schedule recurring runs with <code>nui schedule</code>. Evaluate ADL agents with
-        <code>nui agent eval</code> — no browser required.
+        Schedule recurring runs with <code>nui schedule</code>. Regression-test ADL agents
+        with <code>nui agent eval</code> — no browser required.
       </p>
       <a class="stripe__link" href="{{ '/cli/' | relative_url }}">CLI reference →</a>
     </div>

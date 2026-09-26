@@ -21,6 +21,7 @@ These require the corresponding binary on your `PATH`:
 | `pi` | `pi` | pi agent CLI |
 | `codex` | `codex` | OpenAI Codex CLI |
 | `opencode` | `opencode` | OpenCode CLI |
+| `antigravity` | `agy` | Google Antigravity CLI |
 
 ## API agents
 
@@ -50,7 +51,7 @@ See [ADL agents](/features/adl/) for the schema and [harness examples](https://g
 
 | Harness | Lifecycle |
 |---|---|
-| `claude-code`, `pi`, `codex`, `opencode` | Go-managed subprocesses on the host or in Docker |
+| `claude-code`, `pi`, `codex`, `opencode`, `antigravity` | Go-managed subprocesses on the host or in Docker |
 | `api` | In-process LLM calls (Anthropic, OpenAI, Gemini, OpenRouter, Ollama) |
 | `docker` | nui runs a container, health-checks, and tears it down on delete |
 | `devcontainer` | Dev Container CLI–managed environment with an inner CLI harness |

@@ -5,7 +5,7 @@ subtitle: Developer guides, extension API reference, CLI, and harness protocols.
 permalink: /docs/
 ---
 
-nui is a self-hosted web UI for interactive AI agent sessions. This site hosts the **developer documentation** — everything you need to build extensions, custom harnesses, and ADL agents.
+nui is a self-hosted agent runtime. This site hosts the **developer documentation** — everything you need to build extensions, custom harnesses, and ADL agents.
 
 ## Quick links
 
