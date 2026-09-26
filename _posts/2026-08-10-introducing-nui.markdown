@@ -15,7 +15,7 @@ nui is open source (MIT) and available today.
 <figure>
   <img src="{{ '/assets/images/hero/nui.png' | relative_url }}"
        alt="nui web UI showing a chat session with an AI agent."
-       width="2227" height="1369" loading="eager">
+       width="2106" height="1424" loading="eager">
 </figure>
 
 ## Why now

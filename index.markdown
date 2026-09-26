@@ -25,7 +25,7 @@ description: A self-hosted agent runtime — define agents in ADL, run them on a
       <figure class="hero__media">
         <img src="{{ '/assets/images/hero/nui.png' | relative_url }}"
              alt="nui web UI showing a chat session with an AI agent."
-             width="2227" height="1369" loading="eager" fetchpriority="high">
+             width="2106" height="1424" loading="eager" fetchpriority="high">
       </figure>
     </div>
   </div>
