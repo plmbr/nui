@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '@/api'
 import type { MentionBreadcrumb, MentionItem } from '@/types'
+import { mentionToken } from '@/lib/mentionToken'
 
 export interface MentionTrigger {
   triggerStart: number
@@ -117,7 +118,7 @@ export function useMentionMenu({
       const cursor = el.selectionStart ?? input.length
       const before = input.slice(0, trigger.triggerStart)
       const after = input.slice(cursor)
-      const insertion = `@${item.value} `
+      const insertion = `${mentionToken(item.value)} `
       const next = `${before}${insertion}${after}`
       setInput(next)
       close()

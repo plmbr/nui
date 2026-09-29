@@ -4,16 +4,14 @@ package mentions
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
-	"unicode"
 )
-
-var mentionTokenPattern = regexp.MustCompile(`@([^\s@]+)`)
 
 // Registry routes mention list and resolve requests to providers.
 type Registry struct {
@@ -117,40 +115,65 @@ func (r *Registry) ResolveMessage(ctx context.Context, workingDir, message strin
 	if strings.TrimSpace(message) == "" {
 		return message, nil
 	}
-	matches := mentionTokenPattern.FindAllStringSubmatchIndex(message, -1)
-	if len(matches) == 0 {
+	tokens := findMentionTokens(message)
+	if len(tokens) == 0 {
 		return message, nil
 	}
 	var b strings.Builder
 	last := 0
-	for _, match := range matches {
-		start, end := match[0], match[1]
-		valueStart, valueEnd := match[2], match[3]
-		if start > 0 && !unicode.IsSpace(rune(message[start-1])) {
-			continue
-		}
-		b.WriteString(message[last:start])
-		value := message[valueStart:valueEnd]
-		resolved, err := r.Resolve(ctx, ResolveRequest{
-			WorkingDir:            workingDir,
-			Value:                 value,
-			AllowedExtensionRoots: allowed,
-		})
+	for _, token := range tokens {
+		b.WriteString(message[last:token.start])
+		resolved, err := r.resolveToken(ctx, workingDir, token, allowed)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "[mentions] resolve %q: %v\n", value, err)
-			b.WriteString(message[start:end])
+			fmt.Fprintf(os.Stderr, "[mentions] resolve %q: %v\n", token.value, err)
+			b.WriteString(message[token.start:token.end])
 		} else {
 			b.WriteString(resolved)
 		}
-		last = end
+		last = token.end
 	}
 	b.WriteString(message[last:])
 	return b.String(), nil
 }
 
+// resolveToken resolves one mention. For an unquoted file or dir mention it
+// tries the name as written, then with trailing punctuation
+// removed, and uses the first name that exists; any other failure, such as a
+// path outside the working directory, ends the search. Punctuation trimmed off
+// is written back after the resolved path so the sentence around it is
+// unchanged. Quoted and extension mentions are resolved exactly as written.
+func (r *Registry) resolveToken(ctx context.Context, workingDir string, token mentionToken, allowed map[string]bool) (string, error) {
+	req := ResolveRequest{WorkingDir: workingDir, Value: token.value, AllowedExtensionRoots: allowed}
+	prefix, trims := "", false
+	switch {
+	case token.quoted:
+	case strings.HasPrefix(token.value, fileValuePrefix):
+		prefix, trims = fileValuePrefix, true
+	case strings.HasPrefix(token.value, dirValuePrefix):
+		prefix, trims = dirValuePrefix, true
+	}
+	if !trims {
+		return r.Resolve(ctx, req)
+	}
+	var err error
+	for _, candidate := range pathCandidates(prefix, token.value) {
+		req.Value = candidate
+		var resolved string
+		resolved, err = r.Resolve(ctx, req)
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return "", err
+		}
+		return resolved + token.value[len(candidate):], nil
+	}
+	return "", err
+}
+
 func (r *Registry) Resolve(ctx context.Context, req ResolveRequest) (string, error) {
-	value := strings.TrimSpace(req.Value)
-	if value == "" {
+	value := req.Value
+	if strings.TrimSpace(value) == "" {
 		return "", fmt.Errorf("empty mention value")
 	}
 	switch {

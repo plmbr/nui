@@ -56,7 +56,7 @@ func (BuiltinFilesProvider) List(_ context.Context, req ListRequest) (ListRespon
 }
 
 func (BuiltinFilesProvider) Resolve(_ context.Context, req ResolveRequest) (string, error) {
-	value := strings.TrimSpace(req.Value)
+	value := req.Value
 	switch {
 	case strings.HasPrefix(value, fileValuePrefix):
 		rel := strings.TrimPrefix(value, fileValuePrefix)
@@ -71,7 +71,7 @@ func (BuiltinFilesProvider) Resolve(_ context.Context, req ResolveRequest) (stri
 		if info.IsDir() {
 			return "", fmt.Errorf("mention is a directory, not a file: %s", abs)
 		}
-		return "@" + abs, nil
+		return atPath(abs), nil
 	case strings.HasPrefix(value, dirValuePrefix):
 		rel := strings.TrimPrefix(value, dirValuePrefix)
 		abs, err := resolveFilePath(req.WorkingDir, rel)
@@ -85,7 +85,7 @@ func (BuiltinFilesProvider) Resolve(_ context.Context, req ResolveRequest) (stri
 		if !info.IsDir() {
 			return "", fmt.Errorf("mention is not a directory: %s", abs)
 		}
-		return "@" + abs, nil
+		return atPath(abs), nil
 	default:
 		return "", fmt.Errorf("unsupported mention value %q", value)
 	}
@@ -202,7 +202,7 @@ func resolveFilePath(workingDir, rel string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	rel = filepath.FromSlash(strings.TrimSpace(rel))
+	rel = filepath.FromSlash(rel)
 	if rel == "" || rel == "." {
 		return absWorking, nil
 	}
@@ -247,5 +247,5 @@ func resolveAbsoluteFileMention(value string) (string, error) {
 	if info.IsDir() {
 		return "", fmt.Errorf("mention is a directory, not a file: %s", abs)
 	}
-	return "@" + abs, nil
+	return atPath(abs), nil
 }
